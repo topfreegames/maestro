@@ -118,10 +118,10 @@ func (s *SchedulerManager) CreateNewSchedulerVersion(ctx context.Context, schedu
 	return nil
 }
 
-func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) error {
-	err := scheduler.Validate()
+func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) (opID string, err error) {
+	err = scheduler.Validate()
 	if err != nil {
-		return fmt.Errorf("failing in creating schedule: %w", err)
+		return "", fmt.Errorf("failing in creating schedule: %w", err)
 	}
 
 	err = s.schedulerStorage.RunWithTransaction(ctx, func(transactionId ports.TransactionID) error {
@@ -130,17 +130,18 @@ func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx 
 			return err
 		}
 
-		_, err = s.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
+		op, err := s.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
 		if err != nil {
 			return fmt.Errorf("error enqueuing switch active version operation: %w", err)
 		}
+		opID = op.ID
 		return nil
 
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return opID, nil
 }
 
 func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error) {
@@ -322,6 +323,7 @@ func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *enti
 	if err != nil {
 		return nil, fmt.Errorf("failing in couting game rooms in %s state: %s", game_room.GameStatusTerminating, err)
 	}
+
 	return entities.NewSchedulerInfo(
 		entities.WithName(scheduler.Name),
 		entities.WithGame(scheduler.Game),
@@ -331,5 +333,6 @@ func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *enti
 		entities.WithRoomsOccupied(occupied),
 		entities.WithRoomsPending(pending),
 		entities.WithRoomsTerminating(terminating),
+		entities.WithAutoscalingInfo(scheduler.Autoscaling),
 	), nil
 }

@@ -37,7 +37,7 @@ type SchedulerManager interface {
 	UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error)
 	GetSchedulerByVersion(ctx context.Context, schedulerName, schedulerVersion string) (*entities.Scheduler, error)
-	CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) error
+	CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) (string, error)
 	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
 	EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error)
 	GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error)

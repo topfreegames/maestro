@@ -37,6 +37,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -992,6 +994,11 @@ func TestGetSchedulersInfo(t *testing.T) {
 		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 
 		scheduler := newValidScheduler()
+		scheduler.Autoscaling = &autoscaling.Autoscaling{
+			Enabled: true,
+			Min:     1,
+			Max:     5,
+		}
 		schedulers := []*entities.Scheduler{scheduler}
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return(schedulers, nil)
 
