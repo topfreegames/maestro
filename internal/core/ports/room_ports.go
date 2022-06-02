@@ -73,6 +73,8 @@ type RoomManager interface {
 	CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error)
 	// CreateRoom creates a game room in maestro runtime and storages without waiting the room to reach ready status.
 	CreateRoom(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error)
+	// GetRoomInstance returns the game room instance.
+	GetRoomInstance(ctx context.Context, scheduler, roomID string) (*game_room.Instance, error)
 	// UpdateGameRoomStatus updates the game based on the ping and runtime status.
 	UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error
 	// WaitRoomStatus blocks the caller until the context is canceled, an error
