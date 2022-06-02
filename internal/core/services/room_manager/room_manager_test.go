@@ -1236,7 +1236,7 @@ func TestRoomManager_GetRoomInstance(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(nil, errors.New("some error"))
 
 		_, err := roomManager.GetRoomInstance(context.Background(), schedulerName, roomId)
-		require.EqualError(t, err, "some error")
+		require.EqualError(t, err, "error getting instance: some error")
 	})
 
 }

@@ -26,6 +26,45 @@
     "application/json"
   ],
   "paths": {
+    "/scheduler/{schedulerName}/rooms/{roomName}/address": {
+      "get": {
+        "summary": "Gets room public addresses.",
+        "operationId": "RoomsService_GetRoomAddress",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetRoomAddressResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "roomName",
+            "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
+    },
     "/scheduler/{schedulerName}/rooms/{roomName}/ping": {
       "put": {
         "summary": "Updates a game room with ping data.",
@@ -1236,6 +1275,27 @@
       },
       "title": "The get operation route response/reply"
     },
+    "v1GetRoomAddressResponse": {
+      "type": "object",
+      "properties": {
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Port"
+          },
+          "description": "List of game room ports."
+        },
+        "host": {
+          "type": "string",
+          "description": "Game room host."
+        },
+        "ipv6Label": {
+          "type": "string",
+          "description": "Game room ipv6_label, this field is deprecated and only exists for maestro v9 contract compatibility reasons."
+        }
+      },
+      "description": "The get room address response."
+    },
     "v1GetSchedulerResponse": {
       "type": "object",
       "properties": {
@@ -1460,6 +1520,24 @@
         }
       },
       "description": "PatchSchedulerResponse have the operation response id that represents the operation creted to this change."
+    },
+    "v1Port": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Port name."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Port protocol (tcp, udp)."
+        },
+        "port": {
+          "type": "string",
+          "description": "Port number."
+        }
+      },
+      "description": "Port represents a game room port."
     },
     "v1PortRange": {
       "type": "object",
