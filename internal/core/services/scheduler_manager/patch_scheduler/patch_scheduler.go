@@ -217,30 +217,30 @@ func patchAutoscaling(scheduler *entities.Scheduler, patchMap map[string]interfa
 		scheduler.Autoscaling = &autoscaling.Autoscaling{}
 	}
 
-	if unconvertedEnabled, ok := patchMap[LabelAutoscalingEnabled]; ok {
-		if scheduler.Autoscaling.Enabled, ok = unconvertedEnabled.(bool); !ok {
+	if interfaceEnabled, ok := patchMap[LabelAutoscalingEnabled]; ok {
+		if scheduler.Autoscaling.Enabled, ok = interfaceEnabled.(bool); !ok {
 			return fmt.Errorf("error parsing autoscaling: enabled malformed")
 		}
 	}
 
-	if unconvertedMin, ok := patchMap[LabelAutoscalingMin]; ok {
-		min, ok := unconvertedMin.(int32)
+	if interfaceMin, ok := patchMap[LabelAutoscalingMin]; ok {
+		min, ok := interfaceMin.(int32)
 		if !ok {
 			return fmt.Errorf("error parsing autoscaling: min malformed")
 		}
 		scheduler.Autoscaling.Min = int(min)
 	}
 
-	if unconvertedMax, ok := patchMap[LabelAutoscalingMax]; ok {
-		max, ok := unconvertedMax.(int32)
+	if interfaceMax, ok := patchMap[LabelAutoscalingMax]; ok {
+		max, ok := interfaceMax.(int32)
 		if !ok {
 			return fmt.Errorf("error parsing autoscaling: max malformed")
 		}
 		scheduler.Autoscaling.Max = int(max)
 	}
 
-	if unconvertedPolicy, ok := patchMap[LabelAutoscalingPolicy]; ok {
-		patchPolicy, ok := unconvertedPolicy.(autoscaling.Policy)
+	if interfacePolicy, ok := patchMap[LabelAutoscalingPolicy]; ok {
+		patchPolicy, ok := interfacePolicy.(autoscaling.Policy)
 		if !ok {
 			return fmt.Errorf("error parsing autoscaling: policy malformed")
 		}

@@ -23,7 +23,6 @@
 package requestadapters
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -39,7 +38,7 @@ import (
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
-func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) (map[string]interface{}, error) {
+func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) map[string]interface{} {
 	patchMap := make(map[string]interface{})
 
 	if request.Spec != nil {
@@ -62,10 +61,7 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	}
 
 	if request.Autoscaling != nil {
-		newAutoscaling, err := fromApiOptionalAutoscalingToChangeMap(request.GetAutoscaling())
-		if err != nil {
-			return map[string]interface{}{}, err
-		}
+		newAutoscaling := fromApiOptionalAutoscalingToChangeMap(request.GetAutoscaling())
 		patchMap[patch_scheduler.LabelAutoscaling] = newAutoscaling
 	}
 
@@ -73,10 +69,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch_scheduler.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
 
-	return patchMap, nil
+	return patchMap
 }
 
-func fromApiOptionalAutoscalingToChangeMap(apiAutoscaling *api.OptionalAutoscaling) (map[string]interface{}, error) {
+func fromApiOptionalAutoscalingToChangeMap(apiAutoscaling *api.OptionalAutoscaling) map[string]interface{} {
 	changeMap := make(map[string]interface{})
 
 	if apiAutoscaling.Enabled != nil {
@@ -92,14 +88,11 @@ func fromApiOptionalAutoscalingToChangeMap(apiAutoscaling *api.OptionalAutoscali
 	}
 
 	if apiAutoscaling.Policy != nil {
-		autoscalingPolicy, err := fromApiAutoscalingPolicy(apiAutoscaling.GetPolicy())
-		if err != nil {
-			return map[string]interface{}{}, err
-		}
+		autoscalingPolicy := fromApiAutoscalingPolicy(apiAutoscaling.GetPolicy())
 		changeMap[patch_scheduler.LabelAutoscalingPolicy] = autoscalingPolicy
 	}
 
-	return changeMap, nil
+	return changeMap
 }
 
 func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {
@@ -331,35 +324,37 @@ func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
 	)
 }
 
-func fromApiAutoscalingPolicy(apiAutoscalingPolicy *api.AutoscalingPolicy) (autoscaling.Policy, error) {
-	switch {
-	case apiAutoscalingPolicy.GetType() == string(autoscaling.RoomOccupancy):
-		params := apiAutoscalingPolicy.GetParameters()
-		if params == nil {
-			return autoscaling.Policy{}, errors.New("autoscaling policy type roomOccupancy without params")
-		}
-
-		roomOccupancy := params.GetRoomOccupancy()
-		if roomOccupancy == nil {
-			return autoscaling.Policy{}, errors.New("autoscaling policy type roomOccupancy without roomOccupancy params")
-		}
-
-		readyTarget := roomOccupancy.GetReadyTarget()
-		if readyTarget == 0 {
-			return autoscaling.Policy{}, errors.New("autoscaling policy type roomOccupancy should have a non-zero ready target")
-		}
-		return autoscaling.NewRoomOccupancyPolicy(float64(readyTarget)), nil
-	default:
-		return autoscaling.Policy{}, errors.New("unknown autoscaling policy")
+func fromApiAutoscalingPolicy(apiAutoscalingPolicy *api.AutoscalingPolicy) autoscaling.Policy {
+	var policy autoscaling.Policy
+	if policyType := apiAutoscalingPolicy.GetType(); policyType != "" {
+		policy.Type = autoscaling.PolicyType(policyType)
 	}
+	if apiPolicyParameters := apiAutoscalingPolicy.GetParameters(); apiPolicyParameters != nil {
+		policy.Parameters = fromApiAutoscalingPolicyParameters(apiPolicyParameters)
+	}
+	return policy
+}
+
+func fromApiAutoscalingPolicyParameters(apiPolicyParameters *api.PolicyParameters) autoscaling.PolicyParameters {
+	var policyParameters autoscaling.PolicyParameters
+	if roomOccupancy := apiPolicyParameters.GetRoomOccupancy(); roomOccupancy != nil {
+		policyParameters.RoomOccupancy = fromApiRoomOccupancyPolicyToEntity(roomOccupancy)
+	}
+	return policyParameters
+}
+
+func fromApiRoomOccupancyPolicyToEntity(roomOccupancy *api.RoomOccupancy) *autoscaling.RoomOccupancyParams {
+	roomOccupancyParam := &autoscaling.RoomOccupancyParams{}
+
+	readyTarget := roomOccupancy.GetReadyTarget()
+	roomOccupancyParam.ReadyTarget = float64(readyTarget)
+
+	return roomOccupancyParam
 }
 
 func fromApiAutoscaling(apiAutoscaling *api.Autoscaling) (*autoscaling.Autoscaling, error) {
 	if apiAutoscaling != nil {
-		autoscalingPolicy, err := fromApiAutoscalingPolicy(apiAutoscaling.GetPolicy())
-		if err != nil {
-			return nil, err
-		}
+		autoscalingPolicy := fromApiAutoscalingPolicy(apiAutoscaling.GetPolicy())
 		return autoscaling.NewAutoscaling(
 			apiAutoscaling.GetEnabled(),
 			int(apiAutoscaling.GetMin()),
@@ -493,27 +488,29 @@ func getAutoscaling(autoscaling *autoscaling.Autoscaling) *api.Autoscaling {
 			Enabled: autoscaling.Enabled,
 			Min:     int32(autoscaling.Min),
 			Max:     int32(autoscaling.Max),
-			Policy:  getPolicy(autoscaling.Policy),
+			Policy:  getAutoscalingPolicy(autoscaling.Policy),
 		}
 	}
 
 	return nil
 }
 
-func getPolicy(autoscalingPolicy autoscaling.Policy) *api.AutoscalingPolicy {
-	switch {
-	case autoscalingPolicy.Type == autoscaling.RoomOccupancy:
-		readyTarget := autoscalingPolicy.Parameters.RoomOccupancy.ReadyTarget
-		return &api.AutoscalingPolicy{
-			Type: string(autoscaling.RoomOccupancy),
-			Parameters: &api.PolicyParameters{
-				RoomOccupancy: &api.RoomOccupancy{
-					ReadyTarget: float32(readyTarget),
-				},
-			},
-		}
-	default:
-		return nil
+func getAutoscalingPolicy(autoscalingPolicy autoscaling.Policy) *api.AutoscalingPolicy {
+	return &api.AutoscalingPolicy{
+		Type:       string(autoscalingPolicy.Type),
+		Parameters: getPolicyParameters(autoscalingPolicy.Parameters),
+	}
+}
+
+func getPolicyParameters(parameters autoscaling.PolicyParameters) *api.PolicyParameters {
+	return &api.PolicyParameters{
+		RoomOccupancy: getRoomOccupancy(parameters.RoomOccupancy),
+	}
+}
+
+func getRoomOccupancy(roomOccupancyParameters *autoscaling.RoomOccupancyParams) *api.RoomOccupancy {
+	return &api.RoomOccupancy{
+		ReadyTarget: float32(roomOccupancyParameters.ReadyTarget),
 	}
 }
 

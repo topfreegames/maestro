@@ -1094,9 +1094,6 @@ func TestPatchScheduler(t *testing.T) {
 	roomsReplicas := int32(6)
 	wrongMaxSurge := "wrong-max-surge"
 
-	pointerBool := true
-	pointerGenericInt32 := int32(1)
-
 	testCases := []struct {
 		Title string
 		Input
@@ -1236,32 +1233,6 @@ func TestPatchScheduler(t *testing.T) {
 			Output: Output{
 				Response: nil,
 				Status:   http.StatusInternalServerError,
-			},
-		},
-		{
-			Title: "When PatchSchedulerAndCreateNewSchedulerVersionOperation return error since patchMap autoscaling is invalid return 500",
-			Input: Input{
-				Request: &api.PatchSchedulerRequest{
-					Autoscaling: &api.OptionalAutoscaling{
-						Enabled: &pointerBool,
-						Min:     &pointerGenericInt32,
-						Max:     &pointerGenericInt32,
-						Policy: &api.AutoscalingPolicy{
-							Type: "UNKNOWN",
-						},
-					},
-				},
-			},
-			Mocks: Mocks{
-				RequestFile:           "invalid-patch-scheduler.json",
-				GetSchedulerReturn:    newValidScheduler(),
-				GetSchedulerError:     nil,
-				CreateOperationReturn: nil,
-				CreateOperationError:  portsErrors.NewErrUnexpected("unexpected error"),
-			},
-			Output: Output{
-				Response: nil,
-				Status:   http.StatusBadRequest,
 			},
 		},
 	}

@@ -411,75 +411,11 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 				},
 			},
 		},
-		{
-			Title: "autoscaling roomOccupancy params nil",
-			Input: Input{
-				PatchScheduler: &api.PatchSchedulerRequest{
-					Autoscaling: &api.OptionalAutoscaling{
-						Enabled: &pointerBool,
-						Min:     &pointerGenericInt32,
-						Max:     &pointerGenericInt32,
-						Policy: &api.AutoscalingPolicy{
-							Type: "roomOccupancy",
-						},
-					},
-				},
-			},
-			Output: Output{
-				PatchScheduler: map[string]interface{}{},
-				Error:          true,
-			},
-		},
-		{
-			Title: "autoscaling invalid roomOccupancy params",
-			Input: Input{
-				PatchScheduler: &api.PatchSchedulerRequest{
-					Autoscaling: &api.OptionalAutoscaling{
-						Enabled: &pointerBool,
-						Min:     &pointerGenericInt32,
-						Max:     &pointerGenericInt32,
-						Policy: &api.AutoscalingPolicy{
-							Type:       "roomOccupancy",
-							Parameters: &api.PolicyParameters{},
-						},
-					},
-				},
-			},
-			Output: Output{
-				PatchScheduler: map[string]interface{}{},
-				Error:          true,
-			},
-		},
-		{
-			Title: "autoscaling invalid roomOccupancy params (no ready target)",
-			Input: Input{
-				PatchScheduler: &api.PatchSchedulerRequest{
-					Autoscaling: &api.OptionalAutoscaling{
-						Enabled: &pointerBool,
-						Min:     &pointerGenericInt32,
-						Max:     &pointerGenericInt32,
-						Policy: &api.AutoscalingPolicy{
-							Type: "roomOccupancy",
-							Parameters: &api.PolicyParameters{
-								RoomOccupancy: &api.RoomOccupancy{},
-							},
-						},
-					},
-				},
-			},
-			Output: Output{
-				PatchScheduler: map[string]interface{}{},
-				Error:          true,
-			},
-		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			returnValues, err := requestadapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
-			if testCase.Output.Error {
-				assert.Error(t, err)
-			}
+			returnValues := requestadapters.FromApiPatchSchedulerRequestToChangeMap(testCase.Input.PatchScheduler)
 			assert.EqualValues(t, testCase.Output.PatchScheduler, returnValues)
 		})
 	}
