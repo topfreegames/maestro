@@ -27,10 +27,11 @@ package patch_scheduler_test
 
 import (
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"github.com/topfreegames/maestro/internal/validations"
 	"testing"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/validations"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -650,6 +651,7 @@ func TestPatchScheduler(t *testing.T) {
 		},
 
 		// Autoscaling success
+
 		{
 			Title: "Have autoscaling return scheduler with changed autoscaling",
 			Input: Input{
@@ -677,7 +679,7 @@ func TestPatchScheduler(t *testing.T) {
 						Enabled: true,
 						Min:     1,
 						Max:     5,
-						Policy:  autoscaling.Policy{
+						Policy: autoscaling.Policy{
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
@@ -690,6 +692,194 @@ func TestPatchScheduler(t *testing.T) {
 					return scheduler
 				},
 				Error: nil,
+			},
+		},
+		{
+			Title: "Have autoscaling return scheduler with changed min of autoscaling",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingMin: int32(3),
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					scheduler.Autoscaling = &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     3,
+						Max:     5,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					}
+
+					return scheduler
+				},
+				Error: nil,
+			},
+		},
+		{
+			Title: "Have autoscaling return scheduler with changed max of autoscaling",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingMax: int32(6),
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					scheduler.Autoscaling = &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     6,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					}
+
+					return scheduler
+				},
+				Error: nil,
+			},
+		},
+		{
+			Title: "Have autoscaling return scheduler with changed autoscaling from zeroed autoscaling",
+			Input: Input{
+				Scheduler: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					scheduler.Autoscaling = nil
+					return scheduler
+				}(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingEnabled: true,
+						patch_scheduler.LabelAutoscalingMin:     int32(1),
+						patch_scheduler.LabelAutoscalingMax:     int32(5),
+						patch_scheduler.LabelAutoscalingPolicy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+
+					return scheduler
+				},
+				Error: nil,
+			},
+		},
+
+		// Autoscaling failures
+
+		{
+			Title: "Have malformed autoscaling",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: "INVALID-AUTOSCALING",
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					return scheduler
+				},
+				Error: fmt.Errorf("error parsing scheduler: autoscaling malformed"),
+			},
+		},
+		{
+			Title: "Have malformed min value",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingMin: "NOT-AN-INT",
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					return scheduler
+				},
+				Error: fmt.Errorf("error parsing scheduler: error parsing autoscaling: min malformed"),
+			},
+		},
+		{
+			Title: "Have malformed max value",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingMax: "NOT-AN-INT",
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					return scheduler
+				},
+				Error: fmt.Errorf("error parsing scheduler: error parsing autoscaling: max malformed"),
+			},
+		},
+		{
+			Title: "Have malformed enabled",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingEnabled: "NOT-A-BOOL",
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					return scheduler
+				},
+				Error: fmt.Errorf("error parsing scheduler: error parsing autoscaling: enabled malformed"),
+			},
+		},
+		{
+			Title: "Have malformed policy",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingPolicy: "NOT-A-POLICY",
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					return scheduler
+				},
+				Error: fmt.Errorf("error parsing scheduler: error parsing autoscaling: policy malformed"),
 			},
 		},
 	}
@@ -707,6 +897,7 @@ func TestPatchScheduler(t *testing.T) {
 			assert.Equal(t, expectedScheduler.MaxSurge, scheduler.MaxSurge)
 			assert.Equal(t, expectedScheduler.RoomsReplicas, scheduler.RoomsReplicas)
 			assert.EqualValues(t, expectedScheduler.PortRange, scheduler.PortRange)
+			assert.EqualValues(t, expectedScheduler.Autoscaling, scheduler.Autoscaling)
 			forwarders := expectedScheduler.Forwarders
 			for i, expectedForwarder := range expectedScheduler.Forwarders {
 				assert.EqualValues(t, expectedForwarder, forwarders[i])
@@ -744,12 +935,26 @@ func TestPatchScheduler(t *testing.T) {
 
 // basicSchedulerToPatchSchedulerTests generates a valid scheduler with the required fields.
 func basicSchedulerToPatchSchedulerTests() *entities.Scheduler {
+	genericFloat32 := float32(0.3)
 	return &entities.Scheduler{
-		Name:            "scheduler",
-		Game:            "game",
-		State:           entities.StateCreating,
-		MaxSurge:        "10%",
-		RoomsReplicas:   0,
+		Name:          "scheduler",
+		Game:          "game",
+		State:         entities.StateCreating,
+		MaxSurge:      "10%",
+		RoomsReplicas: 0,
+		Autoscaling: &autoscaling.Autoscaling{
+			Enabled: true,
+			Min:     1,
+			Max:     5,
+			Policy: autoscaling.Policy{
+				Type: autoscaling.RoomOccupancy,
+				Parameters: autoscaling.PolicyParameters{
+					RoomOccupancy: &autoscaling.RoomOccupancyParams{
+						ReadyTarget: float64(genericFloat32),
+					},
+				},
+			},
+		},
 		RollbackVersion: "v1.0.0",
 		Spec: game_room.Spec{
 			Version:                "v1.1.0",
