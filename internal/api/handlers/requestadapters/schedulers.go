@@ -39,7 +39,7 @@ import (
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
-func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) map[string]interface{} {
+func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) (map[string]interface{}, error) {
 	patchMap := make(map[string]interface{})
 
 	if request.Spec != nil {
@@ -62,7 +62,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	}
 
 	if request.Autoscaling != nil {
-		newAutoscaling := fromApiOptionalAutoscalingToChangeMap(request.GetAutoscaling())
+		newAutoscaling, err := fromApiOptionalAutoscalingToChangeMap(request.GetAutoscaling())
+		if err != nil {
+			return map[string]interface{}{}, err
+		}
 		patchMap[patch_scheduler.LabelAutoscaling] = newAutoscaling
 	}
 
@@ -70,11 +73,33 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch_scheduler.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
 
-	return patchMap
+	return patchMap, nil
 }
 
-func fromApiOptionalAutoscalingToChangeMap(apiAutoscaling *api.OptionalAutoscaling) map[string]interface{} {
-	return map[string]interface{}{}
+func fromApiOptionalAutoscalingToChangeMap(apiAutoscaling *api.OptionalAutoscaling) (map[string]interface{}, error) {
+	changeMap := make(map[string]interface{})
+
+	if apiAutoscaling.Enabled != nil {
+		changeMap[patch_scheduler.LabelAutoscalingEnabled] = apiAutoscaling.GetEnabled()
+	}
+
+	if apiAutoscaling.Min != nil {
+		changeMap[patch_scheduler.LabelAutoscalingMin] = apiAutoscaling.GetMin()
+	}
+
+	if apiAutoscaling.Max != nil {
+		changeMap[patch_scheduler.LabelAutoscalingMax] = apiAutoscaling.GetMax()
+	}
+
+	if apiAutoscaling.Policy != nil {
+		autoscalingPolicy, err := fromApiAutoscalingPolicy(apiAutoscaling.GetPolicy())
+		if err != nil {
+			return map[string]interface{}{}, err
+		}
+		changeMap[patch_scheduler.LabelAutoscalingPolicy] = autoscalingPolicy
+	}
+
+	return changeMap, nil
 }
 
 func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) (*entities.Scheduler, error) {

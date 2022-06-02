@@ -24,8 +24,9 @@ package patch_scheduler
 
 import (
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -43,6 +44,8 @@ const (
 	LabelSchedulerMaxSurge = "max_surge"
 	// LabelSchedulerRoomsReplicas is the rooms replicas key in the patch map.
 	LabelSchedulerRoomsReplicas = "rooms_replicas"
+	// LabelAutoscaling is the key to autoscaling in the patch map.
+	LabelAutoscaling = "autoscaling"
 	// LabelSchedulerForwarders is the forwarders key in the patch map.
 	LabelSchedulerForwarders = "forwarders"
 
@@ -71,8 +74,15 @@ const (
 	LabelContainerLimits = "limits"
 	// LabelContainerPorts the ports key in the patch map.
 	LabelContainerPorts = "ports"
-	// LabelAutoscaling is the key to autoscaling in the patch map.
-	LabelAutoscaling = "autoscaling"
+
+	// LabelAutoscalingEnabled is the autoscaling enabled key in the patch map.
+	LabelAutoscalingEnabled = "autoscalingEnabled"
+	// LabelAutoscalingMin is the autoscaling min key in the patch map.
+	LabelAutoscalingMin = "min"
+	// LabelAutoscalingMax is the autoscaling max key in the patch map.
+	LabelAutoscalingMax = "max"
+	// LabelAutoscalingPolicy is the autoscaling policy key in the patch map.
+	LabelAutoscalingPolicy = "policy"
 )
 
 // PatchScheduler function applies the patchMap in the scheduler, returning the patched Scheduler.
@@ -110,9 +120,16 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 		scheduler.Spec = *spec
 	}
 
-	if newAutoscaling, ok := patchMap[LabelAutoscaling]; ok {
-		newAutoscalingConverted := newAutoscaling.(*autoscaling.Autoscaling)
-		scheduler.Autoscaling.Enabled = newAutoscalingConverted.Enabled
+	if _, ok := patchMap[LabelAutoscaling]; ok {
+		var patchAutoscalingMap map[string]interface{}
+		if patchAutoscalingMap, ok = patchMap[LabelAutoscaling].(map[string]interface{}); !ok {
+			return nil, fmt.Errorf("error parsing scheduler: autoscaling malformed")
+		}
+
+		err := patchAutoscaling(scheduler, patchAutoscalingMap)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &scheduler, nil
@@ -193,4 +210,33 @@ func patchContainers(containers []game_room.Container, patchSlice []map[string]i
 	}
 
 	return containers, nil
+}
+
+func patchAutoscaling(scheduler entities.Scheduler, patchMap map[string]interface{}) error {
+	var schedulerAutoscaling *autoscaling.Autoscaling
+
+	if _, ok := patchMap[LabelAutoscalingEnabled]; ok {
+		if schedulerAutoscaling.Enabled, ok = patchMap[LabelAutoscalingEnabled].(bool); !ok {
+			return fmt.Errorf("error parsing autoscaling: enabled malformed")
+		}
+	}
+
+	if _, ok := patchMap[LabelAutoscalingMin]; ok {
+		schedulerAutoscaling.Min = patchMap[LabelAutoscalingMin].(int)
+	}
+
+	if _, ok := patchMap[LabelAutoscalingMax]; ok {
+		schedulerAutoscaling.Max = patchMap[LabelAutoscalingMax].(int)
+	}
+
+	if _, ok := patchMap[LabelAutoscalingPolicy]; ok {
+		patchPolicy, ok := patchMap[LabelAutoscalingPolicy].(autoscaling.Policy)
+		if !ok {
+			return fmt.Errorf("error parsing autoscaling: policy malformed")
+		}
+		schedulerAutoscaling.Policy = patchPolicy
+	}
+
+	scheduler.Autoscaling = schedulerAutoscaling
+	return nil
 }

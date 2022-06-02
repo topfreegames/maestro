@@ -27,6 +27,8 @@ package patch_scheduler_test
 
 import (
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/validations"
 	"testing"
 	"time"
 
@@ -38,6 +40,11 @@ import (
 )
 
 func TestPatchScheduler(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
 	type Input struct {
 		Scheduler *entities.Scheduler
 		PatchMap  map[string]interface{}
@@ -47,6 +54,8 @@ func TestPatchScheduler(t *testing.T) {
 		ChangeSchedulerFunc func() *entities.Scheduler
 		Error               error
 	}
+
+	genericFloat32 := float32(0.3)
 
 	testCases := []struct {
 		Title string
@@ -637,6 +646,50 @@ func TestPatchScheduler(t *testing.T) {
 					return basicSchedulerToPatchSchedulerTests()
 				},
 				Error: fmt.Errorf("error parsing scheduler: error parsing spec: error parsing containers: ports malformed"),
+			},
+		},
+
+		// Autoscaling success
+		{
+			Title: "Have autoscaling return scheduler with changed autoscaling",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingEnabled: true,
+						patch_scheduler.LabelAutoscalingMin:     int32(1),
+						patch_scheduler.LabelAutoscalingMax:     int32(5),
+						patch_scheduler.LabelAutoscalingPolicy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					scheduler.Autoscaling = &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     5,
+						Policy:  autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					}
+
+					return scheduler
+				},
+				Error: nil,
 			},
 		},
 	}
