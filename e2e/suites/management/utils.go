@@ -397,7 +397,7 @@ func waitForOperationToFinishByOperationId(t *testing.T, managementApiClient *fr
 		}
 
 		return false
-	}, 4*time.Minute, time.Second)
+	}, 4*time.Minute, time.Second*5, "Timeout waiting operation to reach finished status")
 }
 
 func waitForOperationToFail(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operation string) {
@@ -433,5 +433,5 @@ func waitForOperationToFailById(t *testing.T, managementApiClient *framework.API
 		}
 
 		return false
-	}, 4*time.Minute, time.Second)
+	}, 4*time.Minute, time.Second*5, "Timout waiting operation to reach error state")
 }
