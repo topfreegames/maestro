@@ -100,6 +100,7 @@ func TestNewScheduler(t *testing.T) {
 			spec,
 			portRange,
 			roomsReplicas,
+			nil,
 			forwarders)
 
 		expectedScheduler := &entities.Scheduler{
@@ -110,6 +111,7 @@ func TestNewScheduler(t *testing.T) {
 			Spec:          spec,
 			PortRange:     portRange,
 			RoomsReplicas: roomsReplicas,
+			Autoscaling:   nil,
 			Forwarders:    forwarders,
 		}
 
@@ -126,6 +128,7 @@ func TestNewScheduler(t *testing.T) {
 			spec,
 			portRange,
 			roomsReplicas,
+			nil,
 			forwarders)
 
 		require.Error(t, err)
@@ -149,6 +152,7 @@ func TestNewScheduler(t *testing.T) {
 				2,
 			),
 			0,
+			nil,
 			forwarders)
 
 		require.Error(t, err)
@@ -172,6 +176,7 @@ func TestNewScheduler(t *testing.T) {
 				2,
 			),
 			-1,
+			nil,
 			forwarders)
 
 		require.Error(t, err)

@@ -1179,7 +1179,7 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 		{
-			Title: "When patch scheduler results in an invalid scheulder return 400",
+			Title: "When patch scheduler results in an invalid scheduler return 400",
 			Input: Input{
 				Request: &api.PatchSchedulerRequest{
 					MaxSurge: &wrongMaxSurge,

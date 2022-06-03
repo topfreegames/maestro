@@ -1,0 +1,10 @@
+{
+  "autoscaling": {
+    "enabled": true,
+    "min": 1,
+    "max": 5,
+    "policy": {
+      "type": "UNKNOWN"
+    }
+  }
+}

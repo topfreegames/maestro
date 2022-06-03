@@ -128,8 +128,10 @@ message CreateSchedulerRequest {
   string max_surge = 5;
   // The rooms replicas defines the desired number of Game Rooms in a scheduler.
   int32 rooms_replicas = 6;
+  // The autoscaling defines the autoscaling and its policy to be followed
+  optional Autoscaling autoscaling = 7;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 7;
+  repeated Forwarder forwarders = 8;
 }
 
 // Add rooms operation request payload + path parameters.
@@ -188,8 +190,10 @@ message NewSchedulerVersionRequest {
   string max_surge = 5;
   // The rooms replicas is the desired number of rooms that maestro should keep available.
   int32 rooms_replicas = 6;
+  // The autoscaling defines the autoscaling and its policy to be followed
+  optional Autoscaling autoscaling = 7;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 7;
+  repeated Forwarder forwarders = 8;
 }
 
 // Update schedule operation response payload.
@@ -210,8 +214,10 @@ message PatchSchedulerRequest {
   optional string max_surge = 4;
   // Rooms Replicas is the desired number of rooms
   optional int32 rooms_replicas = 5;
+  // Autoscaling rules to the scheduler
+  optional OptionalAutoscaling autoscaling = 6;
   // List of Scheduler forwarders
-  repeated Forwarder forwarders = 6;
+  repeated Forwarder forwarders = 7;
 }
 
 // PatchSchedulerResponse have the operation response id that represents the operation creted to this change.

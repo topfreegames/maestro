@@ -480,6 +480,10 @@
                   "format": "int32",
                   "description": "The rooms replicas is the desired number of rooms that maestro should keep available."
                 },
+                "autoscaling": {
+                  "$ref": "#/definitions/v1Autoscaling",
+                  "title": "The autoscaling defines the autoscaling and its policy to be followed"
+                },
                 "forwarders": {
                   "type": "array",
                   "items": {
@@ -544,6 +548,10 @@
                   "type": "integer",
                   "format": "int32",
                   "title": "Rooms Replicas is the desired number of rooms"
+                },
+                "autoscaling": {
+                  "$ref": "#/definitions/v1OptionalAutoscaling",
+                  "title": "Autoscaling rules to the scheduler"
                 },
                 "forwarders": {
                   "type": "array",
@@ -983,6 +991,30 @@
       },
       "description": "Add rooms operation response payload, empty."
     },
+    "v1Autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable flag to autoscaling feature"
+        },
+        "min": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Min is the minimum number of game rooms that a scheduler should have"
+        },
+        "max": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Max is the maximum number of game rooms that a scheduler should have"
+        },
+        "policy": {
+          "$ref": "#/definitions/v1AutoscalingPolicy",
+          "title": "Policy is the autoscaling policy that scheduler should follow"
+        }
+      },
+      "title": "Autoscaling struct representation"
+    },
     "v1AutoscalingInfo": {
       "type": "object",
       "properties": {
@@ -1002,6 +1034,20 @@
         }
       },
       "title": "Autoscaling Info for schedulerInfo message"
+    },
+    "v1AutoscalingPolicy": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type is the policy type to the scheduler"
+        },
+        "parameters": {
+          "$ref": "#/definitions/v1PolicyParameters",
+          "title": "Parameters is the autoscaling arguments to guide the policy execution"
+        }
+      },
+      "title": "AutoscalingPolicy object representation"
     },
     "v1CancelOperationResponse": {
       "type": "object",
@@ -1175,6 +1221,10 @@
           "type": "integer",
           "format": "int32",
           "description": "The rooms replicas defines the desired number of Game Rooms in a scheduler."
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1Autoscaling",
+          "title": "The autoscaling defines the autoscaling and its policy to be followed"
         },
         "forwarders": {
           "type": "array",
@@ -1438,6 +1488,30 @@
       },
       "description": "OperationEvent object represent an execution event."
     },
+    "v1OptionalAutoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable flag to autoscaling feature"
+        },
+        "min": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Min is the minimum number of game rooms that a scheduler should have"
+        },
+        "max": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Max is the maximum number of game rooms that a scheduler should have"
+        },
+        "policy": {
+          "$ref": "#/definitions/v1AutoscalingPolicy",
+          "title": "Policy is the autoscaling policy that scheduler should follow"
+        }
+      },
+      "title": "Autoscaling struct representation"
+    },
     "v1OptionalContainer": {
       "type": "object",
       "properties": {
@@ -1521,6 +1595,16 @@
       },
       "description": "PatchSchedulerResponse have the operation response id that represents the operation creted to this change."
     },
+    "v1PolicyParameters": {
+      "type": "object",
+      "properties": {
+        "roomOccupancy": {
+          "$ref": "#/definitions/v1RoomOccupancy",
+          "title": "RoomOccupancy is the policy parameters to execute rooms occupancy policy"
+        }
+      },
+      "title": "PolicyParameters object representation"
+    },
     "v1Port": {
       "type": "object",
       "properties": {
@@ -1565,6 +1649,17 @@
       },
       "description": "Remove rooms operation response payload."
     },
+    "v1RoomOccupancy": {
+      "type": "object",
+      "properties": {
+        "readyTarget": {
+          "type": "number",
+          "format": "float",
+          "title": "ReadyTarget represents the number of rooms ready rate that the scheduler should keep"
+        }
+      },
+      "title": "RoomOccupancy optional policy parameter"
+    },
     "v1Scheduler": {
       "type": "object",
       "properties": {
@@ -1601,6 +1696,10 @@
         "spec": {
           "$ref": "#/definitions/v1Spec",
           "title": "GameRoom spec"
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1Autoscaling",
+          "title": "Autoscaling rules to the scheduler"
         },
         "forwarders": {
           "type": "array",

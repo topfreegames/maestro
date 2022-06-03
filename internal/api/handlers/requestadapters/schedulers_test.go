@@ -29,6 +29,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -43,12 +45,18 @@ import (
 )
 
 func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
 	type Input struct {
 		PatchScheduler *api.PatchSchedulerRequest
 	}
 
 	type Output struct {
 		PatchScheduler map[string]interface{}
+		Error          bool
 	}
 
 	terminationValue := int64(62)
@@ -56,6 +64,9 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 	roomsReplicasValue := int32(2)
 	genericString := "some-value"
 	genericStringList := []string{"some-value", "another-value"}
+	genericFloat32 := float32(0.3)
+	pointerBool := true
+	pointerGenericInt32 := int32(1)
 
 	testCases := []struct {
 		Title string
@@ -166,6 +177,19 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Options:     nil,
 						},
 					},
+				},
+			},
+		},
+		{
+			Title: "only empty forwarders should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Forwarders: []*api.Forwarder{},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelSchedulerForwarders: []*forwarder.Forwarder{},
 				},
 			},
 		},
@@ -300,6 +324,93 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 				},
 			},
 		},
+		{
+			Title: "only autoscaling should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.OptionalAutoscaling{
+						Enabled: &pointerBool,
+						Min:     &pointerGenericInt32,
+						Max:     &pointerGenericInt32,
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: genericFloat32,
+								},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingEnabled: pointerBool,
+						patch_scheduler.LabelAutoscalingMin:     pointerGenericInt32,
+						patch_scheduler.LabelAutoscalingMax:     pointerGenericInt32,
+						patch_scheduler.LabelAutoscalingPolicy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Title: "only autoscaling policy roomOccupancy should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.OptionalAutoscaling{
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: genericFloat32,
+								},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingPolicy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Title: "only autoscaling min/max should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.OptionalAutoscaling{
+						Min: &pointerGenericInt32,
+						Max: &pointerGenericInt32,
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch_scheduler.LabelAutoscaling: map[string]interface{}{
+						patch_scheduler.LabelAutoscalingMin: pointerGenericInt32,
+						patch_scheduler.LabelAutoscalingMax: pointerGenericInt32,
+					},
+				},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -331,6 +442,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 	genericString := "some-value"
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
+	genericFloat32 := float32(0.3)
 
 	testCases := []struct {
 		Title string
@@ -339,6 +451,202 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 	}{
 		{
 			Title: "convert create api scheduler to entity scheduler",
+			Input: Input{
+				CreateScheduler: &api.CreateSchedulerRequest{
+					Name: genericString,
+					Game: genericString,
+					Spec: &api.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: 10,
+						Toleration:             genericString,
+						Affinity:               genericString,
+						Containers: []*api.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []*api.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: &genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											FieldRef: &api.ContainerEnvironmentValueFromFieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Limits: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Ports: []*api.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt32,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+					},
+					PortRange: &api.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: genericFloat32,
+								},
+							},
+						},
+					},
+					Forwarders: []*api.Forwarder{
+						{
+							Name:    "some-forwarder",
+							Enable:  true,
+							Type:    "some-type",
+							Address: "localhost:8080",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+							},
+						},
+						{
+							Name:    "another-forwarder",
+							Enable:  false,
+							Type:    "another-type",
+							Address: "localhost:8888",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				Scheduler: &entities.Scheduler{
+					Name:  genericString,
+					Game:  genericString,
+					State: entities.StateCreating,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &entities.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
+					Autoscaling: &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     5,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
+					Forwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+						{
+							Name:        "another-forwarder",
+							Enabled:     false,
+							ForwardType: forwarder.ForwardType("another-type"),
+							Address:     "localhost:8888",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Title: "convert create api scheduler without autoscaling to entity scheduler",
 			Input: Input{
 				CreateScheduler: &api.CreateSchedulerRequest{
 					Name: genericString,
@@ -778,6 +1086,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 	genericString := "some-value"
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
+	genericFloat32 := float32(0.3)
 
 	testCases := []struct {
 		Title string
@@ -846,6 +1155,19 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					},
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: roomsReplicasValue,
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: genericFloat32,
+								},
+							},
+						},
+					},
 					Forwarders: []*api.Forwarder{
 						{
 							Name:    "some-forwarder",
@@ -929,6 +1251,19 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					},
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: int(roomsReplicasValue),
+					Autoscaling: &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     5,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: float64(genericFloat32),
+								},
+							},
+						},
+					},
 					Forwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
@@ -994,6 +1329,195 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 	}{
 		{
 			Title: "receives entity scheduler return api scheduler",
+			Input: Input{
+				Scheduler: &entities.Scheduler{
+					Name:      genericString,
+					Game:      genericString,
+					State:     entities.StateCreating,
+					CreatedAt: genericTime,
+					Spec: game_room.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: time.Duration(10),
+						Containers: []game_room.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []game_room.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											FieldRef: &game_room.FieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &game_room.ValueFrom{
+											SecretKeyRef: &game_room.SecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Limits: game_room.ContainerResources{
+									Memory: "1000m",
+									CPU:    "100",
+								},
+								Ports: []game_room.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &entities.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: int(roomsReplicasValue),
+					Autoscaling: &autoscaling.Autoscaling{
+						Enabled: true,
+						Min:     1,
+						Max:     5,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget: 0.3,
+								},
+							},
+						},
+					},
+					Forwarders: []*forwarder.Forwarder{
+						{
+							Name:        "some-forwarder",
+							Enabled:     true,
+							ForwardType: forwarder.ForwardType("some-type"),
+							Address:     "localhost:8080",
+							Options: &forwarder.ForwardOptions{
+								Timeout:  time.Duration(10),
+								Metadata: map[string]interface{}{"some-value": "another-value"},
+							},
+						},
+					},
+				},
+			},
+			Output: Output{
+				ApiScheduler: &api.Scheduler{
+					Name:      genericString,
+					Game:      genericString,
+					State:     "creating",
+					CreatedAt: timestamppb.New(genericTime),
+					Spec: &api.Spec{
+						Version:                genericValidVersion,
+						TerminationGracePeriod: 10,
+						Containers: []*api.Container{
+							{
+								Name:            genericString,
+								Image:           genericString,
+								ImagePullPolicy: genericString,
+								Command:         genericStringList,
+								Environment: []*api.ContainerEnvironment{
+									{
+										Name:  genericString,
+										Value: &genericString,
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											FieldRef: &api.ContainerEnvironmentValueFromFieldRef{FieldPath: genericString},
+										},
+									},
+									{
+										Name: genericString,
+										ValueFrom: &api.ContainerEnvironmentValueFrom{
+											SecretKeyRef: &api.ContainerEnvironmentValueFromSecretKeyRef{
+												Name: genericString,
+												Key:  genericString,
+											},
+										},
+									},
+								},
+								Requests: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Limits: &api.ContainerResources{
+									Memory: "1000m",
+									Cpu:    "100",
+								},
+								Ports: []*api.ContainerPort{
+									{
+										Name:     genericString,
+										Port:     genericInt32,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+						Toleration: genericString,
+						Affinity:   genericString,
+					},
+					PortRange: &api.PortRange{
+						Start: 10000,
+						End:   60000,
+					},
+					MaxSurge:      maxSurgeValue,
+					RoomsReplicas: roomsReplicasValue,
+					Autoscaling: &api.Autoscaling{
+						Enabled: true,
+						Min:     int32(1),
+						Max:     int32(5),
+						Policy: &api.AutoscalingPolicy{
+							Type: "roomOccupancy",
+							Parameters: &api.PolicyParameters{
+								RoomOccupancy: &api.RoomOccupancy{
+									ReadyTarget: float32(0.3),
+								},
+							},
+						},
+					},
+					Forwarders: []*api.Forwarder{
+						{
+							Name:    "some-forwarder",
+							Enable:  true,
+							Type:    "some-type",
+							Address: "localhost:8080",
+							Options: &api.ForwarderOptions{
+								Timeout: int64(10),
+								Metadata: &structpb.Struct{
+									Fields: map[string]*structpb.Value{
+										"some-value": {
+											Kind: &structpb.Value_StringValue{
+												StringValue: "another-value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Title: "receives entity scheduler without autoscaling, return api scheduler",
 			Input: Input{
 				Scheduler: &entities.Scheduler{
 					Name:      genericString,
