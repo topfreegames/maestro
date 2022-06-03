@@ -106,6 +106,14 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	return m.createRoomOnStorageAndRuntime(ctx, scheduler, isValidationRoom)
 }
 
+func (m *RoomManager) GetRoomInstance(ctx context.Context, scheduler, roomID string) (*game_room.Instance, error) {
+	instance, err := m.InstanceStorage.GetInstance(ctx, scheduler, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting instance: %w", err)
+	}
+	return instance, nil
+}
+
 func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*game_room.Spec, error) {
 	numberOfPorts := 0
 	spec := scheduler.Spec.DeepCopy()

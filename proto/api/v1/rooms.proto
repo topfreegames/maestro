@@ -44,6 +44,44 @@ service RoomsService {
       body: "*"
     };
   }
+
+  // Gets room public addresses.
+  rpc GetRoomAddress(GetRoomAddressRequest) returns (GetRoomAddressResponse) {
+    option deprecated = true;
+    option (google.api.http) = {
+      get: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/address",
+    };
+  }
+}
+
+// The get room address request.
+message GetRoomAddressRequest {
+  // Target scheduler name.
+  // NOTE: On http protocol, this operates as a path param.
+  string scheduler_name = 1;
+  // Target room name.
+  // NOTE: On http protocol, this operates as a path param.
+  string room_name = 2;
+}
+
+// The get room address response.
+message GetRoomAddressResponse {
+  // List of game room ports.
+  repeated Port ports = 1;
+  // Game room host.
+  string host = 2;
+  // Game room ipv6_label, this field is deprecated and only exists for maestro v9 contract compatibility reasons.
+  string ipv6_label = 3;
+}
+
+// Port represents a game room port.
+message Port {
+  // Port name.
+  string name = 1;
+  // Port protocol (tcp, udp).
+  string protocol = 2;
+  // Port number.
+  string port = 3;
 }
 
 // The player event request.

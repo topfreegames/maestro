@@ -26,11 +26,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
@@ -413,4 +416,71 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRoomsHandler_GetRoomAddress(t *testing.T) {
+
+	t.Run("return the room address and status 200 when no error occurs", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		roomsManager.EXPECT().GetRoomInstance(gomock.Any(), gomock.Any(), gomock.Any()).Return(&game_room.Instance{Address: &game_room.Address{
+			Host:  "room-host",
+			Ports: []game_room.Port{game_room.Port{Name: "port-name", Port: 8080, Protocol: "tcp"}},
+		}}, nil)
+
+		req, err := http.NewRequest(http.MethodGet, "/scheduler/schedulerName1/rooms/roomName1/address", bytes.NewReader([]byte{}))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		responseBody, expectedResponseBody := extractBodyForComparisons(t, rr.Body.Bytes(), "rooms_handler/get-room-address-success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("return code 500 when some occurs", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		roomsManager.EXPECT().GetRoomInstance(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.NewErrUnexpected("some error"))
+
+		req, err := http.NewRequest(http.MethodGet, "/scheduler/schedulerName1/rooms/roomName1/address", bytes.NewReader([]byte{}))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+
+		responseBody, expectedResponseBody := extractBodyForComparisons(t, rr.Body.Bytes(), "rooms_handler/get-room-address-error.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+}
+
+func extractBodyForComparisons(t *testing.T, body []byte, expectedBodyFixturePath string) (string, string) {
+	dirPath, err := os.Getwd()
+	require.NoError(t, err)
+	fixture, err := ioutil.ReadFile(fmt.Sprintf("%s/fixtures/response/%s", dirPath, expectedBodyFixturePath))
+	require.NoError(t, err)
+	bodyBuffer := new(bytes.Buffer)
+	expectedBodyBuffer := new(bytes.Buffer)
+	err = json.Compact(bodyBuffer, body)
+	require.NoError(t, err)
+	err = json.Compact(expectedBodyBuffer, fixture)
+	require.NoError(t, err)
+	return bodyBuffer.String(), expectedBodyBuffer.String()
 }

@@ -125,3 +125,13 @@ func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.Update
 	}
 	return &api.UpdateRoomStatusResponse{Success: true}, nil
 }
+
+func (h *RoomsHandler) GetRoomAddress(ctx context.Context, message *api.GetRoomAddressRequest) (*api.GetRoomAddressResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName), zap.String(logs.LogFieldRoomID, message.RoomName))
+	instance, err := h.roomManager.GetRoomInstance(ctx, message.SchedulerName, message.RoomName)
+	if err != nil {
+		handlerLogger.Error("error getting room instance", zap.Any("message", message), zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	return requestadapters.FromInstanceEntityToGameRoomAddressResponse(instance), nil
+}
