@@ -142,7 +142,8 @@ func buildMuxWithMetricsMdlw(mdlw middleware.Middleware, mux *runtime.ServeMux) 
 			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/playerevent", mdlw, mux)
 		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/status", anyWordRegex, anyWordRegex)):
 			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/status", mdlw, mux)
-
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/address", anyWordRegex, anyWordRegex)):
+			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/address", mdlw, mux)
 		default:
 			handler = std.Handler("", mdlw, mux)
 		}
