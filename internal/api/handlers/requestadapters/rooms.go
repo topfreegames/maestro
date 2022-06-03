@@ -23,6 +23,7 @@
 package requestadapters
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -42,4 +43,21 @@ func FromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*
 		Metadata:    request.Metadata.AsMap(),
 		LastPingAt:  time.Unix(request.GetTimestamp(), 0),
 	}, nil
+}
+
+func FromInstanceEntityToGameRoomAddressResponse(instance *game_room.Instance) *api.GetRoomAddressResponse {
+	response := &api.GetRoomAddressResponse{
+		Host:      instance.Address.Host,
+		Ports:     []*api.Port{},
+		Ipv6Label: "",
+	}
+
+	for _, port := range instance.Address.Ports {
+		response.Ports = append(response.Ports, &api.Port{
+			Name:     port.Name,
+			Port:     strconv.Itoa(int(port.Port)),
+			Protocol: port.Protocol,
+		})
+	}
+	return response
 }

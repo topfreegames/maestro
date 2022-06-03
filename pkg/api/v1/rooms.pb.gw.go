@@ -383,6 +383,78 @@ func local_request_RoomsService_UpdateRoomStatus_0(ctx context.Context, marshale
 
 }
 
+func request_RoomsService_GetRoomAddress_0(ctx context.Context, marshaler runtime.Marshaler, client RoomsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetRoomAddressRequest
+	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["scheduler_name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scheduler_name")
+	}
+
+	protoReq.SchedulerName, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scheduler_name", err)
+	}
+
+	val, ok = pathParams["room_name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "room_name")
+	}
+
+	protoReq.RoomName, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "room_name", err)
+	}
+
+	msg, err := client.GetRoomAddress(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+
+}
+
+func local_request_RoomsService_GetRoomAddress_0(ctx context.Context, marshaler runtime.Marshaler, server RoomsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq GetRoomAddressRequest
+	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["scheduler_name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "scheduler_name")
+	}
+
+	protoReq.SchedulerName, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "scheduler_name", err)
+	}
+
+	val, ok = pathParams["room_name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "room_name")
+	}
+
+	protoReq.RoomName, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "room_name", err)
+	}
+
+	msg, err := server.GetRoomAddress(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 // RegisterRoomsServiceHandlerServer registers the http handlers for service RoomsService to "mux".
 // UnaryRPC     :call RoomsServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -478,6 +550,29 @@ func RegisterRoomsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		}
 
 		forward_RoomsService_UpdateRoomStatus_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("GET", pattern_RoomsService_GetRoomAddress_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/GetRoomAddress", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/address"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_RoomsService_GetRoomAddress_0(rctx, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_RoomsService_GetRoomAddress_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -602,6 +697,26 @@ func RegisterRoomsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 
 	})
 
+	mux.Handle("GET", pattern_RoomsService_GetRoomAddress_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/GetRoomAddress", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/address"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_RoomsService_GetRoomAddress_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_RoomsService_GetRoomAddress_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
 	return nil
 }
 
@@ -613,6 +728,8 @@ var (
 	pattern_RoomsService_ForwardPlayerEvent_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"scheduler", "scheduler_name", "rooms", "room_name", "playerevent"}, ""))
 
 	pattern_RoomsService_UpdateRoomStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"scheduler", "scheduler_name", "rooms", "room_name", "status"}, ""))
+
+	pattern_RoomsService_GetRoomAddress_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"scheduler", "scheduler_name", "rooms", "room_name", "address"}, ""))
 )
 
 var (
@@ -623,4 +740,6 @@ var (
 	forward_RoomsService_ForwardPlayerEvent_0 = runtime.ForwardResponseMessage
 
 	forward_RoomsService_UpdateRoomStatus_0 = runtime.ForwardResponseMessage
+
+	forward_RoomsService_GetRoomAddress_0 = runtime.ForwardResponseMessage
 )

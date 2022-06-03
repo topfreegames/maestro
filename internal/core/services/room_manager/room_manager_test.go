@@ -1193,6 +1193,54 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 	})
 }
 
+func TestRoomManager_GetRoomInstance(t *testing.T) {
+	setup := func(mockCtrl *gomock.Controller) (*mockports.MockRoomStorage, *ismock.MockGameRoomInstanceStorage, ports.RoomManager, *mockports.MockEventsService) {
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+		eventsService := mockports.NewMockEventsService(mockCtrl)
+		roomManager := New(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			instanceStorage,
+			runtimemock.NewMockRuntime(mockCtrl),
+			eventsService,
+			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
+		)
+
+		return roomStorage, instanceStorage, roomManager, eventsService
+	}
+
+	t.Run("when no error occurs return game room instance and no error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		schedulerName := "schedulerName"
+		roomId := "room-id"
+		_, instanceStorage, roomManager, _ := setup(mockCtrl)
+
+		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+
+		address, err := roomManager.GetRoomInstance(context.Background(), schedulerName, roomId)
+		require.NoError(t, err)
+		require.Equal(t, instance, address)
+	})
+
+	t.Run("when some error occurs in instance storage it returns error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		schedulerName := "schedulerName"
+		roomId := "room-id"
+		_, instanceStorage, roomManager, _ := setup(mockCtrl)
+
+		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(nil, errors.New("some error"))
+
+		_, err := roomManager.GetRoomInstance(context.Background(), schedulerName, roomId)
+		require.EqualError(t, err, "error getting instance: some error")
+	})
+
+}
+
 func testSetup(t *testing.T) (
 	ports.RoomManager,
 	RoomManagerConfig,

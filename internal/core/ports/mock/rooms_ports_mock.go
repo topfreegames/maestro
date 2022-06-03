@@ -99,6 +99,21 @@ func (mr *MockRoomManagerMockRecorder) DeleteRoomAndWaitForRoomTerminating(ctx, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoomAndWaitForRoomTerminating", reflect.TypeOf((*MockRoomManager)(nil).DeleteRoomAndWaitForRoomTerminating), ctx, gameRoom)
 }
 
+// GetRoomInstance mocks base method.
+func (m *MockRoomManager) GetRoomInstance(ctx context.Context, scheduler, roomID string) (*game_room.Instance, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomInstance", ctx, scheduler, roomID)
+	ret0, _ := ret[0].(*game_room.Instance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRoomInstance indicates an expected call of GetRoomInstance.
+func (mr *MockRoomManagerMockRecorder) GetRoomInstance(ctx, scheduler, roomID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomInstance", reflect.TypeOf((*MockRoomManager)(nil).GetRoomInstance), ctx, scheduler, roomID)
+}
+
 // ListRoomsWithDeletionPriority mocks base method.
 func (m *MockRoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error) {
 	m.ctrl.T.Helper()
