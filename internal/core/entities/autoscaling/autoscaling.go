@@ -82,5 +82,5 @@ type PolicyParameters struct {
 // RoomOccupancyParams represents the parameters accepted by rooms occupancy autoscaling properties.
 type RoomOccupancyParams struct {
 	// ReadyTarget indicates the target percentage of ready rooms a scheduler should maintain.
-	ReadyTarget float64 `validate:"gt=0,lt=1"`
+	ReadyTarget float64 `validate:"gt=0,lte=0.9"`
 }
