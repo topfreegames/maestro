@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-rooms-manager
+  labels:
+    app: game-rooms-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: game-rooms-manager
+  template:
+    metadata:
+      labels:
+        app: game-rooms-manager
+    spec:
+      containers:
+        - name: game-rooms-manager
+          image: guilhermbrsp/maestro_game_room_manager:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 500m
+              memory: 500Mi
+            requests:
+              cpu: 100m
+              memory: 240Mi
+

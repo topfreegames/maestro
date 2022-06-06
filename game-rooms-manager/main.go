@@ -4,13 +4,18 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"strconv"
+	"sync"
 )
 
 type MaestroGameRoomsManager struct {
 	roomsMap map[string]GameRoomPingStatus
+	mutex    *sync.RWMutex
 }
 
-func (mm MaestroGameRoomsManager) registerRoomWithInitialStatus(resp http.ResponseWriter, req *http.Request) {
+// Routes for game rooms
+
+func (mm *MaestroGameRoomsManager) registerRoomWithInitialStatus(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id, ok := vars["roomID"]
 	if !ok {
@@ -18,19 +23,19 @@ func (mm MaestroGameRoomsManager) registerRoomWithInitialStatus(resp http.Respon
 		return
 	}
 
-	mm.roomsMap[id] = GameRoomPingStatusReady
+	mm.writeMap(id, GameRoomPingStatusReady)
 
 	Write(resp, http.StatusOK, "room registered with success")
 }
 
-func (mm MaestroGameRoomsManager) retrieveTargetStatusToRoom(resp http.ResponseWriter, req *http.Request) {
+func (mm *MaestroGameRoomsManager) retrieveTargetStatusToRoom(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id, ok := vars["roomID"]
 	if !ok {
 		Write(resp, http.StatusBadRequest, "roomID is missing in parameters")
 		return
 	}
-	roomStatus, ok := mm.roomsMap[id]
+	roomStatus, ok := mm.readMap(id)
 	if !ok {
 		Write(resp, http.StatusNotFound, "roomID is not registered")
 		return
@@ -39,7 +44,22 @@ func (mm MaestroGameRoomsManager) retrieveTargetStatusToRoom(resp http.ResponseW
 	Write(resp, http.StatusOK, fmt.Sprintf(`{"status": "%s" }`, roomStatus.String()))
 }
 
-func (mm MaestroGameRoomsManager) setRoomStatus(resp http.ResponseWriter, req *http.Request) {
+func (mm *MaestroGameRoomsManager) deregisterRoom(resp http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id, ok := vars["roomID"]
+	if !ok {
+		Write(resp, http.StatusBadRequest, "roomID is missing in parameters")
+		return
+	}
+
+	delete(mm.roomsMap, id)
+
+	Write(resp, http.StatusOK, "room deregistered with success")
+}
+
+// Routes for management
+
+func (mm *MaestroGameRoomsManager) setRoomStatus(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id, ok := vars["roomID"]
 	if !ok {
@@ -58,16 +78,75 @@ func (mm MaestroGameRoomsManager) setRoomStatus(resp http.ResponseWriter, req *h
 		return
 	}
 
-	mm.roomsMap[id] = gameRoomPingStatus
+	mm.writeMap(id, gameRoomPingStatus)
 
 	Write(resp, http.StatusOK, "status for room updated with success")
 }
 
+func (mm *MaestroGameRoomsManager) transitStatus(resp http.ResponseWriter, req *http.Request) {
+	previousStatus := req.FormValue("previousStatus")
+	newStatus := req.FormValue("newStatus")
+	numberOfRooms := req.FormValue("numberOfRooms")
+
+	previousStatusPing, err := FromStringToGameRoomPingStatus(previousStatus)
+	if err != nil {
+		Write(resp, http.StatusBadRequest, "previousStatus is not valid")
+		return
+	}
+
+	newStatusPing, err := FromStringToGameRoomPingStatus(newStatus)
+	if err != nil {
+		Write(resp, http.StatusBadRequest, "newStatus is not valid")
+		return
+	}
+
+	numberOfRoomsInt, err := strconv.Atoi(numberOfRooms)
+	if err != nil {
+		Write(resp, http.StatusBadRequest, "numberOfRooms is not valid")
+		return
+	}
+
+	var roomsToUpdate []string
+
+	mm.mutex.RLock()
+	for id, status := range mm.roomsMap {
+		if status == previousStatusPing {
+			roomsToUpdate = append(roomsToUpdate, id)
+			numberOfRoomsInt--
+			if numberOfRoomsInt == 0 {
+				break
+			}
+		}
+	}
+	mm.mutex.RUnlock()
+
+	for _, id := range roomsToUpdate {
+		mm.writeMap(id, newStatusPing)
+	}
+
+	Write(resp, http.StatusOK, "rooms status for room updated with success")
+}
+
+func (mm *MaestroGameRoomsManager) readMap(roomId string) (GameRoomPingStatus, bool) {
+	mm.mutex.RLock()
+	defer mm.mutex.RUnlock()
+	status, ok := mm.roomsMap[roomId]
+
+	return status, ok
+}
+
+func (mm *MaestroGameRoomsManager) writeMap(roomId string, status GameRoomPingStatus) {
+	mm.mutex.Lock()
+	defer mm.mutex.Unlock()
+	mm.roomsMap[roomId] = status
+}
+
 func main() {
-	fmt.Printf("Starting Maestro Game Rooms Manager\n")
+	fmt.Printf("Starting Maestro's Game Rooms Manager\n")
 
 	manager := MaestroGameRoomsManager{
 		roomsMap: make(map[string]GameRoomPingStatus),
+		mutex:    &sync.RWMutex{},
 	}
 
 	router := mux.NewRouter()
@@ -75,9 +154,11 @@ func main() {
 	// Routes for game rooms
 	router.HandleFunc("/register/{roomID}", manager.registerRoomWithInitialStatus).Methods("POST")
 	router.HandleFunc("/getStatus/{roomID}", manager.retrieveTargetStatusToRoom).Methods("GET")
+	router.HandleFunc("/deregister/{roomID}", manager.deregisterRoom).Methods("DELETE")
 
 	// Routes for management
 	router.HandleFunc("/setStatus/{roomID}/{status}", manager.setRoomStatus).Methods("POST")
+	router.HandleFunc("/transitStatus", manager.transitStatus).Methods("POST").Queries("previousStatus", "", "newStatus", "", "numberOfRooms", "")
 
 	http.ListenAndServe(":8080", router)
 }
