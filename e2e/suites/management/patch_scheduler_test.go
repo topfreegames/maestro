@@ -112,7 +112,9 @@ func TestPatchScheduler(t *testing.T) {
 					Enable:  true,
 					Type:    "gRPC",
 					Address: "new_address",
-					Options: nil,
+					Options: &maestrov1.ForwarderOptions{
+						Timeout: 100,
+					},
 				},
 			}
 			patchSchedulerRequest := &maestrov1.PatchSchedulerRequest{
@@ -130,11 +132,18 @@ func TestPatchScheduler(t *testing.T) {
 			getSchedulerRequest = &maestrov1.GetSchedulerRequest{}
 			getSchedulerResponse = &maestrov1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+			newForwarder := newForwarders[0]
+			responseForwarder := *getSchedulerResponse.Scheduler.Forwarders[0]
+
 			require.NoError(t, err)
 			assert.Equal(t, "v2.0.0", getSchedulerResponse.Scheduler.Spec.Version)
 			assert.Equal(t, newMaxSurge, getSchedulerResponse.Scheduler.MaxSurge)
 			assert.Equal(t, newPortRange, *getSchedulerResponse.Scheduler.PortRange)
-			assert.Equal(t, *newForwarders[0], *getSchedulerResponse.Scheduler.Forwarders[0])
+			assert.Equal(t, newForwarder.Name, responseForwarder.Name)
+			assert.Equal(t, newForwarder.Address, responseForwarder.Address)
+			assert.Equal(t, newForwarder.Options.Timeout, responseForwarder.Options.Timeout)
+			assert.Equal(t, newForwarder.Type, responseForwarder.Type)
+			assert.Equal(t, newForwarder.Enable, responseForwarder.Enable)
 			assert.Equal(t, *newSpec.Containers[0].ImagePullPolicy, getSchedulerResponse.Scheduler.Spec.Containers[0].ImagePullPolicy)
 			assert.Equal(t, *newSpec.Containers[0].Requests, *getSchedulerResponse.Scheduler.Spec.Containers[0].Requests)
 			assert.Equal(t, *newSpec.Containers[0].Limits, *getSchedulerResponse.Scheduler.Spec.Containers[0].Limits)

@@ -25,6 +25,7 @@ package management
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -64,7 +65,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			createMajorVersionAndAssertPodsReplace(t, roomsBeforeUpdate, kubeClient, scheduler, maestro, managementApiClient, roomsApiClient, newVersionExpected)
 			// ----------- Switch back to v1.0.0
 			podsAfterSwitch := switchVersion(t, scheduler, managementApiClient, kubeClient, "v1.0.0")
-			// ----------- Create new Minor version v1.2.0 (since v1.1.0 already exists) and assert pods are not replace
+			// ----------- Create new Minor version v1.2.0 (since v1.1.0 already exists) and assert pods are not replaced
 			newVersionExpected = "v1.2.0"
 			createMinorVersionAndAssertNoPodsReplace(t, kubeClient, scheduler, maestro, managementApiClient, newVersionExpected)
 			//  ----------- Create new Major version v3.0.0 (since v2.0.0 already exists) and assert pods are replaced
@@ -237,7 +238,7 @@ func switchVersion(t *testing.T, scheduler *maestrov1.Scheduler, managementApiCl
 		}
 
 		return false
-	}, 1*time.Minute, time.Second)
+	}, 1*time.Minute, time.Second*10, "Timeout waiting to have 2 pods after switch version")
 
 	podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 	require.NoError(t, err)
@@ -414,21 +415,25 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 		require.NotEmpty(t, podsAfterUpdate.Items)
 
 		if len(podsAfterUpdate.Items) == 2 {
+			// Replace pods since is a major change
+			for i := 0; i < 2; i++ {
+				if reflect.DeepEqual(podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec) {
+					return false
+				}
+				if podsAfterUpdate.Items[i].Spec.Containers[0].Name != "example-update" {
+					return false
+				}
+			}
 			return true
 		}
 
 		return false
-	}, 1*time.Minute, time.Second)
+	}, 1*time.Minute, time.Second*10)
 
 	podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 	require.NoError(t, err)
 	require.NotEmpty(t, podsAfterUpdate.Items)
 
-	// Replace pods since is a minor change
-	for i := 0; i < 2; i++ {
-		require.NotEqual(t, podsAfterUpdate.Items[i].Spec, podsBeforeUpdate.Items[i].Spec)
-		require.Equal(t, "example-update", podsAfterUpdate.Items[i].Spec.Containers[0].Name)
-	}
 	return podsAfterUpdate
 }
 
