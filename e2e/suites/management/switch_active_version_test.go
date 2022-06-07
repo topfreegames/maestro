@@ -351,7 +351,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				}
 
 				return false
-			}, 1*time.Minute, 10*time.Millisecond)
+			}, 2*time.Minute, 10*time.Millisecond)
 
 		})
 

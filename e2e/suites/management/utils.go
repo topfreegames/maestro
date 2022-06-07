@@ -357,7 +357,7 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 		}
 
 		return true
-	}, 1*time.Minute, 10*time.Millisecond)
+	}, 2*time.Minute, 10*time.Millisecond)
 
 	scheduler.RoomsReplicas = 2
 
