@@ -23,7 +23,6 @@
 package requestadapters
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -55,7 +54,7 @@ func FromInstanceEntityToGameRoomAddressResponse(instance *game_room.Instance) *
 	for _, port := range instance.Address.Ports {
 		response.Ports = append(response.Ports, &api.Port{
 			Name:     port.Name,
-			Port:     strconv.Itoa(int(port.Port)),
+			Port:     port.Port,
 			Protocol: port.Protocol,
 		})
 	}
