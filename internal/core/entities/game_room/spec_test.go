@@ -35,7 +35,7 @@ func TestNewSpec(t *testing.T) {
 			game_room.Container{
 				Name:            "default",
 				Image:           "some-image",
-				ImagePullPolicy: "Always",
+				ImagePullPolicy: "IfNotPresent",
 				Command:         []string{"hello"},
 				Ports: []game_room.ContainerPort{
 					{Name: "tcp", Protocol: "tcp", Port: 80},
@@ -75,7 +75,7 @@ func TestSpec_DeepCopy(t *testing.T) {
 					{
 						Name:            "default",
 						Image:           "some-image",
-						ImagePullPolicy: "Always",
+						ImagePullPolicy: "IfNotPresent",
 						Command:         []string{"hello"},
 						Ports: []game_room.ContainerPort{
 							{Name: "tcp", Protocol: "tcp", Port: 80},
@@ -98,7 +98,7 @@ func TestSpec_DeepCopy(t *testing.T) {
 					{
 						Name:            "default",
 						Image:           "some-image",
-						ImagePullPolicy: "Always",
+						ImagePullPolicy: "IfNotPresent",
 						Command:         []string{"hello"},
 						Ports: []game_room.ContainerPort{
 							{Name: "tcp", Protocol: "tcp", Port: 80},

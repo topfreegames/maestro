@@ -945,7 +945,7 @@ func newValidScheduler(autoscaling *autoscaling.Autoscaling) *entities.Scheduler
 				{
 					Name:            "default",
 					Image:           "some-image",
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: "IfNotPresent",
 					Command:         []string{"hello"},
 					Ports: []game_room.ContainerPort{
 						{Name: "tcp", Protocol: "tcp", Port: 80},

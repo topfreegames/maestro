@@ -733,7 +733,7 @@ func newValidSchedulerWithImageVersion(imageVersion string) *entities.Scheduler 
 				{
 					Name:            "default",
 					Image:           fmt.Sprintf("some-image:%s", imageVersion),
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: "IfNotPresent",
 					Command:         []string{"hello"},
 					Ports: []game_room.ContainerPort{
 						{Name: "tcp", Protocol: "tcp", Port: 80},
