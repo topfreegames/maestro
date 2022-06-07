@@ -242,7 +242,7 @@ func requireEventualState(t *testing.T, numberOfReadyRooms, numberOfOccupiedRoom
 
 		return schedulerInfo.GetRoomsReady() == int32(numberOfReadyRooms) &&
 			schedulerInfo.GetRoomsOccupied() == int32(numberOfOccupiedRooms)
-	}, time.Minute*5, time.Second*1, "Timeout waiting for scheduler to reach expected state")
+	}, time.Minute*2, time.Second*1, "Timeout waiting for scheduler to reach expected state")
 
 }
 

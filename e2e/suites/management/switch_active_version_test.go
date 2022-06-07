@@ -338,23 +338,21 @@ func TestSwitchActiveVersion(t *testing.T) {
 			require.Eventually(t, func() bool {
 				podsAfterRollback, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 				require.NoError(t, err)
-				require.NotEmpty(t, podsAfterUpdate.Items)
+				require.NotEmpty(t, podsAfterRollback.Items)
 
 				if len(podsAfterRollback.Items) == 2 {
+					// Pods change since it's a major rollback
+					for i := 0; i < 2; i++ {
+						if podsAfterUpdate.Items[i].Name == podsAfterRollback.Items[i].Name {
+							return false
+						}
+					}
 					return true
 				}
 
 				return false
 			}, 1*time.Minute, 10*time.Millisecond)
 
-			podsAfterRollback, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
-			require.NoError(t, err)
-			require.NotEmpty(t, podsAfterRollback.Items)
-
-			// Pods change since it's a major rollback
-			for i := 0; i < 2; i++ {
-				require.NotEqual(t, podsAfterUpdate.Items[i].Name, podsAfterRollback.Items[i].Name)
-			}
 		})
 
 		t.Run("Fail - version does not exist", func(t *testing.T) {
