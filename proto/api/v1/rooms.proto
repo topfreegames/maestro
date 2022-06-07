@@ -81,7 +81,7 @@ message Port {
   // Port protocol (tcp, udp).
   string protocol = 2;
   // Port number.
-  string port = 3;
+  int32 port = 3;
 }
 
 // The player event request.

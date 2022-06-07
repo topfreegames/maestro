@@ -1617,7 +1617,8 @@
           "description": "Port protocol (tcp, udp)."
         },
         "port": {
-          "type": "string",
+          "type": "integer",
+          "format": "int32",
           "description": "Port number."
         }
       },
