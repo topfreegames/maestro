@@ -91,9 +91,9 @@ func TestNewAutoscaling(t *testing.T) {
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Equal(t, "ReadyTarget must be greater than 0", validationErrs[0].Translate(translator))
 
-			_, err = NewAutoscaling(true, 1, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{RoomOccupancy: &RoomOccupancyParams{ReadyTarget: 1.0}}})
+			_, err = NewAutoscaling(true, 1, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{RoomOccupancy: &RoomOccupancyParams{ReadyTarget: 0.91}}})
 			validationErrs = err.(validator.ValidationErrors)
-			assert.Equal(t, "ReadyTarget must be less than 1", validationErrs[0].Translate(translator))
+			assert.Equal(t, "ReadyTarget must be 0.9 or less", validationErrs[0].Translate(translator))
 		})
 	})
 
