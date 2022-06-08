@@ -152,3 +152,9 @@ maestro/start: build-linux-x86_64 ## Start Maestro with all of its dependencies.
 	@go run main.go migrate;
 	@cd ./e2e/framework/maestro; docker-compose --project-name maestro start worker runtime-watcher #Worker and watcher do not work before migration, so we start them after it.
 	@echo "Maestro is up and running!"
+
+.PHONY: maestro/down
+maestro/down: ## Delete Maestro and all of its dependencies.
+	@echo "Deleting maestro..."
+	@cd ./e2e/framework/maestro; docker-compose --project-name maestro down
+	@echo "Maestro was deleted with success!"

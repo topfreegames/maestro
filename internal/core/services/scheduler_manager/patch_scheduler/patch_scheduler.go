@@ -170,6 +170,11 @@ func patchContainers(containers []game_room.Container, patchSlice []map[string]i
 		if len(containers) <= i {
 			containers = append(containers, game_room.Container{})
 		}
+
+		if _, ok := patchMap[LabelContainerName]; ok {
+			containers[i].Name = fmt.Sprint(patchMap[LabelContainerName])
+		}
+
 		if _, ok := patchMap[LabelContainerImage]; ok {
 			containers[i].Image = fmt.Sprint(patchMap[LabelContainerImage])
 		}

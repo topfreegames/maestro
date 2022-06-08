@@ -912,6 +912,7 @@ func TestPatchScheduler(t *testing.T) {
 
 			containers := spec.Containers
 			for i, expectedContainer := range expectedSpec.Containers {
+				assert.Equal(t, expectedContainer.Name, containers[i].Name)
 				assert.Equal(t, expectedContainer.Image, containers[i].Image)
 				assert.Equal(t, expectedContainer.ImagePullPolicy, containers[i].ImagePullPolicy)
 				assert.EqualValues(t, expectedContainer.Command, containers[i].Command)
