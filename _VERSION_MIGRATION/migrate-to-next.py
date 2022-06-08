@@ -83,7 +83,7 @@ def get_containers(containers):
         containers_list.append({
             'name': container['name'],
             'image': container['image'],
-            'imagePullPolicy': container['imagePullPolicy'],
+            'imagePullPolicy': container['imagePullPolicy'] if container['imagePullPolicy'] else 'IfNotPresent',
             'command': container['cmd'],
             'ports': get_ports(container['ports']),
             "environment": get_env(container['env']),
