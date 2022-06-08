@@ -51,7 +51,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 	t.Run("successfully runs a single operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-
+		ctx := context.Background()
+		workerContext, workerCancel := context.WithCancel(ctx)
+		defer workerCancel()
+		operationContext, operationCancel := context.WithCancel(workerContext)
+		defer operationCancel()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -83,9 +87,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
-		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
-		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().GrantLease(gomock.AssignableToTypeOf(workerContext), expectedOperation)
+		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any())
+		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.AssignableToTypeOf(workerContext), expectedOperation)
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
@@ -103,14 +107,18 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			require.False(t, workerService.IsRunning())
 		}()
 
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		require.NoError(t, err)
 
 	})
 
 	t.Run("execute Rollback when a Execute fails", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-
+		ctx := context.Background()
+		workerContext, workerCancel := context.WithCancel(ctx)
+		defer workerCancel()
+		operationContext, operationCancel := context.WithCancel(workerContext)
+		defer operationCancel()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -143,9 +151,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
-		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
-		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().GrantLease(gomock.AssignableToTypeOf(workerContext), expectedOperation)
+		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any())
+		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.AssignableToTypeOf(workerContext), expectedOperation)
 
 		executionErr := operations.NewErrUnexpected(fmt.Errorf("some execution error"))
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
@@ -169,13 +177,17 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			require.False(t, workerService.IsRunning())
 		}()
 
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		require.NoError(t, err)
 	})
 
 	t.Run("execute Rollback when a Execute was canceled", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-
+		ctx := context.Background()
+		workerContext, workerCancel := context.WithCancel(ctx)
+		defer workerCancel()
+		operationContext, operationCancel := context.WithCancel(workerContext)
+		defer operationCancel()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -208,9 +220,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
-		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any())
-		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().GrantLease(gomock.AssignableToTypeOf(workerContext), expectedOperation)
+		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any())
+		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.AssignableToTypeOf(workerContext), expectedOperation)
 
 		executionErr := operations.NewErrUnexpected(fmt.Errorf("some execution error: %s", context.Canceled.Error()))
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
@@ -234,7 +246,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			require.False(t, workerService.IsRunning())
 		}()
 
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		require.NoError(t, err)
 	})
 
@@ -242,7 +254,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
-
+		ctx := context.Background()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
@@ -279,7 +291,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			require.False(t, workerService.IsRunning())
 		}()
 
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		require.NoError(t, err)
 	})
 
@@ -287,7 +299,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
-
+		ctx := context.Background()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -329,7 +341,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			time.Sleep(time.Millisecond * 100)
 		}()
 
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		require.NoError(t, err)
 	})
 
@@ -337,7 +349,11 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
-
+		ctx := context.Background()
+		workerContext, workerCancel := context.WithCancel(ctx)
+		defer workerCancel()
+		operationContext, operationCancel := context.WithCancel(workerContext)
+		defer operationCancel()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -370,8 +386,8 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(expectedOperation, operationDefinition, nil)
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
-		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation).Return(nil)
-		operationManager.EXPECT().StartOperation(gomock.Any(), expectedOperation, gomock.Any()).Return(errors.New("some error starting operation"))
+		operationManager.EXPECT().GrantLease(gomock.AssignableToTypeOf(workerContext), expectedOperation).Return(nil)
+		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any()).Return(errors.New("some error starting operation"))
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Failed to start operation, reason: some error starting operation")
 
@@ -382,7 +398,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			require.False(t, workerService.IsRunning())
 		}()
 
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		require.NoError(t, err)
 
 		assert.Equal(t, expectedOperation.Status, operation.StatusError)
@@ -392,7 +408,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
-
+		ctx := context.Background()
+		workerContext, workerCancel := context.WithCancel(ctx)
+		defer workerCancel()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -424,7 +442,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
-		operationManager.EXPECT().GrantLease(gomock.Any(), expectedOperation).Return(errors.New("some error granting lease"))
+		operationManager.EXPECT().GrantLease(gomock.AssignableToTypeOf(workerContext), expectedOperation).Return(errors.New("some error granting lease"))
 		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Failed to grant lease to operation, reason: some error granting lease")
 		// Ends the worker by cancelling it
@@ -436,7 +454,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			require.False(t, workerService.IsRunning())
 		}()
 
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		require.NoError(t, err)
 
 		assert.Equal(t, expectedOperation.Status, operation.StatusError)
@@ -446,7 +464,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationManager := mock.NewMockOperationManager(mockCtrl)
-
+		ctx := context.Background()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -477,7 +495,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 
 		close(pendingOpsChan)
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		assert.Error(t, err, "failed to get next operation, channel closed")
 
 		workerService.Stop(context.Background())
@@ -486,7 +504,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 	t.Run("no error getting next operation and nothing to do, should stop execution of operation", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-
+		ctx := context.Background()
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -525,7 +543,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 			require.False(t, workerService.IsRunning())
 		}()
 
-		err := workerService.Start(context.Background())
+		err := workerService.Start(ctx)
 		require.NoError(t, err)
 	})
 
@@ -534,7 +552,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.NoError(t, err)
 
 		mockCtrl := gomock.NewController(t)
-
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
@@ -574,7 +591,6 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		require.NoError(t, err)
 
 		mockCtrl := gomock.NewController(t)
-
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)

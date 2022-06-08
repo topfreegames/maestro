@@ -64,6 +64,7 @@ func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.Worke
 // Start is responsible for starting a loop that will
 // periodically report metrics for scheduler pods and game rooms.
 func (w *MetricsReporterWorker) Start(ctx context.Context) error {
+	defer w.Stop(ctx)
 	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 	ticker := time.NewTicker(time.Millisecond * w.config.MetricsReporterIntervalMillis)
 	defer ticker.Stop()
