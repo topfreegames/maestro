@@ -105,7 +105,7 @@ func TestAutoscaling(t *testing.T) {
 			requireEventualState(t, 2, 0, scheduler.Name, managementApiClient)
 		})
 
-		t.Run("Autoscaling configured and enabled - use min max and configured RoomOccupancy policy to full scale up ", func(t *testing.T) {
+		t.Run("Autoscaling configured and enabled - use min max and configured RoomOccupancy policy to full scale up", func(t *testing.T) {
 			t.Parallel()
 			scheduler, err := createSchedulerWithRoomsAndWaitForIt(t, maestro, managementApiClient, autoscalingTestGame, kubeClient)
 			require.NoError(t, err)
