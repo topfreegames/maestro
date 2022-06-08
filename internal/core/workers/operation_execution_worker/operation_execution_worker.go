@@ -125,7 +125,9 @@ func (w *OperationExecutionWorker) executeOperationFlow(operationID string) erro
 		return nil
 	}
 
-	operationContext, err := w.prepareExecutionAndLease(op, loopLogger)
+	operationContext, operationCancellationFunction, err := w.prepareExecutionAndLease(op, loopLogger)
+	defer operationCancellationFunction()
+
 	if err != nil {
 		return err
 	}
@@ -194,13 +196,13 @@ func (w OperationExecutionWorker) executeOperationWithLease(operationContext con
 	})
 }
 
-func (w *OperationExecutionWorker) prepareExecutionAndLease(op *operation.Operation, loopLogger *zap.Logger) (operationContext context.Context, err error) {
+func (w *OperationExecutionWorker) prepareExecutionAndLease(op *operation.Operation, loopLogger *zap.Logger) (operationContext context.Context, operationCancellationFunction context.CancelFunc, err error) {
 	loopLogger.Info("Starting operation")
 
 	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation")
 
-	operationContext, operationCancellationFunction := context.WithCancel(w.workerContext)
-	err = w.operationManager.GrantLease(operationContext, op)
+	operationContext, operationCancellationFunction = context.WithCancel(w.workerContext)
+	err = w.operationManager.GrantLease(w.workerContext, op)
 	if err != nil {
 		reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelStartOperationFailed)
 		operationCancellationFunction()
@@ -213,7 +215,7 @@ func (w *OperationExecutionWorker) prepareExecutionAndLease(op *operation.Operat
 			loopLogger.Error("failed to finish operation", zap.Error(err))
 		}
 
-		return operationContext, workererrors.NewErrGrantLeaseFailed("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
+		return operationContext, operationCancellationFunction, workererrors.NewErrGrantLeaseFailed("failed to grant lease to operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 	}
 
 	err = w.operationManager.StartOperation(operationContext, op, operationCancellationFunction)
@@ -229,12 +231,12 @@ func (w *OperationExecutionWorker) prepareExecutionAndLease(op *operation.Operat
 
 		reportOperationExecutionWorkerFailed(w.scheduler.Game, w.scheduler.Name, LabelStartOperationFailed)
 
-		return operationContext, workererrors.NewErrStartOperationFailed("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
+		return operationContext, operationCancellationFunction, workererrors.NewErrStartOperationFailed("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 	}
 
-	w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
+	w.operationManager.StartLeaseRenewGoRoutine(w.workerContext, op)
 
-	return operationContext, err
+	return operationContext, operationCancellationFunction, err
 }
 
 func (w *OperationExecutionWorker) shouldEvictOperation(op *operation.Operation, def operations.Definition, hasExecutor bool, loopLogger *zap.Logger) bool {
