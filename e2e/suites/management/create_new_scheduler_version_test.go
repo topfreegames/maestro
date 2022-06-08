@@ -116,7 +116,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 							Name:            "example-update",
 							Image:           "alpine:3.15.0",
 							Command:         []string{"while true; do sleep 1; done"},
-							ImagePullPolicy: "Always",
+							ImagePullPolicy: "IfNotPresent",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
 									Name:  "ROOMS_API_ADDRESS",
@@ -264,7 +264,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 					Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
 						"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 						"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: "IfNotPresent",
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
@@ -456,7 +456,7 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 					Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
 						"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
 						"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: "IfNotPresent",
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",

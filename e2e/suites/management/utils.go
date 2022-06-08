@@ -67,7 +67,7 @@ func createSchedulerAndWaitForIt(
 					Name:            "example",
 					Image:           "alpine:3.15.0",
 					Command:         gruCommand,
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: "IfNotPresent",
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
@@ -183,7 +183,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 					Name:            "example",
 					Image:           "alpine:3.15.0",
 					Command:         gruCommand,
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: "IfNotPresent",
 					Environment: []*maestroApiV1.ContainerEnvironment{
 						{
 							Name:  "ROOMS_API_ADDRESS",
@@ -357,7 +357,7 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 		}
 
 		return true
-	}, 1*time.Minute, 10*time.Millisecond)
+	}, 2*time.Minute, 10*time.Millisecond)
 
 	scheduler.RoomsReplicas = 2
 

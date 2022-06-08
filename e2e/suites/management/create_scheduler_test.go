@@ -64,7 +64,7 @@ func TestCreateScheduler(t *testing.T) {
 							Name:            "example",
 							Image:           "nginx",
 							Command:         []string{"echo", "hello"},
-							ImagePullPolicy: "Always",
+							ImagePullPolicy: "IfNotPresent",
 							Requests: &maestrov1.ContainerResources{
 								Memory: "1",
 								Cpu:    "1",
@@ -155,7 +155,7 @@ func TestCreateScheduler(t *testing.T) {
 							Name:            "example",
 							Image:           "nginx",
 							Command:         []string{"echo", "hello"},
-							ImagePullPolicy: "Always",
+							ImagePullPolicy: "IfNotPresent",
 							Requests: &maestrov1.ContainerResources{
 								Memory: "1",
 								Cpu:    "1",

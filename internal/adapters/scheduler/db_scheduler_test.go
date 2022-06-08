@@ -94,7 +94,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 						{
 							Name:            "game",
 							Image:           "image",
-							ImagePullPolicy: "always",
+							ImagePullPolicy: "IfNotPresent",
 							Command:         []string{"ls", "/"},
 							Environment: []game_room.ContainerEnvironment{
 								{Name: "ENV_1", Value: "1"},
@@ -139,7 +139,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 						{
 							Name:            "game",
 							Image:           "image",
-							ImagePullPolicy: "always",
+							ImagePullPolicy: "IfNotPresent",
 							Command:         []string{"ls", "/"},
 							Environment: []game_room.ContainerEnvironment{
 								{Name: "ENV_1", Value: "1"},
