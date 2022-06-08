@@ -30,7 +30,7 @@ type Container struct {
 	Environment     []ContainerEnvironment `validate:"dive"`
 	Requests        ContainerResources
 	Limits          ContainerResources
-	Ports           []ContainerPort `validate:"required,dive"`
+	Ports           []ContainerPort `validate:"dive"`
 }
 
 type ContainerEnvironment struct {
