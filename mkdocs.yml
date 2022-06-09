@@ -9,6 +9,7 @@ nav:
   - Developers: 'Developers.md'
   - Architecture: 'Architecture.md'
   - OpenAPI: 'OpenAPI.md'
+  - Autoscaling: 'Autoscaling.md'
   - Operations: 'Operations.md'
   - Kubernetes Usage: 'Kubernetes.md'
   - Guidelines: 'Guidelines.md'
