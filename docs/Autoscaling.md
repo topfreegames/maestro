@@ -100,9 +100,6 @@ actual room occupancy rate (number of rooms in **occupied** state).
 
 Yaml version
 ```yaml
-name: String
-game: String
-...
 autoscaling:
   enabled: true
   min: 1
