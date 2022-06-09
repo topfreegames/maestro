@@ -194,7 +194,7 @@ func createRedisClient(url string) (*redis.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
-
+	opts.PoolSize = 500
 	return redis.NewClient(opts), nil
 }
 
