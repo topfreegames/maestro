@@ -30,3 +30,10 @@ type ForwardOptions struct {
 	Timeout  time.Duration `validate:"required"`
 	Metadata map[string]interface{}
 }
+
+func NewDefaultForwarderOptions() *ForwardOptions {
+	return &ForwardOptions{
+		Timeout:  time.Microsecond,
+		Metadata: map[string]interface{}{},
+	}
+}

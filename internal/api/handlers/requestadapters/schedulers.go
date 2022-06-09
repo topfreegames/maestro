@@ -445,14 +445,14 @@ func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
 			}
 		}
 
-		forwarderStruct := forwarder.Forwarder{
-			Name:        apiForwarder.GetName(),
-			Enabled:     apiForwarder.GetEnable(),
-			ForwardType: forwarder.ForwardType(apiForwarder.GetType()),
-			Address:     apiForwarder.GetAddress(),
-			Options:     options,
-		}
-		forwarders = append(forwarders, &forwarderStruct)
+		forwarderStruct := forwarder.New(
+			apiForwarder.GetName(),
+			apiForwarder.GetEnable(),
+			forwarder.ForwardType(apiForwarder.GetType()),
+			apiForwarder.GetAddress(),
+			options,
+		)
+		forwarders = append(forwarders, forwarderStruct)
 	}
 	return forwarders
 }

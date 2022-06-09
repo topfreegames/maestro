@@ -35,3 +35,16 @@ type Forwarder struct {
 	Address     string      `validate:"required"`
 	Options     *ForwardOptions
 }
+
+func New(name string, enabled bool, forwardType ForwardType, address string, options *ForwardOptions) *Forwarder {
+	if options == nil {
+		options = NewDefaultForwarderOptions()
+	}
+	return &Forwarder{
+		Name:        name,
+		Enabled:     enabled,
+		ForwardType: forwardType,
+		Address:     address,
+		Options:     options,
+	}
+}
