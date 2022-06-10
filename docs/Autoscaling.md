@@ -15,7 +15,7 @@ If autoscaling is configured **and** enabled, it will use the configured autosca
     use_rooms_replicas(Use rooms replicas to calculate the desired number of rooms)
     autoscaling_enabled{Autoscaling configured and enabled?}
     decide_operation{Compare current number of rooms with the desired amount.}
-    use_autoscaling[Use Autoscaling policy to calculate the desired number of rooms corced in min max range]
+    use_autoscaling[Use Autoscaling policy to calculate the desired number of rooms coerced in min-max range]
     autoscaling_enabled -- No --> use_rooms_replicas;
     autoscaling_enabled -- Yes --> use_autoscaling;
     use_autoscaling --> decide_operation;
