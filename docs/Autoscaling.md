@@ -55,9 +55,9 @@ autoscaling:
 </details>
 
 
-[comment]: <> (Json version)
+[comment]: <> (JSON version)
 <details>
-    <summary>YAML version</summary>
+    <summary>JSON version</summary>
     <div class="highlight highlight-source-yaml position-relative overflow-auto">
         <pre>
 {
@@ -109,8 +109,14 @@ actual room occupancy rate (number of rooms in **occupied** state).
 
 #### Example
 
-Yaml version
-```yaml
+[comment]: <> (YAML version)
+<details>
+    <summary>YAML version</summary>
+    <div class="highlight highlight-source-yaml position-relative overflow-auto">
+        <pre>
+name: String
+game: String
+...
 autoscaling:
   enabled: true
   min: 1
@@ -120,10 +126,15 @@ autoscaling:
     parameters:
       roomOccupancy:
         readyTarget: 0.5
-```
+        </pre>
+    </div>
+</details>
 
-Json version
-```json
+[comment]: <> (JSON version)
+<details>
+    <summary>JSON version</summary>
+    <div class="highlight highlight-source-yaml position-relative overflow-auto">
+        <pre>
 {
   "autoscaling": {
     "enabled": true,
@@ -139,23 +150,26 @@ Json version
     }
   }
 }
-```
+        </pre>
+    </div>
+</details>
 
 Below are some simulated examples of how the room occupancy policy will behave:
 
 > Note that the autoscaling decision will always be limited by the min-max values! .
-> 
-| totalNumberOfRooms | numberOfOccupiedRooms | readyTarget | desiredNumberOfRooms | autoscalingDecision |
-|:------------------:|:---------------------:|:-----------:|:--------------------:|:-------------------:|
-|         100        |           80          |     0.5     |          160         |    Scale Up: +60    |
-|         100        |           50          |     0.5     |          100         |    Do Nothing: 0    |
-|         100        |           30          |     0.5     |          60          |   Scale Down: -40   |
-|         50         |           40          |     0.3     |          58          |    Scale Up: +8     |
-|         50         |           35          |     0.3     |          50          |    Do Nothing: 0    |
-|         50         |           10          |     0.3     |          15          |   Scale Down: -35   |
-|         10         |           5           |     0.9     |          50          |    Scale Up: +40    |
-|         10         |           1           |     0.9     |          10          |    Do Nothing: 0    |
-|         10         |           1           |     0.8     |           5          |   Scale Down: -5    |
-|          5         |           5           |     0.1     |           6          |    Scale Up: +1     |
-|          1         |           1           |     0.3     |           2          |    Scale Up: +1     |
-|          2         |           2           |     0.9     |          20          |    Scale Up: +18    |
+
+| totalRooms | occupiedRooms | readyTarget | desiredNumberOfRooms | autoscalingDecision |
+|:----------:|:-------------:|:-----------:|:--------------------:|:-------------------:|
+|    100     |      80       |     0.5     |          160         |    Scale Up: +60    |
+|    100     |      50       |     0.5     |          100         |    Do Nothing: 0    |
+|    100     |      30       |     0.5     |          60          |   Scale Down: -40   |
+|     50     |      40       |     0.3     |          58          |    Scale Up: +8     |
+|     50     |      35       |     0.3     |          50          |    Do Nothing: 0    |
+|     50     |      10       |     0.3     |          15          |   Scale Down: -35   |
+|     10     |       5       |     0.9     |          50          |    Scale Up: +40    |
+|     10     |       1       |     0.9     |          10          |    Do Nothing: 0    |
+|     10     |       1       |     0.8     |           5          |   Scale Down: -5    |
+|     5      |       5       |     0.1     |           6          |    Scale Up: +1     |
+|     1      |       1       |     0.3     |           2          |    Scale Up: +1     |
+|     2      |       2       |     0.9     |          20          |    Scale Up: +18    |
+
