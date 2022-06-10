@@ -109,6 +109,15 @@ forwarders:
     options:
       timeout: '1000'
       metadata: {}
+autoscaling:
+  enabled: true
+  min: 1
+  max: 10
+  policy:
+    type: roomOccupancy
+    parameters:
+      ...
+      // Will vary according to the policy type.
         </pre>
     </div>
 </details>
@@ -192,6 +201,18 @@ forwarders:
             }
         }
     ]
+    "autoscaling": {
+      "enabled": true,
+      "min": 10,
+      "max": 300,
+      "policy": {
+        "type": "roomOccupancy",
+        "parameters": {
+          ...
+          // Will vary according to the policy type.
+        }
+      }
+    }
 }
     </pre>
 </details>
@@ -207,6 +228,7 @@ createdAt: Timestamp
 maxSurge: String | Integer
 portRange: PortRange
 forwarders: Forwarders
+autoscaling: Autoscaling
 spec: Spec
 ```
 
@@ -220,6 +242,7 @@ spec: Spec
 - **portRange**: Range of ports that can be used by Maestro to create GRUs for the specified scheduler. Can be altered by the user anytime. More info [here](#portrange);
 - **forwarders**: Maestro can pass ahead info sent by the game rooms, such as Ping (Ready, Occupied, Terminating...), player and rooms events.
   The receivers can be configured here. More info [here](#forwarders);
+- **autoscaling**: Optional autoscaling policy configuration. More info [here](Autoscaling.md);
 - **spec**: Specifications about the game rooms managed by the scheduler, such as containers and environment variables used by them, limits and images. More info [here](#spec).
 
 
