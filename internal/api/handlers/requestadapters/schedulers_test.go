@@ -174,7 +174,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Enabled:     false,
 							ForwardType: forwarder.ForwardType("another-type"),
 							Address:     "localhost:8888",
-							Options:     &forwarder.ForwardOptions{
+							Options: &forwarder.ForwardOptions{
 								Timeout:  time.Duration(1000),
 								Metadata: map[string]interface{}{},
 							},
