@@ -33,8 +33,11 @@ Currently, the sync interval is configured by environment variable `MAESTRO_WORK
 To get autoscaling working in your scheduler, firstly you need to configure an autoscaling policy and enable it, this autoscaling
 configuration resides in the root of the scheduler structure itself.
 
-Yaml version
-```yaml
+[comment]: <> (YAML version)
+<details>
+    <summary>YAML version</summary>
+    <div class="highlight highlight-source-yaml position-relative overflow-auto">
+        <pre>
 name: String
 game: String
 ...
@@ -47,10 +50,16 @@ autoscaling:
     parameters:
       ...
       // Will vary according to the policy type.
-```
+        </pre>
+    </div>
+</details>
 
-Json version
-```json
+
+[comment]: <> (Json version)
+<details>
+    <summary>YAML version</summary>
+    <div class="highlight highlight-source-yaml position-relative overflow-auto">
+        <pre>
 {
   "name": "test",
   "game": "multiplayer",
@@ -68,7 +77,9 @@ Json version
     }
   }
 }
-```
+        </pre>
+    </div>
+</details>
 
 - **enabled** [boolean]: A value that can be true or false, indicating if the autoscaling feature is enabled/disabled for the given scheduler. Default: false.
 - **min** [integer]: Minimum number of rooms the scheduler should have, it must be greater than zero. For zero value, disable autoscaling and set "roomsReplicas" to 0.
