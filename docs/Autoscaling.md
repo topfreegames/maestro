@@ -71,7 +71,7 @@ Json version
 ```
 
 - **enabled** [boolean]: A value that can be true or false, indicating if the autoscaling feature is enabled/disabled for the given scheduler. Default: false.
-- **min** [integer]: Minimum number of rooms the scheduler should have, it must be greater than zero.
+- **min** [integer]: Minimum number of rooms the scheduler should have, it must be greater than zero. For zero value, disable autoscaling and set "roomsReplicas" to 0.
 - **max** [integer]: Maximum number of rooms the scheduler can have. It must be greater than min, or can be -1 (to have no limit).
 - **policy** [struct] : This field holds information regarding the autoscaling policy that will be used if the autoscaling feature is enabled:
   - **type** [string]:  Define the policy type that will be used, must be one of the [policy types maestro provides](#policy-types).
