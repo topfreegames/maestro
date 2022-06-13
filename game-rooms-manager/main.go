@@ -6,12 +6,19 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type MaestroGameRoomsManager struct {
-	roomsMap map[string]GameRoomPingStatus
-	mutex    *sync.RWMutex
+	roomsMap          map[string]GameRoomPingStatus
+	roomsCreatedAtMap map[string]time.Time
+	autoscalingMode   bool
+	mutex             *sync.RWMutex
 }
+
+const (
+	autoscalingModeRoomTimeout = time.Second*30
+)
 
 // Routes for game rooms
 
@@ -39,6 +46,19 @@ func (mm *MaestroGameRoomsManager) retrieveTargetStatusToRoom(resp http.Response
 	if !ok {
 		Write(resp, http.StatusNotFound, "roomID is not registered")
 		return
+	}
+
+	if mm.autoscalingMode {
+		createdAt, ok := mm.readCreatedAtMap(id)
+		if !ok {
+			fmt.Printf("failed to get createdAt info\n")
+		} else {
+			age := time.Since(createdAt)
+			if age > autoscalingModeRoomTimeout {
+				Write(resp, http.StatusOK, `{"status": "occupied" }`)
+				return
+			}
+		}
 	}
 
 	Write(resp, http.StatusOK, fmt.Sprintf(`{"status": "%s" }`, roomStatus.String()))
@@ -127,6 +147,25 @@ func (mm *MaestroGameRoomsManager) transitStatus(resp http.ResponseWriter, req *
 	Write(resp, http.StatusOK, "rooms status for room updated with success")
 }
 
+func (mm *MaestroGameRoomsManager) setFullAutoscaling(resp http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	stringAutoscalingMode, ok := vars["autoscalingMode"]
+	if !ok {
+		Write(resp, http.StatusBadRequest, "autoscalingMode is missing in parameters")
+		return
+	}
+
+	autoscalingMode, err := strconv.ParseBool(stringAutoscalingMode)
+	if err != nil {
+		Write(resp, http.StatusBadRequest, "autoscalingMode must be any type of boolean")
+		return
+	}
+
+	mm.autoscalingMode = autoscalingMode
+
+	Write(resp, http.StatusOK, fmt.Sprintf("Autoscaling mode updated to %v", autoscalingMode))
+}
+
 func (mm *MaestroGameRoomsManager) readMap(roomId string) (GameRoomPingStatus, bool) {
 	mm.mutex.RLock()
 	defer mm.mutex.RUnlock()
@@ -135,10 +174,19 @@ func (mm *MaestroGameRoomsManager) readMap(roomId string) (GameRoomPingStatus, b
 	return status, ok
 }
 
+func (mm *MaestroGameRoomsManager) readCreatedAtMap(roomId string) (time.Time, bool) {
+	mm.mutex.RLock()
+	defer mm.mutex.RUnlock()
+	createdAt, ok := mm.roomsCreatedAtMap[roomId]
+
+	return createdAt, ok
+}
+
 func (mm *MaestroGameRoomsManager) writeMap(roomId string, status GameRoomPingStatus) {
 	mm.mutex.Lock()
 	defer mm.mutex.Unlock()
 	mm.roomsMap[roomId] = status
+	mm.roomsCreatedAtMap[roomId] = time.Now()
 }
 
 func main() {
@@ -159,6 +207,7 @@ func main() {
 	// Routes for management
 	router.HandleFunc("/setStatus/{roomID}/{status}", manager.setRoomStatus).Methods("POST")
 	router.HandleFunc("/transitStatus", manager.transitStatus).Methods("POST").Queries("previousStatus", "", "newStatus", "", "numberOfRooms", "")
+	router.HandleFunc("/autoscalingMode", manager.setFullAutoscaling).Methods("POST").Queries("autoscalingMode", "")
 
 	http.ListenAndServe(":8080", router)
 }
