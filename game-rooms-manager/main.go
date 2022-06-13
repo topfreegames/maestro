@@ -31,6 +31,7 @@ func (mm *MaestroGameRoomsManager) registerRoomWithInitialStatus(resp http.Respo
 	}
 
 	mm.writeMap(id, GameRoomPingStatusReady)
+	mm.writeCreatedAtMap(id)
 
 	Write(resp, http.StatusOK, "room registered with success")
 }
@@ -186,6 +187,11 @@ func (mm *MaestroGameRoomsManager) writeMap(roomId string, status GameRoomPingSt
 	mm.mutex.Lock()
 	defer mm.mutex.Unlock()
 	mm.roomsMap[roomId] = status
+}
+
+func (mm *MaestroGameRoomsManager) writeCreatedAtMap(roomId string) {
+	mm.mutex.Lock()
+	defer mm.mutex.Unlock()
 	mm.roomsCreatedAtMap[roomId] = time.Now()
 }
 
