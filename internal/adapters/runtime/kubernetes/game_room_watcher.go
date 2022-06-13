@@ -61,6 +61,7 @@ type kubernetesWatcher struct {
 	logger           *zap.Logger
 	queue            workqueue.RateLimitingInterface
 	store            cache.Store
+	schedulerName    string
 }
 
 type QueueItem struct {
@@ -68,7 +69,7 @@ type QueueItem struct {
 	eventType game_room.InstanceEventType
 }
 
-func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubernetesWatcher {
+func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface, schedulerName string) *kubernetesWatcher {
 	return &kubernetesWatcher{
 		clientSet:        clientSet,
 		ctx:              ctx,
@@ -81,6 +82,7 @@ func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface) *kubern
 			item := obj.(*QueueItem)
 			return cache.MetaNamespaceKeyFunc(item.obj)
 		}),
+		schedulerName: schedulerName,
 	}
 }
 
@@ -148,7 +150,7 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		instance, err = kw.convertInstance(pod)
 		if err != nil {
 			kw.logger.Error("Error converting pod to game room instance", zap.String(logs.LogFieldInstanceID, pod.ObjectMeta.Name), zap.Error(err))
-			kw.stopWithError(err)
+			reportInstanceConversionFailed(kw.schedulerName)
 			return
 		}
 		// Caching before ready consists in lack of information about the instance.
@@ -225,7 +227,7 @@ func (kw *kubernetesWatcher) deleteFunc(obj interface{}) {
 }
 
 func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
-	watcher := NewKubernetesWatcher(ctx, k.clientSet)
+	watcher := NewKubernetesWatcher(ctx, k.clientSet, scheduler.Name)
 
 	podsInformer := informers.NewSharedInformerFactoryWithOptions(
 		k.clientSet,

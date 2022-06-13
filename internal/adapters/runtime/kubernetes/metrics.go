@@ -20,24 +20,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package monitoring
+package kubernetes
 
-const (
-	Namespace        = "maestro"
-	SubsystemApi     = "api"
-	SubsystemWorker  = "worker"
-	SubsystemWatcher = "watcher"
+import "github.com/topfreegames/maestro/internal/core/monitoring"
+
+var (
+	watcherInstanceConversionFailCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWatcher,
+		Name:      "failed_instance_conversion",
+		Help:      "Amount of instances conversions failed",
+		Labels: []string{
+			monitoring.LabelScheduler,
+		},
+	})
 )
 
-const (
-	LabelService   = "service"
-	LabelMethod    = "method"
-	LabelCode      = "code"
-	LabelPlatform  = "platform"
-	LabelSuccess   = "success"
-	LabelReason    = "reason"
-	LabelScheduler = "scheduler"
-	LabelGame      = "game"
-	LabelOperation = "operation"
-	LabelStorage   = "storage"
-)
+func reportInstanceConversionFailed(schedulerName string) {
+	watcherInstanceConversionFailCounterMetric.WithLabelValues(schedulerName).Inc()
+}
