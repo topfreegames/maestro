@@ -8,7 +8,7 @@ Deploying to Kubernetes
 
 ```bash
 > kubectl -n {scheduler-namespace} create -f deployment.yaml
-> kubectl expose deployment game-rooms-manager --type=ClusterIP --port=8080 --target-port=8080
+> kubectl -n {scheduler-namespace} expose deployment game-rooms-manager --type=ClusterIP --port=8080 --target-port=8080
 ```
 
 Use the following command in your game room so you can manage it remotely:
