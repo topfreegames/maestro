@@ -23,9 +23,10 @@
 package monitoring
 
 const (
-	Namespace       = "maestro"
-	SubsystemApi    = "api"
-	SubsystemWorker = "worker"
+	Namespace        = "maestro"
+	SubsystemApi     = "api"
+	SubsystemWorker  = "worker"
+	SubsystemWatcher = "watcher"
 )
 
 const (
