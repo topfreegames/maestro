@@ -17,7 +17,7 @@ type MaestroGameRoomsManager struct {
 }
 
 const (
-	autoscalingModeRoomTimeout = time.Second*30
+	autoscalingModeRoomTimeout = time.Second * 30
 )
 
 // Routes for game rooms
@@ -149,13 +149,7 @@ func (mm *MaestroGameRoomsManager) transitStatus(resp http.ResponseWriter, req *
 }
 
 func (mm *MaestroGameRoomsManager) setFullAutoscaling(resp http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	stringAutoscalingMode, ok := vars["autoscalingMode"]
-	if !ok {
-		Write(resp, http.StatusBadRequest, "autoscalingMode is missing in parameters")
-		return
-	}
-
+	stringAutoscalingMode := req.FormValue("autoscalingMode")
 	autoscalingMode, err := strconv.ParseBool(stringAutoscalingMode)
 	if err != nil {
 		Write(resp, http.StatusBadRequest, "autoscalingMode must be any type of boolean")
