@@ -6,8 +6,8 @@ var (
 	watcherInstanceConversionFailCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
-		Name:      "workers_sync",
-		Help:      "Times of the workers sync processes",
+		Name:      "failed_instance_conversion",
+		Help:      "Amount of instances conversions failed",
 		Labels: []string{
 			monitoring.LabelScheduler,
 		},
