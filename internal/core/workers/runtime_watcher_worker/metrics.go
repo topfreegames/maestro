@@ -20,25 +20,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package monitoring
+package runtime_watcher_worker
 
-const (
-	Namespace        = "maestro"
-	SubsystemApi     = "api"
-	SubsystemWorker  = "worker"
-	SubsystemWatcher = "watcher"
+import (
+	"fmt"
+
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-const (
-	LabelService           = "service"
-	LabelMethod            = "method"
-	LabelCode              = "code"
-	LabelPlatform          = "platform"
-	LabelSuccess           = "success"
-	LabelReason            = "reason"
-	LabelScheduler         = "scheduler"
-	LabelInstanceEventType = "instanceEventType"
-	LabelGame              = "game"
-	LabelOperation         = "operation"
-	LabelStorage           = "storage"
+var (
+	watcherEventProcessingCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWatcher,
+		Name:      "number_of_events_processed",
+		Help:      "Amount of instance events processed",
+		Labels: []string{
+			monitoring.LabelScheduler,
+			monitoring.LabelInstanceEventType,
+			monitoring.LabelSuccess,
+		},
+	})
 )
+
+func reportEventProcessingStatus(event game_room.InstanceEvent, success bool) {
+	watcherEventProcessingCounterMetric.WithLabelValues(
+		event.Instance.SchedulerID,
+		event.Type.String(),
+		fmt.Sprint(success),
+	).Inc()
+}
