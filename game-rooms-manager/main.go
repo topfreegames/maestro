@@ -45,8 +45,9 @@ func (mm *MaestroGameRoomsManager) retrieveTargetStatusToRoom(resp http.Response
 	}
 	roomStatus, ok := mm.readMap(id)
 	if !ok {
-		Write(resp, http.StatusNotFound, "roomID is not registered")
-		return
+		fmt.Printf("roomID %v is not registered", id)
+		mm.writeMap(id, GameRoomPingStatusReady)
+		mm.writeCreatedAtMap(id)
 	}
 
 	if mm.autoscalingMode {
