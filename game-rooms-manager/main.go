@@ -17,7 +17,7 @@ type MaestroGameRoomsManager struct {
 }
 
 const (
-	autoscalingModeRoomTimeout = time.Second*30
+	autoscalingModeRoomTimeout = time.Second * 30
 )
 
 // Routes for game rooms
@@ -199,8 +199,9 @@ func main() {
 	fmt.Printf("Starting Maestro's Game Rooms Manager\n")
 
 	manager := MaestroGameRoomsManager{
-		roomsMap: make(map[string]GameRoomPingStatus),
-		mutex:    &sync.RWMutex{},
+		roomsMap:          make(map[string]GameRoomPingStatus),
+		roomsCreatedAtMap: make(map[string]time.Time),
+		mutex:             &sync.RWMutex{},
 	}
 
 	router := mux.NewRouter()
