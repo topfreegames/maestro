@@ -30,6 +30,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -168,7 +169,13 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 
 roomsListLoop:
 	for {
-		rooms, err := ex.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, ex.roomsBeingReplaced)
+		var err error
+		var rooms []*game_room.GameRoom
+		err = retry.Do(func() error {
+			rooms, err = ex.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, ex.roomsBeingReplaced)
+			return err
+		})
+
 		if err != nil {
 			return fmt.Errorf("failed to list rooms for deletion")
 		}

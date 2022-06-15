@@ -294,7 +294,7 @@ func (r *redisStateStorage) UpdateRoomStatus(ctx context.Context, scheduler, roo
 	}
 
 	if statusCmd.Val() < 1 {
-		return errors.NewErrNotFound("room %s not found in scheduler %s", roomId, scheduler)
+		return errors.NewErrNotFound("room %s not found in scheduler %s room storage", roomId, scheduler)
 	}
 
 	encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{RoomID: roomId, SchedulerName: scheduler, Status: status})
