@@ -179,7 +179,14 @@ roomsListLoop:
 		if err != nil {
 			return fmt.Errorf("failed to list rooms for deletion")
 		}
-		for _, room := range rooms {
+		for i, room := range rooms {
+			roomNumber := i + 1
+			currentPercentageRate := 100 * roomNumber / len(rooms)
+			if currentPercentageRate%10 == 0 {
+				// TODO: Append to execution history
+				msg := fmt.Sprintf("Conclusion: %v. Amount of rooms replaced: %v", currentPercentageRate, roomNumber)
+				fmt.Println(msg)
+			}
 			ex.roomsBeingReplaced.Store(room.ID, true)
 			select {
 			case roomsChan <- room:
