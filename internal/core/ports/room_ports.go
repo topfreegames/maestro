@@ -35,10 +35,9 @@ import (
 
 // RoomManager is an interface for working with rooms in a high level way
 type RoomManager interface {
-	// DeleteRoomAndWaitForRoomTerminating receives a room to be deleted, and only finish execution when the
-	// room reach terminating status. If the room cannot be terminated by any means, it will return an error
-	// specifying why
-	DeleteRoomAndWaitForRoomTerminating(ctx context.Context, gameRoom *game_room.GameRoom) error
+	// DeleteRoom receives a room to be deleted, and updates the status of the game room to terminating
+	// If the room cannot be terminated by any means, it will return an error specifying why
+	DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
 	// SchedulerMaxSurge calculates the current scheduler max surge based on
 	// the number of rooms the scheduler has.
 	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
@@ -58,7 +57,7 @@ type RoomManager interface {
 	// enough rooms on the scheduler.
 	ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error)
 	// CleanRoomState cleans the remaining state of a room. This function is
-	// intended to be used after a `DeleteRoomAndWaitForRoomTerminating`, where the room instance is
+	// intended to be used after a `DeleteRoom`, where the room instance is
 	// signaled to terminate.
 	//
 	// It wouldn't return an error if the room was already cleaned.

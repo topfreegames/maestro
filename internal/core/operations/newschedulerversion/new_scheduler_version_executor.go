@@ -120,7 +120,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *o
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	if gameRoom, ok := ex.validationRoomIdsMap[op.SchedulerName]; ok {
-		err := ex.roomManager.DeleteRoomAndWaitForRoomTerminating(ctx, gameRoom)
+		err := ex.roomManager.DeleteRoom(ctx, gameRoom)
 		if err != nil {
 			logger.Error("error deleting new game room created for validation", zap.Error(err))
 			return fmt.Errorf("error in Rollback function execution: %w", err)
@@ -141,7 +141,7 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 		return err
 	}
 	ex.AddValidationRoomId(scheduler.Name, gameRoom)
-	err = ex.roomManager.DeleteRoomAndWaitForRoomTerminating(ctx, gameRoom)
+	err = ex.roomManager.DeleteRoom(ctx, gameRoom)
 	if err != nil {
 		logger.Error("error deleting new game room created for validation", zap.Error(err))
 	}
