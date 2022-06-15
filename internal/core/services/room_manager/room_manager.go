@@ -92,7 +92,7 @@ func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, schedul
 	if err != nil {
 		deleteCtx, deleteCancelFunc := context.WithTimeout(context.Background(), m.Config.RoomDeletionTimeout)
 		defer deleteCancelFunc()
-		deleteErr := m.DeleteRoomAndWaitForRoomTerminating(deleteCtx, room)
+		deleteErr := m.DeleteRoom(deleteCtx, room)
 		if deleteErr != nil {
 			m.Logger.Error("error deleting room that wasn't created with success", zap.Error(deleteErr))
 		}
@@ -134,7 +134,7 @@ func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*g
 	return spec, nil
 }
 
-func (m *RoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, gameRoom *game_room.GameRoom) error {
+func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
 		if errors.Is(err, porterrors.ErrNotFound) {
@@ -154,13 +154,11 @@ func (m *RoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, g
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
 	}
 
-	duration := m.Config.RoomDeletionTimeout
-	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
-	defer cancelFunc()
-	err = m.WaitRoomStatus(timeoutContext, gameRoom, game_room.GameStatusTerminating)
+	err = m.RoomStorage.UpdateRoomStatus(ctx, gameRoom.SchedulerID, gameRoom.ID, game_room.GameStatusTerminating)
 	if err != nil {
 		return err
 	}
+
 	m.forwardStatusTerminatingEvent(ctx, gameRoom)
 
 	return nil

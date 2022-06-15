@@ -85,18 +85,18 @@ func (mr *MockRoomManagerMockRecorder) CreateRoomAndWaitForReadiness(ctx, schedu
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRoomAndWaitForReadiness", reflect.TypeOf((*MockRoomManager)(nil).CreateRoomAndWaitForReadiness), ctx, scheduler, isValidationRoom)
 }
 
-// DeleteRoomAndWaitForRoomTerminating mocks base method.
-func (m *MockRoomManager) DeleteRoomAndWaitForRoomTerminating(ctx context.Context, gameRoom *game_room.GameRoom) error {
+// DeleteRoom mocks base method.
+func (m *MockRoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRoomAndWaitForRoomTerminating", ctx, gameRoom)
+	ret := m.ctrl.Call(m, "DeleteRoom", ctx, gameRoom)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteRoomAndWaitForRoomTerminating indicates an expected call of DeleteRoomAndWaitForRoomTerminating.
-func (mr *MockRoomManagerMockRecorder) DeleteRoomAndWaitForRoomTerminating(ctx, gameRoom interface{}) *gomock.Call {
+// DeleteRoom indicates an expected call of DeleteRoom.
+func (mr *MockRoomManagerMockRecorder) DeleteRoom(ctx, gameRoom interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoomAndWaitForRoomTerminating", reflect.TypeOf((*MockRoomManager)(nil).DeleteRoomAndWaitForRoomTerminating), ctx, gameRoom)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoom", reflect.TypeOf((*MockRoomManager)(nil).DeleteRoom), ctx, gameRoom)
 }
 
 // GetRoomInstance mocks base method.
