@@ -43,6 +43,7 @@ type SwitchActiveVersionExecutor struct {
 	roomManager         ports.RoomManager
 	schedulerManager    ports.SchedulerManager
 	operationManager    ports.OperationManager
+	roomStorage         ports.RoomStorage
 	roomsBeingReplaced  *sync.Map
 	newCreatedRooms     map[string][]*game_room.GameRoom
 	newCreatedRoomsLock sync.Mutex
@@ -50,7 +51,7 @@ type SwitchActiveVersionExecutor struct {
 
 var _ operations.Executor = (*SwitchActiveVersionExecutor)(nil)
 
-func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager) *SwitchActiveVersionExecutor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SwitchActiveVersionExecutor {
 	// TODO(caio.rodrigues): change map to store a list of ids (less memory used)
 	newCreatedRoomsMap := make(map[string][]*game_room.GameRoom)
 
@@ -58,6 +59,7 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 		roomManager:         roomManager,
 		schedulerManager:    schedulerManager,
 		operationManager:    operationManager,
+		roomStorage:         roomStorage,
 		roomsBeingReplaced:  &sync.Map{},
 		newCreatedRooms:     newCreatedRoomsMap,
 		newCreatedRoomsLock: sync.Mutex{},
@@ -163,6 +165,16 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 	roomsChan := make(chan *game_room.GameRoom)
 	errs, ctx := errgroup.WithContext(ctx)
 
+	var totalRoomsAmount int
+	var err error
+	err = retry.Do(func() error {
+		totalRoomsAmount, err = ex.roomStorage.GetRoomCount(ctx, op.SchedulerName)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
 	for i := 0; i < maxSurgeNum; i++ {
 		errs.Go(func() error {
 			return ex.replaceRoom(logger, roomsChan, ex.roomManager, scheduler)
@@ -171,7 +183,6 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 
 roomsListLoop:
 	for {
-		var err error
 		var rooms []*game_room.GameRoom
 		err = retry.Do(func() error {
 			rooms, err = ex.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, ex.roomsBeingReplaced)
@@ -181,17 +192,17 @@ roomsListLoop:
 		if err != nil {
 			return fmt.Errorf("failed to list rooms for deletion")
 		}
-		for i, room := range rooms {
+		for _, room := range rooms {
 			ex.roomsBeingReplaced.Store(room.ID, true)
 
 			select {
 			case roomsChan <- room:
-				roomNumber := i + 1
-				ex.reportOperationProgress(ctx, logger, roomNumber, len(rooms), op)
 			case <-ctx.Done():
 				break roomsListLoop
 			}
 		}
+
+		ex.reportOperationProgress(ctx, logger, totalRoomsAmount, op)
 
 		if len(rooms) == 0 {
 			break
@@ -205,6 +216,7 @@ roomsListLoop:
 	if err := errs.Wait(); err != nil {
 		return err
 	}
+	ex.reportOperationProgress(ctx, logger, totalRoomsAmount, op)
 	logger.Info("replacing rooms loop - finish")
 	return nil
 }
@@ -262,11 +274,23 @@ func (ex *SwitchActiveVersionExecutor) shouldReplacePods(ctx context.Context, ne
 	return actualActiveScheduler.IsMajorVersion(newScheduler), nil
 }
 
-func (ex *SwitchActiveVersionExecutor) reportOperationProgress(ctx context.Context, logger *zap.Logger, roomNumber, totalAmount int, op *operation.Operation) {
-	currentPercentageRate := 100 * roomNumber / totalAmount
-	msg := fmt.Sprintf("Conclusion: %v%%. Amount of rooms replaced: %v", currentPercentageRate, roomNumber)
-	logger.Debug(msg)
-	if currentPercentageRate%10 == 0 && currentPercentageRate > 0 {
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
+func (ex *SwitchActiveVersionExecutor) reportOperationProgress(ctx context.Context, logger *zap.Logger, totalAmount int, op *operation.Operation) {
+	if totalAmount == 0 {
+		return
 	}
+
+	amountReplaced := ex.amountReplaced()
+	currentPercentageRate := 100 * amountReplaced / totalAmount
+
+	msg := fmt.Sprintf("Conclusion: %v%%. Amount of rooms replaced: %v", currentPercentageRate, amountReplaced)
+	logger.Debug(msg)
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
+}
+
+func (ex *SwitchActiveVersionExecutor) amountReplaced() int {
+	var amountReplaced int
+	for _, t := range ex.newCreatedRooms {
+		amountReplaced += len(t)
+	}
+	return amountReplaced
 }
