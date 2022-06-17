@@ -30,6 +30,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -41,6 +42,8 @@ import (
 type SwitchActiveVersionExecutor struct {
 	roomManager         ports.RoomManager
 	schedulerManager    ports.SchedulerManager
+	operationManager    ports.OperationManager
+	roomStorage         ports.RoomStorage
 	roomsBeingReplaced  *sync.Map
 	newCreatedRooms     map[string][]*game_room.GameRoom
 	newCreatedRoomsLock sync.Mutex
@@ -48,13 +51,15 @@ type SwitchActiveVersionExecutor struct {
 
 var _ operations.Executor = (*SwitchActiveVersionExecutor)(nil)
 
-func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager) *SwitchActiveVersionExecutor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SwitchActiveVersionExecutor {
 	// TODO(caio.rodrigues): change map to store a list of ids (less memory used)
 	newCreatedRoomsMap := make(map[string][]*game_room.GameRoom)
 
 	return &SwitchActiveVersionExecutor{
 		roomManager:         roomManager,
 		schedulerManager:    schedulerManager,
+		operationManager:    operationManager,
+		roomStorage:         roomStorage,
 		roomsBeingReplaced:  &sync.Map{},
 		newCreatedRooms:     newCreatedRoomsMap,
 		newCreatedRoomsLock: sync.Mutex{},
@@ -100,7 +105,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 			return operations.NewErrUnexpected(fmt.Errorf("error fetching scheduler max surge: %w", err))
 		}
 
-		err = ex.startReplaceRoomsLoop(ctx, logger, maxSurgeNum, *scheduler)
+		err = ex.startReplaceRoomsLoop(ctx, logger, maxSurgeNum, *scheduler, op)
 		if err != nil {
 			logger.Sugar().Errorf("replace rooms failed for scheduler \"%v\" with error \"%v\"", scheduler.Name, zap.Error(err))
 			return operations.NewErrUnexpected(err)
@@ -155,10 +160,20 @@ func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context, logger *zap.Logger, maxSurgeNum int, scheduler entities.Scheduler) error {
+func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context, logger *zap.Logger, maxSurgeNum int, scheduler entities.Scheduler, op *operation.Operation) error {
 	logger.Info("replacing rooms loop - start")
 	roomsChan := make(chan *game_room.GameRoom)
 	errs, ctx := errgroup.WithContext(ctx)
+
+	var totalRoomsAmount int
+	var err error
+	err = retry.Do(func() error {
+		totalRoomsAmount, err = ex.roomStorage.GetRoomCount(ctx, op.SchedulerName)
+		return err
+	}, retry.Attempts(10))
+	if err != nil {
+		return err
+	}
 
 	for i := 0; i < maxSurgeNum; i++ {
 		errs.Go(func() error {
@@ -168,18 +183,26 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 
 roomsListLoop:
 	for {
-		rooms, err := ex.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, ex.roomsBeingReplaced)
+		var rooms []*game_room.GameRoom
+		err = retry.Do(func() error {
+			rooms, err = ex.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, ex.roomsBeingReplaced)
+			return err
+		}, retry.Attempts(10))
+
 		if err != nil {
 			return fmt.Errorf("failed to list rooms for deletion")
 		}
 		for _, room := range rooms {
 			ex.roomsBeingReplaced.Store(room.ID, true)
+
 			select {
 			case roomsChan <- room:
 			case <-ctx.Done():
 				break roomsListLoop
 			}
 		}
+
+		ex.reportOperationProgress(ctx, logger, totalRoomsAmount, op)
 
 		if len(rooms) == 0 {
 			break
@@ -193,6 +216,7 @@ roomsListLoop:
 	if err := errs.Wait(); err != nil {
 		return err
 	}
+	ex.reportOperationProgress(ctx, logger, totalRoomsAmount, op)
 	logger.Info("replacing rooms loop - finish")
 	return nil
 }
@@ -248,4 +272,22 @@ func (ex *SwitchActiveVersionExecutor) shouldReplacePods(ctx context.Context, ne
 		return false, err
 	}
 	return actualActiveScheduler.IsMajorVersion(newScheduler), nil
+}
+
+func (ex *SwitchActiveVersionExecutor) reportOperationProgress(ctx context.Context, logger *zap.Logger, totalAmount int, op *operation.Operation) {
+	if totalAmount == 0 {
+		return
+	}
+
+	amountReplaced := ex.amountReplaced(op.SchedulerName)
+	currentPercentageRate := 100 * amountReplaced / totalAmount
+
+	msg := fmt.Sprintf("Conclusion: %v%%. Amount of rooms replaced: %v", currentPercentageRate, amountReplaced)
+	logger.Debug(msg)
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
+}
+
+func (ex *SwitchActiveVersionExecutor) amountReplaced(schedulerName string) int {
+	amountReplaced := len(ex.newCreatedRooms[schedulerName])
+	return amountReplaced
 }

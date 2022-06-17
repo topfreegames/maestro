@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/semver/v3 v3.1.1
+	github.com/avast/retry-go/v4 v4.1.0
 	github.com/bufbuild/buf v0.47.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-pg/pg v6.13.2+incompatible
@@ -34,7 +35,7 @@ require (
 	github.com/topfreegames/protos v1.8.0
 	go.uber.org/zap v1.18.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/tools v0.1.5
+	golang.org/x/tools v0.1.7
 	google.golang.org/genproto v0.0.0-20210728212813-7823e685a01f
 	google.golang.org/grpc v1.40.0-dev.0.20210708170655-30dfb4b933a5
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
@@ -246,7 +247,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985 // indirect
+	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d // indirect
 	golang.org/x/oauth2 v0.0.0-20210615190721-d04028783cf1 // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect

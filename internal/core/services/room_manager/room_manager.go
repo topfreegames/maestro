@@ -155,7 +155,7 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 	}
 
 	err = m.RoomStorage.UpdateRoomStatus(ctx, gameRoom.SchedulerID, gameRoom.ID, game_room.GameStatusTerminating)
-	if err != nil {
+	if err != nil && !errors.Is(err, porterrors.ErrNotFound) {
 		return err
 	}
 
