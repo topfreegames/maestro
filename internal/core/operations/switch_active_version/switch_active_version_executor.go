@@ -279,7 +279,7 @@ func (ex *SwitchActiveVersionExecutor) reportOperationProgress(ctx context.Conte
 		return
 	}
 
-	amountReplaced := ex.amountReplaced()
+	amountReplaced := ex.amountReplaced(op.SchedulerName)
 	currentPercentageRate := 100 * amountReplaced / totalAmount
 
 	msg := fmt.Sprintf("Conclusion: %v%%. Amount of rooms replaced: %v", currentPercentageRate, amountReplaced)
@@ -287,10 +287,7 @@ func (ex *SwitchActiveVersionExecutor) reportOperationProgress(ctx context.Conte
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
 }
 
-func (ex *SwitchActiveVersionExecutor) amountReplaced() int {
-	var amountReplaced int
-	for _, t := range ex.newCreatedRooms {
-		amountReplaced += len(t)
-	}
+func (ex *SwitchActiveVersionExecutor) amountReplaced(schedulerName string) int {
+	amountReplaced := len(ex.newCreatedRooms[schedulerName])
 	return amountReplaced
 }
