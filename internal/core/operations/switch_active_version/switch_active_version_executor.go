@@ -25,9 +25,10 @@ package switch_active_version
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"sync"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/topfreegames/maestro/internal/core/entities"
