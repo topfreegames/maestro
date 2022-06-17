@@ -24,8 +24,11 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
+
+	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -61,6 +64,7 @@ type kubernetesWatcher struct {
 	logger           *zap.Logger
 	queue            workqueue.RateLimitingInterface
 	schedulerName    string
+	nodesCache       *gocache.Cache
 }
 
 type QueueItem struct {
@@ -78,6 +82,7 @@ func NewKubernetesWatcher(ctx context.Context, clientSet kube.Interface, schedul
 		logger:           zap.L(),
 		queue:            workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		schedulerName:    schedulerName,
+		nodesCache:       gocache.New(24*time.Hour, 25*time.Hour),
 	}
 }
 
@@ -115,16 +120,26 @@ func (kw *kubernetesWatcher) stopWithError(err error) {
 }
 
 func (kw *kubernetesWatcher) convertInstance(pod *v1.Pod) (*game_room.Instance, error) {
-	if pod.Spec.NodeName == "" {
-		return convertPod(pod, nil)
+	nodeName := pod.Spec.NodeName
+	if nodeName == "" {
+		return convertPod(pod, "")
 	}
 
-	node, err := kw.clientSet.CoreV1().Nodes().Get(kw.ctx, pod.Spec.NodeName, metav1.GetOptions{})
+	if cachedNodeAddress, found := kw.nodesCache.Get(nodeName); found {
+		return convertPod(pod, fmt.Sprintf("%v", cachedNodeAddress))
+	}
+
+	node, err := kw.clientSet.CoreV1().Nodes().Get(kw.ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	nodeAddress, err := convertNodeAddress(node)
 	if err != nil {
 		return nil, err
 	}
 
-	return convertPod(pod, node)
+	kw.nodesCache.Set(nodeName, nodeAddress, gocache.DefaultExpiration)
+	return convertPod(pod, nodeAddress)
 }
 
 func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType, obj interface{}) {
@@ -224,6 +239,9 @@ func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *enti
 		k.clientSet,
 		defaultResyncTime,
 		informers.WithNamespace(scheduler.Name),
+		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+			options.LabelSelector = fmt.Sprintf("%s=%s", maestroLabelKey, maestroLabelValue)
+		}),
 	).Core().V1().Pods().Informer()
 
 	podsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
