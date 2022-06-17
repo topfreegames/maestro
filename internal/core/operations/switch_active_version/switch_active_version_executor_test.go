@@ -245,6 +245,8 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 			})
 		}
 
+		mocks.operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).MaxTimes(1)
+
 		mocks.roomStorage.EXPECT().GetRoomCount(gomock.Any(), newMajorScheduler.Name).Return(len(gameRoomListCycle1), nil)
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoomListCycle1, nil)
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*game_room.GameRoom{}, nil).MaxTimes(1)

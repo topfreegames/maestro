@@ -25,10 +25,9 @@ package switch_active_version
 import (
 	"context"
 	"fmt"
-	"sync"
-
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"sync"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -170,7 +169,7 @@ func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context
 	err = retry.Do(func() error {
 		totalRoomsAmount, err = ex.roomStorage.GetRoomCount(ctx, op.SchedulerName)
 		return err
-	})
+	}, retry.Attempts(10))
 	if err != nil {
 		return err
 	}
@@ -187,7 +186,7 @@ roomsListLoop:
 		err = retry.Do(func() error {
 			rooms, err = ex.roomManager.ListRoomsWithDeletionPriority(ctx, scheduler.Name, scheduler.Spec.Version, maxSurgeNum, ex.roomsBeingReplaced)
 			return err
-		})
+		}, retry.Attempts(10))
 
 		if err != nil {
 			return fmt.Errorf("failed to list rooms for deletion")
