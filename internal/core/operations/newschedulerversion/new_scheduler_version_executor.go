@@ -105,6 +105,8 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		if operationError != nil {
 			return operationError
 		}
+
+		return operations.NewErrUnexpected(err)
 	}
 
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
