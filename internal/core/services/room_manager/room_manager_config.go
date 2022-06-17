@@ -25,7 +25,6 @@ package room_manager
 import "time"
 
 type RoomManagerConfig struct {
-	RoomPingTimeout           time.Duration
-	RoomInitializationTimeout time.Duration
-	RoomDeletionTimeout       time.Duration
+	RoomPingTimeout     time.Duration
+	RoomDeletionTimeout time.Duration
 }

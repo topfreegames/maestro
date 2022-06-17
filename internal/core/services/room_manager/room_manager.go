@@ -76,32 +76,6 @@ func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports
 	}
 }
 
-func (m *RoomManager) CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
-	room, instance, err := m.createRoomOnStorageAndRuntime(ctx, scheduler, isValidationRoom)
-	if err != nil {
-		return nil, nil, err
-	}
-	// TODO: let each scheduler parametrize its timeout and use this config as fallback if the scheduler timeout value
-	// is absent.
-	duration := m.Config.RoomInitializationTimeout
-	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
-	defer cancelFunc()
-
-	err = m.WaitRoomStatus(timeoutContext, room, game_room.GameStatusReady)
-
-	if err != nil {
-		deleteCtx, deleteCancelFunc := context.WithTimeout(context.Background(), m.Config.RoomDeletionTimeout)
-		defer deleteCancelFunc()
-		deleteErr := m.DeleteRoom(deleteCtx, room)
-		if deleteErr != nil {
-			m.Logger.Error("error deleting room that wasn't created with success", zap.Error(deleteErr))
-		}
-		return nil, nil, err
-	}
-
-	return room, instance, err
-}
-
 func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
 	return m.createRoomOnStorageAndRuntime(ctx, scheduler, isValidationRoom)
 }

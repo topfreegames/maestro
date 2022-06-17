@@ -78,6 +78,8 @@ func ProvideExecutors(
 	operationManager ports.OperationManager,
 	roomManagerConfig room_manager.RoomManagerConfig,
 	autoscaler autoscaler.Autoscaler,
+	newSchedulerVersionConfig newschedulerversion.Config,
+	healthControllerConfig healthcontroller.Config,
 ) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
@@ -86,8 +88,8 @@ func ProvideExecutors(
 	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager, roomStorage)
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)
-	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager, operationManager)
-	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, roomManagerConfig, autoscaler)
+	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager, operationManager, newSchedulerVersionConfig)
+	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, roomManagerConfig, autoscaler, healthControllerConfig)
 
 	return executors
 

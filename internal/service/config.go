@@ -25,6 +25,8 @@ package service
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
 	"github.com/topfreegames/maestro/internal/core/workers"
 
@@ -35,16 +37,38 @@ import (
 
 const healthControllerExecutionIntervalConfigPath = "workers.operationExecution.healthControllerInterval"
 
+// NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
+func NewCreateSchedulerVersionConfig(c config.Config) newschedulerversion.Config {
+	initializationTimeout := time.Duration(c.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
+
+	createSchedulerVersionConfig := newschedulerversion.Config{
+		RoomInitializationTimeout: initializationTimeout,
+	}
+
+	return createSchedulerVersionConfig
+}
+
+// NewHealthControllerConfig instantiate a new HealthControllerConfig to be used by the HealthController to customize its configuration.
+func NewHealthControllerConfig(c config.Config) healthcontroller.Config {
+	initializationTimeout := time.Duration(c.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
+	pingTimeout := time.Duration(c.GetInt("services.roomManager.roomPingTimeoutMillis")) * time.Millisecond
+
+	config := healthcontroller.Config{
+		RoomInitializationTimeout: initializationTimeout,
+		RoomPingTimeout:           pingTimeout,
+	}
+
+	return config
+}
+
 // NewRoomManagerConfig instantiate a new RoomManagerConfig to be used by the RoomManager to customize its configuration.
 func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, error) {
 	pingTimeout := time.Duration(c.GetInt("services.roomManager.roomPingTimeoutMillis")) * time.Millisecond
-	initializationTimeout := time.Duration(c.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
 	deletionTimeout := time.Duration(c.GetInt("services.roomManager.roomDeletionTimeoutMillis")) * time.Millisecond
 
 	roomManagerConfig := room_manager.RoomManagerConfig{
-		RoomPingTimeout:           pingTimeout,
-		RoomInitializationTimeout: initializationTimeout,
-		RoomDeletionTimeout:       deletionTimeout,
+		RoomPingTimeout:     pingTimeout,
+		RoomDeletionTimeout: deletionTimeout,
 	}
 
 	return roomManagerConfig, nil

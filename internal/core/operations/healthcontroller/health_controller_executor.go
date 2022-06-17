@@ -44,27 +44,33 @@ import (
 	"go.uber.org/zap"
 )
 
+// Config have the configs to execute healthcontroller.
+type Config struct {
+	RoomInitializationTimeout time.Duration
+	RoomPingTimeout           time.Duration
+}
+
 // SchedulerHealthControllerExecutor holds dependencies to execute SchedulerHealthControllerExecutor.
 type SchedulerHealthControllerExecutor struct {
-	autoscaler        autoscaler.Autoscaler
-	roomStorage       ports.RoomStorage
-	instanceStorage   ports.GameRoomInstanceStorage
-	schedulerStorage  ports.SchedulerStorage
-	operationManager  ports.OperationManager
-	roomManagerConfig room_manager.RoomManagerConfig
+	autoscaler       autoscaler.Autoscaler
+	roomStorage      ports.RoomStorage
+	instanceStorage  ports.GameRoomInstanceStorage
+	schedulerStorage ports.SchedulerStorage
+	operationManager ports.OperationManager
+	config           Config
 }
 
 var _ operations.Executor = (*SchedulerHealthControllerExecutor)(nil)
 
 // NewExecutor creates a new instance of SchedulerHealthControllerExecutor.
-func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomManagerConfig room_manager.RoomManagerConfig, autoscaler autoscaler.Autoscaler) *SchedulerHealthControllerExecutor {
+func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomManagerConfig room_manager.RoomManagerConfig, autoscaler autoscaler.Autoscaler, config Config) *SchedulerHealthControllerExecutor {
 	return &SchedulerHealthControllerExecutor{
-		autoscaler:        autoscaler,
-		roomStorage:       roomStorage,
-		instanceStorage:   instanceStorage,
-		schedulerStorage:  schedulerStorage,
-		operationManager:  operationManager,
-		roomManagerConfig: roomManagerConfig,
+		autoscaler:       autoscaler,
+		roomStorage:      roomStorage,
+		instanceStorage:  instanceStorage,
+		schedulerStorage: schedulerStorage,
+		operationManager: operationManager,
+		config:           config,
 	}
 }
 
@@ -231,12 +237,12 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 func (ex *SchedulerHealthControllerExecutor) isInitializingRoomExpired(room *game_room.GameRoom) bool {
 	timeDurationInPendingState := time.Since(room.CreatedAt)
 	return (ex.isRoomStatus(room, game_room.GameStatusPending) || ex.isRoomStatus(room, game_room.GameStatusUnready)) &&
-		timeDurationInPendingState > ex.roomManagerConfig.RoomInitializationTimeout
+		timeDurationInPendingState > ex.config.RoomInitializationTimeout
 }
 
 func (ex *SchedulerHealthControllerExecutor) isRoomPingExpired(room *game_room.GameRoom) bool {
 	timeDurationWithoutPing := time.Since(room.LastPingAt)
-	return !ex.isRoomStatus(room, game_room.GameStatusPending) && timeDurationWithoutPing > ex.roomManagerConfig.RoomPingTimeout
+	return !ex.isRoomStatus(room, game_room.GameStatusPending) && timeDurationWithoutPing > ex.config.RoomPingTimeout
 }
 
 func (ex *SchedulerHealthControllerExecutor) isRoomStatus(room *game_room.GameRoom, status game_room.GameRoomStatus) bool {

@@ -26,6 +26,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
 type errorKind int
@@ -83,11 +85,11 @@ func NewErrUnexpected(err error) *operationExecutionError {
 	}
 }
 
-func NewErrInvalidGru(err error) *operationExecutionError {
+func NewErrInvalidGru(gameRoom *game_room.GameRoom, err error) *operationExecutionError {
 	return &operationExecutionError{
 		kind: ErrKindInvalidGru,
-		formattedMessage: `The GRU could not be validated. Maestro got timeout waiting the GRU to be ready. You can check if
-		the GRU image is stable, or if roomInitializationTimeoutMillis configuration value needs to be increased.`,
+		formattedMessage: fmt.Sprintf(`The GRU could not be validated. Maestro got timeout waiting the GRU with ID: %s to be ready. You can check if
+		the GRU image is stable on the game room logs, or if roomInitializationTimeoutMillis configuration value needs to be increased.`, gameRoom.ID),
 		err: err,
 	}
 }
