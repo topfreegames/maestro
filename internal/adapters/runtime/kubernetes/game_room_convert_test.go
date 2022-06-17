@@ -609,7 +609,7 @@ func TestConvertPodStatus(t *testing.T) {
 func TestConvertPod(t *testing.T) {
 	cases := map[string]struct {
 		pod              *v1.Pod
-		node             *v1.Node
+		nodeAddress      string
 		expectedInstance game_room.Instance
 		expectedError    bool
 	}{
@@ -633,20 +633,11 @@ func TestConvertPod(t *testing.T) {
 				SchedulerID: "some-scheduler",
 			},
 		},
-		"pod address error": {
-			node: &v1.Node{},
-			pod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pod-id",
-				},
-			},
-			expectedError: true,
-		},
 	}
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			res, err := convertPod(test.pod, test.node)
+			res, err := convertPod(test.pod, test.nodeAddress)
 			if test.expectedError {
 				require.Error(t, err)
 				return

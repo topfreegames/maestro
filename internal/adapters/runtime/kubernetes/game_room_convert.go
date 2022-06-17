@@ -355,12 +355,7 @@ func convertPodPorts(pod *v1.Pod) []game_room.Port {
 	return ports
 }
 
-func convertPod(pod *v1.Pod, node *v1.Node) (*game_room.Instance, error) {
-	nodeAddress, err := convertNodeAddress(node)
-	if err != nil {
-		return nil, err
-	}
-
+func convertPod(pod *v1.Pod, nodeAddress string) (*game_room.Instance, error) {
 	var address *game_room.Address
 	if nodeAddress != "" {
 		address = &game_room.Address{
