@@ -29,8 +29,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/ports/autoscaler"
 
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -63,7 +61,7 @@ type SchedulerHealthControllerExecutor struct {
 var _ operations.Executor = (*SchedulerHealthControllerExecutor)(nil)
 
 // NewExecutor creates a new instance of SchedulerHealthControllerExecutor.
-func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, roomManagerConfig room_manager.RoomManagerConfig, autoscaler autoscaler.Autoscaler, config Config) *SchedulerHealthControllerExecutor {
+func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, autoscaler autoscaler.Autoscaler, config Config) *SchedulerHealthControllerExecutor {
 	return &SchedulerHealthControllerExecutor{
 		autoscaler:       autoscaler,
 		roomStorage:      roomStorage,

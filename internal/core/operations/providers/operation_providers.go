@@ -33,7 +33,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/autoscaler"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 )
 
@@ -76,7 +75,6 @@ func ProvideExecutors(
 	schedulerManager *scheduler_manager.SchedulerManager,
 	instanceStorage ports.GameRoomInstanceStorage,
 	operationManager ports.OperationManager,
-	roomManagerConfig room_manager.RoomManagerConfig,
 	autoscaler autoscaler.Autoscaler,
 	newSchedulerVersionConfig newschedulerversion.Config,
 	healthControllerConfig healthcontroller.Config,
@@ -89,7 +87,7 @@ func ProvideExecutors(
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)
 	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager, operationManager, newSchedulerVersionConfig)
-	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, roomManagerConfig, autoscaler, healthControllerConfig)
+	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, autoscaler, healthControllerConfig)
 
 	return executors
 

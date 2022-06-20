@@ -81,7 +81,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 	autoscaler := service.NewAutoscaler(policyMap)
 	newschedulerversionConfig := service.NewCreateSchedulerVersionConfig(c)
 	healthcontrollerConfig := service.NewHealthControllerConfig(c)
-	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, operationManager, roomManagerConfig, autoscaler, newschedulerversionConfig, healthcontrollerConfig)
+	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, operationManager, autoscaler, newschedulerversionConfig, healthcontrollerConfig)
 	configuration, err := service.NewWorkersConfig(c)
 	if err != nil {
 		return nil, err
