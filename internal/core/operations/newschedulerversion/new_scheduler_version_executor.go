@@ -101,16 +101,20 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	}
 
 	if isSchedulerMajorVersion {
-		err = ex.validateGameRoomCreation(ctx, newScheduler, logger)
-		if gameRoomValidationError, ok := err.(*GameRoomValidationError); ok {
-			logger.Error("could not validate new game room creation", zap.Error(gameRoomValidationError))
-			if errors.Is(gameRoomValidationError.Err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-				return operations.NewErrInvalidGru(gameRoomValidationError.GameRoom, gameRoomValidationError)
+		gameRoomValidationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
+		if gameRoomValidationError != nil {
+			if gameRoomValidationError, ok := gameRoomValidationError.(*GameRoomValidationError); ok {
+				logger.Error("could not validate new game room creation", zap.Error(gameRoomValidationError))
+				fmt.Printf("\n%T\n", gameRoomValidationError.Err)
+				if errors.Is(gameRoomValidationError.Err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
+					return operations.NewErrInvalidGru(gameRoomValidationError.GameRoom, gameRoomValidationError)
+				}
 			}
-		}
 
-		return operations.NewErrUnexpected(err)
+			return operations.NewErrUnexpected(gameRoomValidationError)
+		}
 	}
+
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
 		return operations.NewErrUnexpected(err)
@@ -136,7 +140,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *o
 			logger.Error("error deleting new game room created for validation", zap.Error(err))
 			return fmt.Errorf("error in Rollback function execution: %w", err)
 		}
-		ex.removeValidationRoomID(op.SchedulerName)
+		ex.RemoveValidationRoomID(op.SchedulerName)
 	}
 	return nil
 }
@@ -152,7 +156,7 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 		logger.Error("error creating new game room for validating new version", zap.Error(err))
 		return err
 	}
-	ex.addValidationRoomID(scheduler.Name, gameRoom)
+	ex.AddValidationRoomID(scheduler.Name, gameRoom)
 
 	duration := ex.config.RoomInitializationTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
@@ -167,15 +171,19 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 	if err != nil {
 		logger.Error("error deleting new game room created for validation", zap.Error(err))
 	}
-	ex.removeValidationRoomID(scheduler.Name)
-	return NewGameRoomValidationError(gameRoom, waitRoomErr)
+	ex.RemoveValidationRoomID(scheduler.Name)
+	if waitRoomErr != nil {
+		return NewGameRoomValidationError(gameRoom, waitRoomErr)
+	}
+
+	return nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) addValidationRoomID(schedulerName string, gameRoom *game_room.GameRoom) {
+func (ex *CreateNewSchedulerVersionExecutor) AddValidationRoomID(schedulerName string, gameRoom *game_room.GameRoom) {
 	ex.validationRoomIdsMap[schedulerName] = gameRoom
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) removeValidationRoomID(schedulerName string) {
+func (ex *CreateNewSchedulerVersionExecutor) RemoveValidationRoomID(schedulerName string) {
 	delete(ex.validationRoomIdsMap, schedulerName)
 }
 
