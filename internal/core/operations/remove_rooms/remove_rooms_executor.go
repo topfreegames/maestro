@@ -26,6 +26,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -34,7 +36,6 @@ import (
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"sync"
 )
 
 type RemoveRoomsExecutor struct {
@@ -137,14 +138,16 @@ func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_roo
 	errs, ctx := errgroup.WithContext(ctx)
 
 	for _, room := range rooms {
-		errs.Go(func() error {
-			err := e.roomManager.DeleteRoom(ctx, room)
-			if err != nil {
-				msg := fmt.Sprintf("error removing room \"%v\". Reason => %v", room.ID, err.Error())
-				e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
-			}
-			return err
-		})
+		func(roomToDelete *game_room.GameRoom) {
+			errs.Go(func() error {
+				err := e.roomManager.DeleteRoom(ctx, room)
+				if err != nil {
+					msg := fmt.Sprintf("error removing room \"%v\". Reason => %v", room.ID, err.Error())
+					e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
+				}
+				return err
+			})
+		}(room)
 	}
 
 	if err := errs.Wait(); err != nil {
