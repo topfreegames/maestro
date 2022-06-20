@@ -47,7 +47,7 @@ import (
 )
 
 func TestEventsForwarderService_ProduceEvent(t *testing.T) {
-	fwd := &forwarder.Forwarder{
+	forwarderEnabled := &forwarder.Forwarder{
 		Name:        "fwd",
 		Enabled:     true,
 		ForwardType: forwarder.TypeGrpc,
@@ -57,7 +57,17 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			Metadata: nil,
 		},
 	}
-	forwarders := []*forwarder.Forwarder{fwd}
+	forwarderDisabled := &forwarder.Forwarder{
+		Name:        "fwd",
+		Enabled:     false,
+		ForwardType: forwarder.TypeGrpc,
+		Address:     "address",
+		Options: &forwarder.ForwardOptions{
+			Timeout:  time.Second * 5,
+			Metadata: nil,
+		},
+	}
+	forwarders := []*forwarder.Forwarder{forwarderEnabled}
 
 	expectedScheduler := &entities.Scheduler{
 		Name:            "scheduler",
@@ -114,6 +124,41 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 			CreatedAt:       time.Time{},
 			MaxSurge:        "",
 			Forwarders:      nil,
+		}
+
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(scheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, config.SchedulerCacheTtl).Return(nil)
+		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.NoError(t, err)
+	})
+
+	t.Run("should succeed when scheduler have forwarder configured but disabled", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, _, instanceStorage, schedulerCache := testSetup(t)
+
+		event := &events.Event{
+			Name:        events.PlayerEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "playerLeft",
+				"playerId":  "player",
+			},
+		}
+
+		scheduler := &entities.Scheduler{
+			Name:            "scheduler",
+			Game:            "game",
+			State:           "",
+			RollbackVersion: "",
+			Spec:            game_room.Spec{},
+			PortRange:       nil,
+			CreatedAt:       time.Time{},
+			MaxSurge:        "",
+			Forwarders:      []*forwarder.Forwarder{forwarderDisabled},
 		}
 
 		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
