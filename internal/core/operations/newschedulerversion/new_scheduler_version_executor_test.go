@@ -385,7 +385,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		require.NotNil(t, operationExecutionError)
 		require.Equal(t, operationExecutionError.Kind(), operations.ErrKindUnexpected)
-		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room with ID some-scheduler-id-1:")
+		require.ErrorContains(t, operationExecutionError.Error(), "unexpected error validating game room with ID")
 	})
 
 	t.Run("should succeed - given a minor version update it, when the greatest minor version is v1.0 returns no error and enqueue switch active version op", func(t *testing.T) {

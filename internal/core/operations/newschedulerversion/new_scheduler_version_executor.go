@@ -101,17 +101,9 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	}
 
 	if isSchedulerMajorVersion {
-		gameRoomValidationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
-		if gameRoomValidationError != nil {
-			if gameRoomValidationError, ok := gameRoomValidationError.(*GameRoomValidationError); ok {
-				logger.Error("could not validate new game room creation", zap.Error(gameRoomValidationError))
-				fmt.Printf("\n%T\n", gameRoomValidationError.Err)
-				if errors.Is(gameRoomValidationError.Err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-					return operations.NewErrInvalidGru(gameRoomValidationError.GameRoom, gameRoomValidationError)
-				}
-			}
-
-			return operations.NewErrUnexpected(gameRoomValidationError)
+		operationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
+		if operationError != nil {
+			return operationError
 		}
 	}
 
@@ -150,11 +142,11 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 	return OperationName
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
+func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) operations.ExecutionError {
 	gameRoom, _, err := ex.roomManager.CreateRoom(ctx, *scheduler, true)
 	if err != nil {
 		logger.Error("error creating new game room for validating new version", zap.Error(err))
-		return err
+		return operations.NewErrUnexpected(err)
 	}
 	ex.AddValidationRoomID(scheduler.Name, gameRoom)
 
@@ -173,7 +165,11 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 	}
 	ex.RemoveValidationRoomID(scheduler.Name)
 	if waitRoomErr != nil {
-		return NewGameRoomValidationError(gameRoom, waitRoomErr)
+		if errors.Is(waitRoomErr, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
+			return operations.NewErrInvalidGru(gameRoom, fmt.Errorf("error validating game room with ID: '%s-%s': %w", gameRoom.SchedulerID, gameRoom.ID, waitRoomErr))
+		}
+
+		return operations.NewErrUnexpected(fmt.Errorf("unexpected error validating game room with ID '%s-%s': %w", gameRoom.SchedulerID, gameRoom.ID, waitRoomErr))
 	}
 
 	return nil
