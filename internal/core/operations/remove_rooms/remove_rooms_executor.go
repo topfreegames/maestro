@@ -137,17 +137,16 @@ func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, scheduler
 func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom, op *operation.Operation) error {
 	errs, ctx := errgroup.WithContext(ctx)
 
-	for _, room := range rooms {
-		func(roomToDelete *game_room.GameRoom) {
-			errs.Go(func() error {
-				err := e.roomManager.DeleteRoom(ctx, room)
-				if err != nil {
-					msg := fmt.Sprintf("error removing room \"%v\". Reason => %v", room.ID, err.Error())
-					e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
-				}
-				return err
-			})
-		}(room)
+	for i := range rooms {
+		room := rooms[i]
+		errs.Go(func() error {
+			err := e.roomManager.DeleteRoom(ctx, room)
+			if err != nil {
+				msg := fmt.Sprintf("error removing room \"%v\". Reason => %v", room.ID, err.Error())
+				e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
+			}
+			return err
+		})
 	}
 
 	if err := errs.Wait(); err != nil {
