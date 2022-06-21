@@ -35,7 +35,14 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
-const healthControllerExecutionIntervalConfigPath = "workers.operationExecution.healthControllerInterval"
+const (
+	healthControllerExecutionIntervalConfigPath = "workers.operationExecution.healthControllerInterval"
+	roomInitializationTimeoutMillisConfigPath   = "services.roomManager.roomInitializationTimeoutMillis"
+	roomPingTimeoutMillisConfigPath             = "services.roomManager.roomPingTimeoutMillis"
+	roomDeletionTimeoutMillisConfigPath         = "services.roomManager.roomDeletionTimeoutMillis"
+	operationLeaseTTLMillisConfigPath           = "services.operationManager.operationLeaseTTLMillis"
+	schedulerCacheTTLMillisConfigPath           = "services.eventsForwarder.schedulerCacheTTLMillis"
+)
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
 func NewCreateSchedulerVersionConfig(c config.Config) newschedulerversion.Config {
@@ -86,7 +93,7 @@ func NewWorkersConfig(c config.Config) (workers.Configuration, error) {
 
 // NewOperationManagerConfig instantiate a new OperationManagerConfig to be used by the OperationManager to customize its configuration.
 func NewOperationManagerConfig(c config.Config) (operation_manager.OperationManagerConfig, error) {
-	operationLeaseTTL := time.Duration(c.GetInt("services.operationManager.operationLeaseTtlMillis")) * time.Millisecond
+	operationLeaseTTL := time.Duration(c.GetInt(operationLeaseTTLMillisConfigPath)) * time.Millisecond
 
 	operationManagerConfig := operation_manager.OperationManagerConfig{
 		OperationLeaseTtl: operationLeaseTTL,
@@ -100,7 +107,7 @@ func NewEventsForwarderServiceConfig(c config.Config) (events_forwarder.EventsFo
 	var schedulerCacheTTL time.Duration
 	defaultSchedulerCacheTTL := time.Hour * 24
 
-	if configuredSchedulerCacheTTLInt := c.GetInt("services.eventsForwarder.schedulerCacheTtlMillis"); configuredSchedulerCacheTTLInt > 0 {
+	if configuredSchedulerCacheTTLInt := c.GetInt(schedulerCacheTTLMillisConfigPath); configuredSchedulerCacheTTLInt > 0 {
 		schedulerCacheTTL = time.Duration(configuredSchedulerCacheTTLInt) * time.Millisecond
 	} else {
 		schedulerCacheTTL = defaultSchedulerCacheTTL

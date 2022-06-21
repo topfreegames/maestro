@@ -67,7 +67,7 @@ Maestro needs the following permissions for managing resources in a kubernetes c
 Maestro provides two ways for configuring kubernetes cluster access.
 
 ### Using inCluster mode
-Set `adapters.runtime.kubernetes.inCluster` config value to true or use its env var equivalent, the kubernetes client will be configured 
+Set `kubernetes.inCluster` config value to true or use its env var equivalent, the kubernetes client will be configured 
 automatically using the same _service account_ of the maestro component running pod.
 
 This mode is recommended to be used when running maestro components in the same cluster

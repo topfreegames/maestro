@@ -61,7 +61,7 @@ var ManagementApiCmd = &cobra.Command{
 
 func init() {
 	ManagementApiCmd.Flags().StringVarP(&logConfig, "log-config", "l", "production", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	ManagementApiCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/management-api.local.yaml", "path of the configuration YAML file")
+	ManagementApiCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/config.yaml", "path of the configuration YAML file")
 }
 
 func runManagementApi() {

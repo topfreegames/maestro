@@ -60,27 +60,27 @@ import (
 // configurations paths for the adapters
 const (
 	// Kubernetes runtime
-	runtimeKubernetesMasterUrlPath  = "adapters.runtime.kubernetes.masterUrl"
-	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
-	runtimeKubernetesInCluster      = "adapters.runtime.kubernetes.inCluster"
+	runtimeKubernetesMasterUrlPath  = "kubernetes.masterUrl"
+	runtimeKubernetesKubeconfigPath = "kubernetes.kubeconfig"
+	runtimeKubernetesInCluster      = "kubernetes.inCluster"
 	// Redis operation storage
-	operationStorageRedisUrlPath      = "adapters.operationStorage.redis.url"
-	operationLeaseStorageRedisUrlPath = "adapters.operationLeaseStorage.redis.url"
+	operationStorageRedisUrlPath      = "redis.url"
+	operationLeaseStorageRedisUrlPath = "redis.url"
 	// Redis room storage
-	roomStorageRedisUrlPath = "adapters.roomStorage.redis.url"
+	roomStorageRedisUrlPath = "redis.url"
 	// Redis scheduler cache
-	schedulerCacheRedisUrlPath = "adapters.schedulerCache.redis.url"
+	schedulerCacheRedisUrlPath = "redis.url"
 	// Redis instance storage
-	instanceStorageRedisUrlPath      = "adapters.instanceStorage.redis.url"
+	instanceStorageRedisUrlPath      = "redis.url"
 	instanceStorageRedisScanSizePath = "adapters.instanceStorage.redis.scanSize"
 	// Random port allocator
-	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
+	portAllocatorRandomRangePath = "portAllocator.random.range"
 	// Postgres scheduler storage
-	schedulerStoragePostgresUrlPath = "adapters.schedulerStorage.postgres.url"
+	schedulerStoragePostgresUrlPath = "postgres.url"
 	// Redis operation flow
-	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
+	operationFlowRedisUrlPath = "redis.url"
 	// Health Controller operation TTL
-	healthControllerOperationTTL = "adapters.operationStorage.redis.operationsTtl.healthController"
+	healthControllerOperationTTL = "workers.redis.operationsTtl"
 )
 
 func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {

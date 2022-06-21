@@ -50,7 +50,7 @@ var MetricsReporterCmd = &cobra.Command{
 
 func init() {
 	MetricsReporterCmd.Flags().StringVarP(&logConfig, "log-config", "l", "production", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	MetricsReporterCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/metrics-reporter.local.yaml", "path of the configuration YAML file")
+	MetricsReporterCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/config.yaml", "path of the configuration YAML file")
 }
 
 func runMetricsReporter() {

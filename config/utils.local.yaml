@@ -1,6 +1,0 @@
-adapters:
-  schedulerStorage:
-    postgres:
-      url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
-migration:
-  path: "file://internal/service/migrations"
