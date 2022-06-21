@@ -83,7 +83,7 @@ func ProvideExecutors(
 	executors := map[string]operations.Executor{}
 	executors[create_scheduler.OperationName] = create_scheduler.NewExecutor(runtime, schedulerManager)
 	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
-	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager, roomStorage)
+	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager, roomStorage, operationManager)
 	executors[test_operation.OperationName] = test_operation.NewExecutor()
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)
 	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager, operationManager, newSchedulerVersionConfig)
