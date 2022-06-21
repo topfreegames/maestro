@@ -85,19 +85,20 @@ func (es *EventsForwarderService) ProduceEvent(ctx context.Context, event *event
 		return err
 	}
 
-	forwarderList := scheduler.Forwarders
-	if len(forwarderList) > 0 {
+	if forwarderList := scheduler.Forwarders; len(forwarderList) > 0 {
 		for _, _forwarder := range forwarderList {
-			switch event.Name {
-			case events.RoomEvent:
-				err = es.forwardRoomEvent(ctx, event, eventType, scheduler, _forwarder)
-				if err != nil {
-					return err
-				}
-			case events.PlayerEvent:
-				err = es.forwardPlayerEvent(ctx, event, eventType, scheduler, _forwarder)
-				if err != nil {
-					return err
+			if _forwarder.Enabled {
+				switch event.Name {
+				case events.RoomEvent:
+					err = es.forwardRoomEvent(ctx, event, eventType, scheduler, _forwarder)
+					if err != nil {
+						return err
+					}
+				case events.PlayerEvent:
+					err = es.forwardPlayerEvent(ctx, event, eventType, scheduler, _forwarder)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
