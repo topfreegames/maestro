@@ -35,20 +35,23 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 type RemoveRoomsExecutor struct {
-	roomManager ports.RoomManager
-	roomStorage ports.RoomStorage
+	roomManager      ports.RoomManager
+	roomStorage      ports.RoomStorage
+	operationManager ports.OperationManager
 }
 
 var _ operations.Executor = (*RemoveRoomsExecutor)(nil)
 
 // NewExecutor creates a new RemoveRoomExecutor
-func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage) *RemoveRoomsExecutor {
+func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, operationManager ports.OperationManager) *RemoveRoomsExecutor {
 	return &RemoveRoomsExecutor{
 		roomManager,
 		roomStorage,
+		operationManager,
 	}
 }
 
@@ -64,7 +67,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 
 	if len(removeDefinition.RoomsIDs) > 0 {
 		logger.Info("start removing rooms", zap.Strings("RoomIDs", removeDefinition.RoomsIDs))
-		err := e.removeRoomsByIDs(ctx, op.SchedulerName, removeDefinition.RoomsIDs)
+		err := e.removeRoomsByIDs(ctx, op.SchedulerName, removeDefinition.RoomsIDs, op)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
@@ -80,7 +83,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 
 	if removeDefinition.Amount > 0 {
 		logger.Info("start removing rooms", zap.Int("amount", removeDefinition.Amount))
-		err := e.removeRoomsByAmount(ctx, op.SchedulerName, removeDefinition.Amount)
+		err := e.removeRoomsByAmount(ctx, op.SchedulerName, removeDefinition.Amount, op)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
@@ -98,7 +101,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string) error {
+func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string, op *operation.Operation) error {
 	rooms := make([]*game_room.GameRoom, 0, len(roomsIDs))
 	for _, roomID := range roomsIDs {
 		gameRoom, err := e.roomStorage.GetRoom(ctx, schedulerName, roomID)
@@ -109,7 +112,7 @@ func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerNam
 		rooms = append(rooms, gameRoom)
 	}
 
-	err := e.deleteRooms(ctx, rooms)
+	err := e.deleteRooms(ctx, rooms, op)
 	if err != nil {
 		return err
 	}
@@ -117,13 +120,13 @@ func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerNam
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int) error {
+func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int, op *operation.Operation) error {
 	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", amount, &sync.Map{})
 	if err != nil {
 		return err
 	}
 
-	err = e.deleteRooms(ctx, rooms)
+	err = e.deleteRooms(ctx, rooms, op)
 	if err != nil {
 		return err
 	}
@@ -131,13 +134,23 @@ func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, scheduler
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom) error {
-	var err error
-	for _, room := range rooms {
-		err = e.roomManager.DeleteRoom(ctx, room)
-		if err != nil {
+func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom, op *operation.Operation) error {
+	errs, ctx := errgroup.WithContext(ctx)
+
+	for i := range rooms {
+		room := rooms[i]
+		errs.Go(func() error {
+			err := e.roomManager.DeleteRoom(ctx, room)
+			if err != nil {
+				msg := fmt.Sprintf("error removing room \"%v\". Reason => %v", room.ID, err.Error())
+				e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
+			}
 			return err
-		}
+		})
+	}
+
+	if err := errs.Wait(); err != nil {
+		return err
 	}
 
 	return nil
