@@ -58,7 +58,9 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 	migrateErr := helpers.TimedRetry(func() error {
 		cmd, err := exec.ExecGoCmd(
 			maestroPath,
-			[]string{},
+			[]string{
+				"MAESTRO_MIGRATION_PATH=file://internal/service/migrations",
+			},
 			"main.go", "migrate",
 		)
 		if err != nil {

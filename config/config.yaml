@@ -26,6 +26,7 @@ workers:
   stopTimeoutDuration: 1m
   redis:
     operationsTTL: 24h
+  healthControllerInterval: 1m
 metricsReporter:
     intervalMillis: 10000
 

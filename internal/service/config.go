@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	healthControllerExecutionIntervalConfigPath = "workers.operationExecution.healthControllerInterval"
+	healthControllerExecutionIntervalConfigPath = "workers.healthControllerInterval"
 	roomInitializationTimeoutMillisConfigPath   = "services.roomManager.roomInitializationTimeoutMillis"
 	roomPingTimeoutMillisConfigPath             = "services.roomManager.roomPingTimeoutMillis"
 	roomDeletionTimeoutMillisConfigPath         = "services.roomManager.roomDeletionTimeoutMillis"

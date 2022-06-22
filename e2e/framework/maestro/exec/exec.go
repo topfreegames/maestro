@@ -62,9 +62,8 @@ func ExecGoCmd(dir string, env []string, externalArgs ...string) (*Cmd, error) {
 
 	// TODO(gabrielcorado): receive it from somewhere.
 	cmdEnv := []string{
-		"MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable",
-		"MAESTRO_OPERATIONFLOW_REDIS_URL=redis://localhost:6379/0",
-		"MAESTRO_OPERATIONSTORAGE_REDIS_URL=redis://localhost:6379/0",
+		"MAESTRO_POSTGRES_URL=postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable",
+		"MAESTRO_REDIS_URL=redis://localhost:6379/0",
 	}
 	c.execCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	c.execCmd.Stdout = c.output
