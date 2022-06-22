@@ -73,7 +73,7 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 	}
 }
 
-// Execute run the oepration.
+// Execute run the operation.
 func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
