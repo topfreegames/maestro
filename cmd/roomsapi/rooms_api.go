@@ -102,19 +102,19 @@ func runRoomsServer(configs config.Config, mux *runtime.ServeMux) func() error {
 	muxHandlerWithMetricsMdlw := buildMuxWithMetricsMdlw(mdlw, mux)
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", configs.GetString("roomsApi.port")),
+		Addr:    fmt.Sprintf(":%s", configs.GetString("api.port")),
 		Handler: muxHandlerWithMetricsMdlw,
 	}
 
 	go func() {
-		zap.L().Info(fmt.Sprintf("started HTTP rooms server at :%s", configs.GetString("roomsApi.port")))
+		zap.L().Info(fmt.Sprintf("started HTTP rooms server at :%s", configs.GetString("api.port")))
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			zap.L().With(zap.Error(err)).Fatal("failed to start HTTP rooms server")
 		}
 	}()
 
 	return func() error {
-		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("roomsApi.gracefulShutdownTimeout"))
+		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("api.gracefulShutdownTimeout"))
 		defer cancelShutdownFn()
 
 		zap.L().Info("stopping HTTP rooms server")

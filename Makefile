@@ -78,24 +78,24 @@ build-linux-x86_64: ## Build the project and generates a binary for x86_64 archi
 
 .PHONY: run/worker
 run/worker: ## Runs maestro worker.
-	@go run main.go start worker -l development
-
-.PHONY: run/management-api
-run/management-api: build ## Runs maestro management-api.
-	@go run main.go start management-api -l development
-
-.PHONY: run/rooms-api
-run/rooms-api: build ## Runs maestro rooms-api.
-	@go run main.go start rooms-api -l development
+	@MAESTRO_INTERNALAPI_PORT=8051 go run main.go start worker -l development
 
 .PHONY: run/runtime-watcher
 run/runtime-watcher: build ## Runs maestro runtime-watcher.
-	@go run main.go start runtime-watcher -l development
+	@MAESTRO_INTERNALAPI_PORT=8061 go run main.go start runtime-watcher -l development
+
+.PHONY: run/rooms-api
+run/rooms-api: build ## Runs maestro rooms-api.
+	@MAESTRO_INTERNALAPI_PORT=8071 MAESTRO_API_PORT=8070 go run main.go start rooms-api -l development
+
+.PHONY: run/management-api
+run/management-api: build ## Runs maestro management-api.
+	@MAESTRO_INTERNALAPI_PORT=8081 MAESTRO_API_PORT=8080 go run main.go start management-api -l development
 
 
 .PHONY: run/metrics-reporter
 run/metrics-reporter: build ## Runs maestro metrics-reporter.
-	@go run main.go start metrics-reporter -l development
+	@MAESTRO_INTERNALAPI_PORT=8091 go run main.go start metrics-reporter -l development
 
 #-------------------------------------------------------------------------------
 #  Code generation
