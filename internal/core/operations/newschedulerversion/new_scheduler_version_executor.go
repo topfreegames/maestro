@@ -105,8 +105,6 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		if operationError != nil {
 			return operationError
 		}
-
-		return operations.NewErrUnexpected(err)
 	}
 
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
@@ -147,8 +145,10 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) operations.ExecutionError {
 	gameRoom, _, err := ex.roomManager.CreateRoom(ctx, *scheduler, true)
 	if err != nil {
-		logger.Error("error creating new game room for validating new version", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		basicErrorMessage := "error creating new game room for validating new version"
+		logger.Error(basicErrorMessage, zap.Error(err))
+
+		return operations.NewErrUnexpected(fmt.Errorf("%s: %s", basicErrorMessage, err.Error()))
 	}
 	ex.AddValidationRoomID(scheduler.Name, gameRoom)
 

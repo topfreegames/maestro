@@ -306,6 +306,44 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		require.EqualError(t, result.Error(), "failed to calculate new major version: failed to parse scheduler version v-----: Invalid Semantic Version")
 	})
 
+	t.Run("should fail - major version update, fail creating test room", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		currentActiveScheduler := newValidSchedulerWithImageVersion("image-v1")
+		newScheduler := *newValidSchedulerWithImageVersion("image-v2")
+		op := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		roomManager := mockports.NewMockRoomManager(mockCtrl)
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		config := newschedulerversion.Config{
+			RoomInitializationTimeout: time.Duration(120000),
+		}
+
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
+
+		newSchedulerWithNewVersion := newScheduler
+		newSchedulerWithNewVersion.Spec.Version = "v2.0.0"
+		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
+
+		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
+		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+
+		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(nil, nil, fmt.Errorf("error creating test game room"))
+
+		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
+
+		require.NotNil(t, operationExecutionError)
+		require.Equal(t, operations.ErrKindUnexpected, operationExecutionError.Kind())
+		require.ErrorContains(t, operationExecutionError.Error(), "error creating new game room for validating new version")
+	})
+
 	t.Run("should fail - major version update, game room is invalid, timeout error -> returns error, don't create new version/switch to it", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
