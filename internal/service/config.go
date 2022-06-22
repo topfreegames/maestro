@@ -70,8 +70,8 @@ func NewHealthControllerConfig(c config.Config) healthcontroller.Config {
 
 // NewRoomManagerConfig instantiate a new RoomManagerConfig to be used by the RoomManager to customize its configuration.
 func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, error) {
-	pingTimeout := time.Duration(c.GetInt("services.roomManager.roomPingTimeoutMillis")) * time.Millisecond
-	deletionTimeout := time.Duration(c.GetInt("services.roomManager.roomDeletionTimeoutMillis")) * time.Millisecond
+	pingTimeout := time.Duration(c.GetInt(roomPingTimeoutMillisConfigPath)) * time.Millisecond
+	deletionTimeout := time.Duration(c.GetInt(roomDeletionTimeoutMillisConfigPath)) * time.Millisecond
 
 	roomManagerConfig := room_manager.RoomManagerConfig{
 		RoomPingTimeout:     pingTimeout,
