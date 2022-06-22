@@ -66,10 +66,6 @@ type RoomManager interface {
 	UpdateRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error
 	// UpdateRoom updates the game room information.
 	UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
-	// CreateRoomAndWaitForReadiness creates a room and only returns it when the room is ready (sent a ping to maestro).
-	// If the room is created and don't succeed on sending a ping to maestro, it will try to delete the room, and return
-	// an error. The "isValidationRoom" parameter must be passed "true" if we want to create a room that won't be forwarded
-	CreateRoomAndWaitForReadiness(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error)
 	// CreateRoom creates a game room in maestro runtime and storages without waiting the room to reach ready status.
 	CreateRoom(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error)
 	// GetRoomInstance returns the game room instance.

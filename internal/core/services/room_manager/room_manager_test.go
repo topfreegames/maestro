@@ -29,7 +29,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -54,270 +53,9 @@ import (
 	ismock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	pamock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
 	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
-
-func TestRoomManager_CreateRoomAndWaitForReadiness(t *testing.T) {
-	now := time.Now()
-
-	container1 := game_room.Container{
-		Name: "container1",
-		Ports: []game_room.ContainerPort{
-			{Protocol: "tcp"},
-		},
-	}
-	container2 := game_room.Container{
-		Name: "container2",
-		Ports: []game_room.ContainerPort{
-			{Protocol: "udp"},
-		},
-	}
-	containerWithHostPort1 := game_room.Container{
-		Name: "container1",
-		Ports: []game_room.ContainerPort{
-			{Protocol: "tcp", HostPort: 5000},
-		},
-	}
-	containerWithHostPort2 := game_room.Container{
-		Name: "container2",
-		Ports: []game_room.ContainerPort{
-			{Protocol: "udp", HostPort: 6000},
-		},
-	}
-	scheduler := entities.Scheduler{
-		Name: "game",
-		Spec: game_room.Spec{
-			Containers: []game_room.Container{container1, container2},
-		},
-		PortRange: nil,
-	}
-	gameRoom := game_room.GameRoom{
-		ID:          "game-1",
-		SchedulerID: "game",
-		Status:      game_room.GameStatusPending,
-		LastPingAt:  now,
-	}
-	gameRoomInstance := game_room.Instance{
-		ID:          "game-1",
-		SchedulerID: "game",
-	}
-
-	t.Run("when room creation is successful then it returns the game room and instance", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		runtime := runtimemock.NewMockRuntime(mockCtrl)
-		eventsService := mockports.NewMockEventsService(mockCtrl)
-		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-		fakeClock := clockmock.NewFakeClock(now)
-		config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-		roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
-		roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
-
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
-		}).Return(&gameRoomInstance, nil)
-
-		gameRoomReady := gameRoom
-		gameRoomReady.Status = game_room.GameStatusReady
-
-		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
-		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoomReady, nil)
-		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil)
-		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
-
-		roomStorageStatusWatcher.EXPECT().Stop()
-
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
-		require.NoError(t, err)
-		require.Equal(t, &gameRoom, room)
-		require.Equal(t, &gameRoomInstance, instance)
-	})
-
-	t.Run("when game room creation fails with initialization timeout then it returns nil with proper error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		runtime := runtimemock.NewMockRuntime(mockCtrl)
-		eventsService := mockports.NewMockEventsService(mockCtrl)
-		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-		fakeClock := clockmock.NewFakeClock(now)
-		config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-		roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
-		roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
-
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
-		}).Return(&gameRoomInstance, nil)
-
-		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
-		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoom, nil)
-		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).Return(roomStorageStatusWatcher, nil)
-		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
-
-		roomStorageStatusWatcher.EXPECT().Stop()
-		roomStorageStatusWatcher.EXPECT().ResultChan()
-
-		instance := &game_room.Instance{ID: "test-instance"}
-
-		instanceStorage.EXPECT().GetInstance(gomock.Any(), gomock.Any(), gomock.Any()).Return(instance, nil)
-		runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), instance).Return(nil)
-		roomStorage.EXPECT().UpdateRoomStatus(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID, game_room.GameStatusTerminating).Return(nil)
-		eventsService.EXPECT().ProduceEvent(gomock.Any(), gomock.Any())
-
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
-		require.Error(t, err)
-		require.True(t, errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout))
-		require.Nil(t, room)
-		require.Nil(t, instance)
-	})
-
-	t.Run("when context is cancelled while waiting game room to be ready, it deletes the created game room", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		runtime := runtimemock.NewMockRuntime(mockCtrl)
-		eventsService := mockports.NewMockEventsService(mockCtrl)
-		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-		fakeClock := clockmock.NewFakeClock(now)
-		config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-		roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
-		roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
-
-		mainContext, mainContextCancelFunc := context.WithCancel(context.Background())
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(gomock.Any(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
-		}).Return(&gameRoomInstance, nil)
-
-		roomStorage.EXPECT().CreateRoom(mainContext, &gameRoom)
-		roomStorage.EXPECT().GetRoom(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(&gameRoom, nil)
-		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), &gameRoom).DoAndReturn(func(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {
-			mainContextCancelFunc()
-			return roomStorageStatusWatcher, nil
-		})
-		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
-		roomStorageStatusWatcher.EXPECT().Stop()
-		roomStorageStatusWatcher.EXPECT().ResultChan()
-
-		instance := &game_room.Instance{ID: "test-instance"}
-
-		instanceStorage.EXPECT().GetInstance(gomock.Any(), gomock.Any(), gomock.Any()).Return(instance, nil)
-		runtime.EXPECT().DeleteGameRoomInstance(gomock.Any(), instance).DoAndReturn(func(deleteContext context.Context, gameRoomInstance *game_room.Instance) error {
-			require.NoError(t, deleteContext.Err())
-			return nil
-		})
-		roomStorage.EXPECT().UpdateRoomStatus(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID, game_room.GameStatusTerminating).Return(nil)
-		eventsService.EXPECT().ProduceEvent(gomock.Any(), gomock.Any())
-
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(mainContext, scheduler, false)
-		require.Error(t, err)
-		require.True(t, strings.Contains(err.Error(), context.Canceled.Error()))
-		require.Nil(t, room)
-		require.Nil(t, instance)
-	})
-
-	t.Run("when game room creation fails while creating instance then it returns nil with proper error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		runtime := runtimemock.NewMockRuntime(mockCtrl)
-		eventsService := mockports.NewMockEventsService(mockCtrl)
-		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-		fakeClock := clockmock.NewFakeClock(now)
-		config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-		roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
-
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
-		}).Return(nil, porterrors.NewErrUnexpected("error create game room instance"))
-
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
-		require.Error(t, err)
-		require.Nil(t, room)
-		require.Nil(t, instance)
-	})
-
-	t.Run("when game room creation fails while creating game room on storage then it returns nil with proper error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		runtime := runtimemock.NewMockRuntime(mockCtrl)
-		eventsService := mockports.NewMockEventsService(mockCtrl)
-		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-		fakeClock := clockmock.NewFakeClock(now)
-		config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-		roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
-
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
-		}).Return(&gameRoomInstance, nil)
-		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
-
-		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
-
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
-		require.Error(t, err)
-		require.Nil(t, room)
-		require.Nil(t, instance)
-	})
-
-	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		runtime := runtimemock.NewMockRuntime(mockCtrl)
-		eventsService := mockports.NewMockEventsService(mockCtrl)
-		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-		fakeClock := clockmock.NewFakeClock(now)
-		config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-		roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
-
-		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
-
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
-		require.Error(t, err)
-		require.Nil(t, room)
-		require.Nil(t, instance)
-	})
-
-	t.Run("when upsert instance fails then it returns nil with proper error", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		portAllocator := pamock.NewMockPortAllocator(mockCtrl)
-		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		runtime := runtimemock.NewMockRuntime(mockCtrl)
-		eventsService := mockports.NewMockEventsService(mockCtrl)
-		instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
-		fakeClock := clockmock.NewFakeClock(now)
-		config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
-		roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
-
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
-		}).Return(&gameRoomInstance, nil)
-		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error"))
-
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
-		require.Error(t, err)
-		require.Nil(t, room)
-		require.Nil(t, instance)
-	})
-
-}
 
 func TestRoomManager_CreateRoom(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
@@ -329,7 +67,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	eventsService := mockports.NewMockEventsService(mockCtrl)
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
-	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
+	config := RoomManagerConfig{}
 	roomManager := New(fakeClock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
 
 	container1 := game_room.Container{
@@ -404,7 +142,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
+		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
 		assert.EqualError(t, err, "error creating game room on runtime")
 		assert.Nil(t, room)
 		assert.Nil(t, instance)
@@ -419,7 +157,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
+		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
 		assert.EqualError(t, err, "error storing room on redis")
 		assert.Nil(t, room)
 		assert.Nil(t, instance)
@@ -428,7 +166,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
 		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
+		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
 		assert.EqualError(t, err, "not enough ports to allocate")
 		assert.Nil(t, room)
 		assert.Nil(t, instance)
@@ -441,7 +179,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		}).Return(&gameRoomInstance, nil)
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error creating instance"))
 
-		room, instance, err := roomManager.CreateRoomAndWaitForReadiness(context.Background(), scheduler, false)
+		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
 		assert.EqualError(t, err, "error creating instance")
 		assert.Nil(t, room)
 		assert.Nil(t, instance)
@@ -567,7 +305,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsService := mockports.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
-	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
+	config := RoomManagerConfig{}
 
 	roomManager := New(
 		clock,
@@ -840,7 +578,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsService := mockports.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
-	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
+	config := RoomManagerConfig{}
 	roomManager := New(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
@@ -884,7 +622,7 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsService := mockports.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
-	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
+	config := RoomManagerConfig{}
 	roomManager := New(
 		clock,
 		pamock.NewMockPortAllocator(mockCtrl),
@@ -948,7 +686,7 @@ func TestSchedulerMaxSurge(t *testing.T) {
 			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 			runtimemock.NewMockRuntime(mockCtrl),
 			mockports.NewMockEventsService(mockCtrl),
-			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
+			RoomManagerConfig{},
 		)
 
 		return roomStorage, roomManager
@@ -1047,7 +785,7 @@ func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
 		mockports.NewMockEventsService(mockCtrl),
-		RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
+		RoomManagerConfig{},
 	)
 
 	transition := game_room.GameStatusReady
@@ -1089,7 +827,7 @@ func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
 		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
 		runtimemock.NewMockRuntime(mockCtrl),
 		mockports.NewMockEventsService(mockCtrl),
-		RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
+		RoomManagerConfig{},
 	)
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond))
@@ -1130,7 +868,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 			instanceStorage,
 			runtimemock.NewMockRuntime(mockCtrl),
 			eventsService,
-			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
+			RoomManagerConfig{},
 		)
 
 		return roomStorage, instanceStorage, roomManager, eventsService
@@ -1251,7 +989,7 @@ func TestRoomManager_GetRoomInstance(t *testing.T) {
 			instanceStorage,
 			runtimemock.NewMockRuntime(mockCtrl),
 			eventsService,
-			RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000},
+			RoomManagerConfig{},
 		)
 
 		return roomStorage, instanceStorage, roomManager, eventsService
@@ -1302,7 +1040,7 @@ func testSetup(t *testing.T) (
 	instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 	eventsService := mockports.NewMockEventsService(mockCtrl)
-	config := RoomManagerConfig{RoomInitializationTimeout: time.Millisecond * 1000, RoomDeletionTimeout: time.Millisecond * 1000}
+	config := RoomManagerConfig{}
 	roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
 
 	roomManager := New(

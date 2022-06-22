@@ -20,11 +20,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package room_manager
+package newschedulerversion
 
-import "time"
+import (
+	"fmt"
 
-type RoomManagerConfig struct {
-	RoomPingTimeout     time.Duration
-	RoomDeletionTimeout time.Duration
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+)
+
+// GameRoomValidationError is a struct that holds the error to game room validation.
+type GameRoomValidationError struct {
+	Err      error
+	GameRoom *game_room.GameRoom
+}
+
+// NewGameRoomValidationError create a new game room error on validation with game room and the original error
+func NewGameRoomValidationError(gameRoom *game_room.GameRoom, err error) *GameRoomValidationError {
+	return &GameRoomValidationError{Err: err, GameRoom: gameRoom}
+}
+
+func (e *GameRoomValidationError) Error() string {
+	return fmt.Sprintf("error validating game room with ID %s-%s: %s", e.GameRoom.SchedulerID, e.GameRoom.ID, e.Err.Error())
 }

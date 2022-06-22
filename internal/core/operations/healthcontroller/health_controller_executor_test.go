@@ -33,8 +33,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	ismock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
@@ -897,11 +895,11 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 			operationManager := mockports.NewMockOperationManager(mockCtrl)
 			autoscaler := mockports.NewMockAutoscaler(mockCtrl)
-			config := room_manager.RoomManagerConfig{
+			config := healthcontroller.Config{
 				RoomPingTimeout:           2 * time.Minute,
 				RoomInitializationTimeout: 4 * time.Minute,
 			}
-			executor := healthcontroller.NewExecutor(roomsStorage, instanceStorage, schedulerStorage, operationManager, config, autoscaler)
+			executor := healthcontroller.NewExecutor(roomsStorage, instanceStorage, schedulerStorage, operationManager, autoscaler, config)
 
 			testCase.executionPlan.planMocks(roomsStorage, instanceStorage, schedulerStorage, operationManager, autoscaler)
 
