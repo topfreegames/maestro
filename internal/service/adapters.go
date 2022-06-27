@@ -60,25 +60,25 @@ import (
 // configurations paths for the adapters
 const (
 	// Kubernetes runtime
-	runtimeKubernetesMasterUrlPath  = "kubernetes.masterUrl"
-	runtimeKubernetesKubeconfigPath = "kubernetes.kubeconfig"
-	runtimeKubernetesInCluster      = "kubernetes.inCluster"
+	runtimeKubernetesMasterUrlPath  = "adapters.runtime.kubernetes.masterUrl"
+	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
+	runtimeKubernetesInCluster      = "adapters.runtime.kubernetes.inCluster"
 	// Redis operation storage
-	operationStorageRedisUrlPath      = "redis.url"
-	operationLeaseStorageRedisUrlPath = "redis.url"
+	operationStorageRedisUrlPath      = "adapters.operationStorage.redis.url"
+	operationLeaseStorageRedisUrlPath = "adapters.operationLeaseStorage.redis.url"
 	// Redis room storage
-	roomStorageRedisUrlPath = "redis.url"
+	roomStorageRedisUrlPath = "adapters.roomStorage.redis.url"
 	// Redis scheduler cache
-	schedulerCacheRedisUrlPath = "redis.url"
+	schedulerCacheRedisUrlPath = "adapters.schedulerCache.redis.url"
 	// Redis instance storage
-	instanceStorageRedisUrlPath      = "redis.url"
+	instanceStorageRedisUrlPath      = "adapters.instanceStorage.redis.url"
 	instanceStorageRedisScanSizePath = "adapters.instanceStorage.redis.scanSize"
 	// Random port allocator
-	portAllocatorRandomRangePath = "portAllocator.random.range"
+	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
 	// Postgres scheduler storage
-	schedulerStoragePostgresUrlPath = "postgres.url"
+	schedulerStoragePostgresUrlPath = "adapters.schedulerStorage.postgres.url"
 	// Redis operation flow
-	operationFlowRedisUrlPath = "redis.url"
+	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 	// Health Controller operation TTL
 	healthControllerOperationTTL = "workers.redis.operationsTtl"
 )

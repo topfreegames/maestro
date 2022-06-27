@@ -46,7 +46,7 @@ const (
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
 func NewCreateSchedulerVersionConfig(c config.Config) newschedulerversion.Config {
-	initializationTimeout := time.Duration(c.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
+	initializationTimeout := time.Duration(c.GetInt(roomInitializationTimeoutMillisConfigPath)) * time.Millisecond
 
 	createSchedulerVersionConfig := newschedulerversion.Config{
 		RoomInitializationTimeout: initializationTimeout,
@@ -57,8 +57,8 @@ func NewCreateSchedulerVersionConfig(c config.Config) newschedulerversion.Config
 
 // NewHealthControllerConfig instantiate a new HealthControllerConfig to be used by the HealthController to customize its configuration.
 func NewHealthControllerConfig(c config.Config) healthcontroller.Config {
-	initializationTimeout := time.Duration(c.GetInt("services.roomManager.roomInitializationTimeoutMillis")) * time.Millisecond
-	pingTimeout := time.Duration(c.GetInt("services.roomManager.roomPingTimeoutMillis")) * time.Millisecond
+	initializationTimeout := time.Duration(c.GetInt(roomInitializationTimeoutMillisConfigPath)) * time.Millisecond
+	pingTimeout := time.Duration(c.GetInt(roomPingTimeoutMillisConfigPath)) * time.Millisecond
 
 	config := healthcontroller.Config{
 		RoomInitializationTimeout: initializationTimeout,

@@ -1,3 +1,7 @@
+api:
+  port: 8080
+  gracefulShutdownTimeout: 10s
+
 internalApi:
   port: 8081
   gracefulShutdownTimeout: 10s
@@ -5,22 +9,39 @@ internalApi:
     enabled: true
   healthcheck:
     enabled: true
-api:
-  port: 8080
-  gracefulShutdownTimeout: 10s
 
-postgres:
-  url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
-redis:
-  url: "redis://localhost:6379/0"
-kubernetes:
-  inCluster: false
-  masterUrl: "https://127.0.0.1:6443"
-  kubeconfig: "./kubeconfig/kubeconfig.yaml"
-
-portAllocator:
-  random:
-    range: 60001-60010
+adapters:
+  schedulerStorage:
+    postgres:
+      url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
+  schedulerCache:
+    redis:
+      url: "redis://localhost:6379/0"
+  operationStorage:
+    redis:
+      url: "redis://localhost:6379/0"
+      operationsTtl:
+        healthController: 24h
+  operationFlow:
+    redis:
+      url: "redis://localhost:6379/0"
+  operationLeaseStorage:
+    redis:
+      url: "redis://localhost:6379/0"
+  roomStorage:
+    redis:
+      url: "redis://localhost:6379/0"
+  instanceStorage:
+    redis:
+      url: "redis://localhost:6379/0"
+  portAllocator:
+    random:
+      range: 60001-60010
+  runtime:
+    kubernetes:
+      inCluster: false
+      masterUrl: "https://127.0.0.1:6443"
+      kubeconfig: "./kubeconfig/kubeconfig.yaml"
 workers:
   syncInterval: 10s
   stopTimeoutDuration: 1m
