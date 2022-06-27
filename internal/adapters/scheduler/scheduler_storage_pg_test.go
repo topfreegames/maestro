@@ -455,13 +455,9 @@ func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
 	t.Run("delete scheduler and its versions if it exists without transaction", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
-		dbScheduler := NewDBScheduler(expectedScheduler)
 
-		// Create scheduler
-		_, err := db.Exec(queryInsertScheduler, dbScheduler)
+		err := storage.CreateScheduler(context.Background(), expectedScheduler)
 		require.NoError(t, err)
-		_, err = db.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
-
 		err = storage.DeleteScheduler(context.Background(), "", expectedScheduler)
 		require.NoError(t, err)
 
@@ -471,15 +467,10 @@ func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
 
 	t.Run("delete scheduler and its versions if scheduler exists with successful transaction", func(t *testing.T) {
 		db := getPostgresDB(t)
-
 		storage := NewSchedulerStorage(db.Options())
-		dbScheduler := NewDBScheduler(expectedScheduler)
 
-		// Create scheduler
-		_, err := db.Exec(queryInsertScheduler, dbScheduler)
+		err := storage.CreateScheduler(context.Background(), expectedScheduler)
 		require.NoError(t, err)
-		_, err = db.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
-
 		err = storage.RunWithTransaction(context.Background(), func(transactionID ports.TransactionID) error {
 			err = storage.DeleteScheduler(context.Background(), transactionID, expectedScheduler)
 			return err
@@ -492,17 +483,13 @@ func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
 
 	t.Run("does not delete scheduler if scheduler exists with failed transaction", func(t *testing.T) {
 		db := getPostgresDB(t)
-
 		storage := NewSchedulerStorage(db.Options())
-		dbScheduler := NewDBScheduler(expectedScheduler)
 
-		// Create scheduler
-		_, err := db.Exec(queryInsertScheduler, dbScheduler)
+		err := storage.CreateScheduler(context.Background(), expectedScheduler)
 		require.NoError(t, err)
-		_, err = db.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
 
 		err = storage.RunWithTransaction(context.Background(), func(transactionID ports.TransactionID) error {
-			err = storage.DeleteScheduler(context.Background(), transactionID, expectedScheduler)
+			_ = storage.DeleteScheduler(context.Background(), transactionID, expectedScheduler)
 			return errors.NewErrUnexpected("some error")
 		})
 		require.Error(t, err)
