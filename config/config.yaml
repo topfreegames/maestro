@@ -1,6 +1,8 @@
 api:
   port: 8080
   gracefulShutdownTimeout: 10s
+  metrics:
+    enabled: true
 
 internalApi:
   port: 8081
