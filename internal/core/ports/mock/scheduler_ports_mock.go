@@ -238,17 +238,17 @@ func (mr *MockSchedulerStorageMockRecorder) CreateSchedulerVersion(ctx, transact
 }
 
 // DeleteScheduler mocks base method.
-func (m *MockSchedulerStorage) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+func (m *MockSchedulerStorage) DeleteScheduler(ctx context.Context, transactionID ports.TransactionID, scheduler *entities.Scheduler) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteScheduler", ctx, scheduler)
+	ret := m.ctrl.Call(m, "DeleteScheduler", ctx, transactionID, scheduler)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteScheduler indicates an expected call of DeleteScheduler.
-func (mr *MockSchedulerStorageMockRecorder) DeleteScheduler(ctx, scheduler interface{}) *gomock.Call {
+func (mr *MockSchedulerStorageMockRecorder) DeleteScheduler(ctx, transactionID, scheduler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScheduler", reflect.TypeOf((*MockSchedulerStorage)(nil).DeleteScheduler), ctx, scheduler)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScheduler", reflect.TypeOf((*MockSchedulerStorage)(nil).DeleteScheduler), ctx, transactionID, scheduler)
 }
 
 // GetAllSchedulers mocks base method.

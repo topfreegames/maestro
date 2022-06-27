@@ -328,18 +328,31 @@ func (s schedulerStorage) UpdateScheduler(ctx context.Context, scheduler *entiti
 	return nil
 }
 
-func (s schedulerStorage) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
-	client := s.db.WithContext(ctx)
+func (s schedulerStorage) DeleteScheduler(ctx context.Context, transactionID ports.TransactionID, scheduler *entities.Scheduler) error {
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("DeleteScheduler", func() {
-		_, err = client.ExecOne(queryDeleteScheduler, scheduler.Name)
-	})
+
+	if isInTransactionalContext(transactionID) {
+		txClient, ok := s.transactionsMap[transactionID]
+		if !ok {
+			return errors.NewErrNotFound("transaction %s not found", transactionID)
+		}
+		runSchedulerStorageFunctionCollectingLatency("DeleteScheduler", func() {
+			_, err = txClient.ExecOne(queryDeleteScheduler, scheduler.Name)
+		})
+
+	} else {
+		client := s.db.WithContext(ctx)
+		runSchedulerStorageFunctionCollectingLatency("DeleteScheduler", func() {
+			_, err = client.ExecOne(queryDeleteScheduler, scheduler.Name)
+		})
+	}
+
 	if err == pg.ErrNoRows {
 		return errors.NewErrNotFound("scheduler %s not found", scheduler.Name)
 	}
 	if err != nil {
 		reportSchedulerStorageFailsCounterMetric("DeleteScheduler", scheduler.Name)
-		return errors.NewErrUnexpected("error updating scheduler %s", scheduler.Name).WithError(err)
+		return errors.NewErrUnexpected("error deleting scheduler %s", scheduler.Name).WithError(err)
 	}
 	return nil
 }

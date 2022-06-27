@@ -452,24 +452,70 @@ func TestSchedulerStorage_UpdateScheduler(t *testing.T) {
 }
 
 func TestSchedulerStorage_DeleteScheduler(t *testing.T) {
-	t.Run("scheduler exists", func(t *testing.T) {
+	t.Run("delete scheduler and its versions if it exists without transaction", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
+		dbScheduler := NewDBScheduler(expectedScheduler)
 
-		require.NoError(t, storage.CreateScheduler(context.Background(), expectedScheduler))
+		// Create scheduler
+		_, err := db.Exec(queryInsertScheduler, dbScheduler)
+		require.NoError(t, err)
+		_, err = db.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
 
-		err := storage.DeleteScheduler(context.Background(), expectedScheduler)
+		err = storage.DeleteScheduler(context.Background(), "", expectedScheduler)
 		require.NoError(t, err)
 
-		dbScheduler, _ := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
-		require.Nil(t, dbScheduler)
+		dbSchedulerResult, _ := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
+		require.Nil(t, dbSchedulerResult)
 	})
 
-	t.Run("scheduler does not exist", func(t *testing.T) {
+	t.Run("delete scheduler and its versions if scheduler exists with successful transaction", func(t *testing.T) {
+		db := getPostgresDB(t)
+
+		storage := NewSchedulerStorage(db.Options())
+		dbScheduler := NewDBScheduler(expectedScheduler)
+
+		// Create scheduler
+		_, err := db.Exec(queryInsertScheduler, dbScheduler)
+		require.NoError(t, err)
+		_, err = db.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+
+		err = storage.RunWithTransaction(context.Background(), func(transactionID ports.TransactionID) error {
+			err = storage.DeleteScheduler(context.Background(), transactionID, expectedScheduler)
+			return err
+		})
+		require.NoError(t, err)
+
+		dbSchedulerResult, _ := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
+		require.Nil(t, dbSchedulerResult)
+	})
+
+	t.Run("does not delete scheduler if scheduler exists with failed transaction", func(t *testing.T) {
+		db := getPostgresDB(t)
+
+		storage := NewSchedulerStorage(db.Options())
+		dbScheduler := NewDBScheduler(expectedScheduler)
+
+		// Create scheduler
+		_, err := db.Exec(queryInsertScheduler, dbScheduler)
+		require.NoError(t, err)
+		_, err = db.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
+
+		err = storage.RunWithTransaction(context.Background(), func(transactionID ports.TransactionID) error {
+			err = storage.DeleteScheduler(context.Background(), transactionID, expectedScheduler)
+			return errors.NewErrUnexpected("some error")
+		})
+		require.Error(t, err)
+
+		dbSchedulerResult, _ := getDBSchedulerAndVersions(t, db, expectedScheduler.Name)
+		require.NotNil(t, dbSchedulerResult)
+	})
+
+	t.Run("does nothing and return error if scheduler does not exist without transaction", func(t *testing.T) {
 		db := getPostgresDB(t)
 		storage := NewSchedulerStorage(db.Options())
 
-		err := storage.DeleteScheduler(context.Background(), expectedScheduler)
+		err := storage.DeleteScheduler(context.Background(), "", expectedScheduler)
 		require.Error(t, err)
 		require.ErrorIs(t, errors.ErrNotFound, err)
 	})
