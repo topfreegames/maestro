@@ -52,7 +52,7 @@ func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
-		zap.String("operation_phase", "Execute"),
+		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
@@ -70,7 +70,7 @@ func (e *CreateSchedulerExecutor) Rollback(ctx context.Context, op *operation.Op
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
-		zap.String("operation_phase", "Rollback"),
+		zap.String(logs.LogFieldOperationPhase, "Rollback"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 

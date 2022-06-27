@@ -33,4 +33,5 @@ const (
 	LogFieldServiceName         = "service_name"
 	LogFieldExecutorName        = "executor_name"
 	LogFieldHandlerName         = "handler_name"
+	LogFieldOperationPhase      = "operation_phase"
 )
