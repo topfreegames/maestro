@@ -28,6 +28,7 @@ package operation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -721,5 +722,140 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		resultOperations, err := storage.ListSchedulerActiveOperations(context.Background(), schedulerName)
 		require.NoError(t, err)
 		require.Len(t, resultOperations, len(activeOperations))
+	})
+}
+
+func TestCleanOperationsHistory(t *testing.T) {
+	schedulerName := "test-scheduler"
+
+	t.Run("with success", func(t *testing.T) {
+		nowTime := time.Now()
+		now, _ := time.Parse(time.RFC3339Nano, nowTime.Format(time.RFC3339Nano))
+
+		operations := []*operation.Operation{
+			{
+				ID:             "some-op-id-1",
+				SchedulerName:  schedulerName,
+				Status:         operation.StatusFinished,
+				DefinitionName: "test-definition",
+				CreatedAt:      now,
+				Input:          []byte("hello test"),
+				ExecutionHistory: []operation.OperationEvent{
+					{
+						CreatedAt: time.Date(1999, time.November, 19, 6, 12, 15, 0, time.UTC),
+						Event:     "some-event",
+					},
+				},
+			},
+			{
+				ID:             "some-op-id-2",
+				SchedulerName:  schedulerName,
+				Status:         operation.StatusFinished,
+				DefinitionName: "test-definition",
+				CreatedAt:      now.Add(-23 * time.Hour),
+				Input:          []byte("hello test"),
+				ExecutionHistory: []operation.OperationEvent{
+					{
+						CreatedAt: time.Date(1999, time.November, 19, 6, 12, 15, 0, time.UTC),
+						Event:     "some-event",
+					},
+				},
+			},
+			{
+				ID:             "some-op-id-3",
+				SchedulerName:  schedulerName,
+				Status:         operation.StatusFinished,
+				DefinitionName: "test-definition",
+				CreatedAt:      now.Add(-25 * time.Hour),
+				Input:          []byte("hello test"),
+				ExecutionHistory: []operation.OperationEvent{
+					{
+						CreatedAt: time.Date(1999, time.November, 19, 6, 12, 15, 0, time.UTC),
+						Event:     "some-event",
+					},
+				},
+			},
+			{
+				ID:             "some-op-id-4",
+				SchedulerName:  schedulerName,
+				Status:         operation.StatusFinished,
+				DefinitionName: "test-definition",
+				CreatedAt:      now.Add(-29 * time.Hour),
+				Input:          []byte("hello test"),
+				ExecutionHistory: []operation.OperationEvent{
+					{
+						CreatedAt: time.Date(1999, time.November, 19, 6, 12, 15, 0, time.UTC),
+						Event:     "some-event",
+					},
+				},
+			},
+		}
+
+		t.Run("if operations history is not empty it deletes all operations and history", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			operationsTTlMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			expectedOperations := []*operation.Operation{operations[1], operations[0]}
+
+			for _, op := range operations {
+				executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
+				require.NoError(t, err)
+
+				err = client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
+					Member: op.ID,
+					Score:  float64(op.CreatedAt.Unix()),
+				}).Err()
+				require.NoError(t, err)
+
+				err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+					idRedisKey:                 op.ID,
+					schedulerNameRedisKey:      op.SchedulerName,
+					statusRedisKey:             strconv.Itoa(int(op.Status)),
+					definitionNameRedisKey:     op.DefinitionName,
+					createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+					definitionContentsRedisKey: op.Input,
+					executionHistoryRedisKey:   executionHistoryJson,
+				}).Err()
+				require.NoError(t, err)
+			}
+
+			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			assert.NoError(t, err)
+			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
+			assert.Equal(t, expectedOperations, operationsReturned)
+
+			err = storage.CleanOperationsHistory(context.Background(), schedulerName)
+			assert.NoError(t, err)
+
+			// Assert that the operation's history sorted set is now empty
+			operationIds, err := client.ZRangeByScore(context.Background(), fmt.Sprintf("operations:%s:lists:history", schedulerName), &redis.ZRangeBy{
+				Min: "-inf",
+				Max: "-inf",
+			}).Result()
+			require.NoError(t, err)
+			assert.Empty(t, operationIds)
+
+			// Assert that all operations hashes were deleted
+			for _, op := range expectedOperations {
+				result, _ := client.HGetAll(context.Background(), fmt.Sprintf("operations:%s:%s", schedulerName, op.ID)).Result()
+				assert.Empty(t, result)
+			}
+		})
+
+		t.Run("if operations history is empty it returns with no error", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			operationsTTlMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+
+			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			assert.NoError(t, err)
+			assert.Empty(t, operationsReturned)
+
+			err = storage.CleanOperationsHistory(context.Background(), schedulerName)
+			assert.NoError(t, err)
+		})
+
 	})
 }
