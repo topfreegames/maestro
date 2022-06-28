@@ -271,9 +271,9 @@ func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, sche
 		return err
 	}
 
-	var operationIDsKeys []string
-	for _, operationID := range operationsIDs {
-		operationIDsKeys = append(operationIDsKeys, r.buildSchedulerOperationKey(schedulerName, operationID))
+	operationIDsKeys := make([]string, len(operationsIDs))
+	for i, operationID := range operationsIDs {
+		operationIDsKeys[i] = r.buildSchedulerOperationKey(schedulerName, operationID)
 	}
 	if len(operationIDsKeys) > 0 {
 		pipe := r.client.Pipeline()
