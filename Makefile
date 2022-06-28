@@ -78,24 +78,24 @@ build-linux-x86_64: ## Build the project and generates a binary for x86_64 archi
 
 .PHONY: run/worker
 run/worker: ## Runs maestro worker.
-	@go run main.go start worker -l development
-
-.PHONY: run/management-api
-run/management-api: build ## Runs maestro management-api.
-	@go run main.go start management-api -l development
-
-.PHONY: run/rooms-api
-run/rooms-api: build ## Runs maestro rooms-api.
-	@go run main.go start rooms-api -l development
+	@MAESTRO_INTERNALAPI_PORT=8051 go run main.go start worker -l development
 
 .PHONY: run/runtime-watcher
 run/runtime-watcher: build ## Runs maestro runtime-watcher.
-	@go run main.go start runtime-watcher -l development
+	@MAESTRO_INTERNALAPI_PORT=8061 go run main.go start runtime-watcher -l development
+
+.PHONY: run/rooms-api
+run/rooms-api: build ## Runs maestro rooms-api.
+	@MAESTRO_INTERNALAPI_PORT=8071 MAESTRO_API_PORT=8070 go run main.go start rooms-api -l development
+
+.PHONY: run/management-api
+run/management-api: build ## Runs maestro management-api.
+	@MAESTRO_INTERNALAPI_PORT=8081 MAESTRO_API_PORT=8080 go run main.go start management-api -l development
 
 
 .PHONY: run/metrics-reporter
 run/metrics-reporter: build ## Runs maestro metrics-reporter.
-	@go run main.go start metrics-reporter -l development
+	@MAESTRO_INTERNALAPI_PORT=8091 go run main.go start metrics-reporter -l development
 
 #-------------------------------------------------------------------------------
 #  Code generation
@@ -111,7 +111,7 @@ generate: ## Execute code generation.
 
 .PHONY: migrate
 migrate: ## Execute migration.
-	@go run main.go migrate
+	@MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate
 
 #-------------------------------------------------------------------------------
 #  Local dependencies
@@ -149,7 +149,7 @@ deps/down: ## Delete containers dependencies.
 maestro/start: build-linux-x86_64 ## Start Maestro with all of its dependencies.
 	@echo "Starting maestro..."
 	@cd ./e2e/framework/maestro; docker-compose --project-name maestro up -d
-	@go run main.go migrate;
+	@MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate;
 	@cd ./e2e/framework/maestro; docker-compose --project-name maestro start worker runtime-watcher #Worker and watcher do not work before migration, so we start them after it.
 	@echo "Maestro is up and running!"
 

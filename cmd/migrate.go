@@ -40,7 +40,7 @@ var (
 
 func init() {
 	migrateCmd.Flags().StringVarP(&logConfig, "log-config", "l", "development", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	migrateCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/utils.local.yaml", "path of the configuration YAML file")
+	migrateCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/config.yaml", "path of the configuration YAML file")
 }
 
 var migrateCmd = &cobra.Command{

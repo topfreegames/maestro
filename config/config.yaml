@@ -1,15 +1,22 @@
+api:
+  port: 8080
+  gracefulShutdownTimeout: 10s
+  metrics:
+    enabled: true
+
 internalApi:
-  port: 8061
+  port: 8081
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true
   healthcheck:
     enabled: true
+
 adapters:
   schedulerStorage:
     postgres:
       url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
-  operationFlow:
+  schedulerCache:
     redis:
       url: "redis://localhost:6379/0"
   operationStorage:
@@ -17,31 +24,44 @@ adapters:
       url: "redis://localhost:6379/0"
       operationsTtl:
         healthController: 24h
+  operationFlow:
+    redis:
+      url: "redis://localhost:6379/0"
   operationLeaseStorage:
     redis:
       url: "redis://localhost:6379/0"
-  runtime:
-    kubernetes:
-      inCluster: false
-      masterUrl: "https://127.0.0.1:6443"
-      kubeconfig: "./kubeconfig/kubeconfig.yaml"
-  portAllocator:
-    random:
-      range: 60001-60010
   roomStorage:
     redis:
       url: "redis://localhost:6379/0"
   instanceStorage:
     redis:
       url: "redis://localhost:6379/0"
-  schedulerCache:
-    redis:
-      url: "redis://localhost:6379/0"
+  portAllocator:
+    random:
+      range: 60001-60010
+  runtime:
+    kubernetes:
+      inCluster: false
+      masterUrl: "https://127.0.0.1:6443"
+      kubeconfig: "./kubeconfig/kubeconfig.yaml"
 workers:
   syncInterval: 10s
   stopTimeoutDuration: 1m
+  redis:
+    operationsTTL: 24h
+  healthControllerInterval: 1m
+metricsReporter:
+    intervalMillis: 10000
+
 services:
   roomManager:
     roomPingTimeoutMillis: 240000
     roomInitializationTimeoutMillis: 120000
     roomDeletionTimeoutMillis: 120000
+  operationManager:
+    operationLeaseTTLMillis: 5000
+  eventsForwarder:
+    schedulerCacheTTLMillis: 120000
+
+migration:
+  path: "file://app/migrations"

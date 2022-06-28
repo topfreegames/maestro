@@ -80,7 +80,7 @@ const (
 	// Redis operation flow
 	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
 	// Health Controller operation TTL
-	healthControllerOperationTTL = "adapters.operationStorage.redis.operationsTtl.healthController"
+	healthControllerOperationTTL = "workers.redis.operationsTtl"
 )
 
 func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {

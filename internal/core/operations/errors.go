@@ -88,8 +88,8 @@ func NewErrUnexpected(err error) *operationExecutionError {
 func NewErrInvalidGru(gameRoom *game_room.GameRoom, err error) *operationExecutionError {
 	return &operationExecutionError{
 		kind: ErrKindInvalidGru,
-		formattedMessage: fmt.Sprintf(`The GRU could not be validated. Maestro got timeout waiting for the GRU with ID: %s-%s to be ready. You can check if
-		the GRU image is stable on the its logs. If you could not spot any issues, please contact us.`, gameRoom.SchedulerID, gameRoom.ID),
+		formattedMessage: fmt.Sprintf(`The GRU could not be validated. Maestro got timeout waiting for the GRU with ID: %s to be ready. You can check if
+		the GRU image is stable on the its logs. If you could not spot any issues, please contact us.`, gameRoom.ID),
 		err: err,
 	}
 }

@@ -61,7 +61,7 @@ var ManagementApiCmd = &cobra.Command{
 
 func init() {
 	ManagementApiCmd.Flags().StringVarP(&logConfig, "log-config", "l", "production", "preset of configurations used by the logs. possible values are \"development\" or \"production\".")
-	ManagementApiCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/management-api.local.yaml", "path of the configuration YAML file")
+	ManagementApiCmd.Flags().StringVarP(&configPath, "config-path", "c", "config/config.yaml", "path of the configuration YAML file")
 }
 
 func runManagementApi() {
@@ -105,19 +105,19 @@ func runManagementServer(ctx context.Context, configs config.Config, mux *runtim
 	muxHandlerWithMetricsMdlw := buildMuxWithMetricsMdlw(mdlw, mux)
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", configs.GetString("managementApi.port")),
+		Addr:    fmt.Sprintf(":%s", configs.GetString("api.port")),
 		Handler: muxHandlerWithMetricsMdlw,
 	}
 
 	go func() {
-		zap.L().Info(fmt.Sprintf("started HTTP management server at :%s", configs.GetString("managementApi.port")))
+		zap.L().Info(fmt.Sprintf("started HTTP management server at :%s", configs.GetString("api.port")))
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			zap.L().With(zap.Error(err)).Fatal("failed to start HTTP management server")
 		}
 	}()
 
 	return func() error {
-		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("managementApi.gracefulShutdownTimeout"))
+		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("api.gracefulShutdownTimeout"))
 		defer cancelShutdownFn()
 
 		zap.L().Info("stopping HTTP management server")
