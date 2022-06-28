@@ -266,23 +266,25 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 }
 
 func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, schedulerName string) error {
-	var operationIDsKeys []string
 	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, time.Time{}, time.Now())
 	if err != nil {
-		return fmt.Errorf("failed to get finished operations from history: %w", err)
+		return err
 	}
+
+	var operationIDsKeys []string
 	for _, operationID := range operationsIDs {
 		operationIDsKeys = append(operationIDsKeys, r.buildSchedulerOperationKey(schedulerName, operationID))
 	}
 	if len(operationIDsKeys) > 0 {
 		pipe := r.client.Pipeline()
-		pipe.Del(ctx, operationIDsKeys...)
 		pipe.Del(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName))
+		pipe.Del(ctx, operationIDsKeys...)
 
 		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
 			_, err = pipe.Exec(ctx)
 			return err
 		})
+
 		if err != nil {
 			return fmt.Errorf("failed to delete operations from history: %w", err)
 		}

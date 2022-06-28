@@ -835,7 +835,6 @@ func TestCleanOperationsHistory(t *testing.T) {
 			}).Result()
 			require.NoError(t, err)
 			assert.Empty(t, operationIds)
-
 			// Assert that all operations hashes were deleted
 			for _, op := range expectedOperations {
 				result, _ := client.HGetAll(context.Background(), fmt.Sprintf("operations:%s:%s", schedulerName, op.ID)).Result()
@@ -854,8 +853,26 @@ func TestCleanOperationsHistory(t *testing.T) {
 			assert.Empty(t, operationsReturned)
 
 			err = storage.CleanOperationsHistory(context.Background(), schedulerName)
+
 			assert.NoError(t, err)
 		})
 
 	})
+
+	t.Run("with error", func(t *testing.T) {
+
+		t.Run("if client is closed it returns error", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			operationsTTlMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			client.Close()
+
+			err := storage.CleanOperationsHistory(context.Background(), schedulerName)
+
+			assert.EqualError(t, err, "failed to list finished operations for \"test-scheduler\": redis: client is closed")
+		})
+
+	})
+
 }
