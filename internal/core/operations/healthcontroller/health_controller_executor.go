@@ -77,7 +77,7 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
-		zap.String("operation_phase", "Execute"),
+		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 

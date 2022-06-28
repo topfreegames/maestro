@@ -78,7 +78,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
-		zap.String("operation_phase", "Execute"),
+		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
@@ -123,7 +123,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *o
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
-		zap.String("operation_phase", "Rollback"),
+		zap.String(logs.LogFieldOperationPhase, "Rollback"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	if gameRoom, ok := ex.validationRoomIdsMap[op.SchedulerName]; ok {

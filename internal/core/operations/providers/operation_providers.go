@@ -26,6 +26,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
+	"github.com/topfreegames/maestro/internal/core/operations/deletescheduler"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
@@ -61,6 +62,9 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	definitionConstructors[healthcontroller.OperationName] = func() operations.Definition {
 		return &healthcontroller.SchedulerHealthControllerDefinition{}
 	}
+	definitionConstructors[deletescheduler.OperationName] = func() operations.Definition {
+		return &deletescheduler.DeleteSchedulerDefinition{}
+	}
 
 	return definitionConstructors
 
@@ -88,6 +92,7 @@ func ProvideExecutors(
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)
 	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager, operationManager, newSchedulerVersionConfig)
 	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, autoscaler, healthControllerConfig)
+	executors[deletescheduler.OperationName] = deletescheduler.NewExecutor()
 
 	return executors
 
