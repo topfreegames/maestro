@@ -831,7 +831,7 @@ func TestDeleteScheduler(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(scheduler, nil)
-		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), scheduler).Return(nil)
+		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), ports.TransactionID(""), scheduler).Return(nil)
 
 		err := schedulerManager.DeleteScheduler(ctx, schedulerName)
 
@@ -859,7 +859,7 @@ func TestDeleteScheduler(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(scheduler, nil)
-		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), scheduler).Return(errors.NewErrUnexpected("err"))
+		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), ports.TransactionID(""), scheduler).Return(errors.NewErrUnexpected("err"))
 
 		err := schedulerManager.DeleteScheduler(ctx, schedulerName)
 

@@ -296,7 +296,7 @@ func (s *SchedulerManager) DeleteScheduler(ctx context.Context, schedulerName st
 		return fmt.Errorf("no scheduler found to delete: %w", err)
 	}
 
-	err = s.schedulerStorage.DeleteScheduler(ctx, scheduler)
+	err = s.schedulerStorage.DeleteScheduler(ctx, "", scheduler)
 	if err != nil {
 		return fmt.Errorf("not able to delete scheduler %s: %w", schedulerName, err)
 	}
