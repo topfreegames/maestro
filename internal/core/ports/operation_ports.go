@@ -96,8 +96,10 @@ type OperationStorage interface {
 	// UpdateOperationStatus only updates the operation status for the given
 	// operation ID.
 	UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error
-	// UpdateOperationExecutionHistory updates the operation execution history
+	// UpdateOperationExecutionHistory updates the operation execution history.
 	UpdateOperationExecutionHistory(ctx context.Context, op *operation.Operation) error
+	// CleanOperationsHistory clears the operation execution history.
+	CleanOperationsHistory(ctx context.Context, schedulerName string) error
 }
 
 type OperationLeaseStorage interface {

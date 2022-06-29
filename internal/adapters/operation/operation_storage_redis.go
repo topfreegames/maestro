@@ -216,7 +216,9 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 }
 
 func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) (operations []*operation.Operation, err error) {
-	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName)
+	currentTime := r.clock.Now()
+	lastDay := r.clock.Now().Add(-24 * time.Hour)
+	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, lastDay, currentTime)
 	var nonExistentOperations []string
 	var executions = make(map[string]redis.Cmder)
 
@@ -263,6 +265,34 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	return operations, nil
 }
 
+func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, schedulerName string) error {
+	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, time.Time{}, time.Now())
+	if err != nil {
+		return err
+	}
+
+	if len(operationsIDs) > 0 {
+		operationIDsKeys := make([]string, len(operationsIDs))
+		for i, operationID := range operationsIDs {
+			operationIDsKeys[i] = r.buildSchedulerOperationKey(schedulerName, operationID)
+		}
+		pipe := r.client.Pipeline()
+		pipe.Del(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName))
+		pipe.Del(ctx, operationIDsKeys...)
+
+		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+			_, err = pipe.Exec(ctx)
+			return err
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to delete operations from history: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func (r *redisOperationStorage) removeNonExistentOperationFromHistory(ctx context.Context, name string, operations []string) {
 	go func() {
 		pipe := r.client.Pipeline()
@@ -291,14 +321,12 @@ func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName
 	return fmt.Sprintf("operations:%s:lists:history", schedulerName)
 }
 
-func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string) (operationsIDs []string, err error) {
+func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string, from, to time.Time) (operationsIDs []string, err error) {
 	// TODO(guilhermocc): receive this time range as filter argument
-	currentTime := r.clock.Now()
-	lastDay := currentTime.Add(-24 * time.Hour)
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
 		operationsIDs, err = r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
-			Min: fmt.Sprint(lastDay.Unix()),
-			Max: fmt.Sprint(currentTime.Unix()),
+			Min: fmt.Sprint(from.Unix()),
+			Max: fmt.Sprint(to.Unix()),
 		}).Result()
 		return err
 	})

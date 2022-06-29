@@ -397,6 +397,20 @@ func (m *MockOperationStorage) EXPECT() *MockOperationStorageMockRecorder {
 	return m.recorder
 }
 
+// CleanOperationsHistory mocks base method.
+func (m *MockOperationStorage) CleanOperationsHistory(ctx context.Context, schedulerName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CleanOperationsHistory", ctx, schedulerName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CleanOperationsHistory indicates an expected call of CleanOperationsHistory.
+func (mr *MockOperationStorageMockRecorder) CleanOperationsHistory(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanOperationsHistory", reflect.TypeOf((*MockOperationStorage)(nil).CleanOperationsHistory), ctx, schedulerName)
+}
+
 // CreateOperation mocks base method.
 func (m *MockOperationStorage) CreateOperation(ctx context.Context, operation *operation.Operation) error {
 	m.ctrl.T.Helper()
