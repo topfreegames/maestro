@@ -102,6 +102,31 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			require.Nil(t, err)
 		})
 
+		t.Run("when it fails to get scheduler from cache the first time", func(t *testing.T) {
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			ctx := context.Background()
+
+			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
+			op := &operation.Operation{}
+
+			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, errors.New("error getting scheduler from cache"))
+			schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
+			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
+				DoAndReturn(func(ctx context.Context, f func(transactionId ports.TransactionID) error) error {
+					return f("transactionID")
+				})
+			schedulerStorage.EXPECT().DeleteScheduler(ctx, ports.TransactionID("transactionID"), scheduler)
+			runtime.EXPECT().DeleteScheduler(ctx, scheduler)
+
+			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(0, nil)
+			schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name)
+			operationStorage.EXPECT().CleanOperationsHistory(ctx, scheduler.Name)
+
+			err := executor.Execute(ctx, op, definition)
+
+			require.Nil(t, err)
+		})
+
 		t.Run("when it fails to wait for all instances to be deleted error", func(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
 			ctx := context.Background()
@@ -227,18 +252,19 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("returns error", func(t *testing.T) {
-		t.Run("when it fails to load the scheduler from cache the first time", func(t *testing.T) {
-			executor, _, schedulerCache, _, _, _ := prepareMocks(t)
+		t.Run("when it fails to load the scheduler from storage the first time", func(t *testing.T) {
+			executor, schedulerStorage, schedulerCache, _, _, _ := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
 			op := &operation.Operation{}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.New("some error on cache"))
+			schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.New("some error on storage"))
 
 			err := executor.Execute(ctx, op, definition)
 
-			require.Equal(t, operations.NewErrUnexpected(errors.New("some error on cache")), err)
+			require.Equal(t, operations.NewErrUnexpected(errors.New("some error on storage")), err)
 		})
 
 		t.Run("when it fails to delete scheduler in storage", func(t *testing.T) {

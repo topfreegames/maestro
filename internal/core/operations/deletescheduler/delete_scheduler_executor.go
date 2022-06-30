@@ -24,8 +24,9 @@ package deletescheduler
 
 import (
 	"context"
-	v1 "k8s.io/api/core/v1"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -71,10 +72,11 @@ func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	schedulerName := definition.(*DeleteSchedulerDefinition).SchedulerName
-	scheduler, err := e.schedulerCache.GetScheduler(ctx, schedulerName)
+
+	scheduler, err := e.getScheduler(ctx, schedulerName)
 
 	if err != nil {
-		logger.Error("failed to get scheduler from cache", zap.Error(err))
+		logger.Error("failed to get scheduler", zap.Error(err))
 		return operations.NewErrUnexpected(err)
 	}
 
@@ -161,4 +163,16 @@ func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Con
 		}
 	}
 	return nil
+}
+
+func (e *DeleteSchedulerExecutor) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	scheduler, err := e.schedulerCache.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		scheduler, err = e.schedulerStorage.GetScheduler(ctx, schedulerName)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return scheduler, nil
+
 }
