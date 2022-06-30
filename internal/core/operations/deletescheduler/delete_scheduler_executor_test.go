@@ -25,7 +25,6 @@ package deletescheduler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -92,8 +91,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(20, nil).Times(1)
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(10, nil).Times(1)
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(0, nil).Times(1)
-			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Waiting for instances to be deleted: 10")).Times(1)
-			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Waiting for instances to be deleted: 0")).Times(1)
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "Waiting for instances to be deleted: 10").Times(1)
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "Waiting for instances to be deleted: 0").Times(1)
 
 			schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name)
 			operationStorage.EXPECT().CleanOperationsHistory(ctx, scheduler.Name)
@@ -242,7 +241,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			runtime.EXPECT().DeleteScheduler(ctx, scheduler)
 
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(1, nil).AnyTimes()
-			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Waiting for instances to be deleted: 1")).AnyTimes()
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "Waiting for instances to be deleted: 1").AnyTimes()
 
 			schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name)
 			operationStorage.EXPECT().CleanOperationsHistory(ctx, scheduler.Name)
