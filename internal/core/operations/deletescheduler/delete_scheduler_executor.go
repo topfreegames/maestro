@@ -129,9 +129,6 @@ func (e *DeleteSchedulerExecutor) Name() string {
 }
 
 func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
-	ticker := time.NewTicker(time.Millisecond * 100)
-	defer ticker.Stop()
-
 	instancesCount, err := e.instanceStorage.GetInstanceCount(ctx, scheduler.Name)
 	if err != nil {
 		logger.Error("failed to get instance count", zap.Error(err))
@@ -145,6 +142,9 @@ func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Con
 		terminationGracePeriodSeconds = v1.DefaultTerminationGracePeriodSeconds
 	}
 	schedulerDeletionTimeout := time.Duration(terminationGracePeriodSeconds*instancesCount) * time.Second
+
+	ticker := time.NewTicker(time.Duration(terminationGracePeriodSeconds) * time.Second)
+	defer ticker.Stop()
 
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, schedulerDeletionTimeout)
 	defer cancelFunc()

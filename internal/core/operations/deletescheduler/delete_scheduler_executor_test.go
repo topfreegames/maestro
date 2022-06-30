@@ -44,7 +44,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 	scheduler := &entities.Scheduler{
 		Name: "schedulerTest",
 		Spec: game_room.Spec{
-			TerminationGracePeriod: 100 * time.Millisecond,
+			TerminationGracePeriod: 5 * time.Second,
 		},
 	}
 
@@ -89,9 +89,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			runtime.EXPECT().DeleteScheduler(ctx, scheduler)
 
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(20, nil).Times(1)
-			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(15, nil).Times(1)
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(10, nil).Times(1)
-			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(5, nil).Times(1)
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(0, nil).Times(1)
 
 			schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name)
