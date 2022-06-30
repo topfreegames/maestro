@@ -78,6 +78,8 @@ func ProvideExecutors(
 	roomStorage ports.RoomStorage,
 	schedulerManager *scheduler_manager.SchedulerManager,
 	instanceStorage ports.GameRoomInstanceStorage,
+	schedulerCache ports.SchedulerCache,
+	operationStorage ports.OperationStorage,
 	operationManager ports.OperationManager,
 	autoscaler autoscaler.Autoscaler,
 	newSchedulerVersionConfig newschedulerversion.Config,
@@ -92,7 +94,7 @@ func ProvideExecutors(
 	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)
 	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager, operationManager, newSchedulerVersionConfig)
 	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, autoscaler, healthControllerConfig)
-	executors[deletescheduler.OperationName] = deletescheduler.NewExecutor()
+	executors[deletescheduler.OperationName] = deletescheduler.NewExecutor(schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime)
 
 	return executors
 

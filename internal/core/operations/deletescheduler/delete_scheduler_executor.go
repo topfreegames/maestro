@@ -24,6 +24,10 @@ package deletescheduler
 
 import (
 	"context"
+	"time"
+
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -32,22 +36,81 @@ import (
 )
 
 type DeleteSchedulerExecutor struct {
+	schedulerStorage ports.SchedulerStorage
+	schedulerCache   ports.SchedulerCache
+	instanceStorage  ports.GameRoomInstanceStorage
+	operationStorage ports.OperationStorage
+	runtime          ports.Runtime
 }
 
 var _ operations.Executor = (*DeleteSchedulerExecutor)(nil)
 
-func NewExecutor() *DeleteSchedulerExecutor {
-	return &DeleteSchedulerExecutor{}
+func NewExecutor(
+	schedulerStorage ports.SchedulerStorage,
+	schedulerCache ports.SchedulerCache,
+	instanceStorage ports.GameRoomInstanceStorage,
+	operationStorage ports.OperationStorage,
+	runtime ports.Runtime,
+) *DeleteSchedulerExecutor {
+	return &DeleteSchedulerExecutor{
+		schedulerStorage: schedulerStorage,
+		schedulerCache:   schedulerCache,
+		instanceStorage:  instanceStorage,
+		operationStorage: operationStorage,
+		runtime:          runtime,
+	}
 }
 
 // Execute deletes the scheduler, cleaning all bounded resources in the runtime and on storages.
 func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
-	_ = zap.L().With(
+	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
 		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
+	schedulerName := definition.(*DeleteSchedulerDefinition).SchedulerName
+	scheduler, err := e.schedulerCache.GetScheduler(ctx, schedulerName)
+
+	if err != nil {
+		logger.Error("failed to get scheduler from cache", zap.Error(err))
+		return operations.NewErrUnexpected(err)
+	}
+
+	err = e.schedulerStorage.RunWithTransaction(ctx, func(transactionId ports.TransactionID) error {
+		err = e.schedulerStorage.DeleteScheduler(ctx, transactionId, scheduler)
+		if err != nil {
+			logger.Error("failed to delete scheduler from storage", zap.Error(err))
+			return err
+		}
+		err = e.runtime.DeleteScheduler(ctx, scheduler)
+		if err != nil {
+			logger.Error("failed to delete scheduler from runtime", zap.Error(err))
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		logger.Error("error deleting scheduler", zap.Error(err))
+		return operations.NewErrUnexpected(err)
+	}
+
+	err = e.waitForAllInstancesToBeDeleted(ctx, scheduler, logger)
+	if err != nil {
+		logger.Error("failed to wait for instances to be deleted", zap.Error(err))
+	}
+
+	err = e.schedulerCache.DeleteScheduler(ctx, schedulerName)
+	if err != nil {
+		logger.Error("failed to delete scheduler from cache", zap.Error(err))
+	}
+
+	err = e.operationStorage.CleanOperationsHistory(ctx, schedulerName)
+	if err != nil {
+		logger.Error("failed to clean operations history", zap.Error(err))
+	}
 
 	return nil
 }
@@ -60,4 +123,35 @@ func (e *DeleteSchedulerExecutor) Rollback(ctx context.Context, op *operation.Op
 // Name returns the name of the Operation.
 func (e *DeleteSchedulerExecutor) Name() string {
 	return OperationName
+}
+
+func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
+	ticker := time.NewTicker(time.Millisecond * 100)
+	defer ticker.Stop()
+
+	instancesCount, err := e.instanceStorage.GetInstanceCount(ctx, scheduler.Name)
+	if err != nil {
+		logger.Error("failed to get instance count", zap.Error(err))
+		return err
+	}
+
+	schedulerDeletionTimeout := scheduler.Spec.TerminationGracePeriod * time.Duration(instancesCount)
+
+	timeoutContext, cancelFunc := context.WithTimeout(ctx, schedulerDeletionTimeout)
+	defer cancelFunc()
+
+	for instancesCount != 0 {
+		select {
+		case <-timeoutContext.Done():
+			logger.Error("timeout waiting for instances to be deleted", zap.Error(timeoutContext.Err()))
+			return err
+		case <-ticker.C:
+			instancesCount, err = e.instanceStorage.GetInstanceCount(ctx, scheduler.Name)
+			if err != nil {
+				logger.Error("failed to get instance count", zap.Error(err))
+				return err
+			}
+		}
+	}
+	return nil
 }

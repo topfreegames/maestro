@@ -125,6 +125,7 @@ func (om *OperationManager) PendingOperationsChan(ctx context.Context, scheduler
 		for {
 			operationID, err := om.Flow.NextOperationID(ctx, schedulerName)
 			if err != nil {
+				om.Logger.Error("failed to get next operation ID", zap.Error(err), zap.String(logs.LogFieldSchedulerName, schedulerName))
 				return
 			}
 			opsChan <- operationID
