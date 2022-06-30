@@ -24,6 +24,7 @@ package deletescheduler
 
 import (
 	"context"
+	v1 "k8s.io/api/core/v1"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -89,27 +90,27 @@ func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 			return err
 		}
 
+		err = e.waitForAllInstancesToBeDeleted(ctx, scheduler, logger)
+		if err != nil {
+			logger.Error("failed to wait for instances to be deleted", zap.Error(err))
+		}
+
+		err = e.schedulerCache.DeleteScheduler(ctx, schedulerName)
+		if err != nil {
+			logger.Error("failed to delete scheduler from cache", zap.Error(err))
+		}
+
+		err = e.operationStorage.CleanOperationsHistory(ctx, schedulerName)
+		if err != nil {
+			logger.Error("failed to clean operations history", zap.Error(err))
+		}
+
 		return nil
 	})
 
 	if err != nil {
 		logger.Error("error deleting scheduler", zap.Error(err))
 		return operations.NewErrUnexpected(err)
-	}
-
-	err = e.waitForAllInstancesToBeDeleted(ctx, scheduler, logger)
-	if err != nil {
-		logger.Error("failed to wait for instances to be deleted", zap.Error(err))
-	}
-
-	err = e.schedulerCache.DeleteScheduler(ctx, schedulerName)
-	if err != nil {
-		logger.Error("failed to delete scheduler from cache", zap.Error(err))
-	}
-
-	err = e.operationStorage.CleanOperationsHistory(ctx, schedulerName)
-	if err != nil {
-		logger.Error("failed to clean operations history", zap.Error(err))
 	}
 
 	return nil
@@ -135,7 +136,11 @@ func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Con
 		return err
 	}
 
-	schedulerDeletionTimeout := scheduler.Spec.TerminationGracePeriod * time.Duration(instancesCount)
+	terminationGracePeriodSeconds := int(scheduler.Spec.TerminationGracePeriod.Seconds())
+	if terminationGracePeriodSeconds == 0 {
+		terminationGracePeriodSeconds = v1.DefaultTerminationGracePeriodSeconds
+	}
+	schedulerDeletionTimeout := time.Duration(terminationGracePeriodSeconds*instancesCount) * time.Second
 
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, schedulerDeletionTimeout)
 	defer cancelFunc()
