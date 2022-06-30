@@ -24,6 +24,7 @@ package deletescheduler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -42,6 +43,7 @@ type DeleteSchedulerExecutor struct {
 	schedulerCache   ports.SchedulerCache
 	instanceStorage  ports.GameRoomInstanceStorage
 	operationStorage ports.OperationStorage
+	operationManager ports.OperationManager
 	runtime          ports.Runtime
 }
 
@@ -52,6 +54,7 @@ func NewExecutor(
 	schedulerCache ports.SchedulerCache,
 	instanceStorage ports.GameRoomInstanceStorage,
 	operationStorage ports.OperationStorage,
+	operationManager ports.OperationManager,
 	runtime ports.Runtime,
 ) *DeleteSchedulerExecutor {
 	return &DeleteSchedulerExecutor{
@@ -59,6 +62,7 @@ func NewExecutor(
 		schedulerCache:   schedulerCache,
 		instanceStorage:  instanceStorage,
 		operationStorage: operationStorage,
+		operationManager: operationManager,
 		runtime:          runtime,
 	}
 }
@@ -92,7 +96,7 @@ func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 			return err
 		}
 
-		err = e.waitForAllInstancesToBeDeleted(ctx, scheduler, logger)
+		err = e.waitForAllInstancesToBeDeleted(ctx, op, scheduler, logger)
 		if err != nil {
 			logger.Error("failed to wait for instances to be deleted", zap.Error(err))
 		}
@@ -128,7 +132,7 @@ func (e *DeleteSchedulerExecutor) Name() string {
 	return OperationName
 }
 
-func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
+func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Context, op *operation.Operation, scheduler *entities.Scheduler, logger *zap.Logger) error {
 	instancesCount, err := e.instanceStorage.GetInstanceCount(ctx, scheduler.Name)
 	if err != nil {
 		logger.Error("failed to get instance count", zap.Error(err))
@@ -160,6 +164,7 @@ func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Con
 				logger.Error("failed to get instance count", zap.Error(err))
 				return err
 			}
+			e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Waiting for instances to be deleted: %d", instancesCount))
 		}
 	}
 	return nil

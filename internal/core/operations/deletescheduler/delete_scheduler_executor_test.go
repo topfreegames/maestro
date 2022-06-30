@@ -25,6 +25,7 @@ package deletescheduler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 
 	t.Run("returns no error", func(t *testing.T) {
 		t.Run("when no internal error occurs with 0 running instances", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -74,7 +75,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when no internal error occurs with 20 running instances", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, operationManager, runtime := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -91,6 +92,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(20, nil).Times(1)
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(10, nil).Times(1)
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(0, nil).Times(1)
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Waiting for instances to be deleted: 10")).Times(1)
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Waiting for instances to be deleted: 0")).Times(1)
 
 			schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name)
 			operationStorage.EXPECT().CleanOperationsHistory(ctx, scheduler.Name)
@@ -101,7 +104,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when it fails to get scheduler from cache the first time", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -126,7 +129,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when it fails to wait for all instances to be deleted error", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -150,7 +153,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when it fails to delete scheduler from cache", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -174,7 +177,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when it fails to clean operations history", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -198,7 +201,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when some error occurs when waiting for instances to be deleted", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -224,7 +227,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when timeout waiting for instances to be deleted", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, operationManager, runtime := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -239,6 +242,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			runtime.EXPECT().DeleteScheduler(ctx, scheduler)
 
 			instanceStorage.EXPECT().GetInstanceCount(ctx, scheduler.Name).Return(1, nil).AnyTimes()
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Waiting for instances to be deleted: 1")).AnyTimes()
 
 			schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name)
 			operationStorage.EXPECT().CleanOperationsHistory(ctx, scheduler.Name)
@@ -251,7 +255,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 
 	t.Run("returns error", func(t *testing.T) {
 		t.Run("when it fails to load the scheduler from storage the first time", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, _, _, _ := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, _, _, _, _ := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -266,7 +270,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when it fails to delete scheduler in storage", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, _, _, _ := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, _, _, _, _ := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
@@ -285,7 +289,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when it fails to delete scheduler in runtime", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, _, _, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, _, _, _, runtime := prepareMocks(t)
 
 			ctx := context.Background()
 
@@ -312,6 +316,7 @@ func prepareMocks(t *testing.T) (
 	*mockports.MockSchedulerCache,
 	*instancemock.MockGameRoomInstanceStorage,
 	*mockports.MockOperationStorage,
+	*mockports.MockOperationManager,
 	*runtimemock.MockRuntime,
 ) {
 	mockCtrl := gomock.NewController(t)
@@ -319,6 +324,7 @@ func prepareMocks(t *testing.T) (
 	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 	instanceStorage := instancemock.NewMockGameRoomInstanceStorage(mockCtrl)
 	operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+	operationManager := mockports.NewMockOperationManager(mockCtrl)
 	runtime := runtimemock.NewMockRuntime(mockCtrl)
 
 	op := NewExecutor(
@@ -326,8 +332,9 @@ func prepareMocks(t *testing.T) (
 		schedulerCache,
 		instanceStorage,
 		operationStorage,
+		operationManager,
 		runtime,
 	)
 
-	return op, schedulerStorage, schedulerCache, instanceStorage, operationStorage, runtime
+	return op, schedulerStorage, schedulerCache, instanceStorage, operationStorage, operationManager, runtime
 }
