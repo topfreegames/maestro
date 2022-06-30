@@ -136,6 +136,8 @@ func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Con
 		return err
 	}
 
+	// TODO: the TerminationGracePeriod field should have validation enforcing it to be a positive number, or have
+	// the default value we are using here.
 	terminationGracePeriodSeconds := int(scheduler.Spec.TerminationGracePeriod.Seconds())
 	if terminationGracePeriodSeconds == 0 {
 		terminationGracePeriodSeconds = v1.DefaultTerminationGracePeriodSeconds
