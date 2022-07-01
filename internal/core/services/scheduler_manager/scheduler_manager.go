@@ -257,6 +257,14 @@ func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Conte
 }
 
 func (s *SchedulerManager) EnqueueDeleteSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, error) {
+	_, err := s.getScheduler(ctx, schedulerName)
+	if err != nil {
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, portsErrors.NewErrNotFound("no scheduler found, can not delete nonexistent scheduler: %s", err.Error())
+		}
+
+		return nil, portsErrors.NewErrUnexpected("unexpected error getting scheduler to delete: %s", err.Error())
+	}
 	opDef := &deletescheduler.DeleteSchedulerDefinition{}
 	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
 	if err != nil {
@@ -314,6 +322,15 @@ func (s *SchedulerManager) DeleteScheduler(ctx context.Context, schedulerName st
 	}
 
 	return nil
+}
+
+func (s *SchedulerManager) getScheduler(ctx context.Context, schedulerManager string) (*entities.Scheduler, error) {
+	scheduler, err := s.schedulerCache.GetScheduler(ctx, schedulerManager)
+	if err != nil {
+		scheduler, err = s.schedulerStorage.GetScheduler(ctx, schedulerManager)
+	}
+	return scheduler, err
+
 }
 
 func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *entities.Scheduler) (*entities.SchedulerInfo, error) {
