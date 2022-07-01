@@ -27,6 +27,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/operations/deletescheduler"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
@@ -246,6 +248,16 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 
 func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error) {
 	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newVersion}
+	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
+	}
+
+	return op, nil
+}
+
+func (s *SchedulerManager) EnqueueDeleteSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, error) {
+	opDef := &deletescheduler.DeleteSchedulerDefinition{}
 	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)

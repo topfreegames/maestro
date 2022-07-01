@@ -40,6 +40,7 @@ type SchedulerManager interface {
 	CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx context.Context, scheduler *entities.Scheduler) (string, error)
 	CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error
 	EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error)
+	EnqueueDeleteSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, error)
 	GetSchedulersInfo(ctx context.Context, filter *filters.SchedulerFilter) ([]*entities.SchedulerInfo, error)
 	GetSchedulerVersions(ctx context.Context, schedulerName string) ([]*entities.SchedulerVersion, error)
 	DeleteScheduler(ctx context.Context, schedulerName string) error
