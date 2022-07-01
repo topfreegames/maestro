@@ -94,7 +94,7 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 
 	existentGameRoomIDs := filterExistentGameRooms(gameRoomIDs, nonexistentGameRoomIDs)
 
-	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, existentGameRoomIDs)
+	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, existentGameRoomIDs, instances)
 	if len(expiredRooms) > 0 {
 		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
 		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
@@ -208,8 +208,13 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 	return nil
 }
 
-func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, gameRoomsIDs []string) (availableRoomsIDs, expiredRoomsIDs []string) {
+func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, gameRoomsIDs []string, instances []*game_room.Instance) (availableRoomsIDs, expiredRoomsIDs []string) {
 	for _, gameRoomID := range gameRoomsIDs {
+		if !ex.isGameRoomInstanceReady(gameRoomID, instances) {
+			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
+			continue
+		}
+
 		room, err := ex.roomStorage.GetRoom(ctx, op.SchedulerName, gameRoomID)
 		if err != nil {
 			continue
@@ -230,6 +235,15 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 	}
 
 	return availableRoomsIDs, expiredRoomsIDs
+}
+
+func (ex *SchedulerHealthControllerExecutor) isGameRoomInstanceReady(gameRoomId string, instances []*game_room.Instance) bool {
+	for _, instance := range instances {
+		if instance.ID == gameRoomId {
+			return instance.Status.Type == game_room.InstanceReady
+		}
+	}
+	return false
 }
 
 func (ex *SchedulerHealthControllerExecutor) isInitializingRoomExpired(room *game_room.GameRoom) bool {

@@ -89,8 +89,14 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
 				) {
+					readyInstance := &game_room.Instance{
+						Status: game_room.InstanceStatus{
+							Type: game_room.InstanceReady,
+						},
+					}
+
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]string{}, nil)
-					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]*game_room.Instance{}, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]*game_room.Instance{readyInstance}, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(genericSchedulerNoAutoscaling, nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 				},
@@ -107,7 +113,20 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					autoscaler *mockports.MockAutoscaler,
 				) {
 					gameRoomIDs := []string{"existent-1", "existent-pending-2"}
-					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-pending-2"}}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						}, {
+							ID: "existent-pending-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
+
 					// load
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
@@ -147,7 +166,19 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					autoscaler *mockports.MockAutoscaler,
 				) {
 					gameRoomIDs := []string{"existent-1", "existent-pending-2"}
-					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-pending-2"}}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						}, {
+							ID: "existent-pending-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
 					// load
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
@@ -194,7 +225,19 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					autoscaler *mockports.MockAutoscaler,
 				) {
 					gameRoomIDs := []string{"existent-1", "existent-pending-2"}
-					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-pending-2"}}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						}, {
+							ID: "existent-pending-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
 					// load
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
@@ -211,7 +254,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 					expiredCreatedAt := time.Now().Add(5 * -time.Minute)
 					gameRoomUnready := &game_room.GameRoom{
-						ID:          gameRoomIDs[0],
+						ID:          gameRoomIDs[1],
 						SchedulerID: genericSchedulerNoAutoscaling.Name,
 						Status:      game_room.GameStatusUnready,
 						LastPingAt:  time.Now(),
@@ -241,7 +284,19 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					autoscaler *mockports.MockAutoscaler,
 				) {
 					gameRoomIDs := []string{"existent-1", "existent-unready-2"}
-					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-unready-2"}}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						}, {
+							ID: "existent-unready-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
 					// load
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
@@ -285,6 +340,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -321,6 +379,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -358,9 +419,15 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 						{
 							ID: "expired-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -395,6 +462,34 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
+			title: "instance is still pending, do nothing",
+			executionPlan: executionPlan{
+				planMocks: func(
+					roomStorage *mockports.MockRoomStorage,
+					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					schedulerStorage *mockports.MockSchedulerStorage,
+					operationManager *mockports.MockOperationManager,
+					autoscaler *mockports.MockAutoscaler,
+				) {
+					gameRoomIDs := []string{"expired-1"}
+					instances := []*game_room.Instance{
+						{
+							ID: "expired-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstancePending,
+							},
+						},
+					}
+					// load
+					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
+					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
+
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), "current amount of rooms is equal to desired amount, no changes needed")
+				},
+			},
+		},
+		{
 			title: "expired room found, enqueue remove rooms with specified ID fails, continues operation and enqueue new add rooms",
 			executionPlan: executionPlan{
 				planMocks: func(
@@ -408,9 +503,15 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 						{
 							ID: "expired-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -554,6 +655,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -591,6 +695,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -628,6 +735,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -665,6 +775,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -749,6 +862,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instances := []*game_room.Instance{
 						{
 							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
 						},
 					}
 					// load
@@ -780,7 +896,19 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					autoscaler *mockports.MockAutoscaler,
 				) {
 					gameRoomIDs := []string{"existent-1", "existent-2"}
-					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-2"}}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						}, {
+							ID: "existent-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
 					// load
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
@@ -814,7 +942,19 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					autoscaler *mockports.MockAutoscaler,
 				) {
 					gameRoomIDs := []string{"existent-1", "existent-with-error-2"}
-					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-with-error-2"}}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						}, {
+							ID: "existent-with-error-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
 					// load
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
@@ -855,7 +995,19 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					autoscaler *mockports.MockAutoscaler,
 				) {
 					gameRoomIDs := []string{"existent-1", "existent-terminating-2"}
-					instances := []*game_room.Instance{{ID: "existent-1"}, {ID: "existent-terminating-2"}}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						}, {
+							ID: "existent-terminating-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
 					// load
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
