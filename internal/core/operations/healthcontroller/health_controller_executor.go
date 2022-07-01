@@ -86,15 +86,13 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		return operations.NewErrUnexpected(err)
 	}
 
-	nonexistentGameRoomIDs := ex.checkNonexistentGameRoomsIDs(gameRoomIDs, instances)
-	if len(nonexistentGameRoomIDs) > 0 {
+	nonexistentGameRoomsIDs, existentGameRoomsInstancesMap := ex.mapExistentAndNonExistentGameRooms(gameRoomIDs, instances)
+	if len(nonexistentGameRoomsIDs) > 0 {
 		logger.Error("found registered rooms that no longer exists")
-		ex.tryEnsureCorrectRoomsOnStorage(ctx, op, logger, nonexistentGameRoomIDs)
+		ex.tryEnsureCorrectRoomsOnStorage(ctx, op, logger, nonexistentGameRoomsIDs)
 	}
 
-	existentGameRoomIDs := filterExistentGameRooms(gameRoomIDs, nonexistentGameRoomIDs)
-
-	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, existentGameRoomIDs)
+	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, existentGameRoomsInstancesMap)
 	if len(expiredRooms) > 0 {
 		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
 		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
@@ -147,23 +145,6 @@ func (ex *SchedulerHealthControllerExecutor) loadActualState(ctx context.Context
 	return
 }
 
-func (ex *SchedulerHealthControllerExecutor) checkNonexistentGameRoomsIDs(gameRoomIDs []string, gameRoomInstances []*game_room.Instance) []string {
-	var nonexistentGameRoomsIDs []string
-	for _, gameRoomID := range gameRoomIDs {
-		found := false
-		for _, instance := range gameRoomInstances {
-			if instance.ID == gameRoomID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			nonexistentGameRoomsIDs = append(nonexistentGameRoomsIDs, gameRoomID)
-		}
-	}
-	return nonexistentGameRoomsIDs
-}
-
 func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx context.Context, op *operation.Operation, logger *zap.Logger, nonexistentGameRoomIDs []string) {
 	for _, gameRoomID := range nonexistentGameRoomIDs {
 		err := ex.roomStorage.DeleteRoom(ctx, op.SchedulerName, gameRoomID)
@@ -208,24 +189,29 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 	return nil
 }
 
-func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, gameRoomsIDs []string) (availableRoomsIDs, expiredRoomsIDs []string) {
-	for _, gameRoomID := range gameRoomsIDs {
-		room, err := ex.roomStorage.GetRoom(ctx, op.SchedulerName, gameRoomID)
+func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, existentGameRoomsInstancesMap map[string]*game_room.Instance) (availableRoomsIDs, expiredRoomsIDs []string) {
+	for gameRoomId, instance := range existentGameRoomsInstancesMap {
+		if instance.Status.Type == game_room.InstancePending {
+			availableRoomsIDs = append(availableRoomsIDs, gameRoomId)
+			continue
+		}
+
+		room, err := ex.roomStorage.GetRoom(ctx, op.SchedulerName, gameRoomId)
 		if err != nil {
 			continue
 		}
 
 		switch {
 		case ex.isInitializingRoomExpired(room):
-			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomID)
+			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
 		case ex.isRoomPingExpired(room):
-			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomID)
+			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
 		case ex.isRoomStatus(room, game_room.GameStatusTerminating):
 			continue
 		case ex.isRoomStatus(room, game_room.GameStatusError):
 			continue
 		default:
-			availableRoomsIDs = append(availableRoomsIDs, gameRoomID)
+			availableRoomsIDs = append(availableRoomsIDs, gameRoomId)
 		}
 	}
 
@@ -276,16 +262,22 @@ func (ex *SchedulerHealthControllerExecutor) getDesiredNumberOfRooms(ctx context
 	return scheduler.RoomsReplicas, nil
 }
 
-func filterExistentGameRooms(a, b []string) []string {
-	mb := make(map[string]struct{}, len(b))
-	for _, x := range b {
-		mb[x] = struct{}{}
-	}
-	var diff []string
-	for _, x := range a {
-		if _, found := mb[x]; !found {
-			diff = append(diff, x)
+func (ex *SchedulerHealthControllerExecutor) mapExistentAndNonExistentGameRooms(gameRoomIDs []string, instances []*game_room.Instance) ([]string, map[string]*game_room.Instance) {
+	nonexistentGameRoomsIDs := make([]string, 0)
+	existentGameRoomsInstancesMap := make(map[string]*game_room.Instance)
+	for _, gameRoomID := range gameRoomIDs {
+		found := false
+		for _, instance := range instances {
+			if instance.ID == gameRoomID {
+				found = true
+				existentGameRoomsInstancesMap[gameRoomID] = instance
+				break
+			}
+		}
+		if !found {
+			nonexistentGameRoomsIDs = append(nonexistentGameRoomsIDs, gameRoomID)
 		}
 	}
-	return diff
+
+	return nonexistentGameRoomsIDs, existentGameRoomsInstancesMap
 }
