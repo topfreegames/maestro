@@ -53,8 +53,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
@@ -77,8 +77,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, operationManager, runtime := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
@@ -106,8 +106,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, errors.New("error getting scheduler from cache"))
 			schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
@@ -131,8 +131,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
@@ -155,8 +155,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
@@ -179,8 +179,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
@@ -203,8 +203,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, _, runtime := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
@@ -229,8 +229,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, instanceStorage, operationStorage, operationManager, runtime := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
@@ -257,8 +257,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, _, _, _, _ := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.New("some error on cache"))
 			schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.New("some error on storage"))
@@ -272,8 +272,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			executor, schedulerStorage, schedulerCache, _, _, _, _ := prepareMocks(t)
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).
@@ -292,8 +292,8 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 
 			ctx := context.Background()
 
-			definition := &DeleteSchedulerDefinition{SchedulerName: scheduler.Name}
-			op := &operation.Operation{}
+			definition := &DeleteSchedulerDefinition{}
+			op := &operation.Operation{SchedulerName: scheduler.Name}
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 			schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).

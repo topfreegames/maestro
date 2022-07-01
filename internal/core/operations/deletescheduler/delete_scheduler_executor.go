@@ -75,7 +75,7 @@ func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	schedulerName := definition.(*DeleteSchedulerDefinition).SchedulerName
+	schedulerName := op.SchedulerName
 
 	scheduler, err := e.getScheduler(ctx, schedulerName)
 
@@ -134,9 +134,13 @@ func (e *DeleteSchedulerExecutor) Name() string {
 
 func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Context, op *operation.Operation, scheduler *entities.Scheduler, logger *zap.Logger) error {
 	instancesCount, err := e.instanceStorage.GetInstanceCount(ctx, scheduler.Name)
+
 	if err != nil {
 		logger.Error("failed to get instance count", zap.Error(err))
 		return err
+	}
+	if instancesCount == 0 {
+		return nil
 	}
 
 	// TODO: the TerminationGracePeriod field should have validation enforcing it to be a positive number, or have
