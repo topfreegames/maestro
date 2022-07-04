@@ -73,12 +73,15 @@ const (
 	// Redis instance storage
 	instanceStorageRedisUrlPath      = "adapters.instanceStorage.redis.url"
 	instanceStorageRedisScanSizePath = "adapters.instanceStorage.redis.scanSize"
+	// Redis operation flow
+	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
+	// Redis configs
+	redisPoolSize = "adapters.redis.poolSize"
 	// Random port allocator
 	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
 	// Postgres scheduler storage
 	schedulerStoragePostgresUrlPath = "adapters.schedulerStorage.postgres.url"
-	// Redis operation flow
-	operationFlowRedisUrlPath = "adapters.operationFlow.redis.url"
+
 	// Health Controller operation TTL
 	healthControllerOperationTTL = "workers.redis.operationsTtl"
 )
@@ -115,7 +118,7 @@ func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 }
 
 func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.OperationStorage, error) {
-	client, err := createRedisClient(c.GetString(operationStorageRedisUrlPath))
+	client, err := createRedisClient(c, c.GetString(operationStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
@@ -128,7 +131,7 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 }
 
 func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.OperationLeaseStorage, error) {
-	client, err := createRedisClient(c.GetString(operationLeaseStorageRedisUrlPath))
+	client, err := createRedisClient(c, c.GetString(operationLeaseStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis operation lease storage: %w", err)
 	}
@@ -137,7 +140,7 @@ func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.Op
 }
 
 func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
-	client, err := createRedisClient(c.GetString(roomStorageRedisUrlPath))
+	client, err := createRedisClient(c, c.GetString(roomStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis room storage: %w", err)
 	}
@@ -146,7 +149,7 @@ func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
 }
 
 func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceStorage, error) {
-	client, err := createRedisClient(c.GetString(instanceStorageRedisUrlPath))
+	client, err := createRedisClient(c, c.GetString(instanceStorageRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis instance storage: %w", err)
 	}
@@ -155,7 +158,7 @@ func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceSto
 }
 
 func NewSchedulerCacheRedis(c config.Config) (ports.SchedulerCache, error) {
-	client, err := createRedisClient(c.GetString(schedulerCacheRedisUrlPath))
+	client, err := createRedisClient(c, c.GetString(schedulerCacheRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis scheduler cache: %w", err)
 	}
@@ -189,12 +192,12 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 	return scheduleradapters.NewSchedulerStorage(opts), nil
 }
 
-func createRedisClient(url string) (*redis.Client, error) {
+func createRedisClient(c config.Config, url string) (*redis.Client, error) {
 	opts, err := redis.ParseURL(url)
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
-	opts.PoolSize = 500
+	opts.PoolSize = c.GetInt(redisPoolSize)
 	return redis.NewClient(opts), nil
 }
 
@@ -209,7 +212,7 @@ func NewAutoscaler(policies autoscaler.PolicyMap) autoscalerports.Autoscaler {
 }
 
 func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
-	client, err := createRedisClient(c.GetString(operationFlowRedisUrlPath))
+	client, err := createRedisClient(c, c.GetString(operationFlowRedisUrlPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
