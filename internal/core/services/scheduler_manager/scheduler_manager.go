@@ -67,7 +67,7 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache
 }
 
 func (s *SchedulerManager) GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
-	activeScheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
+	activeScheduler, err := s.getScheduler(ctx, schedulerName)
 	if err != nil {
 		return nil, err
 	}
@@ -324,10 +324,10 @@ func (s *SchedulerManager) DeleteScheduler(ctx context.Context, schedulerName st
 	return nil
 }
 
-func (s *SchedulerManager) getScheduler(ctx context.Context, schedulerManager string) (*entities.Scheduler, error) {
-	scheduler, err := s.schedulerCache.GetScheduler(ctx, schedulerManager)
+func (s *SchedulerManager) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	scheduler, err := s.schedulerCache.GetScheduler(ctx, schedulerName)
 	if err != nil {
-		scheduler, err = s.schedulerStorage.GetScheduler(ctx, schedulerManager)
+		scheduler, err = s.schedulerStorage.GetScheduler(ctx, schedulerName)
 	}
 	return scheduler, err
 
