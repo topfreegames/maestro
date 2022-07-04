@@ -38,8 +38,6 @@ type SchedulersServiceClient interface {
 	SwitchActiveVersion(ctx context.Context, in *SwitchActiveVersionRequest, opts ...grpc.CallOption) (*SwitchActiveVersionResponse, error)
 	// List Scheduler and Game Rooms info by Game
 	GetSchedulersInfo(ctx context.Context, in *GetSchedulersInfoRequest, opts ...grpc.CallOption) (*GetSchedulersInfoResponse, error)
-	// List Scheduler and Game Rooms info by Game
-	DeleteScheduler(ctx context.Context, in *DeleteSchedulerRequest, opts ...grpc.CallOption) (*DeleteSchedulerResponse, error)
 }
 
 type schedulersServiceClient struct {
@@ -140,15 +138,6 @@ func (c *schedulersServiceClient) GetSchedulersInfo(ctx context.Context, in *Get
 	return out, nil
 }
 
-func (c *schedulersServiceClient) DeleteScheduler(ctx context.Context, in *DeleteSchedulerRequest, opts ...grpc.CallOption) (*DeleteSchedulerResponse, error) {
-	out := new(DeleteSchedulerResponse)
-	err := c.cc.Invoke(ctx, "/api.v1.SchedulersService/DeleteScheduler", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // SchedulersServiceServer is the server API for SchedulersService service.
 // All implementations must embed UnimplementedSchedulersServiceServer
 // for forward compatibility
@@ -173,8 +162,6 @@ type SchedulersServiceServer interface {
 	SwitchActiveVersion(context.Context, *SwitchActiveVersionRequest) (*SwitchActiveVersionResponse, error)
 	// List Scheduler and Game Rooms info by Game
 	GetSchedulersInfo(context.Context, *GetSchedulersInfoRequest) (*GetSchedulersInfoResponse, error)
-	// List Scheduler and Game Rooms info by Game
-	DeleteScheduler(context.Context, *DeleteSchedulerRequest) (*DeleteSchedulerResponse, error)
 	mustEmbedUnimplementedSchedulersServiceServer()
 }
 
@@ -211,9 +198,6 @@ func (UnimplementedSchedulersServiceServer) SwitchActiveVersion(context.Context,
 }
 func (UnimplementedSchedulersServiceServer) GetSchedulersInfo(context.Context, *GetSchedulersInfoRequest) (*GetSchedulersInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchedulersInfo not implemented")
-}
-func (UnimplementedSchedulersServiceServer) DeleteScheduler(context.Context, *DeleteSchedulerRequest) (*DeleteSchedulerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteScheduler not implemented")
 }
 func (UnimplementedSchedulersServiceServer) mustEmbedUnimplementedSchedulersServiceServer() {}
 
@@ -408,24 +392,6 @@ func _SchedulersService_GetSchedulersInfo_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SchedulersService_DeleteScheduler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteSchedulerRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SchedulersServiceServer).DeleteScheduler(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.v1.SchedulersService/DeleteScheduler",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SchedulersServiceServer).DeleteScheduler(ctx, req.(*DeleteSchedulerRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // SchedulersService_ServiceDesc is the grpc.ServiceDesc for SchedulersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -472,10 +438,6 @@ var SchedulersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSchedulersInfo",
 			Handler:    _SchedulersService_GetSchedulersInfo_Handler,
-		},
-		{
-			MethodName: "DeleteScheduler",
-			Handler:    _SchedulersService_DeleteScheduler_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -12,6 +12,7 @@ import (
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/service"
 	"github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -50,7 +51,7 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	if err != nil {
 		return nil, err
 	}
-	schedulerManager := service.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+	schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 	schedulersHandler := handlers.ProvideSchedulersHandler(schedulerManager)
 	operationsHandler := handlers.ProvideOperationsHandler(operationManager)
 	serveMux := provideManagementMux(ctx, schedulersHandler, operationsHandler)

@@ -34,6 +34,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/autoscaler"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 )
 
 // ProvideDefinitionConstructors create definition constructors.
@@ -75,7 +76,7 @@ func ProvideExecutors(
 	schedulerStorage ports.SchedulerStorage,
 	roomManager ports.RoomManager,
 	roomStorage ports.RoomStorage,
-	schedulerManager ports.SchedulerManager,
+	schedulerManager *scheduler_manager.SchedulerManager,
 	instanceStorage ports.GameRoomInstanceStorage,
 	schedulerCache ports.SchedulerCache,
 	operationStorage ports.OperationStorage,

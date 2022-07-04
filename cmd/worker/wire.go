@@ -30,6 +30,7 @@ import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"github.com/topfreegames/maestro/internal/service"
@@ -68,7 +69,7 @@ func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_
 		events_forwarder.NewEventsForwarderService,
 		workers.ProvideWorkerOptions,
 		workers_manager.NewWorkersManager,
-		service.NewSchedulerManager,
+		scheduler_manager.NewSchedulerManager,
 	)
 
 	return &workers_manager.WorkersManager{}, nil

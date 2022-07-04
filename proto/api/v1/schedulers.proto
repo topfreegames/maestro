@@ -90,13 +90,6 @@ service SchedulersService {
       get: "/schedulers/info"
     };
   }
-
-  // List Scheduler and Game Rooms info by Game
-  rpc DeleteScheduler(DeleteSchedulerRequest) returns (DeleteSchedulerResponse) {
-    option (google.api.http) = {
-      delete: "/schedulers/{scheduler_name=*}"
-    };
-  }
 }
 
 // List scheduler request options.
@@ -269,17 +262,4 @@ message GetSchedulersInfoRequest {
 message GetSchedulersInfoResponse {
   // List of schedulers fetched.
   repeated SchedulerInfo schedulers = 1;
-}
-
-// Delete scheduler request
-message DeleteSchedulerRequest {
-  // Scheduler name to be deleted
-  // NOTE: On http protocol, this operates as a path param.
-  string scheduler_name = 1;
-}
-
-// Delete scheduler payload
-message DeleteSchedulerResponse {
-  // Delete scheduler operation ID.
-  string operation_id = 1;
 }

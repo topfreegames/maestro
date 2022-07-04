@@ -608,36 +608,6 @@
           "SchedulersService"
         ]
       },
-      "delete": {
-        "summary": "List Scheduler and Game Rooms info by Game",
-        "operationId": "SchedulersService_DeleteScheduler",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1DeleteSchedulerResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "schedulerName",
-            "description": "Scheduler name to be deleted\nNOTE: On http protocol, this operates as a path param.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "SchedulersService"
-        ]
-      },
       "put": {
         "summary": "Switch Active Version to Scheduler",
         "operationId": "SchedulersService_SwitchActiveVersion",
@@ -1275,16 +1245,6 @@
         }
       },
       "description": "Response for the create scheduler."
-    },
-    "v1DeleteSchedulerResponse": {
-      "type": "object",
-      "properties": {
-        "operationId": {
-          "type": "string",
-          "description": "Delete scheduler operation ID."
-        }
-      },
-      "title": "Delete scheduler payload"
     },
     "v1ForwardPlayerEventResponse": {
       "type": "object",

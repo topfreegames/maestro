@@ -33,6 +33,7 @@ import (
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 	"github.com/topfreegames/maestro/internal/service"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -45,6 +46,7 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		service.NewOperationStorageRedis,
 		service.NewOperationLeaseStorageRedis,
 		service.NewSchedulerStoragePg,
+		service.NewOperationManager,
 		service.NewRoomStorageRedis,
 		service.NewSchedulerCacheRedis,
 
@@ -52,8 +54,7 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		providers.ProvideDefinitionConstructors,
 
 		// services
-		service.NewSchedulerManager,
-		service.NewOperationManager,
+		scheduler_manager.NewSchedulerManager,
 
 		// api handlers
 		handlers.ProvideSchedulersHandler,
