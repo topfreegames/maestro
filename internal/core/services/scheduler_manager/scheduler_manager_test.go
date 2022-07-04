@@ -31,6 +31,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/deletescheduler"
+
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -402,6 +404,98 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 		require.Contains(t, err.Error(), "failed to schedule switch_active_version operation:")
 	})
+}
+
+func TestDeleteSchedulerOperation(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	t.Run("return the operation when no error occurs using cache", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		opDef := &deletescheduler.DeleteSchedulerDefinition{}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, opDef).Return(&operation.Operation{}, nil)
+		schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
+
+		op, err := schedulerManager.EnqueueDeleteSchedulerOperation(ctx, scheduler.Name)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+		require.NotNil(t, op.ID)
+	})
+
+	t.Run("return the operation when no error occurs using storage", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		opDef := &deletescheduler.DeleteSchedulerDefinition{}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, opDef).Return(&operation.Operation{}, nil)
+		schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.ErrNotFound)
+		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
+
+		op, err := schedulerManager.EnqueueDeleteSchedulerOperation(ctx, scheduler.Name)
+		require.NoError(t, err)
+		require.NotNil(t, op)
+		require.NotNil(t, op.ID)
+	})
+
+	t.Run("return error when some error occurs while creating operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		opDef := &deletescheduler.DeleteSchedulerDefinition{}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, opDef).Return(nil, errors.NewErrUnexpected("storage offline"))
+		schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
+
+		op, err := schedulerManager.EnqueueDeleteSchedulerOperation(ctx, scheduler.Name)
+		require.Nil(t, op)
+		require.ErrorIs(t, err, errors.ErrUnexpected)
+		require.Contains(t, err.Error(), "failed to schedule delete_scheduler operation:")
+	})
+
+	t.Run("return error when can't find scheduler to delete", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.ErrNotFound)
+		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.ErrNotFound)
+
+		_, err = schedulerManager.EnqueueDeleteSchedulerOperation(ctx, scheduler.Name)
+		require.Error(t, err)
+	})
+
 }
 
 func TestGetSchedulerVersions(t *testing.T) {

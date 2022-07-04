@@ -27,6 +27,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/operations/deletescheduler"
+
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
@@ -65,7 +67,7 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache
 }
 
 func (s *SchedulerManager) GetActiveScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
-	activeScheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
+	activeScheduler, err := s.getScheduler(ctx, schedulerName)
 	if err != nil {
 		return nil, err
 	}
@@ -254,6 +256,24 @@ func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Conte
 	return op, nil
 }
 
+func (s *SchedulerManager) EnqueueDeleteSchedulerOperation(ctx context.Context, schedulerName string) (*operation.Operation, error) {
+	_, err := s.getScheduler(ctx, schedulerName)
+	if err != nil {
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, portsErrors.NewErrNotFound("no scheduler found, can not delete nonexistent scheduler: %s", err.Error())
+		}
+
+		return nil, portsErrors.NewErrUnexpected("unexpected error getting scheduler to delete: %s", err.Error())
+	}
+	opDef := &deletescheduler.DeleteSchedulerDefinition{}
+	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
+	}
+
+	return op, nil
+}
+
 func (s *SchedulerManager) UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
 	err := scheduler.Validate()
 	if err != nil {
@@ -302,6 +322,15 @@ func (s *SchedulerManager) DeleteScheduler(ctx context.Context, schedulerName st
 	}
 
 	return nil
+}
+
+func (s *SchedulerManager) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	scheduler, err := s.schedulerCache.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		scheduler, err = s.schedulerStorage.GetScheduler(ctx, schedulerName)
+	}
+	return scheduler, err
+
 }
 
 func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *entities.Scheduler) (*entities.SchedulerInfo, error) {
