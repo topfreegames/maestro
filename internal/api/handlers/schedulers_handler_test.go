@@ -1292,6 +1292,104 @@ func TestPatchScheduler(t *testing.T) {
 	}
 }
 
+func TestDeleteScheduler(t *testing.T) {
+	t.Run("with valid request and persisted schedulers it returns success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+
+		scheduler := newValidScheduler()
+		scheduler.Autoscaling = &autoscaling.Autoscaling{
+			Enabled: true,
+			Min:     1,
+			Max:     5,
+		}
+
+		schedulerManager.EXPECT().EnqueueDeleteSchedulerOperation(gomock.Any(), "scheduler-name-1").
+			Return(&operation.Operation{ID: "some-id"}, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		url := fmt.Sprintf("/schedulers/%s", scheduler.Name)
+		req, err := http.NewRequest("DELETE", url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/delete_scheduler_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with valid request and no scheduler it returns not found", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+
+		scheduler := newValidScheduler()
+		scheduler.Autoscaling = &autoscaling.Autoscaling{
+			Enabled: true,
+			Min:     1,
+			Max:     5,
+		}
+
+		schedulerManager.EXPECT().EnqueueDeleteSchedulerOperation(gomock.Any(), "scheduler-name-1").
+			Return(nil, portsErrors.NewErrNotFound("scheduler not found"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		url := fmt.Sprintf("/schedulers/%s", scheduler.Name)
+		req, err := http.NewRequest("DELETE", url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusNotFound, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/delete_scheduler_not_found.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with unknown error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+
+		scheduler := newValidScheduler()
+		scheduler.Autoscaling = &autoscaling.Autoscaling{
+			Enabled: true,
+			Min:     1,
+			Max:     5,
+		}
+
+		schedulerManager.EXPECT().EnqueueDeleteSchedulerOperation(gomock.Any(), "scheduler-name-1").
+			Return(nil, portsErrors.NewErrUnexpected("some-error"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		url := fmt.Sprintf("/schedulers/%s", scheduler.Name)
+		req, err := http.NewRequest("DELETE", url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "schedulers_handler/delete_scheduler_error.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+}
+
 func newValidScheduler() *entities.Scheduler {
 	fwd := &forwarder.Forwarder{
 		Name:        "fwd",
