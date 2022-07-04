@@ -28,17 +28,16 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"testing"
 
-	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/go-redis/redis/v8"
+	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
-	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	"k8s.io/client-go/kubernetes"
 )
@@ -83,6 +82,44 @@ func TestDeleteScheduler(t *testing.T) {
 				return true
 			}, time.Second*60, time.Second)
 
+			// Assert scheduler is deleted
+			assert.Eventually(t, func() bool {
+				getSchedulerRequest := &maestroApiV1.GetSchedulerRequest{SchedulerName: scheduler.Name}
+				getSchedulerResponse := &maestroApiV1.GetSchedulerResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
+
+				if getSchedulerResponse.GetScheduler() == nil {
+					return true
+				}
+				return false
+			}, time.Second*60, time.Second*5)
+
+			// Assert scheduler operations are deleted
+			assert.Eventually(t, func() bool {
+				getOperationsRequest := &maestroApiV1.ListOperationsRequest{SchedulerName: scheduler.Name}
+				getOperationsResponse := &maestroApiV1.ListOperationsResponse{}
+				err = managementApiClient.Do("GET", fmt.Sprintf("/scheduler/%s/operations", scheduler.Name), getOperationsRequest, getOperationsResponse)
+
+				if len(getOperationsResponse.GetFinishedOperations()) == 0 &&
+					len(getOperationsResponse.GetActiveOperations()) == 0 &&
+					len(getOperationsResponse.GetPendingOperations()) == 0 {
+					return true
+				}
+				return false
+			}, time.Second*60, time.Second*5)
+
+		})
+
+		t.Run("Should Fail - Scheduler not found", func(t *testing.T) {
+			t.Parallel()
+
+			schedulerName := "not-found-scheduler"
+			deleteSchedulerRequest := &maestroApiV1.DeleteSchedulerRequest{SchedulerName: schedulerName}
+			deleteSchedulerResponse := &maestroApiV1.DeleteSchedulerResponse{}
+			err := managementApiClient.Do("DELETE", fmt.Sprintf("/schedulers/%s", schedulerName), deleteSchedulerRequest, deleteSchedulerResponse)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "failed with status 404")
 		})
 	})
 }
