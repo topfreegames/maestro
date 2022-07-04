@@ -28,12 +28,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/go-playground/validator/v10"
 
 	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	"github.com/topfreegames/maestro/internal/core/logs"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
-
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/filters"
@@ -47,12 +47,12 @@ import (
 )
 
 type SchedulersHandler struct {
-	schedulerManager *scheduler_manager.SchedulerManager
+	schedulerManager ports.SchedulerManager
 	logger           *zap.Logger
 	api.UnimplementedSchedulersServiceServer
 }
 
-func ProvideSchedulersHandler(schedulerManager *scheduler_manager.SchedulerManager) *SchedulersHandler {
+func ProvideSchedulersHandler(schedulerManager ports.SchedulerManager) *SchedulersHandler {
 	return &SchedulersHandler{
 		schedulerManager: schedulerManager,
 		logger: zap.L().
@@ -283,4 +283,21 @@ func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.
 	return &api.GetSchedulersInfoResponse{
 		Schedulers: schedulersResponse,
 	}, nil
+}
+
+func (h *SchedulersHandler) DeleteScheduler(ctx context.Context, request *api.DeleteSchedulerRequest) (*api.DeleteSchedulerResponse, error) {
+	schedulerName := request.GetSchedulerName()
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, schedulerName))
+	handlerLogger.Info("handling delete scheduler request")
+	op, err := h.schedulerManager.EnqueueDeleteSchedulerOperation(ctx, schedulerName)
+
+	if err != nil {
+		handlerLogger.Error("error deleting scheduler", zap.Error(err))
+		if errors.Is(err, portsErrors.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	handlerLogger.Info("finish handling delete scheduler request")
+	return &api.DeleteSchedulerResponse{OperationId: op.ID}, nil
 }
