@@ -337,7 +337,7 @@ func (s schedulerStorage) DeleteScheduler(ctx context.Context, transactionID por
 			return errors.NewErrNotFound("transaction %s not found", transactionID)
 		}
 		runSchedulerStorageFunctionCollectingLatency("DeleteScheduler", func() {
-			_, err = txClient.ExecOne(queryDeleteScheduler, scheduler.Name)
+			_, err = txClient.Exec(queryDeleteScheduler, scheduler.Name)
 		})
 
 	} else {

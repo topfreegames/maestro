@@ -33,9 +33,7 @@ import (
 
 const OperationName = "delete_scheduler"
 
-type DeleteSchedulerDefinition struct {
-	SchedulerName string `json:"schedulerName"`
-}
+type DeleteSchedulerDefinition struct{}
 
 // ShouldExecute always return true, we're going to always perform the scheduler deletion when requested.
 func (d *DeleteSchedulerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
