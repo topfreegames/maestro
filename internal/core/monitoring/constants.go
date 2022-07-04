@@ -37,6 +37,7 @@ const (
 	LabelSuccess           = "success"
 	LabelReason            = "reason"
 	LabelScheduler         = "scheduler"
+	LabelComponent         = "maestro_component"
 	LabelInstanceEventType = "instanceEventType"
 	LabelGame              = "game"
 	LabelOperation         = "operation"

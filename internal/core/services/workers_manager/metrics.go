@@ -29,29 +29,28 @@ import (
 var (
 	currentWorkersGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
-		Subsystem: monitoring.SubsystemWorker,
 		Name:      "current_workers",
 		Help:      "Current number of alive workers",
 		Labels: []string{
 			monitoring.LabelScheduler,
+			monitoring.LabelComponent,
 		},
 	})
 
 	workersSyncCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
-		Subsystem: monitoring.SubsystemWorker,
 		Name:      "workers_sync",
 		Help:      "Times of the workers sync processes",
 		Labels:    []string{},
 	})
 )
 
-func reportWorkerStart(schedulerName string) {
-	currentWorkersGaugeMetric.WithLabelValues(schedulerName).Inc()
+func reportWorkerStart(schedulerName string, component string) {
+	currentWorkersGaugeMetric.WithLabelValues(schedulerName, component).Inc()
 }
 
-func reportWorkerStop(schedulerName string) {
-	currentWorkersGaugeMetric.WithLabelValues(schedulerName).Dec()
+func reportWorkerStop(schedulerName string, component string) {
+	currentWorkersGaugeMetric.WithLabelValues(schedulerName, component).Dec()
 }
 
 func reportWorkersSynced() {
