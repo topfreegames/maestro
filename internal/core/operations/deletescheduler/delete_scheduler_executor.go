@@ -176,7 +176,7 @@ func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Con
 
 func (e *DeleteSchedulerExecutor) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
 	scheduler, err := e.schedulerCache.GetScheduler(ctx, schedulerName)
-	if err != nil {
+	if err != nil || scheduler == nil {
 		scheduler, err = e.schedulerStorage.GetScheduler(ctx, schedulerName)
 		if err != nil {
 			return nil, err
