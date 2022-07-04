@@ -202,8 +202,8 @@ func TestGetScheduler(t *testing.T) {
 	t.Run("with valid request and persisted scheduler", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil, nil)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(nil, schedulerCache, nil, nil)
 
 		scheduler := &entities.Scheduler{
 			Name:            "zooba-us",
@@ -274,7 +274,7 @@ func TestGetScheduler(t *testing.T) {
 			},
 		}
 
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(scheduler, nil)
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(scheduler, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -299,9 +299,11 @@ func TestGetScheduler(t *testing.T) {
 	t.Run("with valid request and no scheduler found", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil, nil)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, nil, nil)
 
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("scheduler NonExistentSchedule not found"))
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("scheduler NonExistentSchedule not found"))
 
 		mux := runtime.NewServeMux()
@@ -330,9 +332,11 @@ func TestGetScheduler(t *testing.T) {
 	t.Run("with invalid request", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil, nil)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, nil, nil)
 
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrInvalidArgument("Error"))
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrInvalidArgument("Error"))
 
 		mux := runtime.NewServeMux()
