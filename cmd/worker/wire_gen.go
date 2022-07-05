@@ -17,7 +17,7 @@ import (
 
 // Injectors from wire.go:
 
-func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_manager.WorkersManager, error) {
+func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*workers_manager.WorkersManager, error) {
 	schedulerStorage, err := service.NewSchedulerStoragePg(c)
 	if err != nil {
 		return nil, err

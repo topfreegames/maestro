@@ -35,7 +35,7 @@ import (
 	"github.com/topfreegames/maestro/internal/service"
 )
 
-func initializeWorker(c config.Config, builder workers.WorkerBuilder) (*workers_manager.WorkersManager, error) {
+func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*workers_manager.WorkersManager, error) {
 	wire.Build(
 		// ports + adapters
 		service.NewRuntimeKubernetes,

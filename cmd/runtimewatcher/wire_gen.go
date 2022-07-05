@@ -69,8 +69,11 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 
 // wire.go:
 
-func provideRuntimeWatcherBuilder() workers.WorkerBuilder {
-	return runtime_watcher_worker.NewRuntimeWatcherWorker
+func provideRuntimeWatcherBuilder() *workers.WorkerBuilder {
+	return &workers.WorkerBuilder{
+		Func:          runtime_watcher_worker.NewRuntimeWatcherWorker,
+		ComponentName: runtime_watcher_worker.WorkerName,
+	}
 }
 
 var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, RoomManagerSet, wire.Struct(new(workers.WorkerOptions), "RoomManager", "Runtime"))

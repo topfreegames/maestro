@@ -79,5 +79,8 @@ func ProvideWorkerOptions(
 	}
 }
 
-// WorkerBuilder defines a function that knows how to construct a worker.
-type WorkerBuilder func(scheduler *entities.Scheduler, options *WorkerOptions) Worker
+// WorkerBuilder defines a struct that knows how to construct a worker.
+type WorkerBuilder struct {
+	Func          func(scheduler *entities.Scheduler, options *WorkerOptions) Worker
+	ComponentName string
+}

@@ -40,6 +40,8 @@ import (
 
 var _ workers.Worker = (*MetricsReporterWorker)(nil)
 
+const WorkerName = "metrics_reporter"
+
 // MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
 	scheduler           *entities.Scheduler
@@ -57,7 +59,7 @@ func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.Worke
 		config:          opts.MetricsReporterConfig,
 		roomStorage:     opts.RoomStorage,
 		instanceStorage: opts.InstanceStorage,
-		logger:          zap.L().With(zap.String(logs.LogFieldServiceName, "metrics_reporter_worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		logger:          zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 
