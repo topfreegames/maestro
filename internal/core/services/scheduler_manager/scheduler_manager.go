@@ -326,7 +326,7 @@ func (s *SchedulerManager) DeleteScheduler(ctx context.Context, schedulerName st
 
 func (s *SchedulerManager) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
 	scheduler, err := s.schedulerCache.GetScheduler(ctx, schedulerName)
-	if err != nil {
+	if err != nil || scheduler == nil {
 		scheduler, err = s.schedulerStorage.GetScheduler(ctx, schedulerName)
 	}
 	return scheduler, err
