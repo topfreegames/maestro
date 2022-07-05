@@ -42,6 +42,8 @@ import (
 
 var _ workers.Worker = (*OperationExecutionWorker)(nil)
 
+const WorkerName = "operation_execution"
+
 // OperationExecutionWorker is the service responsible for implementing the worker
 // responsibilities.
 type OperationExecutionWorker struct {
@@ -64,7 +66,7 @@ func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.Wo
 		operationManager:                  opts.OperationManager,
 		executorsByName:                   opts.OperationExecutors,
 		scheduler:                         scheduler,
-		logger:                            zap.L().With(zap.String(logs.LogFieldServiceName, "worker"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		logger:                            zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 

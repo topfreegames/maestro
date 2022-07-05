@@ -38,6 +38,8 @@ import (
 
 var _ workers.Worker = (*runtimeWatcherWorker)(nil)
 
+const WorkerName = "runtime_watcher"
+
 // runtimeWatcherWorker is a work that will watch for changes on the Runtime
 // and apply to keep the Maestro state up-to-date. It is not expected to perform
 // any action over the game rooms or the scheduler.
@@ -57,7 +59,7 @@ func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *workers.Worker
 		scheduler:   scheduler,
 		roomManager: opts.RoomManager,
 		runtime:     opts.Runtime,
-		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, "runtime_watcher"), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 

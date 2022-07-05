@@ -26,6 +26,7 @@ import (
 	"context"
 
 	"github.com/topfreegames/maestro/cmd/commom"
+	"github.com/topfreegames/maestro/internal/core/workers"
 
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/internal/core/workers/operation_execution_worker"
@@ -62,7 +63,11 @@ func runWorker() {
 	}
 
 	// TODO(gabrielcorado): support multiple workers.
-	operationExecutionWorkerManager, err := initializeWorker(config, operation_execution_worker.NewOperationExecutionWorker)
+	workerBuilder := &workers.WorkerBuilder{
+		Func:          operation_execution_worker.NewOperationExecutionWorker,
+		ComponentName: operation_execution_worker.WorkerName,
+	}
+	operationExecutionWorkerManager, err := initializeWorker(config, workerBuilder)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("failed to initialize operation execution worker manager")
 	}

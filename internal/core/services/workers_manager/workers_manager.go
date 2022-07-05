@@ -26,13 +26,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
-
-	"github.com/topfreegames/maestro/internal/core/workers/metricsreporter"
-	"github.com/topfreegames/maestro/internal/core/workers/operation_execution_worker"
-	"github.com/topfreegames/maestro/internal/core/workers/runtime_watcher_worker"
 
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -54,7 +49,7 @@ const (
 
 // WorkersManager is the default struct of WorkersManager service
 type WorkersManager struct {
-	builder                    workers.WorkerBuilder
+	builder                    *workers.WorkerBuilder
 	configs                    config.Config
 	schedulerStorage           ports.SchedulerStorage
 	CurrentWorkers             map[string]workers.Worker
@@ -62,12 +57,11 @@ type WorkersManager struct {
 	WorkerOptions              *workers.WorkerOptions
 	workersStopTimeoutDuration time.Duration
 	workersWaitGroup           sync.WaitGroup
-	runningComponent           string
 	logger                     *zap.Logger
 }
 
 // NewWorkersManager is the default constructor of WorkersManager
-func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, workerOptions *workers.WorkerOptions) *WorkersManager {
+func NewWorkersManager(builder *workers.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, workerOptions *workers.WorkerOptions) *WorkersManager {
 
 	return &WorkersManager{
 		builder:                    builder,
@@ -77,7 +71,6 @@ func NewWorkersManager(builder workers.WorkerBuilder, configs config.Config, sch
 		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
 		WorkerOptions:              workerOptions,
 		workersStopTimeoutDuration: configs.GetDuration(workersStopTimeoutDurationPath),
-		runningComponent:           getRunningComponent(builder),
 		logger:                     zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "workers_manager")),
 	}
 }
@@ -121,7 +114,7 @@ func (w *WorkersManager) stop() {
 	for name, worker := range w.CurrentWorkers {
 		worker.Stop(ctx)
 		delete(w.CurrentWorkers, name)
-		reportWorkerStop(name, w.runningComponent)
+		reportWorkerStop(name, w.builder.ComponentName)
 	}
 
 	w.workersWaitGroup.Wait()
@@ -142,14 +135,14 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	for name, worker := range desirableWorkers {
 		w.startWorker(ctx, name, worker)
 		w.logger.Info("new operation worker running", zap.String("scheduler", name))
-		reportWorkerStart(name, w.runningComponent)
+		reportWorkerStart(name, w.builder.ComponentName)
 	}
 
 	dispensableWorkers := w.getDispensableWorkers(schedulers)
 	for name, worker := range dispensableWorkers {
 		worker.Stop(ctx)
 		w.logger.Info("canceling operation worker", zap.String("scheduler", name))
-		reportWorkerStop(name, w.runningComponent)
+		reportWorkerStop(name, w.builder.ComponentName)
 	}
 
 	reportWorkersSynced()
@@ -177,7 +170,7 @@ func (w *WorkersManager) getDesirableWorkers(schedulers []*entities.Scheduler) m
 
 	desirableWorkers := map[string]workers.Worker{}
 	for _, scheduler := range schedulers {
-		desirableWorkers[scheduler.Name] = w.builder(scheduler, w.WorkerOptions)
+		desirableWorkers[scheduler.Name] = w.builder.Func(scheduler, w.WorkerOptions)
 	}
 
 	for k := range w.CurrentWorkers {
@@ -202,17 +195,4 @@ func (w *WorkersManager) getDispensableWorkers(schedulers []*entities.Scheduler)
 
 	return dispensableWorkers
 
-}
-
-func getRunningComponent(builder workers.WorkerBuilder) string {
-	switch reflect.ValueOf(builder).Pointer() {
-	case reflect.ValueOf(operation_execution_worker.NewOperationExecutionWorker).Pointer():
-		return "operation_execution_worker"
-	case reflect.ValueOf(runtime_watcher_worker.NewRuntimeWatcherWorker).Pointer():
-		return "runtime_watcher_worker"
-	case reflect.ValueOf(metricsreporter.NewMetricsReporterWorker).Pointer():
-		return "metrics_reporter_worker"
-	default:
-		return "unknown"
-	}
 }

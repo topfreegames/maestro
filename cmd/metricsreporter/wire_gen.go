@@ -44,8 +44,11 @@ func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager
 
 // wire.go:
 
-func provideMetricsReporterBuilder() workers.WorkerBuilder {
-	return metricsreporter.NewMetricsReporterWorker
+func provideMetricsReporterBuilder() *workers.WorkerBuilder {
+	return &workers.WorkerBuilder{
+		Func:          metricsreporter.NewMetricsReporterWorker,
+		ComponentName: metricsreporter.WorkerName,
+	}
 }
 
 func provideMetricsReporterConfig(c config.Config) *config2.MetricsReporterConfig {

@@ -67,9 +67,9 @@ func TestStart(t *testing.T) {
 		configs := configmock.NewMockConfig(mockCtrl)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		workerStopCh := make(chan struct{})
-		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+		workerBuilder := &workers.WorkerBuilder{Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
-		}
+		}, ComponentName: "mock"}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
@@ -131,9 +131,9 @@ func TestStart(t *testing.T) {
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
 		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
-		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+		workerBuilder := &workers.WorkerBuilder{Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
 			return &workermock.MockWorker{Run: false}
-		}
+		}, ComponentName: "mock"}
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 
@@ -164,12 +164,13 @@ func TestStart(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
-		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workermock.MockWorker{
-				Run:    false,
-				StopCh: workerStopCh,
-			}
-		}
+		workerBuilder := &workers.WorkerBuilder{
+			Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+				return &workermock.MockWorker{
+					Run:    false,
+					StopCh: workerStopCh,
+				}
+			}, ComponentName: "mock"}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
@@ -229,8 +230,11 @@ func TestStart(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
-		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
+		workerBuilder := &workers.WorkerBuilder{
+			Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+				return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
+			},
+			ComponentName: "mock",
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -311,8 +315,10 @@ func TestStart(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
-		workerBuilder := func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
-			return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
+		workerBuilder := &workers.WorkerBuilder{
+			Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+				return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
+			}, ComponentName: "mock",
 		}
 
 		ctx, cancelFn := context.WithCancel(context.Background())

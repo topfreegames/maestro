@@ -35,8 +35,11 @@ import (
 	"github.com/topfreegames/maestro/internal/service"
 )
 
-func provideRuntimeWatcherBuilder() workers.WorkerBuilder {
-	return runtime_watcher_worker.NewRuntimeWatcherWorker
+func provideRuntimeWatcherBuilder() *workers.WorkerBuilder {
+	return &workers.WorkerBuilder{
+		Func:          runtime_watcher_worker.NewRuntimeWatcherWorker,
+		ComponentName: runtime_watcher_worker.WorkerName,
+	}
 }
 
 var WorkerOptionsSet = wire.NewSet(
