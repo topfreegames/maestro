@@ -92,7 +92,7 @@ func TestCounterCreation(t *testing.T) {
 		gauge.WithLabelValues("true").Inc()
 
 		metrics, _ := prometheus.DefaultGatherer.Gather()
-		metricFamily := FilterMetric(metrics, "maestro_test_gauge_test_total")
+		metricFamily := FilterMetric(metrics, "maestro_test_gauge_test")
 		trueMetric := metricFamily.GetMetric()[0]
 		require.Equal(t, float64(1), trueMetric.GetGauge().GetValue())
 
@@ -104,7 +104,7 @@ func TestCounterCreation(t *testing.T) {
 		gauge.WithLabelValues("true").Dec()
 
 		metrics, _ = prometheus.DefaultGatherer.Gather()
-		metricFamily = FilterMetric(metrics, "maestro_test_gauge_test_total")
+		metricFamily = FilterMetric(metrics, "maestro_test_gauge_test")
 
 		trueMetric = metricFamily.GetMetric()[1]
 		require.Equal(t, float64(0), trueMetric.GetGauge().GetValue())
