@@ -41,14 +41,22 @@ type MetricOpts struct {
 	Name      string
 	Help      string
 	Labels    []string
+
+	// MetricUnit will only be used by Gauge metric to fill which unit the metric is related.
+	MetricUnit string
 }
 
 func CreateCounterMetric(options *MetricOpts) *prometheus.CounterVec {
+	name := options.Name
+	if len(options.MetricUnit) > 0 {
+		name = options.Name + "_" + options.MetricUnit
+	}
+
 	return promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: options.Namespace,
 			Subsystem: options.Subsystem,
-			Name:      options.Name + "_counter",
+			Name:      name + "_total",
 			Help:      options.Help + " (counter)",
 		},
 		options.Labels,
@@ -73,7 +81,7 @@ func CreateGaugeMetric(options *MetricOpts) *prometheus.GaugeVec {
 		prometheus.GaugeOpts{
 			Namespace: options.Namespace,
 			Subsystem: options.Subsystem,
-			Name:      options.Name + "_gauge",
+			Name:      options.Name,
 			Help:      options.Help + " (gauge)",
 		},
 		options.Labels,

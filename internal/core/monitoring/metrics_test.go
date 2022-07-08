@@ -38,17 +38,18 @@ func TestCounterCreation(t *testing.T) {
 	t.Run("successfully fetch counter metric", func(t *testing.T) {
 
 		counter := CreateCounterMetric(&MetricOpts{
-			Namespace: "maestro",
-			Subsystem: "test",
-			Name:      "counter_test",
-			Help:      "Test Counter",
-			Labels:    []string{"success"},
+			Namespace:  "maestro",
+			Subsystem:  "test",
+			Name:       "counter_test",
+			Help:       "Test Counter",
+			Labels:     []string{"success"},
+			MetricUnit: "unit",
 		})
 
 		counter.WithLabelValues("true").Inc()
 
 		metrics, _ := prometheus.DefaultGatherer.Gather()
-		metricFamily := FilterMetric(metrics, "maestro_test_counter_test_counter")
+		metricFamily := FilterMetric(metrics, "maestro_test_counter_test_unit_total")
 		trueMetric := metricFamily.GetMetric()[0]
 		require.Equal(t, float64(1), trueMetric.GetCounter().GetValue())
 
@@ -60,7 +61,7 @@ func TestCounterCreation(t *testing.T) {
 		counter.WithLabelValues("true").Inc()
 
 		metrics, _ = prometheus.DefaultGatherer.Gather()
-		metricFamily = FilterMetric(metrics, "maestro_test_counter_test_counter")
+		metricFamily = FilterMetric(metrics, "maestro_test_counter_test_unit_total")
 
 		trueMetric = metricFamily.GetMetric()[1]
 		require.Equal(t, float64(2), trueMetric.GetCounter().GetValue())
@@ -91,7 +92,7 @@ func TestCounterCreation(t *testing.T) {
 		gauge.WithLabelValues("true").Inc()
 
 		metrics, _ := prometheus.DefaultGatherer.Gather()
-		metricFamily := FilterMetric(metrics, "maestro_test_gauge_test_gauge")
+		metricFamily := FilterMetric(metrics, "maestro_test_gauge_test")
 		trueMetric := metricFamily.GetMetric()[0]
 		require.Equal(t, float64(1), trueMetric.GetGauge().GetValue())
 
@@ -103,7 +104,7 @@ func TestCounterCreation(t *testing.T) {
 		gauge.WithLabelValues("true").Dec()
 
 		metrics, _ = prometheus.DefaultGatherer.Gather()
-		metricFamily = FilterMetric(metrics, "maestro_test_gauge_test_gauge")
+		metricFamily = FilterMetric(metrics, "maestro_test_gauge_test")
 
 		trueMetric = metricFamily.GetMetric()[1]
 		require.Equal(t, float64(0), trueMetric.GetGauge().GetValue())
