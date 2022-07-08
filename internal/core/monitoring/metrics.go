@@ -81,7 +81,7 @@ func CreateGaugeMetric(options *MetricOpts) *prometheus.GaugeVec {
 		prometheus.GaugeOpts{
 			Namespace: options.Namespace,
 			Subsystem: options.Subsystem,
-			Name:      options.Name + "_total",
+			Name:      options.Name,
 			Help:      options.Help + " (gauge)",
 		},
 		options.Labels,
