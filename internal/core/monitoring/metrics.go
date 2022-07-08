@@ -47,11 +47,16 @@ type MetricOpts struct {
 }
 
 func CreateCounterMetric(options *MetricOpts) *prometheus.CounterVec {
+	name := options.Name
+	if len(options.MetricUnit) > 0 {
+		name = options.Name + "_" + options.MetricUnit
+	}
+
 	return promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: options.Namespace,
 			Subsystem: options.Subsystem,
-			Name:      options.Name + "_total",
+			Name:      name + "_total",
 			Help:      options.Help + " (counter)",
 		},
 		options.Labels,
@@ -72,16 +77,11 @@ func CreateLatencyMetric(options *MetricOpts) *prometheus.HistogramVec {
 }
 
 func CreateGaugeMetric(options *MetricOpts) *prometheus.GaugeVec {
-	name := options.Name
-	if len(options.MetricUnit) > 0 {
-		name = options.Name + "_" + options.MetricUnit
-	}
-
 	return promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: options.Namespace,
 			Subsystem: options.Subsystem,
-			Name:      name + "_total",
+			Name:      options.Name + "_total",
 			Help:      options.Help + " (gauge)",
 		},
 		options.Labels,
