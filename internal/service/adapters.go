@@ -29,7 +29,9 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
 
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 
@@ -129,11 +131,13 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	operationsTTlMap := map[operationadapters.Definition]time.Duration{
-		healthcontroller.OperationName: c.GetDuration(healthControllerOperationTTL),
+	operationsTTLMap := map[operationadapters.Definition]time.Duration{
+		healthcontroller.OperationName: c.GetDuration(operationsTTL),
+		add_rooms.OperationName:        c.GetDuration(operationsTTL),
+		remove_rooms.OperationName:     c.GetDuration(operationsTTL),
 	}
 
-	return operationadapters.NewRedisOperationStorage(client, clock, operationsTTlMap), nil
+	return operationadapters.NewRedisOperationStorage(client, clock, operationsTTLMap), nil
 }
 
 func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.OperationLeaseStorage, error) {
