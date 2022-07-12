@@ -64,9 +64,9 @@ import (
 // configurations paths for the adapters
 const (
 	// Kubernetes runtime
-	runtimeKubernetesMasterURLPath  = "adapters.runtime.kubernetes.masterURL"
+	runtimeKubernetesMasterURLPath  = "adapters.runtime.kubernetes.masterUrl"
 	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
-	runtimeKubernetesInCluster      = "adapters.runtime.kubernetes.inCluster"
+	runtimeKubernetesInClusterPath  = "adapters.runtime.kubernetes.inCluster"
 	// Redis operation storage
 	operationStorageRedisURLPath      = "adapters.operationStorage.redis.url"
 	operationLeaseStorageRedisURLPath = "adapters.operationLeaseStorage.redis.url"
@@ -116,7 +116,7 @@ func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 	var masterURL string
 	var kubeConfigPath string
 
-	inCluster := c.GetBool(runtimeKubernetesInCluster)
+	inCluster := c.GetBool(runtimeKubernetesInClusterPath)
 	if !inCluster {
 		masterURL = c.GetString(runtimeKubernetesMasterURLPath)
 		kubeConfigPath = c.GetString(runtimeKubernetesKubeconfigPath)
