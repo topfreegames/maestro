@@ -15,6 +15,7 @@ internalApi:
 adapters:
   redis:
     poolSize: 500
+    minIdleConnections: 500
   schedulerStorage:
     postgres:
       url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"

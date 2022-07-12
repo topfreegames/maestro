@@ -80,7 +80,8 @@ const (
 	// Redis operation flow
 	operationFlowRedisURLPath = "adapters.operationFlow.redis.url"
 	// Redis configs
-	redisPoolSizePath = "adapters.redis.poolSize"
+	redisPoolSizePath           = "adapters.redis.poolSize"
+	redisMinIdleConnectionsPath = "adapters.redis.minIdleConnections"
 	// Random port allocator
 	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
 	// Postgres scheduler storage
@@ -222,6 +223,7 @@ func createRedisClient(c config.Config, url string) (*redis.Client, error) {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
 	opts.PoolSize = c.GetInt(redisPoolSizePath)
+	opts.MinIdleConns = c.GetInt(redisMinIdleConnectionsPath)
 	return redis.NewClient(opts), nil
 }
 
