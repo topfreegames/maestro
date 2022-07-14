@@ -141,6 +141,34 @@ message CreateSchedulerRequest {
   repeated Forwarder forwarders = 8;
 }
 
+// Add rooms operation request payload + path parameters.
+message AddRoomsRequest {
+  // Scheduler name where the rooms will be added.
+  string scheduler_name = 1;
+  // Amount of rooms to be added.
+  int32 amount = 2;
+}
+
+// Add rooms operation response payload, empty.
+message AddRoomsResponse {
+  // Add rooms operation ID, further this id will be used to consult its state.
+  string operation_id = 1;
+}
+
+// Remove rooms operation request payload + path parameters.
+message RemoveRoomsRequest {
+  // Scheduler name from which the rooms will be removed.
+  string scheduler_name = 1;
+  // Amount of rooms to be removed.
+  int32 amount = 2;
+}
+
+// Remove rooms operation response payload.
+message RemoveRoomsResponse {
+  // Remove rooms operation ID, further this id can be used to consult its state.
+  string operation_id = 1;
+}
+
 // Get Scheduler operation request
 message GetSchedulerRequest {
   // Scheduler name where the rooms will be added.
