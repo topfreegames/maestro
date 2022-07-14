@@ -627,6 +627,39 @@ func TestCreateScheduler(t *testing.T) {
 		assert.Contains(t, schedulerMessage, "Scheduler.Forwarders[0].Address: Address is a required field")
 	})
 
+	t.Run("fails when scheduler already exists", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
+
+		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Return(errors.NewErrAlreadyExists("error creating scheduler %s: name already exists", "scheduler"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusConflict, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+
+		require.NoError(t, err)
+		require.Equal(t, "error creating scheduler scheduler: name already exists", body["message"])
+	})
+}
+
 func TestNewSchedulerVersion(t *testing.T) {
 	dirPath, _ := os.Getwd()
 
