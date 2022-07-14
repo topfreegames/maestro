@@ -660,6 +660,40 @@ func TestCreateScheduler(t *testing.T) {
 	})
 }
 
+func TestAddRooms(t *testing.T) {
+
+	t.Run("with success", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
+
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1/add-rooms", bytes.NewReader([]byte("{\"amount\": 10}")))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, body["operationId"])
+	})
+
 	t.Run("fails when scheduler does not exists", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
