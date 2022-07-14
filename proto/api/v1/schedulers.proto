@@ -37,6 +37,22 @@ service SchedulersService {
     };
   }
 
+  // Given a amount, add rooms to a scheduler.
+  rpc AddRooms(AddRoomsRequest) returns (AddRoomsResponse) {
+    option (google.api.http) = {
+      post: "/schedulers/{scheduler_name=*}/add-rooms",
+      body: "*"
+    };
+  }
+
+  // Given a amount, remove rooms of a scheduler.
+  rpc RemoveRooms(RemoveRoomsRequest) returns (RemoveRoomsResponse) {
+    option (google.api.http) = {
+      post: "/schedulers/{scheduler_name=*}/remove-rooms",
+      body: "*"
+    };
+  }
+
   // Creates new scheduler version and switch it to active version.
   rpc NewSchedulerVersion(NewSchedulerVersionRequest) returns (NewSchedulerVersionResponse) {
     option (google.api.http) = {
