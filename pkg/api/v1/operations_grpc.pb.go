@@ -11,7 +11,6 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // OperationsServiceClient is the client API for OperationsService service.
@@ -96,8 +95,8 @@ type UnsafeOperationsServiceServer interface {
 	mustEmbedUnimplementedOperationsServiceServer()
 }
 
-func RegisterOperationsServiceServer(s grpc.ServiceRegistrar, srv OperationsServiceServer) {
-	s.RegisterService(&OperationsService_ServiceDesc, srv)
+func RegisterOperationsServiceServer(s *grpc.Server, srv OperationsServiceServer) {
+	s.RegisterService(&_OperationsService_serviceDesc, srv)
 }
 
 func _OperationsService_ListOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -154,10 +153,7 @@ func _OperationsService_GetOperation_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-// OperationsService_ServiceDesc is the grpc.ServiceDesc for OperationsService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var OperationsService_ServiceDesc = grpc.ServiceDesc{
+var _OperationsService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "api.v1.OperationsService",
 	HandlerType: (*OperationsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
