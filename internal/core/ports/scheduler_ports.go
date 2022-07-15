@@ -45,8 +45,6 @@ type SchedulerManager interface {
 	GetSchedulerVersions(ctx context.Context, schedulerName string) ([]*entities.SchedulerVersion, error)
 	DeleteScheduler(ctx context.Context, schedulerName string) error
 	PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error)
-	AddRooms(ctx context.Context, schedulerName string, amount int32) (*operation.Operation, error)
-	RemoveRooms(ctx context.Context, schedulerName string, amount int) (*operation.Operation, error)
 	GetSchedulersWithFilter(ctx context.Context, schedulerFilter *filters.SchedulerFilter) ([]*entities.Scheduler, error)
 	GetScheduler(ctx context.Context, schedulerName, version string) (*entities.Scheduler, error)
 	EnqueueNewSchedulerVersionOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error)
