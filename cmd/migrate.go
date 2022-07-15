@@ -61,7 +61,7 @@ var migrateCmd = &cobra.Command{
 
 		m, err := migrate.New(
 			config.GetString("migration.path"),
-			service.GetSchedulerStoragePostgresUrl(config))
+			service.GetSchedulerStoragePostgresURL(config))
 		if err != nil {
 			zap.L().With(zap.Error(err)).Fatal("failed to create migration")
 		}

@@ -161,40 +161,6 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 	return &api.CreateSchedulerResponse{Scheduler: returnScheduler}, nil
 }
 
-func (h *SchedulersHandler) AddRooms(ctx context.Context, request *api.AddRoomsRequest) (*api.AddRoomsResponse, error) {
-	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
-	handlerLogger.Info("handling add rooms request")
-	operation, err := h.schedulerManager.AddRooms(ctx, request.GetSchedulerName(), request.GetAmount())
-
-	if err != nil {
-		handlerLogger.Error(fmt.Sprintf("error adding rooms to scheduler, amount: %d", request.GetAmount()), zap.Error(err))
-		if errors.Is(err, portsErrors.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, err.Error())
-		}
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	handlerLogger.Info("finish handling add rooms request")
-
-	return &api.AddRoomsResponse{OperationId: operation.ID}, nil
-}
-
-func (h *SchedulersHandler) RemoveRooms(ctx context.Context, request *api.RemoveRoomsRequest) (*api.RemoveRoomsResponse, error) {
-	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
-	handlerLogger.Info("handling remove rooms request")
-	operation, err := h.schedulerManager.RemoveRooms(ctx, request.GetSchedulerName(), int(request.GetAmount()))
-
-	if err != nil {
-		handlerLogger.Error("error removing rooms from scheduler", zap.Error(err))
-		if errors.Is(err, portsErrors.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, err.Error())
-		}
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-
-	handlerLogger.Info("finish handling remove rooms request")
-	return &api.RemoveRoomsResponse{OperationId: operation.ID}, nil
-}
-
 func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
 	handlerLogger.Info("handling new scheduler version request")
