@@ -19,7 +19,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-FROM golang:1.17.3-alpine AS build-env
+FROM golang:1.18.3-alpine AS build-env
 
 WORKDIR /build
 

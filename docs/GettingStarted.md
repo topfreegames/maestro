@@ -1,7 +1,7 @@
 To help you get along with Maestro, by the end of this section you should have a scheduler up and running.
 
 ## Prerequisites
-- Golang v1.17+
+- Golang v1.18+
 - Linux/MacOS environment
 - Docker
 
