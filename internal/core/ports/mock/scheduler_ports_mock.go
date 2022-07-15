@@ -39,21 +39,6 @@ func (m *MockSchedulerManager) EXPECT() *MockSchedulerManagerMockRecorder {
 	return m.recorder
 }
 
-// AddRooms mocks base method.
-func (m *MockSchedulerManager) AddRooms(ctx context.Context, schedulerName string, amount int32) (*operation.Operation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddRooms", ctx, schedulerName, amount)
-	ret0, _ := ret[0].(*operation.Operation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// AddRooms indicates an expected call of AddRooms.
-func (mr *MockSchedulerManagerMockRecorder) AddRooms(ctx, schedulerName, amount interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRooms", reflect.TypeOf((*MockSchedulerManager)(nil).AddRooms), ctx, schedulerName, amount)
-}
-
 // CreateNewSchedulerVersion mocks base method.
 func (m *MockSchedulerManager) CreateNewSchedulerVersion(ctx context.Context, scheduler *entities.Scheduler) error {
 	m.ctrl.T.Helper()
@@ -260,21 +245,6 @@ func (m *MockSchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperati
 func (mr *MockSchedulerManagerMockRecorder) PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx, schedulerName, patchMap interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PatchSchedulerAndCreateNewSchedulerVersionOperation", reflect.TypeOf((*MockSchedulerManager)(nil).PatchSchedulerAndCreateNewSchedulerVersionOperation), ctx, schedulerName, patchMap)
-}
-
-// RemoveRooms mocks base method.
-func (m *MockSchedulerManager) RemoveRooms(ctx context.Context, schedulerName string, amount int) (*operation.Operation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveRooms", ctx, schedulerName, amount)
-	ret0, _ := ret[0].(*operation.Operation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// RemoveRooms indicates an expected call of RemoveRooms.
-func (mr *MockSchedulerManagerMockRecorder) RemoveRooms(ctx, schedulerName, amount interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRooms", reflect.TypeOf((*MockSchedulerManager)(nil).RemoveRooms), ctx, schedulerName, amount)
 }
 
 // UpdateScheduler mocks base method.
