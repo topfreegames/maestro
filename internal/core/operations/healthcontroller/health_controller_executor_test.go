@@ -1038,7 +1038,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "game room status terminating with initialization timeout found, considered expired, remove room operation enqueued",
+			title: "game room status terminating with terminating timeout found, considered expired, remove room operation enqueued",
 			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
