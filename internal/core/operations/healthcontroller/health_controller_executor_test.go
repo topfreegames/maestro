@@ -985,7 +985,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "room with status terminating, consider room ignored and enqueues new add rooms",
+			title: "room with status terminating, and considered valid, consider room ignored and enqueues new add rooms",
 			executionPlan: executionPlan{
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
@@ -1037,6 +1037,65 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				},
 			},
 		},
+		{
+			title: "game room status terminating with initialization timeout found, considered expired, remove room operation enqueued",
+			executionPlan: executionPlan{
+				planMocks: func(
+					roomStorage *mockports.MockRoomStorage,
+					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					schedulerStorage *mockports.MockSchedulerStorage,
+					operationManager *mockports.MockOperationManager,
+					autoscaler *mockports.MockAutoscaler,
+				) {
+					gameRoomIDs := []string{"existent-1", "existent-terminating-2"}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						}, {
+							ID: "existent-terminating-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
+					// load
+					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
+					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
+
+					// Find game room
+					gameRoom := &game_room.GameRoom{
+						ID:          gameRoomIDs[0],
+						SchedulerID: genericSchedulerNoAutoscaling.Name,
+						Status:      game_room.GameStatusReady,
+						LastPingAt:  time.Now(),
+					}
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil)
+
+					expiredCreatedAt := time.Now().Add(5 * -time.Minute)
+					gameRoomTerminating := &game_room.GameRoom{
+						ID:          gameRoomIDs[1],
+						SchedulerID: genericSchedulerNoAutoscaling.Name,
+						Status:      game_room.GameStatusTerminating,
+						LastPingAt:  time.Now().Add(5 * -time.Minute),
+						CreatedAt:   expiredCreatedAt,
+					}
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(gameRoomTerminating, nil)
+
+					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove_rooms.RemoveRoomsDefinition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
+
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add_rooms.AddRoomsDefinition{Amount: 1}).Return(op, nil)
+
+					genericSchedulerNoAutoscaling.RoomsReplicas = 2
+				},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -1050,6 +1109,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			config := healthcontroller.Config{
 				RoomPingTimeout:           2 * time.Minute,
 				RoomInitializationTimeout: 4 * time.Minute,
+				RoomDeletionTimeout:       4 * time.Minute,
 			}
 			executor := healthcontroller.NewExecutor(roomsStorage, instanceStorage, schedulerStorage, operationManager, autoscaler, config)
 
