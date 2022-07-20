@@ -46,6 +46,7 @@ import (
 type Config struct {
 	RoomInitializationTimeout time.Duration
 	RoomPingTimeout           time.Duration
+	RoomDeletionTimeout       time.Duration
 }
 
 // SchedulerHealthControllerExecutor holds dependencies to execute SchedulerHealthControllerExecutor.
@@ -206,6 +207,8 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
 		case ex.isRoomPingExpired(room):
 			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
+		case ex.isRoomTerminatingExpired(room):
+			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
 		case ex.isRoomStatus(room, game_room.GameStatusTerminating):
 			continue
 		case ex.isRoomStatus(room, game_room.GameStatusError):
@@ -227,6 +230,11 @@ func (ex *SchedulerHealthControllerExecutor) isInitializingRoomExpired(room *gam
 func (ex *SchedulerHealthControllerExecutor) isRoomPingExpired(room *game_room.GameRoom) bool {
 	timeDurationWithoutPing := time.Since(room.LastPingAt)
 	return !ex.isRoomStatus(room, game_room.GameStatusPending) && timeDurationWithoutPing > ex.config.RoomPingTimeout
+}
+
+func (ex *SchedulerHealthControllerExecutor) isRoomTerminatingExpired(room *game_room.GameRoom) bool {
+	timeDurationWithoutPing := time.Since(room.LastPingAt)
+	return ex.isRoomStatus(room, game_room.GameStatusTerminating) && timeDurationWithoutPing > ex.config.RoomDeletionTimeout
 }
 
 func (ex *SchedulerHealthControllerExecutor) isRoomStatus(room *game_room.GameRoom, status game_room.GameRoomStatus) bool {
