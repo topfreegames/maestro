@@ -155,6 +155,7 @@ func (w *WorkersManager) startWorker(ctx context.Context, name string, wkr worke
 	go func() {
 		err := wkr.Start(ctx)
 		if err != nil {
+			reportWorkerStop(name, w.builder.ComponentName)
 			w.logger.
 				With(zap.Error(err)).
 				With(zap.String("scheduler", name)).
