@@ -3,7 +3,7 @@
 ```
 Note
 
-The version 9 of Maestro is under deprecation.
+The version 9 of Maestro is under deprecation it is being replaced by Maestro-NEXT (on main branch).
 We will keep the support for this version after the v10 is released (more details below).
 However, after that period, the version will no longer receive any updates.
 ```
