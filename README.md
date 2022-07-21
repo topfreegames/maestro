@@ -10,9 +10,6 @@ However, after that period, the version will no longer receive any updates.
 
 Maestro is an unified system that automatically scales game rooms regardless of the protocol (TCP, UDP). This system is related to a matchmaker but does not handle the specificities of a match such as how many players fit in a room. It only deals with high level room occupation, i.e. is the room occupied or available.
 
-# Required structure:
-
-
 ## What does the Maestro do?
 
 Maestro is a game room scheduler that is composed by a controller, a watcher, a worker, an API and a CLI.
@@ -65,15 +62,12 @@ The [maestro-client](https://github.com/topfreegames/maestro-client) is a lib fo
 
 ## Additional information
 
-Here a link to the complete module documentation as well as other additional information should be added as well as contact information.
-
-Metagame Base Module Example:
-
-*Documentation can be found in the [docs folder](./docs/README.md). This module is supported by the metagame module team and question can be asked in [their slack channel](https://wildlifestudios.slack.com/archives/C01K286EADR).*
+*Documentation can be found in the [docs folder](./docs/README.md). This module is supported by the metagame module team*.
 
 | Position | Name |
 | --- | --- |
-| Owner Team | Game Services - Multiplayer |
-| Documentation Owner | Arthur Nogueira |
-| Wiki| [Maestro](https://wiki.wildlifestudios.com/display/BAC/Maestro)
+| Owner team | Game Services - Multiplayer |
+| Documentation owner | [Arthur Nogueira](@arthur29) |
 | Read the Docs | [latest](https://maestro.readthedocs.io/en/latest/) |
+| Maestro CLI repo | [Maestro CLI](https://github.com/topfreegames/maestro-cli/tree/v1) |
+| maesto-client repo | [maestro-client](https://github.com/topfreegames/maestro-client) |
