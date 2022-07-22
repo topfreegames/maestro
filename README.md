@@ -45,6 +45,7 @@ Maestro does not have any dependencies, but it provides an events forwarding fea
 
 ```
 Note
+
 Currently, the only runtime that Maestro supports is Kubernetes.
 ```
 
