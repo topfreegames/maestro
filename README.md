@@ -3,7 +3,7 @@
 ```
 Note
 
-Version 9 of Maestro is under deprecation it is replaced by Maestro-NEXT (on main branch).
+Version 9 of Maestro is under deprecation. New games should use Maestro-NEXT (on main branch).
 We will keep the support for this version after the v10 is released (more details below).
 However, after that period, the version will no longer receive any updates.
 ```
@@ -24,9 +24,7 @@ Usually, each game has its own time to include multiplayer feature, so generally
 If multuiplayer GRUs is required during prototyping, this module should be included in the prototyping phase as well.
 
 ## Dependencies
-Maestro depends only infrastructure services to operate, the most required is a Kubernetes cluster where Maestro resides.
-
-As internal dependecy Maestro needs a Redis and a Postgres database.
+Maestro does not have any dependencies, but it provides an events forwarding feature that can be used to integrate with external matchmaking services.
 
 ## How is the problem solved?
 
