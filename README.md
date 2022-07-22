@@ -17,7 +17,7 @@ Game room management service, designed to manage multiple game room fleets in is
 
 [//]: # (A **non technical description** of the main tasks of the module in one or two paragraphs. After reading this section everybody should be able to understand which tasks are performed.)
 
-Manage multiple game rooms fleets in Kubernetes clusters with user-created custom specifications (schedulers).
+Manage multiple game rooms fleets with user-created custom specifications (schedulers).
 
 ## What problem is solved?
 
