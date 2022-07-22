@@ -43,7 +43,7 @@ Maestro does not have any dependencies, but it provides an events forwarding fea
 
 [//]: # (A **more technical description** how the module solved the problem description above. It should not get into too much detail, but provide enough information for a technical leader to understand the implications of using this module.)
 
-With a scheduler, the user can define how a game room can be built and deployed in kubernetes. Each scheduler
+With a scheduler, the user can define how a game room can be built and deployed on the runtime. Each scheduler
 manages a fleet of game rooms in isolated namespaces.
 
 Usually a scheduler will define which docker image will be used, its commands, resources that need to be allocated (cpu and memory), and other parameters for fleet management.
