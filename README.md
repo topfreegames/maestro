@@ -11,7 +11,7 @@
 
 [//]: # (One or two sentences description of the module/service in non technical terms and information about the owner. Text in quotes are examples.)
 
-Game room management service, designed to manage multiple game room fleets in Kubernetes clusters.
+Game room management service, designed to manage multiple game room fleets in isolated schedulers.
 
 ## What does the module do?
 
@@ -42,6 +42,11 @@ Maestro does not have any dependencies, but it provides an events forwarding fea
 ## How is the problem solved?
 
 [//]: # (A **more technical description** how the module solved the problem description above. It should not get into too much detail, but provide enough information for a technical leader to understand the implications of using this module.)
+
+```
+Note
+Currently, the only runtime that Maestro supports is Kubernetes.
+```
 
 With a scheduler, the user can define how a game room can be built and deployed on the runtime. Each scheduler
 manages a fleet of game rooms in isolated namespaces.
