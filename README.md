@@ -67,7 +67,7 @@ The [maestro-client](https://github.com/topfreegames/maestro-client) is a lib fo
 | Position | Name |
 | --- | --- |
 | Owner team | Game Services - Multiplayer |
-| Documentation owner | [Arthur Nogueira](@arthur29) |
+| Documentation owner | [Arthur Nogueira](https://github.com/arthur29) |
 | Read the Docs | [latest](https://maestro.readthedocs.io/en/latest/) |
 | Maestro CLI repo | [Maestro CLI](https://github.com/topfreegames/maestro-cli/tree/v1) |
 | maesto-client repo | [maestro-client](https://github.com/topfreegames/maestro-client) |
