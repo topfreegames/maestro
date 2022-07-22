@@ -3,16 +3,16 @@ repo_url: https://github.com/topfreegames/maestro
 
 nav:
   - Home: 'index.md'
-  - Getting Started: 'GettingStarted.md'
-  - Scheduler: 'Scheduler.md'
-  - UserGuides: 'User Guides.md'
-  - Developers: 'Developers.md'
-  - Architecture: 'Architecture.md'
-  - OpenAPI: 'OpenAPI.md'
-  - Autoscaling: 'Autoscaling.md'
-  - Operations: 'Operations.md'
-  - Kubernetes Usage: 'Kubernetes.md'
-  - Guidelines: 'Guidelines.md'
+  - Getting Started: 'tutorials/GettingStarted.md'
+  - Scheduler: 'reference/Scheduler.md'
+  - UserGuides: 'how-to-guides/User Guides.md'
+  - Developers: 'how-to-guides/Developers.md'
+  - Architecture: 'reference/Architecture.md'
+  - OpenAPI: 'reference/OpenAPI.md'
+  - Autoscaling: 'reference/Autoscaling.md'
+  - Operations: 'reference/Operations.md'
+  - Kubernetes Usage: 'reference/Kubernetes.md'
+  - Guidelines: 'how-to-guides/Guidelines.md'
 
 
 theme:

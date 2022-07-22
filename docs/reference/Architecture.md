@@ -5,7 +5,7 @@ Maestro is composed of **Management API**, **Rooms API**, **Operation Execution 
 Each module has its responsibilities and is divided apart in a way to avoid mixing the execution process. Each module was thought to avoid parallel problems and to give the client more visibility about which [**Operations**](Operations.md) are being executed and their respective status.
 
 
-![architecture IMAGE](./diagrams/Architecture.jpg)
+![architecture IMAGE](../images/Architecture.jpg)
 
 ### Maestro modules
 
@@ -21,7 +21,7 @@ The **operations service** exposes features for tracking operations and changing
 Management API relies on Redis for retrieving operations and game rooms, and on Postgres for retrieving and persisting schedulers.
 
 
-![Management API IMAGE](./diagrams/Architecture-Management-API.jpg)
+![Management API IMAGE](../images/Architecture-Management-API.jpg)
 
 #### Rooms API
 
@@ -30,7 +30,7 @@ Rooms API is the module that provides an API that **must** be used by game rooms
 > ⚠ Note: The requests that Maestro forwards in the Rooms API are documented in [this proto file](https://github.com/topfreegames/protos/blob/master/maestro/grpc/protobuf/events.proto).
 > ⚠ Note: [Maestro client](https://github.com/topfreegames/maestro-client) could be used to ease the integration of the Game Room with Maestro.
 
-![Rooms API IMAGE](./diagrams/Architecture-Rooms-API.jpg)
+![Rooms API IMAGE](../images/Architecture-Rooms-API.jpg)
 
 #### Operation Execution Worker
 
@@ -40,7 +40,7 @@ Operation Execution Worker is a process that constantly keeps ensuring each acti
 
 You could find all operations at [Operations section](Operations.md#available-operations)
 
-![Operation Execution Worker IMAGE](./diagrams/Architecture-Operation-Execution-Worker.jpg)
+![Operation Execution Worker IMAGE](../images/Architecture-Operation-Execution-Worker.jpg)
 
 #### Runtime Watcher Worker
 
@@ -48,7 +48,7 @@ You could find all operations at [Operations section](Operations.md#available-op
 
 Runtime Watcher Worker listens to runtime events related to the **Scheduler** and reflects the changes in **Maestro**. Currently, it listens for Game Rooms creation, deletion, and update.
 
-![Runtime Watcher Worker IMAGE](./diagrams/Architecture-Runtime-Watcher-Worker.jpg)
+![Runtime Watcher Worker IMAGE](../images/Architecture-Runtime-Watcher-Worker.jpg)
 
 #### Metrics Reporter Worker
 
@@ -58,4 +58,4 @@ From time to time Metrics Reporter Worker watch runtime to report metrics from t
 
 This module is optional since you don't need it for any specific functionalities of the application.
 
-![Metrics Reporter Worker IMAGE](./diagrams/Architecture-Metrics-Reporter-Worker.jpg)
+![Metrics Reporter Worker IMAGE](../images/Architecture-Metrics-Reporter-Worker.jpg)

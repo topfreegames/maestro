@@ -88,7 +88,7 @@ curl --request POST \
 ```
 
 ## Congratulations
-If you followed the steps above you have Maestro running in your local machine, and with a [scheduler](Scheduler.md) to try different [operations](Operations.md) on it.
-Feel free to explore the available endpoints in the [API](OpenAPI.md) hitting directly the management-API.
+If you followed the steps above you have Maestro running in your local machine, and with a [scheduler](../reference/Scheduler.md) to try different [operations](../reference/Operations.md) on it.
+Feel free to explore the available endpoints in the [API](../reference/OpenAPI.md) hitting directly the management-API.
 
 If you have any doubts or feedbacks regarding this process, feel free to reach out in [Maestro's GitHub repository](https://github.com/topfreegames/maestro) and open an issue/question.
