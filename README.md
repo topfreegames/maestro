@@ -48,7 +48,7 @@ manages a fleet of game rooms in isolated namespaces.
 
 Usually a scheduler will define which docker image will be used, its commands, resources that need to be allocated (cpu and memory), and other parameters for fleet management.
 
-Every action that maestro does on kubernetes to manage its resources is encapsulated in what we call an **Operation**. An Operation can be triggered by the user
+Every action that Maestro does on runtime to manage its resources is encapsulated in what we call an **Operation**. An Operation can be triggered by the user
 or by Maestro itself. Maestro uses a queue to control operations flow and disposes of a worker that keeps processing operations.
 
 Maestro provides two APIs for external and internal communication: 
