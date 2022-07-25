@@ -62,7 +62,7 @@ Maestro is a game room scheduler that is composed by a controller, a watcher, a 
 - rooms cpu and memory usage
 - etc.
 
-<img src='maestro.png' width='330' height='355'/>
+<img src='https://github.com/topfreegames/maestro/blob/v9/maestro.png?raw=true' width='330' height='355'/>
 
 ### maestro-controller:
 
