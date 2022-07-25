@@ -1,94 +1,108 @@
-To help you get along with Maestro, by the end of this section you should have a scheduler up and running.
+## Get Started
 
-## Prerequisites
-- Golang v1.18+
-- Linux/MacOS environment
-- Docker
+### Prerequisites
 
-### Clone Repository
-Clone the [repository](https://github.com/topfreegames/maestro) to your favorite folder.
+- Have a game room container image
 
-## Building and running locally
-> For this step, you need docker running on your machine.
+### Learning Outcomes
 
-In the folder where the project was cloned, simply run:
+After finishing this tutorial you will understand how:
 
-```shell
-make maestro/start
+- to set up your game room to communicate its health status with maestro
+- to configure a new scheduler in maestro with a fixed number of replicas
+
+
+#### Configuring your game room
+
+For Maestro to be able to manage your game rooms, you need to ensure that your game room sends a periodic heartbeat to maestro.
+This heartbeat is what we call `ping`, in which the room is able to inform its status (such as `ready` or `occupied`) to maestro.
+
+For this, you can use [maestro-client](https://github.com/topfreegames/maestro-client) sdk, if you are using unity, or you can call
+Maestro rooms API directly using two env vars that are configured in every game room managed by maestro by default. 
+
+`PUT scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping`
+```json
+{
+    "status": "ready",
+    "timestamp": "12312312313"
+}
 ```
 
-This will build and start all containers needed by Maestro, such as databases and maestro-modules. 
-Because of that, be aware that it might take some time to finish.
+#### Create a scheduler
 
-## Find rooms-api address
-To simulate a game room, it's important to find the address of running **rooms-api** on the local network.
+Use the command below to create a new scheduler, this will make a POST request for `/schedulers` endpoint.
 
-To do that, with Maestro containers running, simply use:
+You need to change some parameters according to your game room image needs:
 
-```shell
-docker inspect -f '{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}' {{ROOMS_API_CONTAINER_NAME}}
-```
+- **image**: your game room image.
+- **game**: your game name (a same game can have multiple schedulers).
+- **name**: your scheduler name (usually, the stack name).
+- **spec.command**: any command that is required to run your game room.
+- **spec.environment**: any environment variable required to run your game room.
+- **spec.ports**: any port that must be exposed for clients to connect to the game room
 
-This command should give you an IP address. 
-This IP is important because the game rooms will use it to communicate their status.
-
-## Create a scheduler
-If everything is working as expected now, each Maestro-module is up and running. 
-Use the command below to create a new scheduler:
-
-> Be aware to change the {{ROOMS_API_ADDRESS}} for the one found above.
 ```shell
 curl --request POST \
-  --url http://localhost:8080/schedulers \
+  --url https://<maestro-url>/schedulers \
   --header 'Content-Type: application/json' \
+  --header "Authorization: Basic <user:pass in base64>" \
   --data '{
-	"name": "scheduler-run-local",
-	"game": "game-test",
-	"state": "creating",
+	"name": "<your-scheduler-name-here>",
+	"game": "<your-game-name-here>",
+    "roomsReplicas": 1,
 	"portRange": {
-		"start": 1,
-		"end": 1000
+            "start": 20000,
+            "end": 21000
 	},
 	"maxSurge": "10%",
 	"spec": {
-		"terminationGracePeriod": "100",
-		"containers": [
-			{
-				"name": "alpine",
-				"image": "alpine",
-				"imagePullPolicy": "IfNotPresent",
-				"command": [
-					"sh",
-					"-c",
-					"apk add curl && while true; do curl --request PUT {{ROOMS_API_ADDRESS}}:8070/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping --data-raw '\''{\"status\": \"ready\",\"timestamp\": \"12312312313\"}'\'' && sleep 5; done"
-				],
-				"environment": [],
-				"requests": {
-					"memory": "100Mi",
-					"cpu": "100m"
-				},
-				"limits": {
-					"memory": "200Mi",
-					"cpu": "200m"
-				},
-				"ports": [
-					{
-						"name": "port-name",
-						"protocol": "tcp",
-						"port": 12345
-					}
-				]
-			}
-		],
-		"toleration": "",
-		"affinity": ""
+            "terminationGracePeriod": "100",
+            "containers": [
+                {
+                    "name": "game-container",
+                    "image": "<your-game-image-here>",
+                    "imagePullPolicy": "IfNotPresent",
+                    "command": [
+                        <required-commands-for-game-image>
+                        "sh example.sh"
+                    ],
+                    "environment": [
+                        <required-commands-for-game-image>
+                        {
+                            "name": "EXAMPLE_NAME",
+                            "value": "EXAMPLE_VALUE"
+                        }
+                    ],
+                    "requests": {
+                        "memory": "100Mi",
+                        "cpu": "100m"
+                    },
+                    "limits": {
+                        "memory": "200Mi",
+                        "cpu": "200m"
+                    },
+                    "ports": [
+                        {
+                            "name": "port-name",
+                            "protocol": "tcp",
+                            "port": 12345
+                        }
+                    ]
+                }
+            ]
 	},
 	"forwarders": []
 }'
 ```
 
-## Congratulations
-If you followed the steps above you have Maestro running in your local machine, and with a [scheduler](../reference/Scheduler.md) to try different [operations](../reference/Operations.md) on it.
-Feel free to explore the available endpoints in the [API](../reference/OpenAPI.md) hitting directly the management-API.
+After running this command, a scheduler will be created with 1 game room replica.
 
-If you have any doubts or feedbacks regarding this process, feel free to reach out in [Maestro's GitHub repository](https://github.com/topfreegames/maestro) and open an issue/question.
+Then you can use the following command to get the scheduler details such as how many rooms are ready or occupied:
+
+```shell
+curl --location --request GET "<maestro-url>/schedulers/info?game=<your-game-name-here>" \
+ --header "Accept: application/json" \
+ --header "Authorization: Basic <user:pass in base64>"
+```
+
+
