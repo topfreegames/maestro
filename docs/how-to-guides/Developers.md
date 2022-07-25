@@ -1,7 +1,7 @@
 To help you get along with Maestro, by the end of this section you should have a scheduler up and running.
 
 ## Prerequisites
-- Golang v1.18+
+- Golang v1.17+
 - Linux/MacOS environment
 - Docker
 
@@ -17,7 +17,7 @@ In the folder where the project was cloned, simply run:
 make maestro/start
 ```
 
-This will build and start all containers needed by Maestro, such as databases and maestro-modules. 
+This will build and start all containers needed by Maestro, such as databases and maestro-modules.
 Because of that, be aware that it might take some time to finish.
 
 ## Find rooms-api address
@@ -29,11 +29,11 @@ To do that, with Maestro containers running, simply use:
 docker inspect -f '{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}' {{ROOMS_API_CONTAINER_NAME}}
 ```
 
-This command should give you an IP address. 
+This command should give you an IP address.
 This IP is important because the game rooms will use it to communicate their status.
 
 ## Create a scheduler
-If everything is working as expected now, each Maestro-module is up and running. 
+If everything is working as expected now, each Maestro-module is up and running.
 Use the command below to create a new scheduler:
 
 > Be aware to change the {{ROOMS_API_ADDRESS}} for the one found above.
@@ -88,7 +88,7 @@ curl --request POST \
 ```
 
 ## Congratulations
-If you followed the steps above you have Maestro running in your local machine, and with a [scheduler](Scheduler.md) to try different [operations](Operations.md) on it.
-Feel free to explore the available endpoints in the [API](OpenAPI.md) hitting directly the management-API.
+If you followed the steps above you have Maestro running in your local machine, and with a [scheduler](../reference/Scheduler.md) to try different [operations](../reference/Operations.md) on it.
+Feel free to explore the available endpoints in the [API](../reference/OpenAPI.md) hitting directly the management-API.
 
 If you have any doubts or feedbacks regarding this process, feel free to reach out in [Maestro's GitHub repository](https://github.com/topfreegames/maestro) and open an issue/question.
