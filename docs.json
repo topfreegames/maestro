@@ -1,0 +1,11 @@
+{
+  "name":"Maestro",
+  "info":"Game Room Scheduler.",
+  "docs_folder": "docs",
+  "index_file": "README.md",
+  "tags":"Multiplayer",
+  "status":"Deprecated",
+  "team_owner":"Game Services - Multiplayer",
+  "support":"Slack channel #game-services-support"
+}
+

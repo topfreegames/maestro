@@ -1,11 +1,3 @@
-Maestro: Kubernetes Game Room Scheduler
-=======================================
-[![Build Status](https://travis-ci.org/topfreegames/maestro.svg?branch=master)](https://travis-ci.org/topfreegames/maestro)
-[![Coverage Status](https://coveralls.io/repos/github/topfreegames/maestro/badge.svg?branch=master)](https://coveralls.io/github/topfreegames/maestro?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/topfreegames/maestro)](https://goreportcard.com/report/github.com/topfreegames/maestro)
-[![Docs](https://readthedocs.org/projects/maestro/badge/?version=latest
-)](http://maestro.readthedocs.io/en/latest/)
-
 # Deprecation notice
 The version 9 of Maestro is under deprecation.
 We will keep the support for this version after the v10 is released (more details below). However, after that period, the version will no longer receive any updates.
@@ -62,7 +54,7 @@ Maestro is a game room scheduler that is composed by a controller, a watcher, a 
 - rooms cpu and memory usage
 - etc.
 
-<img src='maestro.png' width='330' height='355'/>
+<img src='./maestro.png' width='330' height='355'/>
 
 ### maestro-controller:
 
