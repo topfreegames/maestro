@@ -29,9 +29,10 @@ def make_backup(scheduler_name, yaml_config):
 
 # MAPPERS
 def get_port_range():
+    start, end = str.split(port_range, '-')
     return {
-        'start': 20000,
-        'end': 21000
+        'start': int(start),
+        'end': int(end)
     }
 
 
@@ -113,7 +114,7 @@ def get_autoscaling(autoscaling):
     try:
         usage = autoscaling['up']['trigger']['usage']
         ready_target = (100 - usage)/100
-        return [{
+        return {
             "enabled": True,
             "min": autoscaling['min'],
             "max": autoscaling['max'],
@@ -125,11 +126,11 @@ def get_autoscaling(autoscaling):
                     }
                 }
             }
-        }]
+        }
     except Exception as e:
         print('Converting autoscaling error. err =>', e)
         print('autoscaling =>', autoscaling)
-        return []
+        return
 
 
 def convert_v9_config_to_next(config, rooms_replica):
@@ -472,6 +473,7 @@ def setup():
     global game
     global backup_folder_absolute_path
     global container_input_env_vars
+    global port_range
     global dry_run
 
     my_parser = argparse.ArgumentParser(description='Args necessary to migrate schedulers from v9 to v10')
@@ -510,6 +512,13 @@ def setup():
                            required=True,
                            help='yaml file containing env variables to be overridden in the format "env: -name: value:"')
 
+    my_parser.add_argument('-p',
+                           '--port_range',
+                           metavar='port range to be used',
+                           type=str,
+                           required=True,
+                           help='port range to be used on migration, in the format start-end, e.g 20000-30000')
+
     my_parser.add_argument('-d',
                            '--dry',
                            help='dry-run to test the expected execution',
@@ -522,6 +531,7 @@ def setup():
     game = args.game
     backup_folder_absolute_path = args.backup
     dry_run = args.dry
+    port_range = args.port_range
 
     with open(args.yaml_file, "r") as f:
         yaml_file = yaml.load(f, Loader=yaml.loader.SafeLoader)
