@@ -60,6 +60,7 @@ message ListOperationsResponse {
   repeated ListOperationItem finished_operations = 3;
   // Add pagination information to the response. 
   repeated ListOperationItem page = 4;
+  // Add page total size information to the response. 
   repeated ListOperationItem total_size = 5;
 }
 

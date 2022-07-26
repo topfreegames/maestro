@@ -124,7 +124,8 @@ type ListOperationsResponse struct {
 	// List of the scheduler finished (with error or not) operations.
 	FinishedOperations []*ListOperationItem `protobuf:"bytes,3,rep,name=finished_operations,json=finishedOperations,proto3" json:"finished_operations,omitempty"`
 	// Add pagination information to the response.
-	Page      []*ListOperationItem `protobuf:"bytes,4,rep,name=page,proto3" json:"page,omitempty"`
+	Page []*ListOperationItem `protobuf:"bytes,4,rep,name=page,proto3" json:"page,omitempty"`
+	// Add page total size information to the response.
 	TotalSize []*ListOperationItem `protobuf:"bytes,5,rep,name=total_size,json=totalSize,proto3" json:"total_size,omitempty"`
 }
 

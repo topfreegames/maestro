@@ -1330,7 +1330,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1ListOperationItem"
-          }
+          },
+          "description": "Add page total size information to the response."
         }
       },
       "title": "The list operation route response/reply\nThere's a list for each operation major status"
