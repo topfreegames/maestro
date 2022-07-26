@@ -30,8 +30,8 @@ def make_backup(scheduler_name, yaml_config):
 # MAPPERS
 def get_port_range():
     return {
-        'start': 40000,
-        'end': 41000
+        'start': 20000,
+        'end': 21000
     }
 
 
@@ -107,6 +107,31 @@ def get_spec(config):
     }
 
 
+def get_autoscaling(autoscaling):
+    if not autoscaling:
+        return
+    try:
+        usage = autoscaling['up']['trigger']['usage']
+        ready_target = (100 - usage)/100
+        return [{
+            "enabled": True,
+            "min": autoscaling['min'],
+            "max": autoscaling['max'],
+            "policy": {
+                "type": 'roomOccupancy',
+                "parameters": {
+                    "roomOccupancy": {
+                        "readyTarget": ready_target
+                    }
+                }
+            }
+        }]
+    except Exception as e:
+        print('Converting autoscaling error. err =>', e)
+        print('autoscaling =>', autoscaling)
+        return []
+
+
 def convert_v9_config_to_next(config, rooms_replica):
     try:
         next_config = {
@@ -115,6 +140,7 @@ def convert_v9_config_to_next(config, rooms_replica):
             'roomsReplicas': rooms_replica,
             'spec': get_spec(config),
             'forwarders': get_forwarders(config.get('forwarders')),
+            'autoscaling': get_autoscaling(config.get('autoscaling')),
             'portRange': get_port_range(),
             'maxSurge': '20%'
         }
@@ -207,7 +233,6 @@ def get_v9_game_schedulers():
             schedulers = r.json()
             schedulers = list(
                 filter(lambda x: x.get('game') == game, schedulers))
-                # filter(lambda x: x.get('name') == 'sniper3d-game-s13', schedulers))
         else:
             raise Exception(
                 "could not fetch maestro-v9 endpoint. err =>", r.text)
