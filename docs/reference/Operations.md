@@ -164,7 +164,7 @@ If an operation does not have a Lease, it either did not start at all (should be
 An Active Operation without a Lease is at an invalid state.
 
 
->**⚠ Maestro do not have a self-healing routine yet for expired operations.**
+>**Maestro do not have a self-healing routine yet for expired operations.**
 
 
 ### Operation Lease Lifecycle

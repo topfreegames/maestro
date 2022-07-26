@@ -1,0 +1,10 @@
+{
+  "name":"Maestro Next",
+  "info":"Dedicated game server management service, designed to manage multiple game servers fleets in isolated schedulers.",
+  "docs_folder": "docs",
+  "index_file": "README.md",
+  "tags":"Multiplayer",
+  "status":"In Use",
+  "team_owner":"Game Services - Multiplayer",
+  "support":"Slack channel #game-services-support"
+}

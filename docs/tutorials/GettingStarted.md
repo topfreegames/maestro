@@ -1,4 +1,4 @@
-## Get Started
+## Getting Started Guide
 
 ### Prerequisites
 
@@ -18,7 +18,7 @@ For Maestro to be able to manage your game rooms, you need to ensure that your g
 This heartbeat is what we call `ping`, in which the room is able to inform its status (such as `ready` or `occupied`) to maestro.
 
 For this, you can use [maestro-client](https://github.com/topfreegames/maestro-client) sdk, if you are using unity, or you can call
-Maestro rooms API directly using two env vars that are configured in every game room managed by maestro by default. 
+Maestro rooms API directly using two env vars that are configured in every game room managed by maestro by default.
 
 `PUT scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping`
 ```json
@@ -28,11 +28,18 @@ Maestro rooms API directly using two env vars that are configured in every game 
 }
 ```
 
+The **status** field can be: 
+- `ready`: the room is ready to accept players.
+- `occupied`: the room is occupied by one or more matches, and is not ready to accept more players.
+- `terminating`: the room is terminating, and will not accept any new players.
+
+
 #### Create a scheduler
 
 Use the command below to create a new scheduler, this will make a POST request for `/schedulers` endpoint.
 
-You need to change some parameters according to your game room image needs:
+You need to change some parameters according to your game room image needs, for further details on all scheduler fields check
+the [reference](../reference/Scheduler.md):
 
 - **image**: your game room image.
 - **game**: your game name (a same game can have multiple schedulers).

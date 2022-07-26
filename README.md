@@ -11,13 +11,15 @@
 
 [//]: # (One or two sentences description of the module/service in non technical terms and information about the owner. Text in quotes are examples.)
 
-Game room management service, designed to manage multiple game room fleets in isolated schedulers.
+Dedicated game server management service, designed to manage multiple game servers fleets in isolated schedulers.
 
 ## What does the module do?
 
 [//]: # (A **non technical description** of the main tasks of the module in one or two paragraphs. After reading this section everybody should be able to understand which tasks are performed.)
 
-Manage multiple game rooms fleets with user-created custom specifications (schedulers).
+A **_Game Room_** is a dedicated game server that runs in a match execution context, a group of game rooms (fleet) are organized in a **Scheduler**.
+
+Maestro manage multiple game rooms fleets with user-created custom specifications (schedulers).
 
 ## What problem is solved?
 
@@ -25,6 +27,8 @@ Manage multiple game rooms fleets with user-created custom specifications (sched
 
 Maestro orchestrate game rooms fleets according to user specifications (schedulers), in which it can maintain a fixed number of game rooms up and running,
 or can use autoscaling policies for costs optimization.
+
+Ideally, Maestro should be used by games that implement [dedicated game server (dgs) architecture](https://docs-multiplayer.unity3d.com/netcode/current/reference/glossary/network-topologies/index.html#dedicated-game-server-dgs).
 
 ## Recommended Integration Phase: Alpha
 
@@ -43,11 +47,7 @@ Maestro does not have any dependencies, but it provides an events forwarding fea
 
 [//]: # (A **more technical description** how the module solved the problem description above. It should not get into too much detail, but provide enough information for a technical leader to understand the implications of using this module.)
 
-```
-Note
-
-Currently, the only runtime that Maestro supports is Kubernetes.
-```
+> Currently, the only runtime that Maestro supports is Kubernetes.
 
 With a scheduler, the user can define how a game room can be built and deployed on the runtime. Each scheduler
 manages a fleet of game rooms in isolated namespaces.
@@ -58,6 +58,7 @@ Every action that Maestro does on runtime to manage its resources is encapsulate
 or by Maestro itself. Maestro uses a queue to control operations flow and disposes of a worker that keeps processing operations.
 
 Maestro provides two APIs for external and internal communication: 
+
 - `management-api`: used by users to manage schedulers and operations. 
 - `rooms-api`: used by game rooms to report its status back to Maestro.
 
