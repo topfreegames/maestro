@@ -1318,6 +1318,19 @@
             "$ref": "#/definitions/v1ListOperationItem"
           },
           "description": "List of the scheduler finished (with error or not) operations."
+        },
+        "page": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ListOperationItem"
+          },
+          "description": "Add pagination information to the response."
+        },
+        "totalSize": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ListOperationItem"
+          }
         }
       },
       "title": "The list operation route response/reply\nThere's a list for each operation major status"

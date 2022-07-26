@@ -58,6 +58,9 @@ message ListOperationsResponse {
   repeated ListOperationItem active_operations = 2;
   // List of the scheduler finished (with error or not) operations.
   repeated ListOperationItem finished_operations = 3;
+  // Add pagination information to the response. 
+  repeated ListOperationItem page = 4;
+  repeated ListOperationItem total_size = 5;
 }
 
 // The cancel operation request.
