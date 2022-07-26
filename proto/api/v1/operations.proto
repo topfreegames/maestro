@@ -41,6 +41,12 @@ message ListOperationsRequest {
   // Default value is `created_at desc`
   // NOTE: On http protocol, this operates as a query parameter.
   string order_by = 2;
+  // Parameter to check the operations status.
+  string status = 3;
+  // Parameter for pagination.
+  string page = 4;
+  // Optional parameter for pagination.
+  string per_page = 5;
 }
 
 // The list operation route response/reply
