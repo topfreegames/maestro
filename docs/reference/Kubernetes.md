@@ -49,7 +49,7 @@ kubernetes resources, all it does is to watch for changes and update its game ro
 ### Operation execution worker
 The worker uses kubernetes for managing pods and namespaces. It executes several [operations](Operations.md) that, alongside other side effects, will need to create, update, and delete namespaces and pods.
 
-> **⚠ Currently, maestro does not check for HostPort conflict while creating new rooms**
+> **Currently, maestro does not check for HostPort conflict while creating new rooms**
 > 
 >One important note regarding how maestro creates pods: each new requested game room instance will be assigned to a pseudo-random port to be used as **HostPort**.
 >

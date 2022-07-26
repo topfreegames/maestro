@@ -18,6 +18,7 @@ Maestro is composed by:
 - *Runtime Watcher:* is a component in Maestro that listen to Runtime events and reflect them in Maestro. For example: when a game room was created it is notified that this event happened.
 - *Metrics Reporter:* time spaced this component query the Runtime for metrics related to rooms and expose them in an open metrics route. For example: how many occupied rooms and ready rooms are up.
 
-## Support & Community
+[//]: # (## Support & Community)
 
-Include how users can reach out to you or your team. Include any details they should gather or have handy to facilitate resolution of the issue.
+[//]: # ()
+[//]: # (Include how users can reach out to you or your team. Include any details they should gather or have handy to facilitate resolution of the issue.)

@@ -1,4 +1,16 @@
-## What is
+## Configuring Scheduler Autoscaling
+
+### Prerequisites
+
+- Have a game room container image that communicates with maestro through Maestro's rooms API
+
+### Learning Outcomes
+
+After finishing this tutorial you will understand how:
+
+- to configure autoscaling policies for your scheduler
+
+### What is
 Autoscaling is an optional feature in which the user can choose and parametrize different autoscaling policies that maestro
 will use to automatically scale the number of rooms in the scheduler.
 
