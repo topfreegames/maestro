@@ -37,7 +37,7 @@ that scheduler and the order they were executed.
 
 ### Versions
 A Scheduler have versions, and each time we want to change scheduler properties, we end-up creating a new version to it.
-> ⚠ Versions are directly calculated by Maestro, not sent by the client.
+> Versions are directly calculated by Maestro, not sent by the client.
 >
 > The client can only switch the active version based on the versions created by Maestro. To switch to an specific version, see [this](Operations.md#available-operations).
 
@@ -242,7 +242,7 @@ spec: Spec
 - **portRange**: Range of ports that can be used by Maestro to create GRUs for the specified scheduler. Can be altered by the user anytime. More info [here](#portrange);
 - **forwarders**: Maestro can pass ahead info sent by the game rooms, such as Ping (Ready, Occupied, Terminating...), player and rooms events.
   The receivers can be configured here. More info [here](#forwarders);
-- **autoscaling**: Optional autoscaling policy configuration. More info [here](Autoscaling.md);
+- **autoscaling**: Optional autoscaling policy configuration. More info [here](../tutorials/Autoscaling.md);
 - **spec**: Specifications about the game rooms managed by the scheduler, such as containers and environment variables used by them, limits and images. More info [here](#spec).
 
 
@@ -251,7 +251,7 @@ The **PortRange** is used to select a random port for a GRU between **start** an
  
 - PortRange cannot be null or empty
 
-> ⚠ Check if the ports offered are **available** and **can be used**. 
+> Check if the ports offered are **available** and **can be used**. 
 > A firewall rule, for example, can affect the connection to the Game Room in the specific port.
 
 It is represented as:

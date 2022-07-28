@@ -59,10 +59,12 @@ func NewCreateSchedulerVersionConfig(c config.Config) newschedulerversion.Config
 func NewHealthControllerConfig(c config.Config) healthcontroller.Config {
 	initializationTimeout := time.Duration(c.GetInt(roomInitializationTimeoutMillisConfigPath)) * time.Millisecond
 	pingTimeout := time.Duration(c.GetInt(roomPingTimeoutMillisConfigPath)) * time.Millisecond
+	deletionTimeout := time.Duration(c.GetInt(roomDeletionTimeoutMillisConfigPath)) * time.Millisecond
 
 	config := healthcontroller.Config{
 		RoomInitializationTimeout: initializationTimeout,
 		RoomPingTimeout:           pingTimeout,
+		RoomDeletionTimeout:       deletionTimeout,
 	}
 
 	return config

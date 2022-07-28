@@ -1,0 +1,10 @@
+{
+  "name":"Maestro Next",
+  "info":"Dedicated game server management service, designed to manage multiple game servers fleets in isolated schedulers.",
+  "docs_folder": "docs",
+  "index_file": "README.md",
+  "tags":"Multiplayer",
+  "team_owner":"Game Services - Multiplayer",
+  "support_slack_channel":"#game-services-support",
+  "support_stack_overflow":"https://stackoverflow.com/c/wildlifestudios/posts/tagged/16"
+}

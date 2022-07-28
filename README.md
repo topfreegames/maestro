@@ -4,133 +4,71 @@
 *WARNING*: The [version v9.x](https://github.com/topfreegames/maestro/tree/v9) of Maestro is under deprecation, complete guide of the new version v10.x can be found [here](https://github.com/topfreegames/maestro/issues/283).
 
 ---
-Maestro: Kubernetes Game Room Scheduler 
-=======================================
+# Maestro 
 
 [![Build Status](https://github.com/topfreegames/maestro/actions/workflows/test.yaml/badge.svg?branch=next)](https://github.com/topfreegames/maestro/actions/workflows/test.yaml)
 [![Codecov Status](https://codecov.io/gh/topfreegames/maestro/branch/next/graph/badge.svg?token=KCN2SZDRJF)](https://codecov.io/gh/topfreegames/maestro)
 
-## Docs
-All documentation regarding this version (v10.x, AKA NEXT) can be accessed at https://topfreegames.github.io/maestro/.
+[//]: # (One or two sentences description of the module/service in non technical terms and information about the owner. Text in quotes are examples.)
+
+Dedicated game server management service, designed to manage multiple game servers fleets in isolated schedulers.
+
+## What does the module do?
+
+[//]: # (A **non technical description** of the main tasks of the module in one or two paragraphs. After reading this section everybody should be able to understand which tasks are performed.)
+
+A **_Game Room_** is a dedicated game server that runs in a match execution context, a group of game rooms (fleet) are organized in a **Scheduler**.
+
+Maestro manage multiple game rooms fleets with user-created custom specifications (schedulers).
+
+## What problem is solved?
+
+[//]: # (A **non technical** explanation of what problem is solved by this module. This is **not** another description of what the module does, rather why the module exists in the first place.)
+
+Maestro orchestrate game rooms fleets according to user specifications (schedulers), in which it can maintain a fixed number of game rooms up and running,
+or can use autoscaling policies for costs optimization.
+
+Ideally, Maestro should be used by games that implement [dedicated game server (dgs) architecture](https://docs-multiplayer.unity3d.com/netcode/current/reference/glossary/network-topologies/index.html#dedicated-game-server-dgs).
+
+## Recommended Integration Phase: Alpha
+
+[//]: # (In which phase is this module normally used for the prototyping, alpha, preproduction or production stage of game development.)
+
+This module is not required for prototyping, but it is recommended to include it in the alpha phase so future development and deployment of new game room versions
+can be better managed.
 
 ## Dependencies
 
-> **⚠ WARNING: Ensure using cgroupv1**
-> 
-> K3s needs to use the deprecated `cgroupv1`, to successfully run the project in your machine ensure that your current docker use this version.
+[//]: # (List all the modules or other dependencies that module has, if possible with links to their repositories.)
 
-### Grpc gateway
-In order to run make generate with success, you need to have grpc-gateway dependencies installed with the following command:
-```shell
-go install \
-    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
-    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
-    google.golang.org/protobuf/cmd/protoc-gen-go \
-    google.golang.org/grpc/cmd/protoc-gen-go-grpc
-```
+Maestro does not have any dependencies, but it provides an events forwarding feature that can be used to integrate with external matchmaking services.
 
-### Golang version
-The project requires golang version 1.16 or higher.
+## How is the problem solved?
 
-## Building and running locally
-1. Run `make setup` to get all required modules
-2. Run `make generate` to generate mocks, protos and wire (dependency injection)
-3. Run `make deps/up` to startup service dependencies
-4. Run `make migrate` to migrate database with the most updated schema
+[//]: # (A **more technical description** how the module solved the problem description above. It should not get into too much detail, but provide enough information for a technical leader to understand the implications of using this module.)
 
-### Management API Flavor
-To start the management-api flavor locally, run:
-```
-make run/management-api
-```
+> Currently, the only runtime that Maestro supports is Kubernetes.
 
-To test if the service (with dependencies) is up and running, try to create a scheduler by running the following command:
-```
-curl --location --request POST "localhost:8080/schedulers" \
---header "Content-Type: application/json" \
---header "Accept: application/json" \
---data-raw "{
-	\"name\": \"scheduler-test\",
-	\"game\": \"game-test\",
-	\"state\": \"creating\",
-	\"portRange\": {
-		\"start\": 1,
-		\"end\": 1000
-	},
-	\"maxSurge\": \"10%\",
-	\"spec\": {
-		\"terminationGracePeriod\": \"100\",
-		\"containers\": [
-			{
-				\"name\": \"alpine\",
-				\"image\": \"alpine\",
-				\"imagePullPolicy\": \"IfNotPresent\",
-				\"command\": [ \"sh\", \"-c\", \"while true; do sleep 1; done\" ],
-				\"environment\": [
-					{
-						\"name\": \"env-var-name\",
-						\"value\": \"env-var-value\"
-					}
-				],
-				\"requests\": {
-					\"memory\": \"100Mi\",
-					\"cpu\": \"100m\"
-				},
-				\"limits\": {
-					\"memory\": \"200Mi\",
-					\"cpu\": \"200m\"
-				},
-				\"ports\": [
-					{
-						\"name\": \"port-name\",
-						\"protocol\": \"tcp\",
-						\"port\": 12345,
-						\"hostPort\": 54321
-					}
-				]
-			}
-		],
-		\"toleration\": \"\",
-		\"affinity\": \"\"
-	},
-	\"forwarders\": [
-		{
-            \"name\": \"test-fwd\",
-            \"enable\": true,
-            \"type\": \"gRPC\",
-            \"address\": \"www.NON-EXISTANT-URL.com\",
-            \"options\": {
-               \"timeout\": 1000,
-               \"metadata\": {}
-            }
-		}
-    ]
-}"'
-```
+With a scheduler, the user can define how a game room can be built and deployed on the runtime. Each scheduler
+manages a fleet of game rooms in isolated namespaces.
 
-### Worker Flavor
-To start the worker flavor locally, run:
-```
-make run/worker
-```
+Usually a scheduler will define which docker image will be used, its commands, resources that need to be allocated (cpu and memory), and other parameters for fleet management.
 
-If you've create a scheduler following the last steps of `management-api` test, starting the worker will execute the `create_scheduler` operation, you can check if the operation is executed by executing the following command:
-```
-export KUBECONFIG=$(pwd)/kubeconfig.yaml
-kubectl get namespaces | grep zooba
-```
+Every action that Maestro does on runtime to manage its resources is encapsulated in what we call an **Operation**. An Operation can be triggered by the user
+or by Maestro itself. Maestro uses a queue to control operations flow and disposes of a worker that keeps processing operations.
 
-### Runtime watcher flavor
-To start the runtime watcher flavor locally, run:
-```
-make run/runtime-watcher
-```
+Maestro provides two APIs for external and internal communication: 
 
-## Running tests
+- `management-api`: used by users to manage schedulers and operations. 
+- `rooms-api`: used by game rooms to report its status back to Maestro.
 
-1. Run `make run/unit-tests` to run all unit tests
-2. Run `make run/integration-tests` to run all integration tests
-3. Run `make run/e2e-tests` to run all E2E tests. NOTE: Currently it is not
-   possible to run it with the development environment set. This command will
-   stop the dev dependencies before running.
-4. Run `make lint` to run all registered linters
+## Additional information
+
+[//]: # (Here a link to the complete module documentation as well as other additional information should be added as well as contact information.)
+
+Documentation can be found in the [docs folder](./docs). This module is supported by the Wildlife's multiplayer team.
+
+| Position            | Name               |
+|---------------------|--------------------|
+| Owner Team          | Multiplayer Team   |
+| Documentation Owner | [Guilherme Carvalho](https://github.com/guilhermocc) |

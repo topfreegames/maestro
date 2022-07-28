@@ -1,0 +1,1 @@
+!!swagger-http https://raw.githubusercontent.com/topfreegames/maestro/main/proto/apidocs.swagger.json!!
