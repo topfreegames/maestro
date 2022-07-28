@@ -775,7 +775,7 @@ func TestSchedulerMaxSurge(t *testing.T) {
 
 func TestRoomManager_WaitRoomStatus(t *testing.T) {
 
-	t.Run("return the desired state and no error when the desired status is reached after some time", func(t *testing.T) {
+	t.Run("return one of the desired states and no error when the desired status is reached after some time", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
@@ -791,12 +791,14 @@ func TestRoomManager_WaitRoomStatus(t *testing.T) {
 		)
 
 		statusReady := game_room.GameStatusReady
+		statusError := game_room.GameStatusError
 		gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
 
 		executionResult := make(chan struct {
 			Status game_room.GameRoomStatus
 			Error  error
 		})
+
 		statusEventChan := make(chan game_room.StatusEvent)
 		go func() {
 			roomStorage.EXPECT().GetRoom(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(gameRoom, nil)
@@ -804,7 +806,7 @@ func TestRoomManager_WaitRoomStatus(t *testing.T) {
 			watcher.EXPECT().ResultChan().Return(statusEventChan)
 			watcher.EXPECT().Stop()
 
-			status, err := roomManager.WaitRoomStatus(context.Background(), gameRoom, []game_room.GameRoomStatus{statusReady})
+			status, err := roomManager.WaitRoomStatus(context.Background(), gameRoom, []game_room.GameRoomStatus{statusReady, statusError})
 
 			executionResult <- struct {
 				Status game_room.GameRoomStatus
@@ -816,6 +818,25 @@ func TestRoomManager_WaitRoomStatus(t *testing.T) {
 		result := <-executionResult
 		require.NoError(t, result.Error)
 		require.Equal(t, statusReady, result.Status)
+
+		go func() {
+			roomStorage.EXPECT().GetRoom(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(gameRoom, nil)
+			roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gameRoom).Return(watcher, nil)
+			watcher.EXPECT().ResultChan().Return(statusEventChan)
+			watcher.EXPECT().Stop()
+
+			status, err := roomManager.WaitRoomStatus(context.Background(), gameRoom, []game_room.GameRoomStatus{statusReady, statusError})
+
+			executionResult <- struct {
+				Status game_room.GameRoomStatus
+				Error  error
+			}{Status: status, Error: err}
+		}()
+
+		statusEventChan <- game_room.StatusEvent{RoomID: gameRoom.ID, SchedulerName: gameRoom.SchedulerID, Status: statusError}
+		result = <-executionResult
+		require.NoError(t, result.Error)
+		require.Equal(t, statusError, result.Status)
 	})
 
 	t.Run("return the desired state and no error when the desired status is already the current one", func(t *testing.T) {
