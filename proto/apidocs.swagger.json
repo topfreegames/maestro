@@ -579,6 +579,13 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "status",
+            "description": "Optional parameter for enabling filter by operation status.",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
