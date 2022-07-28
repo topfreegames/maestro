@@ -82,7 +82,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
-		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, game_room.GameStatusReady).Return(nil)
+		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady}).Return(game_room.GameStatusError, nil)
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
 
 		schedulerManager.
@@ -129,7 +129,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
-		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, game_room.GameStatusReady).Return(nil)
+		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady}).Return(game_room.GameStatusError, nil)
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
 
 		schedulerManager.
@@ -176,7 +176,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
-		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, game_room.GameStatusReady).Return(nil)
+		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady}).Return(game_room.GameStatusError, nil)
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
 
 		schedulerManager.
@@ -223,7 +223,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
-		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, game_room.GameStatusReady).Return(nil)
+		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady}).Return(game_room.GameStatusError, nil)
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some_error"))
 
 		schedulerManager.
@@ -372,7 +372,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		gameRoom := &game_room.GameRoom{ID: "id-1", SchedulerID: "some-scheduler"}
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
-		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, game_room.GameStatusReady).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
+		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady}).Return(game_room.GameStatusError, serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
@@ -413,7 +413,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		gameRoom := &game_room.GameRoom{ID: "id-1", SchedulerID: "some-scheduler"}
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
-		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, game_room.GameStatusReady).Return(fmt.Errorf("some error"))
+		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady}).Return(game_room.GameStatusError, fmt.Errorf("some error"))
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)

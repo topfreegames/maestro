@@ -171,11 +171,12 @@ func (mr *MockRoomManagerMockRecorder) UpdateRoomInstance(ctx, gameRoomInstance 
 }
 
 // WaitRoomStatus mocks base method.
-func (m *MockRoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status game_room.GameRoomStatus) error {
+func (m *MockRoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status []game_room.GameRoomStatus) (game_room.GameRoomStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WaitRoomStatus", ctx, gameRoom, status)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(game_room.GameRoomStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // WaitRoomStatus indicates an expected call of WaitRoomStatus.

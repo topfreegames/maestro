@@ -156,7 +156,7 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 	defer cancelFunc()
 
-	waitRoomErr := ex.roomManager.WaitRoomStatus(timeoutContext, gameRoom, game_room.GameStatusReady)
+	_, waitRoomErr := ex.roomManager.WaitRoomStatus(timeoutContext, gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady})
 	if waitRoomErr != nil {
 		logger.Error(fmt.Sprintf("error waiting validation room with ID: %s to be ready", gameRoom.ID))
 	}
