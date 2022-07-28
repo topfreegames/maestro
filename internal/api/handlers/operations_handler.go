@@ -64,6 +64,12 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	operationStatus := request.Status
+	if err != nil {
+		handlerLogger.Error(fmt.Sprintf("error parsing sorting parameters, orderBy: %+v", request.Status), zap.Error(err))
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetSchedulerName())
 	if err != nil {
 		handlerLogger.Error("error listing pending operations", zap.Error(err))
@@ -103,11 +109,21 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	return &api.ListOperationsResponse{
-		PendingOperations:  pendingOperationResponse,
-		ActiveOperations:   activeOperationResponses,
-		FinishedOperations: finishedOperationResponse,
-	}, nil
+	switch operationStatus {
+	case "pending":
+		return &api.ListOperationsResponse{PendingOperations: pendingOperationResponse}, nil
+	case "active":
+		return &api.ListOperationsResponse{ActiveOperations: activeOperationResponses}, nil
+	case "finished":
+		return &api.ListOperationsResponse{FinishedOperations: finishedOperationResponse}, nil
+
+	default:
+		return &api.ListOperationsResponse{
+			PendingOperations:  pendingOperationResponse,
+			ActiveOperations:   activeOperationResponses,
+			FinishedOperations: finishedOperationResponse,
+		}, nil
+	}
 }
 
 func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.CancelOperationRequest) (*api.CancelOperationResponse, error) {
