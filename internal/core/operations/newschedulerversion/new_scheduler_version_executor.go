@@ -152,26 +152,51 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 	}
 	ex.AddValidationRoomID(scheduler.Name, gameRoom)
 
+	defer func() {
+		err = ex.roomManager.DeleteRoom(ctx, gameRoom)
+		if err != nil {
+			logger.Error("error deleting new game room created for validation", zap.Error(err))
+		}
+		ex.RemoveValidationRoomID(scheduler.Name)
+	}()
+
 	duration := ex.config.RoomInitializationTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 	defer cancelFunc()
 
-	_, waitRoomErr := ex.roomManager.WaitRoomStatus(timeoutContext, gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady})
+	roomStatus, waitRoomErr := ex.roomManager.WaitRoomStatus(
+		timeoutContext,
+		gameRoom,
+		[]game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError},
+	)
+
 	if waitRoomErr != nil {
 		logger.Error(fmt.Sprintf("error waiting validation room with ID: %s to be ready", gameRoom.ID))
-	}
-
-	err = ex.roomManager.DeleteRoom(ctx, gameRoom)
-	if err != nil {
-		logger.Error("error deleting new game room created for validation", zap.Error(err))
-	}
-	ex.RemoveValidationRoomID(scheduler.Name)
-	if waitRoomErr != nil {
 		if errors.Is(waitRoomErr, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-			return operations.NewErrInvalidGru(gameRoom, fmt.Errorf("error validating game room with ID: '%s-%s': %w", gameRoom.SchedulerID, gameRoom.ID, waitRoomErr))
+			return operations.NewErrInvalidGru(gameRoom, fmt.Errorf("error validating game room with ID: '%s': %w", gameRoom.ID, waitRoomErr))
 		}
 
-		return operations.NewErrUnexpected(fmt.Errorf("unexpected error validating game room with ID '%s-%s': %w", gameRoom.SchedulerID, gameRoom.ID, waitRoomErr))
+		return operations.NewErrUnexpected(fmt.Errorf("unexpected error validating game room with ID '%s': %w", gameRoom.ID, waitRoomErr))
+	}
+
+	switch roomStatus {
+	case game_room.GameStatusReady:
+		logger.Sugar().Infof("validation room with ID: %s is ready", gameRoom.ID)
+		return nil
+	case game_room.GameStatusError:
+		logger.Sugar().Infof("validation room with ID: %s is in error state", gameRoom.ID)
+
+		var stateDescription, roomID string
+		instance, err := ex.roomManager.GetRoomInstance(ctx, scheduler.Name, gameRoom.ID)
+		if err != nil {
+			logger.Error("error getting room instance to check last state event", zap.Error(err))
+			stateDescription = "unknown"
+			roomID = gameRoom.ID
+		} else {
+			stateDescription = instance.Status.Description
+			roomID = instance.ID
+		}
+		return operations.NewErrGruInError(roomID, stateDescription, fmt.Errorf("error validating game room with ID: '%s'", gameRoom.ID))
 	}
 
 	return nil

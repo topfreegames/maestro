@@ -35,6 +35,7 @@ type errorKind int
 const (
 	ErrKindUnexpected errorKind = iota
 	ErrKindInvalidGru
+	ErrKindGruInError
 	ErrKindReadyPingTimeout
 	ErrKindTerminatingPingTimeout
 )
@@ -42,6 +43,7 @@ const (
 var (
 	ErrUnexpected             = &operationExecutionError{kind: ErrKindUnexpected}
 	ErrInvalidGru             = &operationExecutionError{kind: ErrKindInvalidGru}
+	ErrGruInError             = &operationExecutionError{kind: ErrKindGruInError}
 	ErrReadyPingTimeout       = &operationExecutionError{kind: ErrKindReadyPingTimeout}
 	ErrTerminatingPingTimeout = &operationExecutionError{kind: ErrKindReadyPingTimeout}
 )
@@ -90,6 +92,15 @@ func NewErrInvalidGru(gameRoom *game_room.GameRoom, err error) *operationExecuti
 		kind: ErrKindInvalidGru,
 		formattedMessage: fmt.Sprintf(`The GRU could not be validated. Maestro got timeout waiting for the GRU with ID: %s to be ready. You can check if
 		the GRU image is stable on the its logs. If you could not spot any issues, please contact us.`, gameRoom.ID),
+		err: err,
+	}
+}
+
+func NewErrGruInError(roomID, statusDescription string, err error) *operationExecutionError {
+	return &operationExecutionError{
+		kind: ErrKindGruInError,
+		formattedMessage: fmt.Sprintf(`The GRU could not be validated. The room created for validation with ID %s is entering in error state. You can check if
+		the GRU image is stable on the its logs using the provided room id. Last event in the game room: %s`, roomID, statusDescription),
 		err: err,
 	}
 }
