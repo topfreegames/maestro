@@ -1320,17 +1320,11 @@
           "description": "List of the scheduler finished (with error or not) operations."
         },
         "page": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1ListOperationItem"
-          },
+          "$ref": "#/definitions/v1ListOperationItem",
           "description": "Add pagination information to the response."
         },
         "totalSize": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1ListOperationItem"
-          },
+          "$ref": "#/definitions/v1ListOperationItem",
           "description": "Add page total size information to the response."
         }
       },
