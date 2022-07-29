@@ -346,7 +346,7 @@ func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.Ga
 	}
 
 	// the room has the desired state already
-	if Contains(status, fromStorage.Status) {
+	if contains(status, fromStorage.Status) {
 		return fromStorage.Status, nil
 	}
 
@@ -357,7 +357,7 @@ watchLoop:
 			err = ctx.Err()
 			break watchLoop
 		case gameRoomEvent := <-watcher.ResultChan():
-			if Contains(status, gameRoomEvent.Status) {
+			if contains(status, gameRoomEvent.Status) {
 				resultStatus = gameRoomEvent.Status
 				break watchLoop
 			}
@@ -436,7 +436,7 @@ func removeDuplicateValues(slice []string) []string {
 	return res
 }
 
-func Contains[T comparable](s []T, e T) bool {
+func contains[T comparable](s []T, e T) bool {
 	for _, v := range s {
 		if v == e {
 			return true
