@@ -936,7 +936,8 @@ func TestRoomManager_WaitRoomStatus(t *testing.T) {
 		statusReady := game_room.GameStatusReady
 		gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
 
-		ctx, _ := context.WithTimeout(context.Background(), time.Second*1)
+		ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*1)
+		defer cancelFn()
 		executionResult := make(chan struct {
 			Status game_room.GameRoomStatus
 			Error  error
