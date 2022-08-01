@@ -114,7 +114,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return &api.ListOperationsResponse{PendingOperations: pendingOperationResponse}, nil
 	case "active":
 		return &api.ListOperationsResponse{ActiveOperations: activeOperationResponses}, nil
-	case "finished":
+	case "history":
 		return &api.ListOperationsResponse{FinishedOperations: finishedOperationResponse}, nil
 
 	default:
