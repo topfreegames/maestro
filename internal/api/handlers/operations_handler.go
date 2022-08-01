@@ -65,10 +65,6 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 
 	operationStatus := request.Stage
-	if err != nil {
-		handlerLogger.Error(fmt.Sprintf("error parsing stage filter parameters, Stage: %+v", request.Stage), zap.Error(err))
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
 
 	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, request.GetSchedulerName())
 	if err != nil {
