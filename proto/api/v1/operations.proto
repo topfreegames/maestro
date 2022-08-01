@@ -41,7 +41,7 @@ message ListOperationsRequest {
   // Default value is `created_at desc`
   // NOTE: On http protocol, this operates as a query parameter.
   string order_by = 2;
-  // Optional parameter for enabling filter by operation status
+  // Optional parameter for enabling filter by operation execution stage, can be one of [pending, active, history]
   optional string stage = 3;
 }
 
