@@ -24,6 +24,7 @@ package remove_rooms
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -32,6 +33,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -54,7 +56,7 @@ func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, o
 }
 
 // Execute execute operation RemoveRoom
-func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
@@ -69,8 +71,13 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
+			deleteErr := fmt.Errorf("failed to remove room: %w", err)
 
-			return fmt.Errorf("failed to remove room by ids: %w", err)
+			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
+				return operations.NewExecutionErr(deleteErr)
+			}
+
+			return operations.NewExecutionErr(fmt.Errorf("failed to remove room by ids: %w", err))
 		}
 	}
 
@@ -80,8 +87,13 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
+			deleteErr := fmt.Errorf("failed to remove room: %w", err)
 
-			return fmt.Errorf("failed to remove room by amount: %w", err)
+			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
+				return operations.NewExecutionErr(deleteErr)
+			}
+
+			return operations.NewExecutionErr(fmt.Errorf("failed to remove room by amount: %w", err))
 		}
 	}
 
@@ -145,7 +157,7 @@ func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_roo
 }
 
 // Rollback applies the correct rollback to RemoveRoom
-func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
+func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ *operations.ExecutionError) error {
 	return nil
 }
 

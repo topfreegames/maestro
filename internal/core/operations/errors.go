@@ -24,21 +24,23 @@ package operations
 
 import (
 	"context"
-
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"strings"
 )
 
-// Executor is where the actual operation logic is implemented, and it will
-// receive as input its correlated definition.
-type Executor interface {
-	// Execute is where the operation logic will live; it will receive a context
-	// that will be used for deadline and cancellation. This function has only
-	// one return which is the operation error (if any);
-	Execute(ctx context.Context, op *operation.Operation, definition Definition) *ExecutionError
-	// Rollback is called if Execute returns an error. This will be used
-	// for operations that need to do some cleanup or any process if it fails.
-	Rollback(ctx context.Context, op *operation.Operation, definition Definition, executeErr *ExecutionError) error
-	// Name returns the executor name. This is used to identify a executor for a
-	// definition.
-	Name() string
+type ExecutionError struct {
+	err error
+}
+
+func (e *ExecutionError) Error() error {
+	return e.err
+}
+
+func (e *ExecutionError) IsContextCanceled() bool {
+	return strings.Contains(e.err.Error(), context.Canceled.Error())
+}
+
+func NewExecutionErr(err error) *ExecutionError {
+	return &ExecutionError{
+		err: err,
+	}
 }

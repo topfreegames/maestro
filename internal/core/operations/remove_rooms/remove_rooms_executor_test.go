@@ -99,7 +99,7 @@ func TestExecute(t *testing.T) {
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), operation, gomock.Any())
 
 			err := executor.Execute(context.Background(), operation, definition)
-			require.ErrorContains(t, err, "failed to remove room by amount: failed to remove instance on the runtime: some error")
+			require.ErrorContains(t, err.Error(), "failed to remove room by amount: failed to remove instance on the runtime: some error")
 		})
 
 		t.Run("when any room failed to delete with timeout error it returns with error", func(t *testing.T) {
@@ -121,7 +121,7 @@ func TestExecute(t *testing.T) {
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), operation, gomock.Any())
 
 			err := executor.Execute(context.Background(), operation, definition)
-			require.EqualError(t, err, "failed to remove room by amount: some error")
+			require.EqualError(t, err.Error(), "failed to remove room: some error")
 		})
 
 		t.Run("when list rooms has error returns with error", func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestExecute(t *testing.T) {
 
 			err := executor.Execute(ctx, operation, definition)
 			require.NotNil(t, err)
-			require.ErrorContains(t, err, "failed to remove room")
+			require.ErrorContains(t, err.Error(), "failed to remove room")
 		})
 	})
 
@@ -206,7 +206,7 @@ func TestExecute(t *testing.T) {
 			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(nil, fmt.Errorf("Error on GetRoom"))
 
 			err := executor.Execute(ctx, operation, definition)
-			require.ErrorContains(t, err, "failed to remove room by ids")
+			require.ErrorContains(t, err.Error(), "failed to remove room by ids")
 		})
 
 		t.Run("when any room failed to delete with unexpected error it returns with error", func(t *testing.T) {
@@ -239,7 +239,7 @@ func TestExecute(t *testing.T) {
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), operation, gomock.Any())
 
 			err := executor.Execute(ctx, operation, definition)
-			require.ErrorContains(t, err, "failed to remove room by ids:")
+			require.ErrorContains(t, err.Error(), "failed to remove room by ids:")
 		})
 
 		t.Run("when any room failed to delete with timeout error it returns with error", func(t *testing.T) {
@@ -271,7 +271,7 @@ func TestExecute(t *testing.T) {
 
 			err := executor.Execute(ctx, operation, definition)
 
-			require.ErrorContains(t, err, "failed to remove room")
+			require.ErrorContains(t, err.Error(), "failed to remove room")
 		})
 	})
 

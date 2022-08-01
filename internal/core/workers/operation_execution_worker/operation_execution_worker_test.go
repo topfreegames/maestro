@@ -155,7 +155,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.AssignableToTypeOf(workerContext), expectedOperation)
 
-		executionErr := fmt.Errorf("some execution error")
+		executionErr := operations.NewExecutionErr(fmt.Errorf("some execution error"))
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
 		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
 			func(ctx, operation, definition, executeErr interface{}) {
@@ -224,7 +224,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.AssignableToTypeOf(workerContext), expectedOperation)
 
-		executionErr := fmt.Errorf("some execution error: %s", context.Canceled.Error())
+		executionErr := operations.NewExecutionErr(fmt.Errorf("some execution error: %s", context.Canceled.Error()))
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
 		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
 			func(ctx, operation, definition, executeErr interface{}) {

@@ -122,7 +122,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		err := executor.Execute(context.Background(), &op, &definition)
 
 		require.NotNil(t, err)
-		require.ErrorContains(t, err, "error while creating room: error")
+		require.ErrorContains(t, err.Error(), "error while creating room: error")
 	})
 
 	t.Run("should fail - no scheduler found => returns error", func(t *testing.T) {
@@ -132,7 +132,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 
 		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &op, &definition)
 		require.NotNil(t, err)
-		require.ErrorContains(t, err, "scheduler not found")
+		require.ErrorContains(t, err.Error(), "scheduler not found")
 	})
 }
 

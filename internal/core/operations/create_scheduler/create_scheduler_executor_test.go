@@ -29,6 +29,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/topfreegames/maestro/internal/core/operations"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,7 +101,7 @@ func TestRollback(t *testing.T) {
 		}
 		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(nil)
 
-		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, operations.NewExecutionErr(errors.ErrUnexpected))
 
 		assert.NoError(t, err)
 	})
@@ -117,7 +119,7 @@ func TestRollback(t *testing.T) {
 		}
 		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(errors.NewErrUnexpected("err"))
 
-		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, operations.NewExecutionErr(errors.ErrUnexpected))
 
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, errors.ErrUnexpected)
