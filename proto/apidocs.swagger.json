@@ -581,7 +581,7 @@
             "type": "string"
           },
           {
-            "name": "status",
+            "name": "stage",
             "description": "Optional parameter for enabling filter by operation status.",
             "in": "query",
             "required": false,
