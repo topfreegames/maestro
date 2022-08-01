@@ -172,7 +172,7 @@ func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation,
 		op.Status = operation.StatusError
 
 		loopLogger.Error("operation execution failed", zap.Error(executionErr.Error()))
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation execution failed"))
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation execution failed")
 	}
 }
 

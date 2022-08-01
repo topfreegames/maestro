@@ -74,7 +74,7 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 }
 
 // Execute run the operation.
-func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -83,33 +83,33 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	)
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
 	if !ok {
-		return operations.NewErrUnexpected(fmt.Errorf("invalid operation definition for %s operation", ex.Name()))
+		return operations.NewExecutionErr(fmt.Errorf("invalid operation definition for %s operation", ex.Name()))
 	}
 
 	newScheduler := opDef.NewScheduler
 	currentActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, opDef.NewScheduler.Name)
 	if err != nil {
 		logger.Error("error getting active scheduler", zap.Error(err))
-		return operations.NewErrUnexpected(fmt.Errorf("error getting active scheduler: %w", err))
+		return operations.NewExecutionErr(fmt.Errorf("error getting active scheduler: %w", err))
 	}
 
 	isSchedulerMajorVersion := currentActiveScheduler.IsMajorVersion(newScheduler)
 
 	err = ex.populateSchedulerNewVersion(ctx, newScheduler, currentActiveScheduler.Spec.Version, isSchedulerMajorVersion)
 	if err != nil {
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	if isSchedulerMajorVersion {
-		operationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
-		if operationError != nil {
-			return operationError
+		validationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
+		if ex.treatValidationError(ctx, op, validationError) != nil {
+			return operations.NewExecutionErr(validationError)
 		}
 	}
 
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
@@ -119,7 +119,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 }
 
 // Rollback tries to undo the create new scheduler version modifications on the scheduler.
-func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
+func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr *operations.ExecutionError) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -142,13 +142,13 @@ func (ex *CreateNewSchedulerVersionExecutor) Name() string {
 	return OperationName
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) operations.ExecutionError {
+func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
 	gameRoom, _, err := ex.roomManager.CreateRoom(ctx, *scheduler, true)
 	if err != nil {
 		basicErrorMessage := "error creating new game room for validating new version"
 		logger.Error(basicErrorMessage, zap.Error(err))
 
-		return operations.NewErrUnexpected(fmt.Errorf("%s: %s", basicErrorMessage, err.Error()))
+		return err
 	}
 	ex.AddValidationRoomID(scheduler.Name, gameRoom)
 
@@ -173,10 +173,9 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 	if waitRoomErr != nil {
 		logger.Error(fmt.Sprintf("error waiting validation room with ID: %s to be ready", gameRoom.ID))
 		if errors.Is(waitRoomErr, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-			return operations.NewErrInvalidGru(gameRoom, fmt.Errorf("error validating game room with ID: '%s': %w", gameRoom.ID, waitRoomErr))
+			return NewValidationTimeoutError(gameRoom, waitRoomErr)
 		}
-
-		return operations.NewErrUnexpected(fmt.Errorf("unexpected error validating game room with ID '%s': %w", gameRoom.ID, waitRoomErr))
+		return NewValidationUnexpectedError(waitRoomErr)
 	}
 
 	switch roomStatus {
@@ -185,18 +184,15 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 		return nil
 	case game_room.GameStatusError:
 		logger.Sugar().Infof("validation room with ID: %s is in error state", gameRoom.ID)
-
-		var stateDescription, roomID string
+		var statusDescription string
 		instance, err := ex.roomManager.GetRoomInstance(ctx, scheduler.Name, gameRoom.ID)
 		if err != nil {
 			logger.Error("error getting room instance to check last state event", zap.Error(err))
-			stateDescription = "unknown"
-			roomID = gameRoom.ID
+			statusDescription = "unknown"
 		} else {
-			stateDescription = instance.Status.Description
-			roomID = instance.ID
+			statusDescription = instance.Status.Description
 		}
-		return operations.NewErrGruInError(roomID, stateDescription, fmt.Errorf("error validating game room with ID: '%s'", gameRoom.ID))
+		return NewValidationPodInErrorError(gameRoom.ID, statusDescription, err)
 	}
 
 	return nil
@@ -208,6 +204,25 @@ func (ex *CreateNewSchedulerVersionExecutor) AddValidationRoomID(schedulerName s
 
 func (ex *CreateNewSchedulerVersionExecutor) RemoveValidationRoomID(schedulerName string) {
 	delete(ex.validationRoomIdsMap, schedulerName)
+}
+
+func (ex *CreateNewSchedulerVersionExecutor) treatValidationError(ctx context.Context, op *operation.Operation, validationError error) error {
+	switch {
+	case errors.Is(validationError, &ValidationPodInErrorError{}):
+		err := validationError.(*ValidationPodInErrorError)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationPodInErrorMessage, err.GameRoomID, err.StatusDescription))
+		return validationError
+	case errors.Is(validationError, &ValidationTimeoutError{}):
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationTimeoutMessage, validationError.(*ValidationTimeoutError).GameRoom.ID))
+		return validationError
+	case errors.Is(validationError, &ValidationUnexpectedError{}):
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessage, validationError.(*ValidationUnexpectedError).Err))
+		return validationError
+	case validationError != nil:
+		return validationError
+	}
+
+	return nil
 }
 
 func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) (string, error) {

@@ -33,8 +33,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations"
-
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
@@ -270,7 +268,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
 		require.EqualError(t, result.Error(), "failed to calculate new major version: failed to load scheduler versions: some_error")
 	})
 
@@ -302,7 +299,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
+		//require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
 		require.EqualError(t, result.Error(), "failed to calculate new major version: failed to parse scheduler version v-----: Invalid Semantic Version")
 	})
 
@@ -340,8 +337,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.Equal(t, operations.ErrKindUnexpected, operationExecutionError.Kind())
-		require.ErrorContains(t, operationExecutionError.Error(), "error creating new game room for validating new version")
+		require.ErrorContains(t, operationExecutionError.Error(), "error creating test game room")
 	})
 
 	t.Run("should fail - major version update, game room is invalid, timeout error -> returns error, don't create new version/switch to it", func(t *testing.T) {
@@ -374,6 +370,12 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(
+			gomock.Any(),
+			op,
+			`The GRU could not be validated. Maestro got timeout waiting for the GRU with ID: id-1 to be ready. You can check if
+		the GRU image is stable on the its logs. If you could not spot any issues, contact the Maestro's responsible team for helping.`,
+		)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
@@ -381,7 +383,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.Equal(t, operations.ErrKindInvalidGru, operationExecutionError.Kind())
 		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room with ID")
 	})
 
@@ -422,6 +423,12 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusError, nil)
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
 		roomManager.EXPECT().GetRoomInstance(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(roomInstance, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(
+			gomock.Any(),
+			op,
+			`The GRU could not be validated. The room created for validation with ID id-1 is entering in error state. You can check if
+		the GRU image is stable on the its logs using the provided room id. Last event in the game room: pod in Crashloop.`,
+		)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
@@ -429,7 +436,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.Equal(t, operations.ErrKindGruInError, operationExecutionError.Kind())
 		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room with ID")
 	})
 
@@ -464,6 +470,12 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusError, nil)
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
 		roomManager.EXPECT().GetRoomInstance(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(nil, errors.NewErrUnexpected("some error"))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(
+			gomock.Any(),
+			op,
+			`The GRU could not be validated. The room created for validation with ID id-1 is entering in error state. You can check if
+		the GRU image is stable on the its logs using the provided room id. Last event in the game room: unknown.`,
+		)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
@@ -471,7 +483,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.Equal(t, operations.ErrKindGruInError, operationExecutionError.Kind())
 		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room with ID")
 	})
 
@@ -509,11 +520,16 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
 
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(
+			gomock.Any(),
+			op,
+			`The GRU could not be validated. Unexpected Error: some error - Contact the Maestro's responsible team for helping.`,
+		)
+
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.Equal(t, operationExecutionError.Kind(), operations.ErrKindUnexpected)
-		require.ErrorContains(t, operationExecutionError.Error(), "unexpected error validating game room with ID")
+		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room")
 	})
 
 	t.Run("should succeed - given a minor version update it, when the greatest minor version is v1.0 returns no error and enqueue switch active version op", func(t *testing.T) {
@@ -669,7 +685,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
 		require.EqualError(t, result.Error(), "failed to calculate new minor version: failed to load scheduler versions: some_error")
 	})
 
@@ -701,7 +716,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
 		require.EqualError(t, result.Error(), "failed to calculate new minor version: failed to parse scheduler version v-----: Invalid Semantic Version")
 	})
 
@@ -739,7 +753,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
 		require.EqualError(t, result.Error(), "error creating new scheduler version in db: some_error")
 	})
 
@@ -771,7 +784,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
 		require.EqualError(t, result.Error(), "error getting active scheduler: some_error")
 	})
 
@@ -801,7 +813,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
 		require.EqualError(t, result.Error(), "invalid operation definition for create_new_scheduler_version operation")
 	})
 
@@ -833,7 +844,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
 		require.EqualError(t, result.Error(), "failed to parse scheduler current version: Invalid Semantic Version")
 	})
 
