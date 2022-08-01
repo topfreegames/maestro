@@ -56,7 +56,7 @@ func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, o
 }
 
 // Execute execute operation RemoveRoom
-func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
@@ -74,10 +74,10 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 			deleteErr := fmt.Errorf("failed to remove room: %w", err)
 
 			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-				return operations.NewErrTerminatingPingTimeout(deleteErr)
+				return operations.NewExecutionErr(deleteErr)
 			}
 
-			return operations.NewErrUnexpected(fmt.Errorf("failed to remove room by ids: %w", err))
+			return operations.NewExecutionErr(fmt.Errorf("failed to remove room by ids: %w", err))
 		}
 	}
 
@@ -90,10 +90,10 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 			deleteErr := fmt.Errorf("failed to remove room: %w", err)
 
 			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-				return operations.NewErrTerminatingPingTimeout(deleteErr)
+				return operations.NewExecutionErr(deleteErr)
 			}
 
-			return operations.NewErrUnexpected(fmt.Errorf("failed to remove room by amount: %w", err))
+			return operations.NewExecutionErr(fmt.Errorf("failed to remove room by amount: %w", err))
 		}
 	}
 
@@ -157,7 +157,7 @@ func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_roo
 }
 
 // Rollback applies the correct rollback to RemoveRoom
-func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ operations.ExecutionError) error {
+func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ *operations.ExecutionError) error {
 	return nil
 }
 

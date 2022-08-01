@@ -39,7 +39,7 @@ func NewExecutor() *TestOperationExecutor {
 	return &TestOperationExecutor{}
 }
 
-func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
 	testOperationDefinition := definition.(*TestOperationDefinition)
 
 	zap.L().Sugar().Infof("sleeping routine for %d seconds", testOperationDefinition.SleepSeconds)
@@ -49,7 +49,7 @@ func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Oper
 	case <-ticker.C:
 
 	case <-ctx.Done():
-		return operations.NewErrUnexpected(ctx.Err())
+		return operations.NewExecutionErr(ctx.Err())
 	}
 
 	zap.L().Sugar().Infof("routine slept for %d seconds", testOperationDefinition.SleepSeconds)
@@ -58,7 +58,7 @@ func (e *TestOperationExecutor) Execute(ctx context.Context, _op *operation.Oper
 }
 
 // Rollback will do nothing.
-func (e *TestOperationExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ operations.ExecutionError) error {
+func (e *TestOperationExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ *operations.ExecutionError) error {
 	return nil
 }
 

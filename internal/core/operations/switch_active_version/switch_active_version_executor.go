@@ -74,7 +74,7 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 // 3. List all game rooms that need to be replaced and produce them into the
 //    replace goroutines channel;
 // 4. Switch the active version
-func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
@@ -84,31 +84,31 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 
 	updateDefinition, ok := definition.(*SwitchActiveVersionDefinition)
 	if !ok {
-		return operations.NewErrUnexpected(fmt.Errorf("the definition is invalid. Should be type SwitchActiveVersionDefinition"))
+		return operations.NewExecutionErr(fmt.Errorf("the definition is invalid. Should be type SwitchActiveVersionDefinition"))
 	}
 
 	scheduler, err := ex.schedulerManager.GetSchedulerByVersion(ctx, op.SchedulerName, updateDefinition.NewActiveVersion)
 	if err != nil {
 		logger.Error("error fetching scheduler to be switched to", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	replacePods, err := ex.shouldReplacePods(ctx, scheduler)
 	if err != nil {
 		logger.Error("error deciding if should replace pods", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	if replacePods {
 		maxSurgeNum, err := ex.roomManager.SchedulerMaxSurge(ctx, scheduler)
 		if err != nil {
-			return operations.NewErrUnexpected(fmt.Errorf("error fetching scheduler max surge: %w", err))
+			return operations.NewExecutionErr(fmt.Errorf("error fetching scheduler max surge: %w", err))
 		}
 
 		err = ex.startReplaceRoomsLoop(ctx, logger, maxSurgeNum, *scheduler, op)
 		if err != nil {
 			logger.Sugar().Errorf("replace rooms failed for scheduler \"%v\" with error \"%v\"", scheduler.Name, zap.Error(err))
-			return operations.NewErrUnexpected(err)
+			return operations.NewExecutionErr(err)
 		}
 	}
 
@@ -116,7 +116,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 	err = ex.schedulerManager.UpdateScheduler(ctx, scheduler)
 	if err != nil {
 		logger.Error("Error switching active scheduler version on scheduler manager")
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	ex.clearNewCreatedRooms(op.SchedulerName)
@@ -124,7 +124,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
+func (ex *SwitchActiveVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr *operations.ExecutionError) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),

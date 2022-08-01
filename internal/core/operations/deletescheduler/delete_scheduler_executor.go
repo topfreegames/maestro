@@ -68,7 +68,7 @@ func NewExecutor(
 }
 
 // Execute deletes the scheduler, cleaning all bounded resources in the runtime and on storages.
-func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -81,7 +81,7 @@ func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 
 	if err != nil {
 		logger.Error("failed to get scheduler", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	err = e.schedulerStorage.RunWithTransaction(ctx, func(transactionId ports.TransactionID) error {
@@ -116,14 +116,14 @@ func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 
 	if err != nil {
 		logger.Error("error deleting scheduler", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	return nil
 }
 
 // Rollback does nothing.
-func (e *DeleteSchedulerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
+func (e *DeleteSchedulerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr *operations.ExecutionError) error {
 	return nil
 }
 

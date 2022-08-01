@@ -57,7 +57,7 @@ func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) 
 	}
 }
 
-func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
 	executionLogger := ex.logger.With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
@@ -67,7 +67,7 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 	scheduler, err := ex.storage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
 		executionLogger.Error(fmt.Sprintf("Could not find scheduler with name %s, can not create rooms", op.SchedulerName), zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	errGroup, errContext := errgroup.WithContext(ctx)
@@ -82,16 +82,16 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 	if executionErr := errGroup.Wait(); executionErr != nil {
 		executionLogger.Error("Error creating rooms", zap.Error(executionErr))
 		if errors.Is(executionErr, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-			return operations.NewErrReadyPingTimeout(executionErr)
+			return operations.NewExecutionErr(executionErr)
 		}
-		return operations.NewErrUnexpected(executionErr)
+		return operations.NewExecutionErr(executionErr)
 	}
 
 	executionLogger.Info("finished adding rooms")
 	return nil
 }
 
-func (ex *AddRoomsExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
+func (ex *AddRoomsExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr *operations.ExecutionError) error {
 	return nil
 }
 

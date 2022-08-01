@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/topfreegames/maestro/internal/core/operations"
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/golang/mock/gomock"
@@ -100,7 +99,6 @@ func TestExecute(t *testing.T) {
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), operation, gomock.Any())
 
 			err := executor.Execute(context.Background(), operation, definition)
-			require.Equal(t, operations.ErrKindUnexpected, err.Kind())
 			require.ErrorContains(t, err.Error(), "failed to remove room by amount: failed to remove instance on the runtime: some error")
 		})
 
@@ -123,7 +121,6 @@ func TestExecute(t *testing.T) {
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), operation, gomock.Any())
 
 			err := executor.Execute(context.Background(), operation, definition)
-			require.Equal(t, operations.ErrKindTerminatingPingTimeout, err.Kind())
 			require.EqualError(t, err.Error(), "failed to remove room: some error")
 		})
 
@@ -138,7 +135,7 @@ func TestExecute(t *testing.T) {
 
 			err := executor.Execute(ctx, operation, definition)
 			require.NotNil(t, err)
-			require.Equal(t, operations.ErrKindUnexpected, err.Kind())
+			require.ErrorContains(t, err.Error(), "failed to remove room")
 		})
 	})
 
@@ -242,7 +239,6 @@ func TestExecute(t *testing.T) {
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), operation, gomock.Any())
 
 			err := executor.Execute(ctx, operation, definition)
-			require.Equal(t, operations.ErrKindUnexpected, err.Kind())
 			require.ErrorContains(t, err.Error(), "failed to remove room by ids:")
 		})
 
@@ -275,7 +271,6 @@ func TestExecute(t *testing.T) {
 
 			err := executor.Execute(ctx, operation, definition)
 
-			require.Equal(t, operations.ErrKindTerminatingPingTimeout, err.Kind())
 			require.ErrorContains(t, err.Error(), "failed to remove room")
 		})
 	})

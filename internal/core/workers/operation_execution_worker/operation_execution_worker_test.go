@@ -155,14 +155,14 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.AssignableToTypeOf(workerContext), expectedOperation)
 
-		executionErr := operations.NewErrUnexpected(fmt.Errorf("some execution error"))
+		executionErr := operations.NewExecutionErr(fmt.Errorf("some execution error"))
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
 		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
 			func(ctx, operation, definition, executeErr interface{}) {
 				time.Sleep(time.Second * 1)
 			},
 		).Return(nil)
-		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation execution failed : Unexpected Error: some execution error - Contact the Maestro's responsible team for helping troubleshoot.")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation execution failed")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation rollback")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
 
@@ -224,7 +224,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.AssignableToTypeOf(workerContext), expectedOperation)
 
-		executionErr := operations.NewErrUnexpected(fmt.Errorf("some execution error: %s", context.Canceled.Error()))
+		executionErr := operations.NewExecutionErr(fmt.Errorf("some execution error: %s", context.Canceled.Error()))
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
 		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
 			func(ctx, operation, definition, executeErr interface{}) {

@@ -24,101 +24,23 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"strings"
-
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
-type errorKind int
-
-const (
-	ErrKindUnexpected errorKind = iota
-	ErrKindInvalidGru
-	ErrKindGruInError
-	ErrKindReadyPingTimeout
-	ErrKindTerminatingPingTimeout
-)
-
-var (
-	ErrUnexpected             = &operationExecutionError{kind: ErrKindUnexpected}
-	ErrInvalidGru             = &operationExecutionError{kind: ErrKindInvalidGru}
-	ErrGruInError             = &operationExecutionError{kind: ErrKindGruInError}
-	ErrReadyPingTimeout       = &operationExecutionError{kind: ErrKindReadyPingTimeout}
-	ErrTerminatingPingTimeout = &operationExecutionError{kind: ErrKindReadyPingTimeout}
-)
-
-type ExecutionError interface {
-	Kind() errorKind
-	FormattedMessage() string
-	Error() error
-	IsContextCanceled() bool
+type ExecutionError struct {
+	err error
 }
 
-type operationExecutionError struct {
-	kind             errorKind
-	formattedMessage string
-	err              error
-}
-
-func (e *operationExecutionError) Error() error {
+func (e *ExecutionError) Error() error {
 	return e.err
 }
 
-func (e *operationExecutionError) Kind() errorKind {
-	return e.kind
-}
-
-func (e *operationExecutionError) FormattedMessage() string {
-	return e.formattedMessage
-}
-
-func (e *operationExecutionError) IsContextCanceled() bool {
+func (e *ExecutionError) IsContextCanceled() bool {
 	return strings.Contains(e.err.Error(), context.Canceled.Error())
 }
 
-func NewErrUnexpected(err error) *operationExecutionError {
-	message := err.Error()
-	return &operationExecutionError{
-		kind: ErrKindUnexpected,
-		formattedMessage: fmt.Sprintf("Unexpected Error: %s - Contact the Maestro's responsible team for helping "+
-			"troubleshoot.", message),
-		err: err,
-	}
-}
-
-func NewErrInvalidGru(gameRoom *game_room.GameRoom, err error) *operationExecutionError {
-	return &operationExecutionError{
-		kind: ErrKindInvalidGru,
-		formattedMessage: fmt.Sprintf(`The GRU could not be validated. Maestro got timeout waiting for the GRU with ID: %s to be ready. You can check if
-		the GRU image is stable on the its logs. If you could not spot any issues, please contact us.`, gameRoom.ID),
-		err: err,
-	}
-}
-
-func NewErrGruInError(roomID, statusDescription string, err error) *operationExecutionError {
-	return &operationExecutionError{
-		kind: ErrKindGruInError,
-		formattedMessage: fmt.Sprintf(`The GRU could not be validated. The room created for validation with ID %s is entering in error state. You can check if
-		the GRU image is stable on the its logs using the provided room id. Last event in the game room: %s`, roomID, statusDescription),
-		err: err,
-	}
-}
-
-func NewErrReadyPingTimeout(err error) *operationExecutionError {
-	return &operationExecutionError{
-		kind: ErrKindReadyPingTimeout,
-		formattedMessage: `Got timeout while waiting room status to be ready. You can check if 
-		roomInitializationTimeoutMillis configuration value needs to be increased.`,
-		err: err,
-	}
-}
-
-func NewErrTerminatingPingTimeout(err error) *operationExecutionError {
-	return &operationExecutionError{
-		kind: ErrKindTerminatingPingTimeout,
-		formattedMessage: `Got timeout while waiting room status to be terminating. You can check if 
-		roomDeletionTimeoutMillis configuration value needs to be increased.`,
+func NewExecutionErr(err error) *ExecutionError {
+	return &ExecutionError{
 		err: err,
 	}
 }

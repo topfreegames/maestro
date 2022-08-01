@@ -74,7 +74,7 @@ func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomIn
 }
 
 // Execute run the operation health_controller.
-func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -84,7 +84,7 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 
 	gameRoomIDs, instances, scheduler, err := ex.loadActualState(ctx, op, logger)
 	if err != nil {
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	nonexistentGameRoomsIDs, existentGameRoomsInstancesMap := ex.mapExistentAndNonExistentGameRooms(gameRoomIDs, instances)
@@ -105,20 +105,20 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 	desiredNumberOfRooms, err := ex.getDesiredNumberOfRooms(ctx, logger, scheduler)
 	if err != nil {
 		logger.Error("error getting the desired number of rooms", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), desiredNumberOfRooms)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return operations.NewExecutionErr(err)
 	}
 
 	return nil
 }
 
 // Rollback does not execute anything when a rollback executes.
-func (ex *SchedulerHealthControllerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
+func (ex *SchedulerHealthControllerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr *operations.ExecutionError) error {
 	return nil
 }
 
