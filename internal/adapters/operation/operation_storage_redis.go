@@ -215,7 +215,7 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 	return operations, nil
 }
 
-func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) (operations []*operation.Operation, err error) {
+func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page uint32, pageSize uint32) (operations []*operation.Operation, err error) {
 	currentTime := r.clock.Now()
 	lastDay := r.clock.Now().Add(-24 * time.Hour)
 	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, lastDay, currentTime)
