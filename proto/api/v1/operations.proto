@@ -42,7 +42,7 @@ message ListOperationsRequest {
   // NOTE: On http protocol, this operates as a query parameter.
   string order_by = 2;
   // Optional parameter for enabling filter by operation status
-  optional string status = 3;
+  optional string stage = 3;
 }
 
 // The list operation route response/reply

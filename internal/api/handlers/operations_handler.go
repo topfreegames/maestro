@@ -64,9 +64,9 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	operationStatus := request.Status
+	operationStatus := request.Stage
 	if err != nil {
-		handlerLogger.Error(fmt.Sprintf("error parsing sorting parameters, orderBy: %+v", request.Status), zap.Error(err))
+		handlerLogger.Error(fmt.Sprintf("error parsing stage filter parameters, Stage: %+v", request.Stage), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
