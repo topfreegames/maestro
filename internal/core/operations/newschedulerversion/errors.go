@@ -76,3 +76,26 @@ func (e *ValidationPodInErrorError) Is(other error) bool {
 func (e ValidationPodInErrorError) Error() string {
 	return fmt.Sprintf("error validating game room with ID %s, instance is entering in error: %s, %s", e.GameRoomID, e.StatusDescription, e.Err)
 }
+
+type ValidationUnexpectedError struct {
+	Err error
+}
+
+func NewValidationUnexpectedError(err error) *ValidationUnexpectedError {
+	return &ValidationUnexpectedError{Err: err}
+}
+
+func (e *ValidationUnexpectedError) Unwrap() error {
+	return e.Err
+}
+
+func (e *ValidationUnexpectedError) Is(other error) bool {
+	if _, ok := other.(*ValidationUnexpectedError); ok {
+		return true
+	}
+	return false
+}
+
+func (e ValidationUnexpectedError) Error() string {
+	return fmt.Sprintf("error validating game room, unexpected error: %s", e.Err.Error())
+}
