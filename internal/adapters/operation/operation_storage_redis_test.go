@@ -61,6 +61,8 @@ func TestCreateOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      createdAt,
+			Page:           "test-page",
+			PageSize:       "test-page-size",
 			Input:          []byte("hello test"),
 			ExecutionHistory: []operation.OperationEvent{
 				{
@@ -106,6 +108,8 @@ func TestCreateOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: healthcontroller.OperationName,
 			CreatedAt:      createdAt,
+			Page:           "test-page",
+			PageSize:       "test-page-size",
 			Input:          []byte("hello test"),
 			ExecutionHistory: []operation.OperationEvent{
 				{
@@ -135,6 +139,8 @@ func TestCreateOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      time.Now(),
+			Page:           "test-page",
+			PageSize:       "test-page-size",
 		}
 
 		// "drop" redis connection
@@ -243,6 +249,8 @@ func TestGetOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      time.Now(),
+			Page:           "test-page",
+			PageSize:       "test-page-size",
 			Input:          []byte("hello test"),
 		}
 
@@ -287,6 +295,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      now,
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -301,6 +311,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      now.Add(-23 * time.Hour),
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -315,6 +327,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      now.Add(-25 * time.Hour),
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -329,6 +343,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      now.Add(-29 * time.Hour),
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -368,7 +384,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
 			assert.Equal(t, expectedOperations, operationsReturned)
@@ -380,7 +396,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned, "expected result to be empty")
 		})
@@ -395,11 +411,11 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
 					Member: op.ID,
 					Score:  float64(clock.Now().Unix()),
-				}).Err()
-				require.NoError(t, err)
+				}).Err(),
+				require.NoError(t, err),
 			}
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned)
 			assert.Eventually(t, func() bool {
@@ -452,6 +468,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      time.Now(),
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -466,6 +484,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      time.Now(),
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -739,6 +759,8 @@ func TestCleanOperationsHistory(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      now,
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -753,6 +775,8 @@ func TestCleanOperationsHistory(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      now.Add(-23 * time.Hour),
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -767,6 +791,8 @@ func TestCleanOperationsHistory(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      now.Add(-25 * time.Hour),
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
@@ -781,6 +807,8 @@ func TestCleanOperationsHistory(t *testing.T) {
 				Status:         operation.StatusFinished,
 				DefinitionName: "test-definition",
 				CreatedAt:      now.Add(-29 * time.Hour),
+				Page:           "test-page",
+				PageSize:       "test-page-size",
 				Input:          []byte("hello test"),
 				ExecutionHistory: []operation.OperationEvent{
 					{
