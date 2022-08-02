@@ -268,7 +268,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.EqualError(t, result.Error(), "failed to calculate new major version: failed to load scheduler versions: some_error")
+		require.EqualError(t, result, "failed to calculate new major version: failed to load scheduler versions: some_error")
 	})
 
 	t.Run("should fail - major version update, game room is valid, fail parsing scheduler versions -> returns error, don't create new version/switch to it", func(t *testing.T) {
@@ -300,7 +300,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 		require.NotNil(t, result)
 		//require.Equal(t, result.Kind(), operations.ErrKindUnexpected)
-		require.EqualError(t, result.Error(), "failed to calculate new major version: failed to parse scheduler version v-----: Invalid Semantic Version")
+		require.EqualError(t, result, "failed to calculate new major version: failed to parse scheduler version v-----: Invalid Semantic Version")
 	})
 
 	t.Run("should fail - major version update, fail creating test room", func(t *testing.T) {
@@ -337,7 +337,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.ErrorContains(t, operationExecutionError.Error(), "error creating test game room")
+		require.ErrorContains(t, operationExecutionError, "error creating test game room")
 	})
 
 	t.Run("should fail - major version update, game room is invalid, timeout error -> returns error, don't create new version/switch to it", func(t *testing.T) {
@@ -383,7 +383,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room with ID")
+		require.ErrorContains(t, operationExecutionError, "error validating game room with ID")
 	})
 
 	t.Run("should fail - major version update, game room is invalid, instance entering in error state -> returns error, don't create new version/switch to it", func(t *testing.T) {
@@ -436,7 +436,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room with ID")
+		require.ErrorContains(t, operationExecutionError, "error validating game room with ID")
 	})
 
 	t.Run("should fail - major version update, game room is invalid, instance entering in error state, error getting instance -> returns error, don't create new version/switch to it", func(t *testing.T) {
@@ -483,7 +483,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room with ID")
+		require.ErrorContains(t, operationExecutionError, "error validating game room with ID")
 	})
 
 	t.Run("should fail - major version update, game room is invalid, unexpected error-> returns error, don't create new version/switch to it", func(t *testing.T) {
@@ -529,7 +529,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, operationExecutionError)
-		require.ErrorContains(t, operationExecutionError.Error(), "error validating game room")
+		require.ErrorContains(t, operationExecutionError, "error validating game room")
 	})
 
 	t.Run("should succeed - given a minor version update it, when the greatest minor version is v1.0 returns no error and enqueue switch active version op", func(t *testing.T) {
@@ -685,7 +685,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.EqualError(t, result.Error(), "failed to calculate new minor version: failed to load scheduler versions: some_error")
+		require.EqualError(t, result, "failed to calculate new minor version: failed to load scheduler versions: some_error")
 	})
 
 	t.Run("should fail - minor version update, fail parsing scheduler versions -> returns error, don't create new version/switch to it", func(t *testing.T) {
@@ -716,7 +716,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.EqualError(t, result.Error(), "failed to calculate new minor version: failed to parse scheduler version v-----: Invalid Semantic Version")
+		require.EqualError(t, result, "failed to calculate new minor version: failed to parse scheduler version v-----: Invalid Semantic Version")
 	})
 
 	t.Run("should fail - valid scheduler, error occurs (creating new version in db or enqueueing switch op) -> returns error, don't create new version/switch to it", func(t *testing.T) {
@@ -753,7 +753,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.EqualError(t, result.Error(), "error creating new scheduler version in db: some_error")
+		require.EqualError(t, result, "error creating new scheduler version in db: some_error")
 	})
 
 	t.Run("should fail - valid scheduler, some error occurs (retrieving current active scheduler), returns error, don't create new version", func(t *testing.T) {
@@ -784,7 +784,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.EqualError(t, result.Error(), "error getting active scheduler: some_error")
+		require.EqualError(t, result, "error getting active scheduler: some_error")
 	})
 
 	t.Run("should fail - valid scheduler when provided operation definition != CreateNewSchedulerVersionDefinition, returns error, don't create new version", func(t *testing.T) {
@@ -813,7 +813,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.EqualError(t, result.Error(), "invalid operation definition for create_new_scheduler_version operation")
+		require.EqualError(t, result, "invalid operation definition for create_new_scheduler_version operation")
 	})
 
 	t.Run("given a invalid scheduler when the version parse fails it returns error and don't create new version", func(t *testing.T) {
@@ -844,7 +844,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		result := executor.Execute(context.Background(), op, operationDef)
 
 		require.NotNil(t, result)
-		require.EqualError(t, result.Error(), "failed to parse scheduler current version: Invalid Semantic Version")
+		require.EqualError(t, result, "failed to parse scheduler current version: Invalid Semantic Version")
 	})
 
 }

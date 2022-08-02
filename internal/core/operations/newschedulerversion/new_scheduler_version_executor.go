@@ -74,7 +74,7 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 }
 
 // Execute run the operation.
-func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
+func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -83,33 +83,33 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	)
 	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
 	if !ok {
-		return operations.NewExecutionErr(fmt.Errorf("invalid operation definition for %s operation", ex.Name()))
+		return fmt.Errorf("invalid operation definition for %s operation", ex.Name())
 	}
 
 	newScheduler := opDef.NewScheduler
 	currentActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, opDef.NewScheduler.Name)
 	if err != nil {
 		logger.Error("error getting active scheduler", zap.Error(err))
-		return operations.NewExecutionErr(fmt.Errorf("error getting active scheduler: %w", err))
+		return fmt.Errorf("error getting active scheduler: %w", err)
 	}
 
 	isSchedulerMajorVersion := currentActiveScheduler.IsMajorVersion(newScheduler)
 
 	err = ex.populateSchedulerNewVersion(ctx, newScheduler, currentActiveScheduler.Spec.Version, isSchedulerMajorVersion)
 	if err != nil {
-		return operations.NewExecutionErr(err)
+		return err
 	}
 
 	if isSchedulerMajorVersion {
 		validationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
 		if ex.treatValidationError(ctx, op, validationError) != nil {
-			return operations.NewExecutionErr(validationError)
+			return validationError
 		}
 	}
 
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
-		return operations.NewExecutionErr(err)
+		return err
 	}
 
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
@@ -119,7 +119,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 }
 
 // Rollback tries to undo the create new scheduler version modifications on the scheduler.
-func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr *operations.ExecutionError) error {
+func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
