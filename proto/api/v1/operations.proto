@@ -55,7 +55,7 @@ message ListOperationsResponse {
   // Parameter for pagination.
   optional uint32 page = 1;
   // Optional parameter for pagination.
-  optional uint32 pageSize = 2;
+  optional uint32 page_size = 2;
   // List of the scheduler finished (with error or not) operations.
   repeated ListOperationItem operations = 3;
 }
