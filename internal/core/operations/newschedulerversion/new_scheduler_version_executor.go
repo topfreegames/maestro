@@ -175,7 +175,7 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 		if errors.Is(waitRoomErr, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
 			return NewValidationTimeoutError(gameRoom, waitRoomErr)
 		}
-		return NewValidationUnexpectedError(waitRoomErr)
+		return waitRoomErr
 	}
 
 	switch roomStatus {
@@ -215,10 +215,8 @@ func (ex *CreateNewSchedulerVersionExecutor) treatValidationError(ctx context.Co
 	case errors.Is(validationError, &ValidationTimeoutError{}):
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationTimeoutMessage, validationError.(*ValidationTimeoutError).GameRoom.ID))
 		return validationError
-	case errors.Is(validationError, &ValidationUnexpectedError{}):
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessage, validationError.(*ValidationUnexpectedError).Err))
-		return validationError
 	case validationError != nil:
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessage, validationError.Error()))
 		return validationError
 	}
 
