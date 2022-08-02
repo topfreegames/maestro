@@ -331,6 +331,12 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
 
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(
+			gomock.Any(),
+			op,
+			`The GRU could not be validated. Unexpected Error: error creating test game room - Contact the Maestro's responsible team for helping.`,
+		)
+
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(nil, nil, fmt.Errorf("error creating test game room"))
 
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
@@ -479,51 +485,6 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
 
 		require.ErrorContains(t, operationExecutionError, "error validating game room with ID")
-	})
-
-	t.Run("should fail - major version update, game room is invalid, unexpected error-> returns error, don't create new version/switch to it", func(t *testing.T) {
-		mockCtrl := gomock.NewController(t)
-
-		currentActiveScheduler := newValidSchedulerWithImageVersion("image-v1")
-		newScheduler := *newValidSchedulerWithImageVersion("image-v2")
-		op := &operation.Operation{
-			ID:             "123",
-			Status:         operation.StatusInProgress,
-			DefinitionName: newschedulerversion.OperationName,
-			SchedulerName:  newScheduler.Name,
-		}
-		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
-		roomManager := mockports.NewMockRoomManager(mockCtrl)
-		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
-		operationsManager := mockports.NewMockOperationManager(mockCtrl)
-		config := newschedulerversion.Config{
-			RoomInitializationTimeout: time.Duration(120000),
-		}
-
-		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
-		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
-
-		newSchedulerWithNewVersion := newScheduler
-		newSchedulerWithNewVersion.Spec.Version = "v2.0.0"
-		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
-		gameRoom := &game_room.GameRoom{ID: "id-1", SchedulerID: "some-scheduler"}
-
-		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
-		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, fmt.Errorf("some error"))
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
-
-		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
-		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
-
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(
-			gomock.Any(),
-			op,
-			`The GRU could not be validated. Unexpected Error: some error - Contact the Maestro's responsible team for helping.`,
-		)
-
-		operationExecutionError := executor.Execute(context.Background(), op, operationDef)
-
-		require.ErrorContains(t, operationExecutionError, "error validating game room")
 	})
 
 	t.Run("should succeed - given a minor version update it, when the greatest minor version is v1.0 returns no error and enqueue switch active version op", func(t *testing.T) {
