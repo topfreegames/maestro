@@ -24,7 +24,6 @@ package remove_rooms
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -33,7 +32,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -71,11 +69,6 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
-			deleteErr := fmt.Errorf("failed to remove room: %w", err)
-
-			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-				return deleteErr
-			}
 
 			return fmt.Errorf("failed to remove room by ids: %w", err)
 		}
@@ -87,11 +80,6 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("failed to remove rooms", zap.Error(err))
-			deleteErr := fmt.Errorf("failed to remove room: %w", err)
-
-			if errors.Is(err, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-				return deleteErr
-			}
 
 			return fmt.Errorf("failed to remove room by amount: %w", err)
 		}

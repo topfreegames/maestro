@@ -372,7 +372,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			gomock.Any(),
 			op,
 			`The GRU could not be validated. Maestro got timeout waiting for the GRU with ID: id-1 to be ready. You can check if
-		the GRU image is stable on the its logs. If you could not spot any issues, contact the Maestro's responsible team for helping.`,
+		the GRU image is stable on its logs. If you could not spot any issues, contact the Maestro's responsible team for helping.`,
 		)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
@@ -424,7 +424,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			gomock.Any(),
 			op,
 			`The GRU could not be validated. The room created for validation with ID id-1 is entering in error state. You can check if
-		the GRU image is stable on the its logs using the provided room id. Last event in the game room: pod in Crashloop.`,
+		the GRU image is stable on its logs using the provided room id. Last event in the game room: pod in Crashloop.`,
 		)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
@@ -470,7 +470,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			gomock.Any(),
 			op,
 			`The GRU could not be validated. The room created for validation with ID id-1 is entering in error state. You can check if
-		the GRU image is stable on the its logs using the provided room id. Last event in the game room: unknown.`,
+		the GRU image is stable on its logs using the provided room id. Last event in the game room: unknown.`,
 		)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
