@@ -121,7 +121,7 @@ func TestExecute(t *testing.T) {
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), operation, gomock.Any())
 
 			err := executor.Execute(context.Background(), operation, definition)
-			require.EqualError(t, err, "failed to remove room: some error")
+			require.EqualError(t, err, "failed to remove room by amount: some error")
 		})
 
 		t.Run("when list rooms has error returns with error", func(t *testing.T) {
