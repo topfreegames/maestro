@@ -61,8 +61,6 @@ func TestCreateOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      createdAt,
-			Page:           "test-page",
-			PageSize:       "test-page-size",
 			Input:          []byte("hello test"),
 			ExecutionHistory: []operation.OperationEvent{
 				{
@@ -108,8 +106,6 @@ func TestCreateOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: healthcontroller.OperationName,
 			CreatedAt:      createdAt,
-			Page:           "test-page",
-			PageSize:       "test-page-size",
 			Input:          []byte("hello test"),
 			ExecutionHistory: []operation.OperationEvent{
 				{
@@ -139,8 +135,6 @@ func TestCreateOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      time.Now(),
-			Page:           "test-page",
-			PageSize:       "test-page-size",
 		}
 
 		// "drop" redis connection
@@ -249,8 +243,6 @@ func TestGetOperation(t *testing.T) {
 			Status:         operation.StatusPending,
 			DefinitionName: "test-definition",
 			CreatedAt:      time.Now(),
-			Page:           "test-page",
-			PageSize:       "test-page-size",
 			Input:          []byte("hello test"),
 		}
 
@@ -283,6 +275,8 @@ func TestGetOperation(t *testing.T) {
 
 func TestListSchedulerFinishedOperations(t *testing.T) {
 	schedulerName := "test-scheduler"
+	page := "test-page"
+	pageSize := "test-page-size"
 
 	t.Run("with success", func(t *testing.T) {
 		nowTime := time.Now()
@@ -411,8 +405,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
 					Member: op.ID,
 					Score:  float64(clock.Now().Unix()),
-				}).Err(),
-				require.NoError(t, err),
+				}).Err()
+				require.NoError(t, err)
 			}
 
 			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
