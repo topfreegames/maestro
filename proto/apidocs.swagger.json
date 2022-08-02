@@ -582,10 +582,26 @@
           },
           {
             "name": "stage",
-            "description": "Optional parameter for enabling filter by operation status.",
+            "description": "Optional parameter for enabling filter by operation execution stage, can be one of [pending, active, history]  optional string stage = 3;.",
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "page",
+            "description": "Parameter for pagination.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "perPage",
+            "description": "Optional parameter for pagination.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -1284,21 +1300,17 @@
     "v1ListOperationsResponse": {
       "type": "object",
       "properties": {
-        "pendingOperations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1ListOperationItem"
-          },
-          "description": "List of the scheduler pending operations."
+        "page": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Parameter for pagination."
         },
-        "activeOperations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1ListOperationItem"
-          },
-          "description": "List of the scheduler active operations."
+        "pageSize": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Optional parameter for pagination."
         },
-        "finishedOperations": {
+        "operations": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1ListOperationItem"

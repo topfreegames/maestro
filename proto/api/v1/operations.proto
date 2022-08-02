@@ -41,19 +41,23 @@ message ListOperationsRequest {
   // Default value is `created_at desc`
   // NOTE: On http protocol, this operates as a query parameter.
   string order_by = 2;
-  // Optional parameter for enabling filter by operation status
+  // Optional parameter for enabling filter by operation execution stage, can be one of [pending, active, history]  optional string stage = 3;
   optional string stage = 3;
+  // Parameter for pagination.
+  optional uint32 page = 4;
+  // Optional parameter for pagination.
+  optional uint32 per_page = 5;
 }
 
 // The list operation route response/reply
 // There's a list for each operation major status
 message ListOperationsResponse {
-  // List of the scheduler pending operations.
-  repeated ListOperationItem pending_operations = 1;
-  // List of the scheduler active operations.
-  repeated ListOperationItem active_operations = 2;
+  // Parameter for pagination.
+  optional uint32 page = 1;
+  // Optional parameter for pagination.
+  optional uint32 pageSize = 2;
   // List of the scheduler finished (with error or not) operations.
-  repeated ListOperationItem finished_operations = 3;
+  repeated ListOperationItem operations = 3;
 }
 
 // The cancel operation request.
