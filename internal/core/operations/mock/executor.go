@@ -37,10 +37,10 @@ func (m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) *operations.ExecutionError {
+func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", ctx, op, definition)
-	ret0, _ := ret[0].(*operations.ExecutionError)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -65,7 +65,7 @@ func (mr *MockExecutorMockRecorder) Name() *gomock.Call {
 }
 
 // Rollback mocks base method.
-func (m *MockExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr *operations.ExecutionError) error {
+func (m *MockExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Rollback", ctx, op, definition, executeErr)
 	ret0, _ := ret[0].(error)
