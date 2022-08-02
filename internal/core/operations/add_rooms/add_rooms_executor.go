@@ -24,7 +24,6 @@ package add_rooms
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -38,7 +37,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 )
 
 type AddRoomsExecutor struct {
@@ -81,9 +79,6 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 
 	if executionErr := errGroup.Wait(); executionErr != nil {
 		executionLogger.Error("Error creating rooms", zap.Error(executionErr))
-		if errors.Is(executionErr, serviceerrors.ErrGameRoomStatusWaitingTimeout) {
-			return executionErr
-		}
 		return executionErr
 	}
 
