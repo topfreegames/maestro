@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/avast/retry-go/v4"
+
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -49,6 +51,7 @@ import (
 // Config defines configurations for the CreateNewSchedulerVersionExecutor.
 type Config struct {
 	RoomInitializationTimeout time.Duration
+	RoomValidationAttempts    int
 }
 
 // CreateNewSchedulerVersionExecutor holds the dependecies to execute the operation to create a new scheduler version.
@@ -101,9 +104,17 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	}
 
 	if isSchedulerMajorVersion {
-		validationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
-		if ex.treatValidationError(ctx, op, validationError) != nil {
-			return validationError
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, startingValidationMessage)
+		currentAttempt := 0
+		retryError := retry.Do(func() error {
+			currentAttempt++
+			validationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
+			return ex.treatValidationError(ctx, op, validationError, currentAttempt)
+		}, retry.Attempts(uint(ex.config.RoomValidationAttempts)))
+		if retryError != nil {
+			logger.Error("game room validation failed after all attempts", zap.Error(retryError))
+			ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, allAttemptsFailedMessage)
+			return retryError
 		}
 	}
 
@@ -112,7 +123,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		return err
 	}
 
-	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(enqueuedSwitchVersionMessage, switchOpID))
 	logger.Sugar().Infof("new scheduler version created: %s, is major: %t", newScheduler.Spec.Version, isSchedulerMajorVersion)
 	logger.Sugar().Infof("%s operation succeded, %s operation enqueued to continue scheduler update process, switching to version %s", opDef.Name(), switch_active_version.OperationName, newScheduler.Spec.Version)
 	return nil
@@ -206,20 +217,21 @@ func (ex *CreateNewSchedulerVersionExecutor) RemoveValidationRoomID(schedulerNam
 	delete(ex.validationRoomIdsMap, schedulerName)
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) treatValidationError(ctx context.Context, op *operation.Operation, validationError error) error {
+func (ex *CreateNewSchedulerVersionExecutor) treatValidationError(ctx context.Context, op *operation.Operation, validationError error, currentAttempt int) error {
 	switch {
 	case errors.Is(validationError, &ValidationPodInErrorError{}):
 		err := validationError.(*ValidationPodInErrorError)
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationPodInErrorMessage, err.GameRoomID, err.StatusDescription))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationPodInErrorMessage, currentAttempt, err.GameRoomID, err.StatusDescription))
 		return validationError
 	case errors.Is(validationError, &ValidationTimeoutError{}):
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationTimeoutMessage, validationError.(*ValidationTimeoutError).GameRoom.ID))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationTimeoutMessage, currentAttempt, validationError.(*ValidationTimeoutError).GameRoom.ID))
 		return validationError
 	case validationError != nil:
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessage, validationError.Error()))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessage, currentAttempt, validationError.Error()))
 		return validationError
 	}
 
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationSuccessMessage, currentAttempt))
 	return nil
 }
 
