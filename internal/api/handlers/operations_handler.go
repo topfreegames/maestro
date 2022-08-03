@@ -71,46 +71,36 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	var operations []*operation.Operation
+
 	switch operationStatus {
 	case "pending":
-		pendingOperations, err := h.queryPendingOperations(ctx, request.SchedulerName, sortingOrder)
+		operations, err = h.queryPendingOperations(ctx, request.SchedulerName, sortingOrder)
 		if err != nil {
 			return nil, status.Error(codes.Unknown, err.Error())
 		}
-
-		responseOperations, err := h.parseListOperationsResponse(ctx, pendingOperations)
-		if err != nil {
-			return nil, status.Error(codes.Unknown, err.Error())
-		}
-		return &api.ListOperationsResponse{Operations: responseOperations}, nil
 
 	case "active":
-		activeOperations, err := h.queryActiveOperations(ctx, request.SchedulerName, sortingOrder)
+		operations, err = h.queryActiveOperations(ctx, request.SchedulerName, sortingOrder)
 		if err != nil {
 			return nil, status.Error(codes.Unknown, err.Error())
 		}
-
-		responseOperations, err := h.parseListOperationsResponse(ctx, activeOperations)
-		if err != nil {
-			return nil, status.Error(codes.Unknown, err.Error())
-		}
-		return &api.ListOperationsResponse{Operations: responseOperations}, nil
 
 	case "history":
-		finishedOperations, err := h.queryFinishedOperations(ctx, request.SchedulerName, sortingOrder)
+		operations, err = h.queryFinishedOperations(ctx, request.SchedulerName, sortingOrder)
 		if err != nil {
 			return nil, status.Error(codes.Unknown, err.Error())
 		}
-
-		responseOperations, err := h.parseListOperationsResponse(ctx, finishedOperations)
-		if err != nil {
-			return nil, status.Error(codes.Unknown, err.Error())
-		}
-		return &api.ListOperationsResponse{Operations: responseOperations}, nil
 
 	default:
-		return nil, errors.New("invalid stage")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid stage filter: %s", request.Stage)
 	}
+
+	responseOperations, err := h.parseListOperationsResponse(ctx, operations)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	return &api.ListOperationsResponse{Operations: responseOperations}, nil
 }
 
 func (h *OperationsHandler) queryPendingOperations(ctx context.Context, schedulerName, sortingOrder string) ([]*operation.Operation, error) {
