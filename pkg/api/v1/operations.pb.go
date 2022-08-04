@@ -35,11 +35,11 @@ type ListOperationsRequest struct {
 	// Default value is `created_at desc`
 	// NOTE: On http protocol, this operates as a query parameter.
 	OrderBy string `protobuf:"bytes,2,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
-	// Optional parameter for enabling filter by operation execution stage, can be one of [pending, active, history]  optional string stage = 3;
+	// Required parameter for enabling filter by operation execution stage, can be one of [pending, active, history].
 	Stage string `protobuf:"bytes,3,opt,name=stage,proto3" json:"stage,omitempty"`
-	// Parameter for pagination.
+	// Parameter for pagination, indicates the page number.
 	Page *uint32 `protobuf:"varint,4,opt,name=page,proto3,oneof" json:"page,omitempty"`
-	// Optional parameter for pagination.
+	// Optional parameter for pagination, indicates the number of items per page.
 	PerPage *uint32 `protobuf:"varint,5,opt,name=per_page,json=perPage,proto3,oneof" json:"per_page,omitempty"`
 }
 
@@ -117,11 +117,11 @@ type ListOperationsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Parameter for pagination.
+	// Parameter for pagination, indicates the current page number.
 	Page *uint32 `protobuf:"varint,1,opt,name=page,proto3,oneof" json:"page,omitempty"`
-	// Optional parameter for pagination.
+	// Optional parameter for pagination, indicates the page size.
 	PageSize *uint32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3,oneof" json:"page_size,omitempty"`
-	// List of the scheduler finished (with error or not) operations.
+	// List of the scheduler operations.
 	Operations []*ListOperationItem `protobuf:"bytes,3,rep,name=operations,proto3" json:"operations,omitempty"`
 }
 
