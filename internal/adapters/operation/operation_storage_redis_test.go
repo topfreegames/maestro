@@ -823,7 +823,7 @@ func TestCleanOperationsHistory(t *testing.T) {
 			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
-			// assert.Equal(t, expectedOperations, operationsReturned)
+			assert.Equal(t, expectedOperations, operationsReturned)
 
 			err = storage.CleanOperationsHistory(context.Background(), schedulerName)
 			assert.NoError(t, err)
