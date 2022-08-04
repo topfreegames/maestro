@@ -264,7 +264,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 
 			err := executor.Execute(ctx, op, definition)
 
-			require.Equal(t, errors.New("some error on storage"), err)
+			require.EqualError(t, err, "some error on storage")
 		})
 
 		t.Run("when it fails to delete scheduler in storage", func(t *testing.T) {
