@@ -56,50 +56,50 @@ func TestListOperations(t *testing.T) {
 		time.Time{}.AddDate(2020, 1, 0),
 		time.Time{}.AddDate(2020, 2, 0),
 	}
-	//pendingOperations := []*operation.Operation{
-	//	&operation.Operation{
-	//		ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
-	//		Status:         operation.StatusPending,
-	//		CreatedAt:      dates[0],
-	//		SchedulerName:  schedulerName,
-	//		DefinitionName: "create_scheduler",
-	//		ExecutionHistory: []operation.OperationEvent{
-	//			{
-	//				CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-	//				Event:     "some-event",
-	//			},
-	//		},
-	//		Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-	//	},
-	//	&operation.Operation{
-	//		ID:             "7af3250c-af5b-428a-955f-a8fa22fb7cf7",
-	//		Status:         operation.StatusPending,
-	//		CreatedAt:      dates[1],
-	//		SchedulerName:  schedulerName,
-	//		DefinitionName: "create_scheduler",
-	//		ExecutionHistory: []operation.OperationEvent{
-	//			{
-	//				CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-	//				Event:     "some-event",
-	//			},
-	//		},
-	//		Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-	//	},
-	//	&operation.Operation{
-	//		ID:             "83cc7850-9c90-4033-948f-368eea4b976e",
-	//		Status:         operation.StatusPending,
-	//		CreatedAt:      dates[2],
-	//		SchedulerName:  schedulerName,
-	//		DefinitionName: "create_scheduler",
-	//		ExecutionHistory: []operation.OperationEvent{
-	//			{
-	//				CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-	//				Event:     "some-event",
-	//			},
-	//		},
-	//		Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-	//	},
-	//}
+	pendingOperations := []*operation.Operation{
+		&operation.Operation{
+			ID:             "d28f3fc7-ca32-4ca8-8b6a-8fbb19003389",
+			Status:         operation.StatusPending,
+			CreatedAt:      dates[0],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+		&operation.Operation{
+			ID:             "7af3250c-af5b-428a-955f-a8fa22fb7cf7",
+			Status:         operation.StatusPending,
+			CreatedAt:      dates[1],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+		&operation.Operation{
+			ID:             "83cc7850-9c90-4033-948f-368eea4b976e",
+			Status:         operation.StatusPending,
+			CreatedAt:      dates[2],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+	}
 	finishedOperations := []*operation.Operation{
 		&operation.Operation{
 			ID:             "c241b467-db15-42ba-b2a8-017c37234237",
@@ -144,53 +144,53 @@ func TestListOperations(t *testing.T) {
 			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 	}
-	//activeOperations := []*operation.Operation{
-	//	&operation.Operation{
-	//		ID:             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
-	//		Status:         operation.StatusInProgress,
-	//		CreatedAt:      dates[0],
-	//		SchedulerName:  schedulerName,
-	//		DefinitionName: "create_scheduler",
-	//		Lease:          &operation.OperationLease{Ttl: time.Unix(1641306511, 0)},
-	//		ExecutionHistory: []operation.OperationEvent{
-	//			{
-	//				CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-	//				Event:     "some-event",
-	//			},
-	//		},
-	//		Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-	//	},
-	//	&operation.Operation{
-	//		ID:             "59e58c61-1758-4f02-b6ea-a87a64172902",
-	//		Status:         operation.StatusInProgress,
-	//		CreatedAt:      dates[1],
-	//		SchedulerName:  schedulerName,
-	//		DefinitionName: "create_scheduler",
-	//		Lease:          &operation.OperationLease{Ttl: time.Unix(1641306521, 0)},
-	//		ExecutionHistory: []operation.OperationEvent{
-	//			{
-	//				CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-	//				Event:     "some-event",
-	//			},
-	//		},
-	//		Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-	//	},
-	//	&operation.Operation{
-	//		ID:             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
-	//		Status:         operation.StatusInProgress,
-	//		CreatedAt:      dates[2],
-	//		SchedulerName:  schedulerName,
-	//		DefinitionName: "create_scheduler",
-	//		Lease:          &operation.OperationLease{Ttl: time.Unix(1641306531, 0)},
-	//		ExecutionHistory: []operation.OperationEvent{
-	//			{
-	//				CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-	//				Event:     "some-event",
-	//			},
-	//		},
-	//		Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-	//	},
-	//}
+	activeOperations := []*operation.Operation{
+		&operation.Operation{
+			ID:             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[0],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306511, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+		&operation.Operation{
+			ID:             "59e58c61-1758-4f02-b6ea-a87a64172902",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[1],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306521, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+		&operation.Operation{
+			ID:             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[2],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306531, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+	}
 
 	t.Run("with success and default sorting", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
@@ -308,6 +308,72 @@ func TestListOperations(t *testing.T) {
 		err = json.Unmarshal([]byte(bodyString), &body)
 		require.NoError(t, err)
 		require.Equal(t, "invalid sorting order: invalidOrder", body["message"])
+	})
+
+	t.Run("with success and operations pending stage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=pending", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 200, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_pending_stage_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with success and operations active stage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=active", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 200, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_active_stage_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with success and operations history stage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 200, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_history_stage_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with error when listing operations in pending stage", func(t *testing.T) {
