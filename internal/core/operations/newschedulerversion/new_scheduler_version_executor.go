@@ -210,13 +210,13 @@ func (ex *CreateNewSchedulerVersionExecutor) treatValidationError(ctx context.Co
 	switch {
 	case errors.Is(validationError, &ValidationPodInErrorError{}):
 		err := validationError.(*ValidationPodInErrorError)
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationPodInErrorMessage, err.GameRoomID, err.StatusDescription))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationPodInErrorMessageTemplate, err.GameRoomID, err.StatusDescription))
 		return validationError
 	case errors.Is(validationError, &ValidationTimeoutError{}):
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationTimeoutMessage, validationError.(*ValidationTimeoutError).GameRoom.ID))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationTimeoutMessageTemplate, validationError.(*ValidationTimeoutError).GameRoom.ID))
 		return validationError
 	case validationError != nil:
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessage, validationError.Error()))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessageTemplate, validationError.Error()))
 		return validationError
 	}
 
