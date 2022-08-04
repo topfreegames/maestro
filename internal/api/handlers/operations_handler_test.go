@@ -144,53 +144,6 @@ func TestListOperations(t *testing.T) {
 			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 	}
-	activeOperations := []*operation.Operation{
-		&operation.Operation{
-			ID:             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
-			Status:         operation.StatusInProgress,
-			CreatedAt:      dates[0],
-			SchedulerName:  schedulerName,
-			DefinitionName: "create_scheduler",
-			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306511, 0)},
-			ExecutionHistory: []operation.OperationEvent{
-				{
-					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-					Event:     "some-event",
-				},
-			},
-			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-		},
-		&operation.Operation{
-			ID:             "59e58c61-1758-4f02-b6ea-a87a64172902",
-			Status:         operation.StatusInProgress,
-			CreatedAt:      dates[1],
-			SchedulerName:  schedulerName,
-			DefinitionName: "create_scheduler",
-			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306521, 0)},
-			ExecutionHistory: []operation.OperationEvent{
-				{
-					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-					Event:     "some-event",
-				},
-			},
-			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-		},
-		&operation.Operation{
-			ID:             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
-			Status:         operation.StatusInProgress,
-			CreatedAt:      dates[2],
-			SchedulerName:  schedulerName,
-			DefinitionName: "create_scheduler",
-			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306531, 0)},
-			ExecutionHistory: []operation.OperationEvent{
-				{
-					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
-					Event:     "some-event",
-				},
-			},
-			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
-		},
-	}
 
 	t.Run("with success and default sorting", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
@@ -314,7 +267,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing pending operations"))
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing pending operations"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -327,7 +280,7 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, 500, rr.Code)
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_pending_operations.json")
 		require.NotEqual(t, expectedResponseBody, responseBody)
 	})
@@ -336,8 +289,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing active operations"))
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing active operations"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -350,7 +302,7 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, 500, rr.Code)
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_active_operations.json")
 		require.NotEqual(t, expectedResponseBody, responseBody)
 	})
