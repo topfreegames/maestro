@@ -20,25 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package operations
+package newschedulerversion
 
-import (
-	"context"
+const (
+	validationTimeoutMessageTemplate = `The GRU could not be validated. Maestro got timeout waiting for the GRU with ID: %s to be ready. You can check if
+		the GRU image is stable on its logs. If you could not spot any issues, contact the Maestro's responsible team for helping.`
 
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	validationPodInErrorMessageTemplate = `The GRU could not be validated. The room created for validation with ID %s is entering in error state. You can check if
+		the GRU image is stable on its logs using the provided room id. Last event in the game room: %s.`
+
+	validationUnexpectedErrorMessageTemplate = `The GRU could not be validated. Unexpected Error: %s - Contact the Maestro's responsible team for helping.`
 )
-
-// Executor is where the actual operation logic is implemented, and it will
-// receive as input its correlated definition.
-type Executor interface {
-	// Execute is where the operation logic will live; it will receive a context
-	// that will be used for deadline and cancellation. This function has only
-	// one return which is the operation error (if any);
-	Execute(ctx context.Context, op *operation.Operation, definition Definition) error
-	// Rollback is called if Execute returns an error. This will be used
-	// for operations that need to do some cleanup or any process if it fails.
-	Rollback(ctx context.Context, op *operation.Operation, definition Definition, executeErr error) error
-	// Name returns the executor name. This is used to identify a executor for a
-	// definition.
-	Name() string
-}

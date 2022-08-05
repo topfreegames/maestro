@@ -25,6 +25,7 @@ package operation_execution_worker
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -148,7 +149,7 @@ func (w *OperationExecutionWorker) executeOperationFlow(operationID string) erro
 	return nil
 }
 
-func (w *OperationExecutionWorker) rollbackOperation(op *operation.Operation, def operations.Definition, executionErr operations.ExecutionError, loopLogger *zap.Logger, executor operations.Executor) {
+func (w *OperationExecutionWorker) rollbackOperation(op *operation.Operation, def operations.Definition, executionErr error, loopLogger *zap.Logger, executor operations.Executor) {
 	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation rollback")
 	rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
 		return executor.Rollback(w.workerContext, op, def, executionErr)
@@ -162,8 +163,8 @@ func (w *OperationExecutionWorker) rollbackOperation(op *operation.Operation, de
 	}
 }
 
-func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation, executionErr operations.ExecutionError, loopLogger *zap.Logger) {
-	if executionErr.IsContextCanceled() {
+func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation, executionErr error, loopLogger *zap.Logger) {
+	if strings.Contains(executionErr.Error(), context.Canceled.Error()) {
 		op.Status = operation.StatusCanceled
 
 		loopLogger.Info("operation execution canceled")
@@ -171,8 +172,8 @@ func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation,
 	} else {
 		op.Status = operation.StatusError
 
-		loopLogger.Error("operation execution failed", zap.Error(executionErr.Error()))
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation execution failed : %s", executionErr.FormattedMessage()))
+		loopLogger.Error("operation execution failed", zap.Error(executionErr))
+		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation execution failed")
 	}
 }
 
@@ -192,8 +193,8 @@ func (w *OperationExecutionWorker) finishOperationAndLease(op *operation.Operati
 	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation finished")
 }
 
-func (w OperationExecutionWorker) executeOperationWithLease(operationContext context.Context, op *operation.Operation, def operations.Definition, executor operations.Executor) operations.ExecutionError {
-	return w.executeCollectingLatencyMetrics(op.DefinitionName, func() operations.ExecutionError {
+func (w OperationExecutionWorker) executeOperationWithLease(operationContext context.Context, op *operation.Operation, def operations.Definition, executor operations.Executor) error {
+	return w.executeCollectingLatencyMetrics(op.DefinitionName, func() error {
 		return executor.Execute(operationContext, op, def)
 	})
 }
@@ -288,7 +289,7 @@ func (w *OperationExecutionWorker) evictOperation(ctx context.Context, logger *z
 	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation evicted")
 }
 
-func (w *OperationExecutionWorker) executeCollectingLatencyMetrics(definitionName string, f func() operations.ExecutionError) (err operations.ExecutionError) {
+func (w *OperationExecutionWorker) executeCollectingLatencyMetrics(definitionName string, f func() error) (err error) {
 	executeStartTime := time.Now()
 	err = f()
 	reportOperationExecutionLatency(executeStartTime, w.scheduler.Game, w.scheduler.Name, definitionName, err == nil)
