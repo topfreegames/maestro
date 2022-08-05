@@ -104,7 +104,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 	}
 
 	if isSchedulerMajorVersion {
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, startingValidationMessage)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, startingValidationMessageTemplate)
 		currentAttempt := 0
 		retryError := retry.Do(func() error {
 			currentAttempt++
@@ -113,7 +113,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		}, retry.Attempts(uint(ex.config.RoomValidationAttempts)))
 		if retryError != nil {
 			logger.Error("game room validation failed after all attempts", zap.Error(retryError))
-			ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, allAttemptsFailedMessage)
+			ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, allAttemptsFailedMessageTemplate)
 			return retryError
 		}
 	}
@@ -123,7 +123,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 		return err
 	}
 
-	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(enqueuedSwitchVersionMessage, switchOpID))
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(enqueuedSwitchVersionMessageTemplate, switchOpID))
 	logger.Sugar().Infof("new scheduler version created: %s, is major: %t", newScheduler.Spec.Version, isSchedulerMajorVersion)
 	logger.Sugar().Infof("%s operation succeded, %s operation enqueued to continue scheduler update process, switching to version %s", opDef.Name(), switch_active_version.OperationName, newScheduler.Spec.Version)
 	return nil
@@ -221,17 +221,17 @@ func (ex *CreateNewSchedulerVersionExecutor) treatValidationError(ctx context.Co
 	switch {
 	case errors.Is(validationError, &ValidationPodInErrorError{}):
 		err := validationError.(*ValidationPodInErrorError)
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationPodInErrorMessage, currentAttempt, err.GameRoomID, err.StatusDescription))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationPodInErrorMessageTemplate, currentAttempt, err.GameRoomID, err.StatusDescription))
 		return validationError
 	case errors.Is(validationError, &ValidationTimeoutError{}):
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationTimeoutMessage, currentAttempt, validationError.(*ValidationTimeoutError).GameRoom.ID))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationTimeoutMessageTemplate, currentAttempt, validationError.(*ValidationTimeoutError).GameRoom.ID))
 		return validationError
 	case validationError != nil:
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessage, currentAttempt, validationError.Error()))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationUnexpectedErrorMessageTemplate, currentAttempt, validationError.Error()))
 		return validationError
 	}
 
-	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationSuccessMessage, currentAttempt))
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(validationSuccessMessageTemplate, currentAttempt))
 	return nil
 }
 
