@@ -82,6 +82,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		perPage = new(uint32)
 		*perPage = 100
 	}
+	handlerLogger.Debug("listing operations", zap.Uint32("page", *page), zap.Uint32("perPage", *perPage))
 
 	var operations []*operation.Operation
 
