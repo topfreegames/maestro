@@ -71,6 +71,18 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	page := request.Page
+	if condition := page == nil; condition {
+		page = new(uint32)
+		*page = 0
+	}
+
+	perPage := request.PerPage
+	if condition := perPage == nil; condition {
+		perPage = new(uint32)
+		*perPage = 100
+	}
+
 	var operations []*operation.Operation
 
 	switch operationStatus {
