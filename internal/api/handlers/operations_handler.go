@@ -38,7 +38,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
-	v1 "github.com/topfreegames/maestro/pkg/api/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -103,48 +102,6 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	return &api.ListOperationsResponse{Operations: responseOperations}, nil
 }
 
-func (h *OperationsHandler) queryPendingOperations(ctx context.Context, schedulerName, sortingOrder string) ([]*operation.Operation, error) {
-	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, schedulerName)
-	if err != nil {
-		h.logger.Error("error listing pending operations", zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	sortOperationsByCreatedAt(pendingOperationEntities, sortingOrder)
-
-	return pendingOperationEntities, nil
-}
-
-func (h *OperationsHandler) parseListOperationsResponse(ctx context.Context, pendingOperationEntities []*operation.Operation) ([]*v1.ListOperationItem, error) {
-	pendingOperationResponse, err := requestadapters.FromOperationsToListOperationsResponses(pendingOperationEntities)
-	if err != nil {
-		h.logger.Error("error parsing pending operations", zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	return pendingOperationResponse, nil
-}
-
-func (h *OperationsHandler) queryActiveOperations(ctx context.Context, schedulerName, sortingOrder string) ([]*operation.Operation, error) {
-	activeOperationEntities, err := h.operationManager.ListSchedulerActiveOperations(ctx, schedulerName)
-	if err != nil {
-		h.logger.Error("error listing active operations", zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	sortOperationsByCreatedAt(activeOperationEntities, sortingOrder)
-
-	return activeOperationEntities, nil
-}
-
-func (h *OperationsHandler) queryFinishedOperations(ctx context.Context, schedulerName, sortingOrder string) ([]*operation.Operation, error) {
-	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, schedulerName)
-	if err != nil {
-		h.logger.Error("error listing finished operations", zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
-	}
-	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
-
-	return finishedOperationEntities, nil
-}
-
 func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.CancelOperationRequest) (*api.CancelOperationResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()))
 	handlerLogger.Info("received request to cancel operation")
@@ -180,6 +137,48 @@ func (h *OperationsHandler) GetOperation(ctx context.Context, request *api.GetOp
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	return &api.GetOperationResponse{Operation: convertedOp}, nil
+}
+
+func (h *OperationsHandler) parseListOperationsResponse(ctx context.Context, operationEntities []*operation.Operation) ([]*api.ListOperationItem, error) {
+	operationResponse, err := requestadapters.FromOperationsToListOperationsResponses(operationEntities)
+	if err != nil {
+		h.logger.Error("error parsing operations", zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	return operationResponse, nil
+}
+
+func (h *OperationsHandler) queryPendingOperations(ctx context.Context, schedulerName, sortingOrder string) ([]*operation.Operation, error) {
+	pendingOperationEntities, err := h.operationManager.ListSchedulerPendingOperations(ctx, schedulerName)
+	if err != nil {
+		h.logger.Error("error listing pending operations", zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	sortOperationsByCreatedAt(pendingOperationEntities, sortingOrder)
+
+	return pendingOperationEntities, nil
+}
+
+func (h *OperationsHandler) queryActiveOperations(ctx context.Context, schedulerName, sortingOrder string) ([]*operation.Operation, error) {
+	activeOperationEntities, err := h.operationManager.ListSchedulerActiveOperations(ctx, schedulerName)
+	if err != nil {
+		h.logger.Error("error listing active operations", zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	sortOperationsByCreatedAt(activeOperationEntities, sortingOrder)
+
+	return activeOperationEntities, nil
+}
+
+func (h *OperationsHandler) queryFinishedOperations(ctx context.Context, schedulerName, sortingOrder string) ([]*operation.Operation, error) {
+	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, schedulerName)
+	if err != nil {
+		h.logger.Error("error listing finished operations", zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
+
+	return finishedOperationEntities, nil
 }
 
 func sortOperationsByCreatedAt(operations []*operation.Operation, order string) {

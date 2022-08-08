@@ -225,7 +225,7 @@ func TestListOperations(t *testing.T) {
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&&order_by=createdAt asc", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&order_by=createdAt asc", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -248,7 +248,7 @@ func TestListOperations(t *testing.T) {
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&&order_by=createdAt desc", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&order_by=createdAt desc", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -271,7 +271,7 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&&order_by=invalidField", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=historyorder_by=invalidField", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -296,7 +296,7 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&&order_by=createdAt invalidOrder", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&order_by=createdAt invalidOrder", nil)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -379,6 +379,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+
 			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned, "expected result to be empty")
