@@ -92,7 +92,7 @@ type OperationStorage interface {
 	// ListSchedulerActiveOperations list scheduler active operations.
 	ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 	// ListSchedulerFinishedOperations list scheduler finished operations.
-	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page uint32, pageSize uint32, total uint32) ([]*operation.Operation, error)
+	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 	// UpdateOperationStatus only updates the operation status for the given
 	// operation ID.
 	UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error

@@ -163,8 +163,8 @@ func TestListOperations(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 200, rr.Code)
-		// responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_default_sorting.json")
-		// require.Equal(t, expectedResponseBody, responseBody)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_default_sorting.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with success and ascending sorting", func(t *testing.T) {
@@ -186,8 +186,8 @@ func TestListOperations(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 200, rr.Code)
-		// responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_ascending_sorting.json")
-		// require.Equal(t, expectedResponseBody, responseBody)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_ascending_sorting.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with success and descending sorting", func(t *testing.T) {
@@ -210,8 +210,8 @@ func TestListOperations(t *testing.T) {
 
 		require.Equal(t, 200, rr.Code)
 
-		// responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_descending_sorting.json")
-		// require.Equal(t, expectedResponseBody, responseBody)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_descending_sorting.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with invalid sorting field", func(t *testing.T) {
