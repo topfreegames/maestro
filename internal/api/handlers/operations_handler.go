@@ -65,44 +65,31 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	operationStatus := request.Stage
+	operationStage := request.Stage
 	if err != nil {
-		handlerLogger.Error(fmt.Sprintf("error parsing stage filter parameters, Stage: %+v", request.Stage), zap.Error(err))
+		handlerLogger.Error(fmt.Sprintf("error parsing stage filter parameters, stage: %s", request.Stage), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	page := request.Page
-	if condition := page == nil; condition {
-		page = new(uint32)
-		*page = 0
-	}
-
-	perPage := request.PerPage
-	if condition := perPage == nil; condition {
-		perPage = new(uint32)
-		*perPage = 100
-	}
-	handlerLogger.Debug("listing operations", zap.Uint32("page", *page), zap.Uint32("perPage", *perPage))
-
 	var operations []*operation.Operation
 
-	switch operationStatus {
+	switch operationStage {
 	case "pending":
 		operations, err = h.queryPendingOperations(ctx, request.SchedulerName, sortingOrder)
 		if err != nil {
-			return nil, status.Error(codes.Unknown, err.Error())
+			return nil, status.Error(codes.Unknown, "error listing operations on pending stage")
 		}
 
 	case "active":
 		operations, err = h.queryActiveOperations(ctx, request.SchedulerName, sortingOrder)
 		if err != nil {
-			return nil, status.Error(codes.Unknown, err.Error())
+			return nil, status.Error(codes.Unknown, "error listing operations on active stage")
 		}
 
 	case "history":
 		operations, err = h.queryFinishedOperations(ctx, request.SchedulerName, sortingOrder)
 		if err != nil {
-			return nil, status.Error(codes.Unknown, err.Error())
+			return nil, status.Error(codes.Unknown, "error listing operations on history stage")
 		}
 
 	default:

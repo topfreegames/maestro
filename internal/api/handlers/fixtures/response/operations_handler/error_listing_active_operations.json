@@ -1,5 +1,5 @@
 {
   "code": 2,
-  "message": "error listing active operations",
+  "message": "error listing operations on active stage",
   "details": []
 }

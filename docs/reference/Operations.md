@@ -199,7 +199,7 @@ flowchart TD
 ```
 
 ## Available Operations
-For more details on how to use Maestro API, see [this section](https://topfreegames.github.io/maestro/OpenAPI/).
+For more details on how to use Maestro API, see [this section](https://topfreegames.github.io/maestro/reference/OpenAPI/).
 
 ### **Create Scheduler**
 - Accessed through the `POST /schedulers` endpoint.

@@ -1,0 +1,34 @@
+{
+  "operations": [
+    {
+      "id": "2d88b86b-0e70-451c-93cf-2334ec0d472e",
+      "status": "in_progress",
+      "definitionName": "create_scheduler",
+      "lease": {
+        "ttl": "2022-01-04T14:28:51Z"
+      },
+      "schedulerName": "zooba",
+      "createdAt": "2021-03-01T00:00:00Z"
+    },
+    {
+      "id": "59e58c61-1758-4f02-b6ea-a87a64172902",
+      "status": "in_progress",
+      "definitionName": "create_scheduler",
+      "lease": {
+        "ttl": "2022-01-04T14:28:41Z"
+      },
+      "schedulerName": "zooba",
+      "createdAt": "2021-02-01T00:00:00Z"
+    },
+    {
+      "id": "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
+      "status": "in_progress",
+      "definitionName": "create_scheduler",
+      "lease": {
+        "ttl": "2022-01-04T14:28:31Z"
+      },
+      "schedulerName": "zooba",
+      "createdAt": "2021-01-01T00:00:00Z"
+    }
+  ]
+}

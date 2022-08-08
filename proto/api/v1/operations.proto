@@ -41,11 +41,11 @@ message ListOperationsRequest {
   // Default value is `created_at desc`
   // NOTE: On http protocol, this operates as a query parameter.
   string order_by = 2;
-  // Optional parameter for enabling filter by operation execution stage, can be one of [pending, active, history]  optional string stage = 3;
+  // Required parameter for enabling filter by operation execution stage, can be one of [pending, active, history].
   string stage = 3;
-  // Parameter for pagination.
+  // Parameter for pagination, indicates the page number.
   optional uint32 page = 4;
-  // Optional parameter for pagination.
+  // Optional parameter for pagination, indicates the number of items per page.
   optional uint32 per_page = 5;
 }
 

@@ -332,23 +332,22 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 	return nil
 }
 
-func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status game_room.GameRoomStatus) error {
-	var err error
+func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status []game_room.GameRoomStatus) (resultStatus game_room.GameRoomStatus, err error) {
 	watcher, err := m.RoomStorage.WatchRoomStatus(ctx, gameRoom)
 	if err != nil {
-		return fmt.Errorf("failed to start room status watcher: %w", err)
+		return resultStatus, fmt.Errorf("failed to start room status watcher: %w", err)
 	}
 
 	defer watcher.Stop()
 
 	fromStorage, err := m.RoomStorage.GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
-		return fmt.Errorf("error while retrieving current game room status: %w", err)
+		return resultStatus, fmt.Errorf("error while retrieving current game room status: %w", err)
 	}
 
 	// the room has the desired state already
-	if fromStorage.Status == status {
-		return nil
+	if contains(status, fromStorage.Status) {
+		return fromStorage.Status, nil
 	}
 
 watchLoop:
@@ -358,7 +357,8 @@ watchLoop:
 			err = ctx.Err()
 			break watchLoop
 		case gameRoomEvent := <-watcher.ResultChan():
-			if gameRoomEvent.Status == status {
+			if contains(status, gameRoomEvent.Status) {
+				resultStatus = gameRoomEvent.Status
 				break watchLoop
 			}
 		}
@@ -367,12 +367,12 @@ watchLoop:
 	if err != nil {
 		waitErr := fmt.Errorf("failed to wait until room has desired status: %s, reason: %w", status, err)
 		if errors.Is(err, context.DeadlineExceeded) {
-			return serviceerrors.NewErrGameRoomStatusWaitingTimeout("").WithError(waitErr)
+			return resultStatus, serviceerrors.NewErrGameRoomStatusWaitingTimeout("").WithError(waitErr)
 		}
-		return waitErr
+		return resultStatus, waitErr
 	}
 
-	return nil
+	return resultStatus, nil
 }
 
 func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
@@ -434,4 +434,13 @@ func removeDuplicateValues(slice []string) []string {
 	}
 
 	return res
+}
+
+func contains[T comparable](s []T, e T) bool {
+	for _, v := range s {
+		if v == e {
+			return true
+		}
+	}
+	return false
 }

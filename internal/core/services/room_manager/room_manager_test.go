@@ -33,11 +33,11 @@ import (
 	"testing"
 	"time"
 
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
-
-	"golang.org/x/sync/errgroup"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -773,87 +773,238 @@ func TestSchedulerMaxSurge(t *testing.T) {
 	})
 }
 
-func TestRoomManager_WaitGameRoomStatus(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
+func TestRoomManager_WaitRoomStatus(t *testing.T) {
 
-	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
-	roomManager := New(
-		clockmock.NewFakeClock(time.Now()),
-		pamock.NewMockPortAllocator(mockCtrl),
-		roomStorage,
-		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
-		runtimemock.NewMockRuntime(mockCtrl),
-		mockports.NewMockEventsService(mockCtrl),
-		RoomManagerConfig{},
-	)
+	t.Run("return one of the desired states and no error when the desired status is reached after some time", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
 
-	transition := game_room.GameStatusReady
-	gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomManager := New(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
+			runtimemock.NewMockRuntime(mockCtrl),
+			mockports.NewMockEventsService(mockCtrl),
+			RoomManagerConfig{},
+		)
 
-	var group errgroup.Group
-	waitCalled := make(chan struct{})
-	eventsChan := make(chan game_room.StatusEvent)
-	group.Go(func() error {
-		waitCalled <- struct{}{}
+		statusReady := game_room.GameStatusReady
+		statusError := game_room.GameStatusError
+		gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
+
+		executionResult := make(chan struct {
+			Status game_room.GameRoomStatus
+			Error  error
+		})
+
+		statusEventChan := make(chan game_room.StatusEvent)
+		go func() {
+			roomStorage.EXPECT().GetRoom(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(gameRoom, nil)
+			roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gameRoom).Return(watcher, nil)
+			watcher.EXPECT().ResultChan().Return(statusEventChan)
+			watcher.EXPECT().Stop()
+
+			status, err := roomManager.WaitRoomStatus(context.Background(), gameRoom, []game_room.GameRoomStatus{statusReady, statusError})
+
+			executionResult <- struct {
+				Status game_room.GameRoomStatus
+				Error  error
+			}{Status: status, Error: err}
+		}()
+
+		statusEventChan <- game_room.StatusEvent{RoomID: gameRoom.ID, SchedulerName: gameRoom.SchedulerID, Status: statusReady}
+		result := <-executionResult
+		require.NoError(t, result.Error)
+		require.Equal(t, statusReady, result.Status)
+
+		go func() {
+			roomStorage.EXPECT().GetRoom(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(gameRoom, nil)
+			roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gameRoom).Return(watcher, nil)
+			watcher.EXPECT().ResultChan().Return(statusEventChan)
+			watcher.EXPECT().Stop()
+
+			status, err := roomManager.WaitRoomStatus(context.Background(), gameRoom, []game_room.GameRoomStatus{statusReady, statusError})
+
+			executionResult <- struct {
+				Status game_room.GameRoomStatus
+				Error  error
+			}{Status: status, Error: err}
+		}()
+
+		statusEventChan <- game_room.StatusEvent{RoomID: gameRoom.ID, SchedulerName: gameRoom.SchedulerID, Status: statusError}
+		result = <-executionResult
+		require.NoError(t, result.Error)
+		require.Equal(t, statusError, result.Status)
+	})
+
+	t.Run("return the desired state and no error when the desired status is already the current one", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomManager := New(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
+			runtimemock.NewMockRuntime(mockCtrl),
+			mockports.NewMockEventsService(mockCtrl),
+			RoomManagerConfig{},
+		)
+
+		statusReady := game_room.GameStatusReady
+		gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusReady}
 
 		roomStorage.EXPECT().GetRoom(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(gameRoom, nil)
 		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gameRoom).Return(watcher, nil)
-		watcher.EXPECT().ResultChan().Return(eventsChan)
 		watcher.EXPECT().Stop()
 
-		return roomManager.WaitRoomStatus(context.Background(), gameRoom, transition)
-	})
+		status, err := roomManager.WaitRoomStatus(context.Background(), gameRoom, []game_room.GameRoomStatus{statusReady})
 
-	<-waitCalled
-	eventsChan <- game_room.StatusEvent{RoomID: gameRoom.ID, SchedulerName: gameRoom.SchedulerID, Status: transition}
-
-	require.Eventually(t, func() bool {
-		err := group.Wait()
 		require.NoError(t, err)
-		return err == nil
-	}, 2*time.Second, time.Second)
-}
-
-func TestRoomManager_WaitGameRoomStatus_Deadline(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
-	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
-	roomManager := New(
-		clockmock.NewFakeClock(time.Now()),
-		pamock.NewMockPortAllocator(mockCtrl),
-		roomStorage,
-		ismock.NewMockGameRoomInstanceStorage(mockCtrl),
-		runtimemock.NewMockRuntime(mockCtrl),
-		mockports.NewMockEventsService(mockCtrl),
-		RoomManagerConfig{},
-	)
-
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond))
-	gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusReady}
-
-	var group errgroup.Group
-	waitCalled := make(chan struct{})
-	eventsChan := make(chan game_room.StatusEvent)
-	group.Go(func() error {
-		waitCalled <- struct{}{}
-		defer cancel()
-
-		roomStorage.EXPECT().GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID).Return(gameRoom, nil)
-		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gameRoom).Return(watcher, nil)
-		watcher.EXPECT().ResultChan().Return(eventsChan)
-		watcher.EXPECT().Stop()
-
-		return roomManager.WaitRoomStatus(ctx, gameRoom, game_room.GameStatusOccupied)
+		require.Equal(t, statusReady, status)
 	})
 
-	<-waitCalled
-	require.Eventually(t, func() bool {
-		err := group.Wait()
-		require.Error(t, err)
-		return err != nil
-	}, 2*time.Second, time.Second)
+	t.Run("return error when some error when generating watcher", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		roomManager := New(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
+			runtimemock.NewMockRuntime(mockCtrl),
+			mockports.NewMockEventsService(mockCtrl),
+			RoomManagerConfig{},
+		)
+
+		statusReady := game_room.GameStatusReady
+		gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
+
+		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gameRoom).Return(nil, errors.New("some error"))
+
+		_, err := roomManager.WaitRoomStatus(context.Background(), gameRoom, []game_room.GameRoomStatus{statusReady})
+
+		require.EqualError(t, err, "failed to start room status watcher: some error")
+	})
+
+	t.Run("return error when some error when generating watcher", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomManager := New(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
+			runtimemock.NewMockRuntime(mockCtrl),
+			mockports.NewMockEventsService(mockCtrl),
+			RoomManagerConfig{},
+		)
+
+		statusReady := game_room.GameStatusReady
+		gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
+
+		roomStorage.EXPECT().GetRoom(context.Background(), gameRoom.SchedulerID, gameRoom.ID).Return(nil, errors.New("some error"))
+		roomStorage.EXPECT().WatchRoomStatus(gomock.Any(), gameRoom).Return(watcher, nil)
+		watcher.EXPECT().Stop()
+
+		_, err := roomManager.WaitRoomStatus(context.Background(), gameRoom, []game_room.GameRoomStatus{statusReady})
+
+		require.EqualError(t, err, "error while retrieving current game room status: some error")
+	})
+
+	t.Run("return ErrGameRoomStatusWaitingTimeout error when the context deadline is exceeded due to timeout", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomManager := New(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
+			runtimemock.NewMockRuntime(mockCtrl),
+			mockports.NewMockEventsService(mockCtrl),
+			RoomManagerConfig{},
+		)
+
+		statusReady := game_room.GameStatusReady
+		gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
+
+		ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*1)
+		defer cancelFn()
+		executionResult := make(chan struct {
+			Status game_room.GameRoomStatus
+			Error  error
+		})
+		statusEventChan := make(chan game_room.StatusEvent)
+		go func() {
+			roomStorage.EXPECT().GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID).Return(gameRoom, nil)
+			roomStorage.EXPECT().WatchRoomStatus(ctx, gameRoom).Return(watcher, nil)
+			watcher.EXPECT().ResultChan().Return(statusEventChan)
+			watcher.EXPECT().Stop()
+
+			status, err := roomManager.WaitRoomStatus(ctx, gameRoom, []game_room.GameRoomStatus{statusReady})
+
+			executionResult <- struct {
+				Status game_room.GameRoomStatus
+				Error  error
+			}{Status: status, Error: err}
+		}()
+
+		result := <-executionResult
+
+		require.True(t, errors.Is(result.Error, serviceerrors.ErrGameRoomStatusWaitingTimeout))
+		require.EqualError(t, result.Error, "failed to wait until room has desired status: [ready], reason: context deadline exceeded")
+	})
+
+	t.Run("return error when the context is canceled for any other reason", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		watcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
+		roomManager := New(
+			clockmock.NewFakeClock(time.Now()),
+			pamock.NewMockPortAllocator(mockCtrl),
+			roomStorage,
+			ismock.NewMockGameRoomInstanceStorage(mockCtrl),
+			runtimemock.NewMockRuntime(mockCtrl),
+			mockports.NewMockEventsService(mockCtrl),
+			RoomManagerConfig{},
+		)
+
+		statusReady := game_room.GameStatusReady
+		gameRoom := &game_room.GameRoom{ID: "transition-test", SchedulerID: "scheduler-test", Status: game_room.GameStatusPending}
+
+		ctx, canceFn := context.WithCancel(context.Background())
+		executionResult := make(chan struct {
+			Status game_room.GameRoomStatus
+			Error  error
+		})
+		statusEventChan := make(chan game_room.StatusEvent)
+		go func() {
+			roomStorage.EXPECT().GetRoom(ctx, gameRoom.SchedulerID, gameRoom.ID).Return(gameRoom, nil)
+			roomStorage.EXPECT().WatchRoomStatus(ctx, gameRoom).Return(watcher, nil)
+			watcher.EXPECT().ResultChan().Return(statusEventChan)
+			watcher.EXPECT().Stop()
+
+			status, err := roomManager.WaitRoomStatus(ctx, gameRoom, []game_room.GameRoomStatus{statusReady})
+
+			executionResult <- struct {
+				Status game_room.GameRoomStatus
+				Error  error
+			}{Status: status, Error: err}
+		}()
+
+		canceFn()
+		result := <-executionResult
+		require.EqualError(t, result.Error, "failed to wait until room has desired status: [ready], reason: context canceled")
+	})
 }
 
 func TestUpdateGameRoomStatus(t *testing.T) {
