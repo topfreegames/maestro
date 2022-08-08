@@ -145,6 +145,54 @@ func TestListOperations(t *testing.T) {
 		},
 	}
 
+	activeOperations := []*operation.Operation{
+		&operation.Operation{
+			ID:             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[0],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306511, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+		&operation.Operation{
+			ID:             "59e58c61-1758-4f02-b6ea-a87a64172902",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[1],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306521, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+		&operation.Operation{
+			ID:             "2d88b86b-0e70-451c-93cf-2334ec0d472e",
+			Status:         operation.StatusInProgress,
+			CreatedAt:      dates[2],
+			SchedulerName:  schedulerName,
+			DefinitionName: "create_scheduler",
+			Lease:          &operation.OperationLease{Ttl: time.Unix(1641306531, 0)},
+			ExecutionHistory: []operation.OperationEvent{
+				{
+					CreatedAt: time.Date(1999, time.November, 29, 8, 0, 0, 0, time.UTC),
+					Event:     "some-event",
+				},
+			},
+			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
+		},
+	}
+
 	t.Run("with success and default sorting", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -163,8 +211,8 @@ func TestListOperations(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 200, rr.Code)
-		// responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_default_sorting.json")
-		// require.Equal(t, expectedResponseBody, responseBody)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_default_sorting.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with success and ascending sorting", func(t *testing.T) {
@@ -186,8 +234,8 @@ func TestListOperations(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 
 		require.Equal(t, 200, rr.Code)
-		// responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_ascending_sorting.json")
-		// require.Equal(t, expectedResponseBody, responseBody)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_ascending_sorting.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with success and descending sorting", func(t *testing.T) {
@@ -210,8 +258,8 @@ func TestListOperations(t *testing.T) {
 
 		require.Equal(t, 200, rr.Code)
 
-		// responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_descending_sorting.json")
-		// require.Equal(t, expectedResponseBody, responseBody)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_descending_sorting.json")
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with invalid sorting field", func(t *testing.T) {
@@ -347,7 +395,7 @@ func TestListOperations(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 500, rr.Code)
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_pending_operations.json")
-		require.NotEqual(t, expectedResponseBody, responseBody)
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with error when listing operations in active stage", func(t *testing.T) {
@@ -369,7 +417,7 @@ func TestListOperations(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 500, rr.Code)
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_active_operations.json")
-		require.NotEqual(t, expectedResponseBody, responseBody)
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with error when listing operations in history stage", func(t *testing.T) {
@@ -389,9 +437,9 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
-		require.Equal(t, 200, rr.Code)
+		require.Equal(t, 500, rr.Code)
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_finished_operations.json")
-		require.NotEqual(t, expectedResponseBody, responseBody)
+		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
 	t.Run("with error when listing operations in invalid stage", func(t *testing.T) {
