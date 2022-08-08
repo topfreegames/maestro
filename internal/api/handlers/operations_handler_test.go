@@ -283,7 +283,7 @@ func TestListOperations(t *testing.T) {
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
 		require.NoError(t, err)
-		require.Equal(t, "invalid sorting field: invalidField", body["message"])
+		require.Equal(t, "invalid stage filter: historyorder_by=invalidField", body["message"])
 	})
 
 	t.Run("with invalid sorting order", func(t *testing.T) {
