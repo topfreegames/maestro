@@ -56,8 +56,10 @@ message ListOperationsResponse {
   optional uint32 page = 1;
   // Optional parameter for pagination.
   optional uint32 page_size = 2;
+  // Optional parameter for total.
+  optional uint32 total = 3;
   // List of the scheduler finished (with error or not) operations.
-  repeated ListOperationItem operations = 3;
+  repeated ListOperationItem operations = 4;
 }
 
 // The cancel operation request.

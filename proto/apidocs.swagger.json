@@ -1310,6 +1310,11 @@
           "format": "int64",
           "description": "Optional parameter for pagination."
         },
+        "total": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Optional parameter for total."
+        },
         "operations": {
           "type": "array",
           "items": {
