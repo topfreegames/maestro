@@ -225,7 +225,7 @@ func TestListOperations(t *testing.T) {
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&order_by=createdAt asc", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&order_by=createdAt asc", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
