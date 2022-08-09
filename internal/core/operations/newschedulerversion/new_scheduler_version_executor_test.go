@@ -103,7 +103,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		require.Nil(t, result)
 	})
 
-	t.Run("should succeed - major version update, game room is valid, validation succeeds in third attempt, returns no error -> enqueue switch active version op", func(t *testing.T) {
+	t.Run("should succeed - major version update, game room is valid, validation succeeds in the configured max attempt, returns no error -> enqueue switch active version op", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		currentActiveScheduler := newValidSchedulerWithImageVersion("image-v1")
