@@ -420,7 +420,7 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
-	t.Run("with error when listing operations in history stage", func(t *testing.T) {
+	t.Run("with error when listing operations in final stage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
