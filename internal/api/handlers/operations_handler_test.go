@@ -248,7 +248,7 @@ func TestListOperations(t *testing.T) {
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&order_by=createdAt desc", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&order_by=createdAt desc", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -271,7 +271,7 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=historyorder_by=invalidField", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&order_by=invalidField", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -283,7 +283,7 @@ func TestListOperations(t *testing.T) {
 		var body map[string]interface{}
 		err = json.Unmarshal([]byte(bodyString), &body)
 		require.NoError(t, err)
-		require.Equal(t, "invalid stage filter: historyorder_by=invalidField", body["message"])
+		require.Equal(t, "invalid sorting field: invalidField", body["message"])
 	})
 
 	t.Run("with invalid sorting order", func(t *testing.T) {
@@ -296,7 +296,7 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=history&order_by=createdAt invalidOrder", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&order_by=createdAt invalidOrder", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -373,7 +373,7 @@ func TestListOperations(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 200, rr.Code)
-		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_history_stage_success.json")
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_final_stage_success.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 

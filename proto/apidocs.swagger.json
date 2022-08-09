@@ -582,7 +582,7 @@
           },
           {
             "name": "stage",
-            "description": "Required parameter for enabling filter by operation execution stage, can be one of [pending, active, history].",
+            "description": "Required parameter for enabling filter by operation execution stage, can be one of [pending, active, final].",
             "in": "query",
             "required": false,
             "type": "string"

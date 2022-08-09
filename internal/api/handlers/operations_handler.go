@@ -85,10 +85,10 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 			return nil, status.Error(codes.Unknown, "error listing operations on active stage")
 		}
 
-	case "history":
+	case "final":
 		operations, err = h.queryFinishedOperations(ctx, request.SchedulerName, sortingOrder)
 		if err != nil {
-			return nil, status.Error(codes.Unknown, "error listing operations on history stage")
+			return nil, status.Error(codes.Unknown, "error listing operations on final stage")
 		}
 
 	default:

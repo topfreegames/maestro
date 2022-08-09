@@ -35,7 +35,7 @@ type ListOperationsRequest struct {
 	// Default value is `created_at desc`
 	// NOTE: On http protocol, this operates as a query parameter.
 	OrderBy string `protobuf:"bytes,2,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
-	// Required parameter for enabling filter by operation execution stage, can be one of [pending, active, history].
+	// Required parameter for enabling filter by operation execution stage, can be one of [pending, active, final].
 	Stage string `protobuf:"bytes,3,opt,name=stage,proto3" json:"stage,omitempty"`
 	// Parameter for pagination, indicates the page number.
 	Page *uint32 `protobuf:"varint,4,opt,name=page,proto3,oneof" json:"page,omitempty"`
