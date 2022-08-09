@@ -355,7 +355,7 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
-	t.Run("with success and operations history stage", func(t *testing.T) {
+	t.Run("with success and operations final stage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
