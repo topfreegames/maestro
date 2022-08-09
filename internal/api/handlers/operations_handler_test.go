@@ -438,7 +438,7 @@ func TestListOperations(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 500, rr.Code)
-		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_finished_operations.json")
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_final_operations.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
