@@ -114,9 +114,10 @@ def get_autoscaling(autoscaling):
     try:
         usage = autoscaling['up']['trigger']['usage']
         ready_target = (100 - usage)/100
+        minimum = autoscaling['min'] if autoscaling['min'] != 0 else 1
         return {
             "enabled": True,
-            "min": autoscaling['min'],
+            "min": minimum,
             "max": autoscaling['max'],
             "policy": {
                 "type": 'roomOccupancy',
