@@ -60,7 +60,6 @@ services:
     roomPingTimeoutMillis: 240000
     roomInitializationTimeoutMillis: 120000
     roomDeletionTimeoutMillis: 120000
-    roomValidationAttempts: 3
   operationManager:
     operationLeaseTTLMillis: 5000
   eventsForwarder:
