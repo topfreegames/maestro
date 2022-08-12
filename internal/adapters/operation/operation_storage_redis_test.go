@@ -876,6 +876,7 @@ func TestCleanOperationsHistory(t *testing.T) {
 	})
 
 }
+
 func TestCleanExpiredOperations(t *testing.T) {
 	schedulerName := "test-scheduler"
 
