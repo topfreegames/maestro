@@ -23,11 +23,19 @@
 package newschedulerversion
 
 const (
-	validationTimeoutMessageTemplate = `The GRU could not be validated. Maestro got timeout waiting for the GRU with ID: %s to be ready. You can check if
-		the GRU image is stable on its logs. If you could not spot any issues, contact the Maestro's responsible team for helping.`
+	startingValidationMessageTemplate = "Major version detected, starting game room validation process..."
 
-	validationPodInErrorMessageTemplate = `The GRU could not be validated. The room created for validation with ID %s is entering in error state. You can check if
+	enqueuedSwitchVersionMessageTemplate = "Enqueued switch active version operation with id: %s"
+
+	validationSuccessMessageTemplate = "%dº Attempt: Game room validation success!"
+
+	allAttemptsFailedMessageTemplate = "All validation attempts have failed, operation aborted!"
+
+	validationTimeoutMessageTemplate = `%dº Attempt: Got timeout waiting for the GRU with ID: %s to be ready. You can check if
+		the GRU image is stable on its logs.`
+
+	validationPodInErrorMessageTemplate = `%dº Attempt: The room created for validation with ID %s is entering in error state. You can check if
 		the GRU image is stable on its logs using the provided room id. Last event in the game room: %s.`
 
-	validationUnexpectedErrorMessageTemplate = `The GRU could not be validated. Unexpected Error: %s - Contact the Maestro's responsible team for helping.`
+	validationUnexpectedErrorMessageTemplate = `%dº Attempt: Unexpected Error: %s - Contact the Maestro's responsible team for helping.`
 )
