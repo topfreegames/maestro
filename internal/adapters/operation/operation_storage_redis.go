@@ -366,10 +366,10 @@ func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error
 	}, nil
 }
 
-func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, schedulerName string, from, to time.Time) error {
+func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, schedulerName string) error {
 	operationsIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
-		Min: fmt.Sprint(from.Unix()),
-		Max: fmt.Sprint(to.Unix()),
+		Min: "-inf",
+		Max: "+inf",
 	}).Result()
 
 	pipe := r.client.Pipeline()
