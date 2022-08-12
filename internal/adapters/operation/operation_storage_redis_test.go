@@ -981,14 +981,14 @@ func TestCleanExpiredOperations(t *testing.T) {
 
 			operationIds, err := client.ZRangeByScore(context.Background(), fmt.Sprintf("operations:%s:lists:history", schedulerName), &redis.ZRangeBy{
 				Min: "-inf",
-				Max: "-inf",
+				Max: "+inf",
 			}).Result()
 			require.NoError(t, err)
-			assert.Empty(t, operationIds)
+			assert.NotEmpty(t, operationIds)
 
 			for _, op := range expectedOperations {
 				result, _ := client.HGetAll(context.Background(), fmt.Sprintf("operations:%s:%s", schedulerName, op.ID)).Result()
-				assert.Empty(t, result)
+				assert.NotEmpty(t, result)
 			}
 		})
 
