@@ -283,7 +283,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 				Return(errors.New("some error on storage"))
 
 			err := executor.Execute(ctx, op, definition)
-			require.EqualError(t, err, "some error on storage")
+			require.Equal(t, errors.New("some error on storage"), err)
 		})
 
 		t.Run("when it fails to delete scheduler in runtime", func(t *testing.T) {
@@ -303,7 +303,7 @@ func TestDeleteSchedulerExecutor_Execute(t *testing.T) {
 			runtime.EXPECT().DeleteScheduler(ctx, scheduler).Return(errors.New("some error on runtime"))
 
 			err := executor.Execute(ctx, op, definition)
-			require.EqualError(t, err, "some error on runtime")
+			require.Equal(t, errors.New("some error on runtime"), err)
 		})
 	})
 }
