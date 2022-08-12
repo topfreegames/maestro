@@ -372,11 +372,14 @@ func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, sche
 		Max: "+inf",
 	}).Result()
 
-	pipe := r.client.Pipeline()
+	if len(operationsIDs) > 0 {
 
-	if len(operationsIDs) == 0 {
+		pipe := r.client.Pipeline()
 		for _, operationID := range operationsIDs {
-			pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+			operationExists := r.client.Exists(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName)).Val()
+			if operationExists == 0 {
+				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+			}
 		}
 
 		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
