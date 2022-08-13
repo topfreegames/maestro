@@ -988,7 +988,10 @@ func TestCleanExpiredOperations(t *testing.T) {
 
 			for _, op := range expectedOperations {
 				result, _ := client.HGetAll(context.Background(), fmt.Sprintf("operations:%s:%s", schedulerName, op.ID)).Result()
-				assert.NotEmpty(t, result)
+				require.Equal(t, op.ID, result[idRedisKey])
+				require.Equal(t, op.SchedulerName, result[schedulerNameRedisKey])
+				require.Equal(t, op.DefinitionName, result[definitionNameRedisKey])
+				require.EqualValues(t, op.Input, result[definitionContentsRedisKey])
 			}
 		})
 
