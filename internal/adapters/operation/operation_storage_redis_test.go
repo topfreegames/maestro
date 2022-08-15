@@ -371,7 +371,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
-			assert.Equal(t, expectedOperations, operationsReturned)
+			assert.EqualValues(t, expectedOperations, operationsReturned)
 		})
 
 		t.Run("return empty list when there is no operation stored", func(t *testing.T) {
@@ -823,7 +823,7 @@ func TestCleanOperationsHistory(t *testing.T) {
 			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
-			assert.Equal(t, expectedOperations, operationsReturned)
+			assert.EqualValues(t, expectedOperations, operationsReturned)
 
 			err = storage.CleanOperationsHistory(context.Background(), schedulerName)
 			assert.NoError(t, err)
