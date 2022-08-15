@@ -215,7 +215,12 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 	return operations, nil
 }
 
-func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) (operations []*operation.Operation, err error) {
+func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int) (operations []*operation.Operation, total int, err error) {
+	r.CleanExpiredOperations(ctx, schedulerName)
+	if err := r.CleanExpiredOperations(ctx, schedulerName); err != nil {
+		return nil, 0, fmt.Errorf("failed to clean scheduler expired operations: %w", err)
+	}
+
 	currentTime := r.clock.Now()
 	lastDay := r.clock.Now().Add(-24 * time.Hour)
 	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, lastDay, currentTime)
@@ -223,7 +228,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	var executions = make(map[string]redis.Cmder)
 
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	pipe := r.client.Pipeline()
@@ -239,13 +244,13 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	})
 
 	if err != nil {
-		return nil, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
+		return nil, 0, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
 	}
 
 	for opID, cmder := range executions {
 		res, err := cmder.(*redis.StringStringMapCmd).Result()
 		if err != nil && err != redis.Nil {
-			return nil, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
+			return nil, 0, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
 		}
 
 		if len(res) == 0 {
@@ -255,14 +260,14 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 
 		op, err := buildOperationFromMap(res)
 		if err != nil {
-			return nil, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
+			return nil, 0, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
 		}
 		operations = append(operations, op)
 	}
 
 	r.removeNonExistentOperationFromHistory(ctx, schedulerName, nonExistentOperations)
 
-	return operations, nil
+	return operations, 0, nil
 }
 
 func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, schedulerName string) error {
