@@ -29,8 +29,6 @@ import (
 	"strconv"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/topfreegames/maestro/internal/adapters/metrics"
 
 	"github.com/go-redis/redis/v8"
@@ -216,7 +214,6 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 }
 
 func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int) (operations []*operation.Operation, total int, err error) {
-	r.CleanExpiredOperations(ctx, schedulerName)
 	if err := r.CleanExpiredOperations(ctx, schedulerName); err != nil {
 		return nil, 0, fmt.Errorf("failed to clean scheduler expired operations: %w", err)
 	}
@@ -224,7 +221,6 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	currentTime := r.clock.Now()
 	lastDay := r.clock.Now().Add(-24 * time.Hour)
 	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, lastDay, currentTime)
-	var nonExistentOperations []string
 	var executions = make(map[string]redis.Cmder)
 
 	if err != nil {
@@ -247,15 +243,10 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		return nil, 0, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
 	}
 
-	for opID, cmder := range executions {
+	for _, cmder := range executions {
 		res, err := cmder.(*redis.StringStringMapCmd).Result()
 		if err != nil && err != redis.Nil {
 			return nil, 0, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
-		}
-
-		if len(res) == 0 {
-			nonExistentOperations = append(nonExistentOperations, opID)
-			continue
 		}
 
 		op, err := buildOperationFromMap(res)
@@ -264,8 +255,6 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		}
 		operations = append(operations, op)
 	}
-
-	r.removeNonExistentOperationFromHistory(ctx, schedulerName, nonExistentOperations)
 
 	return operations, 0, nil
 }
@@ -296,22 +285,6 @@ func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, sche
 	}
 
 	return nil
-}
-
-func (r *redisOperationStorage) removeNonExistentOperationFromHistory(ctx context.Context, name string, operations []string) {
-	go func() {
-		pipe := r.client.Pipeline()
-		for _, operationID := range operations {
-			pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(name), operationID)
-		}
-		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-			_, err := pipe.Exec(context.Background())
-			if err != nil {
-				zap.L().Error("failed to remove non-existent operations from history", zap.Error(err))
-			}
-			return err
-		})
-	}()
 }
 
 func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID string) string {
