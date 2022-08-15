@@ -376,7 +376,7 @@ func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, sche
 
 		pipe := r.client.Pipeline()
 		for _, operationID := range operationsIDs {
-			operationExists := r.client.Exists(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName)).Val()
+			operationExists := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName)).Val()
 			if operationExists == 0 {
 				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
 			}
