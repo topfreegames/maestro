@@ -948,7 +948,6 @@ func TestCleanExpiredOperations(t *testing.T) {
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-			expectedOperations := []*operation.Operation{operations[1], operations[0]}
 
 			for _, op := range operations {
 				executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
@@ -960,39 +959,30 @@ func TestCleanExpiredOperations(t *testing.T) {
 				}).Err()
 				require.NoError(t, err)
 
-				err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
-					idRedisKey:                 op.ID,
-					schedulerNameRedisKey:      op.SchedulerName,
-					statusRedisKey:             strconv.Itoa(int(op.Status)),
-					definitionNameRedisKey:     op.DefinitionName,
-					createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
-					definitionContentsRedisKey: op.Input,
-					executionHistoryRedisKey:   executionHistoryJson,
-				}).Err()
+				for _, op := range operations[0:1] {
+					err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+						idRedisKey:                 op.ID,
+						schedulerNameRedisKey:      op.SchedulerName,
+						statusRedisKey:             strconv.Itoa(int(op.Status)),
+						definitionNameRedisKey:     op.DefinitionName,
+						createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+						definitionContentsRedisKey: op.Input,
+						executionHistoryRedisKey:   executionHistoryJson,
+					}).Err()
+					require.NoError(t, err)
+				}
+
+				err = storage.CleanExpiredOperations(context.Background(), schedulerName)
+				assert.NoError(t, err)
+
+				operationIds, err := client.ZRangeByScore(context.Background(), fmt.Sprintf("operations:%s:lists:history", schedulerName), &redis.ZRangeBy{
+					Min: "-inf",
+					Max: "+inf",
+				}).Result()
 				require.NoError(t, err)
-			}
-
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
-			assert.NoError(t, err)
-			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
-			assert.Equal(t, expectedOperations, operationsReturned)
-
-			err = storage.CleanExpiredOperations(context.Background(), schedulerName)
-			assert.NoError(t, err)
-
-			operationIds, err := client.ZRangeByScore(context.Background(), fmt.Sprintf("operations:%s:lists:history", schedulerName), &redis.ZRangeBy{
-				Min: "-inf",
-				Max: "+inf",
-			}).Result()
-			require.NoError(t, err)
-			assert.NotEmpty(t, operationIds)
-
-			for _, op := range expectedOperations {
-				result, _ := client.HGetAll(context.Background(), fmt.Sprintf("operations:%s:%s", schedulerName, op.ID)).Result()
-				require.Equal(t, op.ID, result[idRedisKey])
-				require.Equal(t, op.SchedulerName, result[schedulerNameRedisKey])
-				require.Equal(t, op.DefinitionName, result[definitionNameRedisKey])
-				require.EqualValues(t, op.Input, result[definitionContentsRedisKey])
+				assert.NotEmpty(t, operationIds)
+				assert.Contains(t, operationIds, operations[0].ID, operations[1].ID)
+				assert.NotContains(t, operationIds, operations[2].ID, operations[3].ID)
 			}
 		})
 
@@ -1009,6 +999,22 @@ func TestCleanExpiredOperations(t *testing.T) {
 			err = storage.CleanExpiredOperations(context.Background(), schedulerName)
 
 			assert.NoError(t, err)
+		})
+
+		t.Run("with error", func(t *testing.T) {
+
+			t.Run("if client is closed it returns error", func(t *testing.T) {
+				client := test.GetRedisConnection(t, redisAddress)
+				clock := clockmock.NewFakeClock(time.Now())
+				operationsTTlMap := map[Definition]time.Duration{}
+				storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+				client.Close()
+
+				err := storage.CleanExpiredOperations(context.Background(), schedulerName)
+
+				assert.EqualError(t, err, "failed to list operations for \"test-scheduler\": redis: client is closed")
+			})
+
 		})
 
 	})

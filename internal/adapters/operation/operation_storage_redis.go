@@ -372,11 +372,15 @@ func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, sche
 		Max: "+inf",
 	}).Result()
 
+	if err != nil {
+		return errors.NewErrUnexpected("failed to list operations for \"%s\"", schedulerName).WithError(err)
+	}
+
 	if len(operationsIDs) > 0 {
 
 		pipe := r.client.Pipeline()
 		for _, operationID := range operationsIDs {
-			operationExists := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName)).Val()
+			operationExists := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Val()
 			if operationExists == 0 {
 				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
 			}
