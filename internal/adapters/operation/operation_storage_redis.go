@@ -373,7 +373,7 @@ func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, sche
 	}).Result()
 
 	if err != nil {
-		return errors.NewErrUnexpected("failed to list operations for \"%s\"", schedulerName).WithError(err)
+		return errors.NewErrUnexpected("failed to list operations for \"%s\" to perform clean up", schedulerName).WithError(err)
 	}
 
 	if len(operationsIDs) > 0 {

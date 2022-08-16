@@ -992,29 +992,30 @@ func TestCleanExpiredOperations(t *testing.T) {
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			err := storage.CleanExpiredOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
-			assert.Empty(t, operationsReturned)
 
-			err = storage.CleanExpiredOperations(context.Background(), schedulerName)
-
-			assert.NoError(t, err)
+			operationIds, err := client.ZRangeByScore(context.Background(), fmt.Sprintf("operations:%s:lists:history", schedulerName), &redis.ZRangeBy{
+				Min: "-inf",
+				Max: "+inf",
+			}).Result()
+			require.NoError(t, err)
+			assert.Empty(t, operationIds)
 		})
+	})
 
-		t.Run("with error", func(t *testing.T) {
+	t.Run("with error", func(t *testing.T) {
 
-			t.Run("if client is closed it returns error", func(t *testing.T) {
-				client := test.GetRedisConnection(t, redisAddress)
-				clock := clockmock.NewFakeClock(time.Now())
-				operationsTTlMap := map[Definition]time.Duration{}
-				storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-				client.Close()
+		t.Run("if client is closed it returns error", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			operationsTTlMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			client.Close()
 
-				err := storage.CleanExpiredOperations(context.Background(), schedulerName)
+			err := storage.CleanExpiredOperations(context.Background(), schedulerName)
 
-				assert.EqualError(t, err, "failed to list operations for \"test-scheduler\": redis: client is closed")
-			})
-
+			assert.EqualError(t, err, "failed to list operations for \"test-scheduler\" to perform clean up: redis: client is closed")
 		})
 
 	})
