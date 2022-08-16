@@ -339,12 +339,12 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			},
 		}
 
-		t.Run("return operations list from the last day when there is more than one operation stored", func(t *testing.T) {
+		t.Run("return operations list and total using pagination parameters", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-			expectedOperations := []*operation.Operation{operations[1], operations[0]}
+			expectedOperations := operations
 
 			for _, op := range operations {
 				executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
@@ -368,10 +368,11 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
 			assert.EqualValues(t, expectedOperations, operationsReturned)
+			assert.Equal(t, len(expectedOperations), total)
 		})
 
 		t.Run("return empty list when there is no operation stored", func(t *testing.T) {
@@ -380,12 +381,12 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned, "expected result to be empty")
 		})
 
-		t.Run("return no error when operations are in the history but not stored, remove nonexistent operations from history asynchronously", func(t *testing.T) {
+		t.Run("return no error when there is expired operations, and remove expired ones from history", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
@@ -399,47 +400,11 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned)
-			assert.Eventually(t, func() bool {
-				ids, _ := client.ZRange(context.Background(), storage.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
-				return len(ids) == 0
-			}, time.Second, 10*time.Millisecond, "expected non existent operations to not be in the history anymore")
-		})
-
-		t.Run("return no error when some operation is in the history but not stored", func(t *testing.T) {
-			client := test.GetRedisConnection(t, redisAddress)
-			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-
-			for _, op := range operations {
-				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
-					Member: op.ID,
-					Score:  float64(clock.Now().Unix()),
-				}).Err()
-				require.NoError(t, err)
-			}
-
-			firstOp := operations[0]
-			executionHistoryJson, err := json.Marshal(firstOp.ExecutionHistory)
-			require.NoError(t, err)
-
-			err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(firstOp.SchedulerName, firstOp.ID), map[string]interface{}{
-				idRedisKey:                 firstOp.ID,
-				schedulerNameRedisKey:      firstOp.SchedulerName,
-				statusRedisKey:             strconv.Itoa(int(firstOp.Status)),
-				definitionNameRedisKey:     firstOp.DefinitionName,
-				createdAtRedisKey:          firstOp.CreatedAt.Format(time.RFC3339Nano),
-				definitionContentsRedisKey: firstOp.Input,
-				executionHistoryRedisKey:   executionHistoryJson,
-			}).Err()
-			require.NoError(t, err)
-
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
-			assert.NoError(t, err)
-			assert.Equal(t, operationsReturned[0], firstOp)
+			ids, _ := client.ZRange(context.Background(), storage.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
+			assert.Empty(t, ids)
 		})
 
 	})
@@ -495,7 +460,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			_, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			_, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.EqualError(t, err, "failed to build operation from the hash: failed to parse operation status: strconv.Atoi: parsing \"\": invalid syntax")
 		})
 
@@ -506,8 +471,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
 			client.Close()
 
-			_, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
-			assert.EqualError(t, err, "failed to list finished operations for \"test-scheduler\": redis: client is closed")
+			_, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			assert.EqualError(t, err, "failed to clean scheduler expired operations: failed to list operations for \"test-scheduler\": redis: client is closed")
 		})
 	})
 }
@@ -820,7 +785,7 @@ func TestCleanOperationsHistory(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
 			assert.EqualValues(t, expectedOperations, operationsReturned)
@@ -848,7 +813,7 @@ func TestCleanOperationsHistory(t *testing.T) {
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
 
-			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
+			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned)
 
