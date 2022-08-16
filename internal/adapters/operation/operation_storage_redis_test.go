@@ -339,12 +339,14 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			},
 		}
 
-		t.Run("return operations list and total using pagination parameters", func(t *testing.T) {
+		t.Run("return operations list and total using pagination parameters, it returns less elements than the page size", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-			expectedOperations := operations
+			expectedOperations := []*operation.Operation{operations[3], operations[2], operations[1], operations[0]}
+			page := int64(0)
+			pageSize := int64(4)
 
 			for _, op := range operations {
 				executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
@@ -368,11 +370,85 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
-			assert.EqualValues(t, expectedOperations, operationsReturned)
-			assert.Equal(t, len(expectedOperations), total)
+			assert.Equal(t, expectedOperations, operationsReturned)
+			assert.Equal(t, int64(4), total)
+		})
+
+		t.Run("return operations list and total using pagination parameters, it returns same elements's number as the page size", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			operationsTTlMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			expectedOperations := []*operation.Operation{operations[3], operations[2]}
+			page := int64(2)
+			pageSize := int64(2)
+
+			for _, op := range operations {
+				executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
+				require.NoError(t, err)
+
+				err = client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
+					Member: op.ID,
+					Score:  float64(op.CreatedAt.Unix()),
+				}).Err()
+				require.NoError(t, err)
+
+				err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+					idRedisKey:                 op.ID,
+					schedulerNameRedisKey:      op.SchedulerName,
+					statusRedisKey:             strconv.Itoa(int(op.Status)),
+					definitionNameRedisKey:     op.DefinitionName,
+					createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+					definitionContentsRedisKey: op.Input,
+					executionHistoryRedisKey:   executionHistoryJson,
+				}).Err()
+				require.NoError(t, err)
+			}
+
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
+			assert.NoError(t, err)
+			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
+			assert.Equal(t, expectedOperations, operationsReturned)
+			assert.Equal(t, int64(2), total)
+		})
+
+		t.Run("return operations list and total using pagination parameters, it returns an empty page", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			operationsTTlMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			page := int64(4)
+			pageSize := int64(2)
+
+			for _, op := range operations {
+				executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
+				require.NoError(t, err)
+
+				err = client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
+					Member: op.ID,
+					Score:  float64(op.CreatedAt.Unix()),
+				}).Err()
+				require.NoError(t, err)
+
+				err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+					idRedisKey:                 op.ID,
+					schedulerNameRedisKey:      op.SchedulerName,
+					statusRedisKey:             strconv.Itoa(int(op.Status)),
+					definitionNameRedisKey:     op.DefinitionName,
+					createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+					definitionContentsRedisKey: op.Input,
+					executionHistoryRedisKey:   executionHistoryJson,
+				}).Err()
+				require.NoError(t, err)
+			}
+
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
+			assert.NoError(t, err)
+			assert.Empty(t, operationsReturned, "expected result to be empty")
+			assert.Equal(t, int64(0), total)
 		})
 
 		t.Run("return empty list when there is no operation stored", func(t *testing.T) {
@@ -406,7 +482,6 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			ids, _ := client.ZRange(context.Background(), storage.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
 			assert.Empty(t, ids)
 		})
-
 	})
 
 	t.Run("with error", func(t *testing.T) {
