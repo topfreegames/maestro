@@ -836,7 +836,7 @@ func TestCleanOperationsHistory(t *testing.T) {
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-			expectedOperations := []*operation.Operation{operations[1], operations[0]}
+			expectedOperations := []*operation.Operation{operations[0], operations[1]}
 
 			for _, op := range operations {
 				executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
@@ -860,12 +860,7 @@ func TestCleanOperationsHistory(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
-			assert.NoError(t, err)
-			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
-			assert.EqualValues(t, expectedOperations, operationsReturned)
-
-			err = storage.CleanOperationsHistory(context.Background(), schedulerName)
+			err := storage.CleanOperationsHistory(context.Background(), schedulerName)
 			assert.NoError(t, err)
 
 			// Assert that the operation's history sorted set is now empty
