@@ -382,8 +382,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-			expectedOperations := []*operation.Operation{operations[3], operations[2]}
-			page := int64(2)
+			expectedOperations := []*operation.Operation{operations[1], operations[0]}
+			page := int64(1)
 			pageSize := int64(2)
 
 			for _, op := range operations {
@@ -412,7 +412,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
 			assert.Equal(t, expectedOperations, operationsReturned)
-			assert.Equal(t, int64(2), total)
+			assert.Equal(t, int64(4), total)
 		})
 
 		t.Run("return operations list and total using pagination parameters, it returns an empty page", func(t *testing.T) {
@@ -420,7 +420,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-			page := int64(4)
+			page := int64(2)
 			pageSize := int64(2)
 
 			for _, op := range operations {
@@ -448,7 +448,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned, "expected result to be empty")
-			assert.Equal(t, int64(0), total)
+			assert.Equal(t, int64(4), total)
 		})
 
 		t.Run("return empty list when there is no operation stored", func(t *testing.T) {
@@ -457,9 +457,10 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
 
-			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned, "expected result to be empty")
+			assert.Equal(t, int64(0), total)
 		})
 
 		t.Run("return no error when there is expired operations, and remove expired ones from history", func(t *testing.T) {
