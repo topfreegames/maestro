@@ -55,6 +55,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			operationManager *mockports.MockOperationManager,
 			autoscaler *mockports.MockAutoscaler,
 		)
+		tookAction bool
 		shouldFail bool
 	}
 
@@ -68,12 +69,12 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		Parameters: autoscaling.PolicyParameters{},
 	}}
 
-	genericDefinition := &healthcontroller.SchedulerHealthControllerDefinition{}
+	definition := &healthcontroller.SchedulerHealthControllerDefinition{}
 	genericSchedulerNoAutoscaling := newValidScheduler(nil)
 	genericSchedulerAutoscalingDisabled := newValidScheduler(&autoscalingDisabled)
 	genericSchedulerAutoscalingEnabled := newValidScheduler(&autoscalingEnabled)
 
-	genericOperation := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+	genericOperation := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 
 	testCases := []struct {
 		title string
@@ -82,6 +83,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "nothing to do, no operations enqueued",
 			executionPlan: executionPlan{
+				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -105,6 +107,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "game room status pending with no initialization timeout found, considered available, so nothing to do, no operations enqueued",
 			executionPlan: executionPlan{
+				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -158,6 +161,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "game room status pending with initialization timeout found, considered expired, remove room operation enqueued",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -203,7 +207,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(gameRoomPending, nil)
 
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove_rooms.RemoveRoomsDefinition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
 
@@ -217,6 +221,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "game room status unready with initialization timeout found, considered expired, remove room operation enqueued",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -262,7 +267,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(gameRoomUnready, nil)
 
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove_rooms.RemoveRoomsDefinition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
 
@@ -276,6 +281,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "game room status unready and not expired found, considered available, so nothing to do, no operations enqueued",
 			executionPlan: executionPlan{
+				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -329,6 +335,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "nonexistent game room IDs found, deletes from storage",
 			executionPlan: executionPlan{
+				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -368,6 +375,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "nonexistent game room IDs found but fails on first, keeps trying to delete",
 			executionPlan: executionPlan{
+				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -408,6 +416,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "expired room found, enqueue remove rooms with specified ID",
 			executionPlan: executionPlan{
+				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -455,7 +464,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(expiredGameRoom, nil)
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 1
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove_rooms.RemoveRoomsDefinition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
 				},
@@ -464,6 +473,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "instance is still pending, do nothing",
 			executionPlan: executionPlan{
+				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -492,6 +502,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "expired room found, enqueue remove rooms with specified ID fails, continues operation and enqueue new add rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -540,7 +551,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					genericSchedulerNoAutoscaling.RoomsReplicas = 2
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove_rooms.RemoveRoomsDefinition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(nil, errors.New("error"))
 
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add_rooms.AddRoomsDefinition{Amount: 1}).Return(op, nil)
 				},
@@ -549,6 +560,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "autoscaling not configured, have less available rooms than expected, enqueue add rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -564,7 +576,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 2
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add_rooms.AddRoomsDefinition{Amount: 2}).Return(op, nil)
 				},
@@ -573,6 +585,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "autoscaling configured but disabled, have less available rooms than expected, enqueue add rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -588,7 +601,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerAutoscalingDisabled, nil)
 
 					genericSchedulerAutoscalingDisabled.RoomsReplicas = 2
-					op := operation.New(genericSchedulerAutoscalingDisabled.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerAutoscalingDisabled.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingDisabled.Name, &add_rooms.AddRoomsDefinition{Amount: 2}).Return(op, nil)
 				},
@@ -597,6 +610,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "autoscaling configured and enabled, have less available rooms than expected, enqueue add rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -612,7 +626,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerAutoscalingEnabled, nil)
 					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), genericSchedulerAutoscalingEnabled).Return(2, nil)
 
-					op := operation.New(genericSchedulerAutoscalingEnabled.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerAutoscalingEnabled.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, &add_rooms.AddRoomsDefinition{Amount: 2}).Return(op, nil)
 				},
@@ -621,6 +635,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "enqueue add rooms fails, finish operation",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -644,6 +659,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "autoscaling not configured, have more available rooms than expected, enqueue remove rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -675,7 +691,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 0
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove_rooms.RemoveRoomsDefinition{Amount: 1}).Return(op, nil)
 				},
@@ -684,6 +700,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "autoscaling configured but disabled, have more available rooms than expected, enqueue remove rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -715,7 +732,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingDisabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 
 					genericSchedulerAutoscalingDisabled.RoomsReplicas = 0
-					op := operation.New(genericSchedulerAutoscalingDisabled.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerAutoscalingDisabled.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingDisabled.Name, &remove_rooms.RemoveRoomsDefinition{Amount: 1}).Return(op, nil)
 				},
@@ -724,6 +741,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "autoscaling configured and enabled, have more available rooms than expected, enqueue remove rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -755,7 +773,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 
-					op := operation.New(genericSchedulerAutoscalingEnabled.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerAutoscalingEnabled.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, &remove_rooms.RemoveRoomsDefinition{Amount: 1}).Return(op, nil)
 				},
@@ -764,6 +782,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "enqueue remove rooms fails, finish operation with error",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -803,6 +822,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "fails loading rooms, stops operation",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -818,6 +838,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "fails loading instances, stops operation",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -834,6 +855,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "fails loading scheduler, stops operation",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -851,6 +873,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "fails calculating the desired number of rooms with autoscaler, stops operation and return error",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -888,6 +911,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "fails on getRoom, consider room ignored and enqueues new add rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -925,7 +949,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(nil, errors.New("error"))
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 2
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add_rooms.AddRoomsDefinition{Amount: 1}).Return(op, nil)
 				},
@@ -934,6 +958,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "room with status error, consider room ignored and enqueues new add rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -978,7 +1003,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(gameRoomError, nil)
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 2
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add_rooms.AddRoomsDefinition{Amount: 1}).Return(op, nil)
 				},
@@ -987,6 +1012,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "room with status terminating, and considered valid, consider room ignored and enqueues new add rooms",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -1031,7 +1057,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(gameRoomTerminating, nil)
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 2
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add_rooms.AddRoomsDefinition{Amount: 1}).Return(op, nil)
 				},
@@ -1040,6 +1066,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		{
 			title: "game room status terminating with terminating timeout found, considered expired, remove room operation enqueued",
 			executionPlan: executionPlan{
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -1085,7 +1112,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(gameRoomTerminating, nil)
 
-					op := operation.New(genericSchedulerNoAutoscaling.Name, genericDefinition.Name(), nil)
+					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove_rooms.RemoveRoomsDefinition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
 
@@ -1116,11 +1143,12 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			testCase.executionPlan.planMocks(roomsStorage, instanceStorage, schedulerStorage, operationManager, autoscaler)
 
 			ctx := context.Background()
-			err := executor.Execute(ctx, genericOperation, genericDefinition)
+			err := executor.Execute(ctx, genericOperation, definition)
 			if testCase.executionPlan.shouldFail {
 				assert.NotNil(t, err)
 			} else {
 				assert.Nil(t, err)
+				assert.Equal(t, testCase.executionPlan.tookAction, *definition.TookAction)
 			}
 		})
 	}
