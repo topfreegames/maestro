@@ -585,6 +585,70 @@ func TestUpdateOperationStatus(t *testing.T) {
 	})
 }
 
+func TestUpdateOperationDefinition(t *testing.T) {
+	schedulerName := "test-scheduler"
+
+	op := operation.Operation{
+		ID:             "some-op-id-1",
+		SchedulerName:  schedulerName,
+		Status:         operation.StatusFinished,
+		DefinitionName: "test-definition",
+		Input:          []byte("hello test"),
+	}
+
+	t.Run("return no error and update operation definition", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		operationsTTlMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		tookAction := true
+		definition := healthcontroller.SchedulerHealthControllerDefinition{TookAction: &tookAction}
+
+		err := client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+			idRedisKey:                 op.ID,
+			schedulerNameRedisKey:      op.SchedulerName,
+			statusRedisKey:             strconv.Itoa(int(op.Status)),
+			definitionNameRedisKey:     op.DefinitionName,
+			createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+			definitionContentsRedisKey: op.Input,
+		}).Err()
+		require.NoError(t, err)
+
+		err = storage.UpdateOperationDefinition(context.Background(), op.SchedulerName, op.ID, &definition)
+		require.NoError(t, err)
+
+		resultMap := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Val()
+		updatedDefinition := healthcontroller.SchedulerHealthControllerDefinition{}
+		definitionContents := resultMap[definitionContentsRedisKey]
+		err = updatedDefinition.Unmarshal([]byte(definitionContents))
+		require.NoError(t, err)
+		assert.Equal(t, definition, updatedDefinition)
+	})
+
+	t.Run("return error if some error occurs with redis connection", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		clock := clockmock.NewFakeClock(time.Now())
+		operationsTTlMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		tookAction := true
+		definition := healthcontroller.SchedulerHealthControllerDefinition{TookAction: &tookAction}
+
+		err := client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+			idRedisKey:                 op.ID,
+			schedulerNameRedisKey:      op.SchedulerName,
+			statusRedisKey:             strconv.Itoa(int(op.Status)),
+			definitionNameRedisKey:     op.DefinitionName,
+			createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+			definitionContentsRedisKey: op.Input,
+		}).Err()
+		require.NoError(t, err)
+		client.Close()
+		err = storage.UpdateOperationDefinition(context.Background(), op.SchedulerName, op.ID, &definition)
+		require.EqualError(t, err, "failed to update operation definition: redis: client is closed")
+	})
+
+}
+
 func TestUpdateOperationExecutionHistory(t *testing.T) {
 
 	t.Run("set execution history with value", func(t *testing.T) {

@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations"
+
 	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/adapters/metrics"
@@ -290,6 +292,18 @@ func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, sche
 		}
 	}
 
+	return nil
+}
+
+func (r *redisOperationStorage) UpdateOperationDefinition(ctx context.Context, schedulerName string, operationID string, def operations.Definition) error {
+	_, err := r.client.HSet(ctx, r.buildSchedulerOperationKey(schedulerName, operationID), map[string]interface{}{
+		definitionNameRedisKey:     def.Name(),
+		definitionContentsRedisKey: def.Marshal(),
+	}).Result()
+
+	if err != nil {
+		return fmt.Errorf("failed to update operation definition: %w", err)
+	}
 	return nil
 }
 
