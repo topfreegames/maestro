@@ -373,14 +373,14 @@ func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, sche
 	}).Result()
 
 	if err != nil {
-		return errors.NewErrUnexpected("failed to list operations for \"%s\" to perform clean up", schedulerName).WithError(err)
+		return errors.NewErrUnexpected("failed to list operations for \"%s\" when trying to clean expired operations", schedulerName).WithError(err)
 	}
 
 	if len(operationsIDs) > 0 {
 
 		pipe := r.client.Pipeline()
 		for _, operationID := range operationsIDs {
-			operationExists := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Val()
+			operationExists, _ := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
 			if operationExists == 0 {
 				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
 			}
@@ -392,7 +392,7 @@ func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, sche
 		})
 
 		if err != nil {
-			return fmt.Errorf("failed to delete expired operations: %w", err)
+			return fmt.Errorf("failed to clean expired operations: %w", err)
 		}
 	}
 	return nil

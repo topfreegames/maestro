@@ -1015,7 +1015,7 @@ func TestCleanExpiredOperations(t *testing.T) {
 
 			err := storage.CleanExpiredOperations(context.Background(), schedulerName)
 
-			assert.EqualError(t, err, "failed to list operations for \"test-scheduler\" to perform clean up: redis: client is closed")
+			assert.EqualError(t, err, "failed to list operations for \"test-scheduler\" when trying to clean expired operations: redis: client is closed")
 		})
 
 	})
