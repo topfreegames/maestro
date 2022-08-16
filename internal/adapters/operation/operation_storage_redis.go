@@ -224,7 +224,8 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	}
 
 	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, page, pageSize)
-	var executions = make(map[string]redis.Cmder)
+	operations = make([]*operation.Operation, len(operationsIDs))
+	executions := make([]redis.Cmder, len(operationsIDs))
 
 	if err != nil {
 		return nil, 0, err
@@ -232,9 +233,9 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 
 	pipe := r.client.Pipeline()
 
-	for _, operationID := range operationsIDs {
+	for i, operationID := range operationsIDs {
 		cmd := pipe.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID))
-		executions[operationID] = cmd
+		executions[i] = cmd
 	}
 
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
@@ -246,7 +247,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		return nil, 0, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
 	}
 
-	for _, cmder := range executions {
+	for i, cmder := range executions {
 		res, err := cmder.(*redis.StringStringMapCmd).Result()
 		if err != nil && err != redis.Nil {
 			return nil, 0, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
@@ -256,7 +257,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		if err != nil {
 			return nil, 0, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
 		}
-		operations = append(operations, op)
+		operations[i] = op
 	}
 
 	return operations, total, nil
