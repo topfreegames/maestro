@@ -486,7 +486,7 @@ func TestFinishOperation(t *testing.T) {
 
 		operationStorage.EXPECT().UpdateOperationDefinition(ctx, op.SchedulerName, op.ID, definition).Return(errors.New("some error"))
 		err := opManager.FinishOperation(ctx, op, definition)
-		require.EqualError(t, err, "failed to update operation definition: some error")
+		require.ErrorContains(t, err, "failed to update operation definition: some error")
 	})
 
 	t.Run("return error when fails to update operation status", func(t *testing.T) {
@@ -512,7 +512,7 @@ func TestFinishOperation(t *testing.T) {
 		operationStorage.EXPECT().UpdateOperationDefinition(ctx, op.SchedulerName, op.ID, definition).Return(nil)
 		operationStorage.EXPECT().UpdateOperationStatus(ctx, op.SchedulerName, op.ID, operation.StatusInProgress).Return(errors.New("some error"))
 		err := opManager.FinishOperation(ctx, op, definition)
-		require.EqualError(t, err, "failed to update operation status: some error")
+		require.ErrorContains(t, err, "failed to update operation status: some error")
 	})
 }
 
