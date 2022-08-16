@@ -96,7 +96,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Game room validation success!")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("Enqueued switch active version operation with id: %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -149,7 +149,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Unexpected Error: some error - Contact the Maestro's responsible team for helping.")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "2º Attempt: Unexpected Error: some error - Contact the Maestro's responsible team for helping.")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "3º Attempt: Game room validation success!")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("Enqueued switch active version operation with id: %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -199,7 +199,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Game room validation success!")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("Enqueued switch active version operation with id: %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -249,7 +249,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Game room validation success!")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("Enqueued switch active version operation with id: %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -299,7 +299,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Game room validation success!")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("Enqueued switch active version operation with id: %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -629,7 +629,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("Enqueued switch active version operation with id: %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -672,7 +672,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("Enqueued switch active version operation with id: %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 
@@ -715,7 +715,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 				})
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("Enqueued switch active version operation with id: %s", switchOpID))
 
 		result := executor.Execute(context.Background(), op, operationDef)
 

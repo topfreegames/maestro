@@ -25,7 +25,7 @@ package newschedulerversion
 const (
 	startingValidationMessageTemplate = "Major version detected, starting game room validation process..."
 
-	enqueuedSwitchVersionMessageTemplate = "enqueued switch active version operation with id: %s"
+	enqueuedSwitchVersionMessageTemplate = "Enqueued switch active version operation with id: %s"
 
 	validationSuccessMessageTemplate = "%dº Attempt: Game room validation success!"
 
