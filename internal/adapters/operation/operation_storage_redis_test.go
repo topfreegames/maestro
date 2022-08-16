@@ -50,8 +50,8 @@ func TestCreateOperation(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 		createdAtString := "2020-01-01T00:00:00.001Z"
 		createdAt, _ := time.Parse(time.RFC3339Nano, createdAtString)
 
@@ -93,10 +93,10 @@ func TestCreateOperation(t *testing.T) {
 	t.Run("with success when operation have ttl", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{
+		operationsTTLMap := map[Definition]time.Duration{
 			healthcontroller.OperationName: time.Second,
 		}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 		createdAtString := "2020-01-01T00:00:00.001Z"
 		createdAt, _ := time.Parse(time.RFC3339Nano, createdAtString)
 
@@ -126,8 +126,8 @@ func TestCreateOperation(t *testing.T) {
 	t.Run("fails on redis", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		op := &operation.Operation{
 			ID:             "some-op-id",
@@ -149,8 +149,8 @@ func TestGetOperation(t *testing.T) {
 	t.Run("with success", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		createdAtString := "2020-01-01T00:00:00.001Z"
 		createdAt, _ := time.Parse(time.RFC3339Nano, createdAtString)
@@ -223,8 +223,8 @@ func TestGetOperation(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		operationStored, err := storage.GetOperation(context.Background(), "test-scheduler", "inexistent-id")
 		require.ErrorIs(t, errors.ErrNotFound, err)
@@ -234,8 +234,8 @@ func TestGetOperation(t *testing.T) {
 	t.Run("fail to parse created at field", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		op := &operation.Operation{
 			ID:             "some-op-id",
@@ -261,8 +261,8 @@ func TestGetOperation(t *testing.T) {
 	t.Run("fails on redis", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		// "drop" redis connection
 		client.Close()
@@ -342,8 +342,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return operations list from the last day when there is more than one operation stored", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			expectedOperations := []*operation.Operation{operations[1], operations[0]}
 
 			for _, op := range operations {
@@ -377,8 +377,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return empty list when there is no operation stored", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
@@ -388,8 +388,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return no error when operations are in the history but not stored, remove nonexistent operations from history asynchronously", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 			for _, op := range operations {
 				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
@@ -411,8 +411,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return no error when some operation is in the history but not stored", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 			for _, op := range operations {
 				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
@@ -479,8 +479,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return error when some error occurs parsing any operation hash", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 			for _, op := range operations {
 				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
@@ -496,18 +496,18 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			}
 
 			_, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
-			assert.EqualError(t, err, "failed to build operation from the hash: failed to parse operation status: strconv.Atoi: parsing \"\": invalid syntax")
+			assert.ErrorContains(t, err, "failed to build operation from the hash: failed to parse operation status: strconv.Atoi: parsing \"\": invalid syntax")
 		})
 
 		t.Run("return error when there is some error in redis call", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			client.Close()
 
 			_, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
-			assert.EqualError(t, err, "failed to list finished operations for \"test-scheduler\": redis: client is closed")
+			assert.ErrorContains(t, err, "failed to list finished operations for \"test-scheduler\": redis: client is closed")
 		})
 	})
 }
@@ -517,8 +517,8 @@ func TestUpdateOperationStatus(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		clock := clockmock.NewFakeClock(now)
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		op := &operation.Operation{
 			ID:            "some-op-id",
@@ -551,8 +551,8 @@ func TestUpdateOperationStatus(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		clock := clockmock.NewFakeClock(now)
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		op := &operation.Operation{
 			ID:            "some-op-id",
@@ -599,8 +599,8 @@ func TestUpdateOperationDefinition(t *testing.T) {
 	t.Run("return no error and update operation definition", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 		tookAction := true
 		definition := healthcontroller.SchedulerHealthControllerDefinition{TookAction: &tookAction}
 
@@ -628,8 +628,8 @@ func TestUpdateOperationDefinition(t *testing.T) {
 	t.Run("return error if some error occurs with redis connection", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		clock := clockmock.NewFakeClock(time.Now())
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 		tookAction := true
 		definition := healthcontroller.SchedulerHealthControllerDefinition{TookAction: &tookAction}
 
@@ -644,7 +644,7 @@ func TestUpdateOperationDefinition(t *testing.T) {
 		require.NoError(t, err)
 		client.Close()
 		err = storage.UpdateOperationDefinition(context.Background(), op.SchedulerName, op.ID, &definition)
-		require.EqualError(t, err, "failed to update operation definition: redis: client is closed")
+		require.ErrorContains(t, err, "failed to update operation definition: redis: client is closed")
 	})
 
 }
@@ -655,8 +655,8 @@ func TestUpdateOperationExecutionHistory(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		clock := clockmock.NewFakeClock(now)
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		op := &operation.Operation{
 			ID:            "some-op-id",
@@ -693,8 +693,8 @@ func TestUpdateOperationExecutionHistory(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
 		clock := clockmock.NewFakeClock(now)
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 		op := &operation.Operation{
 			ID:            "some-op-id",
@@ -705,7 +705,7 @@ func TestUpdateOperationExecutionHistory(t *testing.T) {
 
 		err := storage.UpdateOperationExecutionHistory(context.Background(), op)
 		require.Error(t, err)
-		require.EqualError(t, err, "failed to update operation execution history: redis: client is closed")
+		require.ErrorContains(t, err, "failed to update operation execution history: redis: client is closed")
 	})
 
 }
@@ -714,8 +714,8 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 	t.Run("list all operations", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clockmock.NewFakeClock(now), operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clockmock.NewFakeClock(now), operationsTTLMap)
 
 		schedulerName := "test-scheduler"
 		activeOperations := []*operation.Operation{
@@ -759,8 +759,8 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 	t.Run("fetching an operation that doesnt exists in the list, return without them", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		now := time.Now()
-		operationsTTlMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clockmock.NewFakeClock(now), operationsTTlMap)
+		operationsTTLMap := map[Definition]time.Duration{}
+		storage := NewRedisOperationStorage(client, clockmock.NewFakeClock(now), operationsTTLMap)
 
 		schedulerName := "test-scheduler"
 		activeOperations := []*operation.Operation{
@@ -858,8 +858,8 @@ func TestCleanOperationsHistory(t *testing.T) {
 		t.Run("if operations history is not empty it deletes all operations and history", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			expectedOperations := []*operation.Operation{operations[1], operations[0]}
 
 			for _, op := range operations {
@@ -909,8 +909,8 @@ func TestCleanOperationsHistory(t *testing.T) {
 		t.Run("if operations history is empty it returns with no error", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 			operationsReturned, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
@@ -928,13 +928,13 @@ func TestCleanOperationsHistory(t *testing.T) {
 		t.Run("if client is closed it returns error", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			client.Close()
 
 			err := storage.CleanOperationsHistory(context.Background(), schedulerName)
 
-			assert.EqualError(t, err, "failed to list finished operations for \"test-scheduler\": redis: client is closed")
+			assert.ErrorContains(t, err, "failed to list finished operations for \"test-scheduler\": redis: client is closed")
 		})
 
 	})
