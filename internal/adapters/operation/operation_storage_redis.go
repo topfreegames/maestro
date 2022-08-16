@@ -304,10 +304,10 @@ func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName
 
 func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string, page, pageSize int64) (operationsIDs []string, err error) {
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-		operationsIDs, err = r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+		operationsIDs, err = r.client.ZRevRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
 			Min:    "-inf",
 			Max:    "+inf",
-			Offset: page,
+			Offset: page * pageSize,
 			Count:  pageSize,
 		}).Result()
 		return err

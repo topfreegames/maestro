@@ -277,8 +277,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 	schedulerName := "test-scheduler"
 
 	t.Run("with success", func(t *testing.T) {
-		nowTime := time.Now()
-		now, _ := time.Parse(time.RFC3339Nano, nowTime.Format(time.RFC3339Nano))
+		now := time.Date(2022, time.January, 19, 6, 12, 15, 0, time.UTC)
 
 		operations := []*operation.Operation{
 			{
@@ -344,7 +343,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-			expectedOperations := []*operation.Operation{operations[3], operations[2], operations[1], operations[0]}
+			expectedOperations := []*operation.Operation{operations[0], operations[1], operations[2], operations[3]}
 			page := int64(0)
 			pageSize := int64(4)
 
@@ -377,12 +376,12 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			assert.Equal(t, int64(4), total)
 		})
 
-		t.Run("return operations list and total using pagination parameters, it returns same elements's number as the page size", func(t *testing.T) {
+		t.Run("return operations list and total using pagination parameters, it returns same element's number as the page size", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTlMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
-			expectedOperations := []*operation.Operation{operations[1], operations[0]}
+			expectedOperations := []*operation.Operation{operations[2], operations[3]}
 			page := int64(1)
 			pageSize := int64(2)
 
