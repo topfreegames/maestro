@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+
 	"github.com/topfreegames/maestro/internal/core/operations"
 
 	"go.uber.org/zap"
@@ -127,16 +129,35 @@ func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, sched
 	pipe := r.client.Pipeline()
 	pipe.ZRem(ctx, r.buildSchedulerActiveOperationsKey(schedulerName), operationID)
 	pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+	pipe.ZRem(ctx, r.buildSchedulerNoActionKey(schedulerName), operationID)
 	pipe.HSet(ctx, r.buildSchedulerOperationKey(schedulerName, operationID), map[string]interface{}{
 		statusRedisKey: strconv.Itoa(int(status)),
 	})
-
-	operationsList := r.buildSchedulerHistoryOperationsKey(schedulerName)
-	if status == operation.StatusInProgress {
-		operationsList = r.buildSchedulerActiveOperationsKey(schedulerName)
+	operationHash, err := r.client.HGetAll(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
+	if err != nil {
+		return errors.NewErrUnexpected("failed to fetch operation for updating status").WithError(err)
+	}
+	op, err := buildOperationFromMap(operationHash)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to parse operation for updating status").WithError(err)
 	}
 
-	pipe.ZAdd(ctx, operationsList, &redis.Z{
+	var listKey string
+	operationTookAction, err := operationHasNoAction(op)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to check if operation took action when updating status").WithError(err)
+	}
+
+	switch {
+	case status == operation.StatusInProgress:
+		listKey = r.buildSchedulerActiveOperationsKey(schedulerName)
+	case status == operation.StatusFinished && operationTookAction:
+		listKey = r.buildSchedulerNoActionKey(schedulerName)
+	default:
+		listKey = r.buildSchedulerHistoryOperationsKey(schedulerName)
+	}
+
+	pipe.ZAdd(ctx, listKey, &redis.Z{
 		Member: operationID,
 		Score:  float64(r.clock.Now().Unix()),
 	})
@@ -146,7 +167,7 @@ func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, sched
 	})
 
 	if err != nil {
-		return errors.NewErrUnexpected("failed to update operations").WithError(err)
+		return errors.NewErrUnexpected("failed to update operation status").WithError(err)
 	}
 
 	return nil
@@ -335,6 +356,10 @@ func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName
 	return fmt.Sprintf("operations:%s:lists:history", schedulerName)
 }
 
+func (r *redisOperationStorage) buildSchedulerNoActionKey(schedulerName string) string {
+	return fmt.Sprintf("operations:%s:lists:noaction", schedulerName)
+}
+
 func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string, from, to time.Time) (operationsIDs []string, err error) {
 	// TODO(guilhermocc): receive this time range as filter argument
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
@@ -348,6 +373,18 @@ func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Con
 		return nil, errors.NewErrUnexpected("failed to list finished operations for \"%s\"", schedulerName).WithError(err)
 	}
 	return operationsIDs, err
+}
+
+func operationHasNoAction(op *operation.Operation) (bool, error) {
+	if op.DefinitionName == healthcontroller.OperationName {
+		def := healthcontroller.SchedulerHealthControllerDefinition{}
+		err := def.Unmarshal(op.Input)
+		if err != nil {
+			return false, err
+		}
+		return !*def.TookAction, nil
+	}
+	return false, nil
 }
 
 func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error) {
