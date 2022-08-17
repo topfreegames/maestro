@@ -126,13 +126,6 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 }
 
 func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) (err error) {
-	pipe := r.client.Pipeline()
-	pipe.ZRem(ctx, r.buildSchedulerActiveOperationsKey(schedulerName), operationID)
-	pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
-	pipe.ZRem(ctx, r.buildSchedulerNoActionKey(schedulerName), operationID)
-	pipe.HSet(ctx, r.buildSchedulerOperationKey(schedulerName, operationID), map[string]interface{}{
-		statusRedisKey: strconv.Itoa(int(status)),
-	})
 	operationHash, err := r.client.HGetAll(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
 	if err != nil {
 		return errors.NewErrUnexpected("failed to fetch operation for updating status").WithError(err)
@@ -142,25 +135,17 @@ func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, sched
 		return errors.NewErrUnexpected("failed to parse operation for updating status").WithError(err)
 	}
 
-	var listKey string
-	operationTookAction, err := operationHasNoAction(op)
+	pipe := r.client.Pipeline()
+
+	err = r.updateOperationInSortedSet(ctx, pipe, schedulerName, op, status)
 	if err != nil {
-		return errors.NewErrUnexpected("failed to check if operation took action when updating status").WithError(err)
+		return errors.NewErrUnexpected("failed to update the operation on sorted set").WithError(err)
 	}
 
-	switch {
-	case status == operation.StatusInProgress:
-		listKey = r.buildSchedulerActiveOperationsKey(schedulerName)
-	case status == operation.StatusFinished && operationTookAction:
-		listKey = r.buildSchedulerNoActionKey(schedulerName)
-	default:
-		listKey = r.buildSchedulerHistoryOperationsKey(schedulerName)
-	}
-
-	pipe.ZAdd(ctx, listKey, &redis.Z{
-		Member: operationID,
-		Score:  float64(r.clock.Now().Unix()),
+	pipe.HSet(ctx, r.buildSchedulerOperationKey(schedulerName, operationID), map[string]interface{}{
+		statusRedisKey: strconv.Itoa(int(status)),
 	})
+
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
 		_, err = pipe.Exec(ctx)
 		return err
@@ -328,6 +313,38 @@ func (r *redisOperationStorage) UpdateOperationDefinition(ctx context.Context, s
 	return nil
 }
 
+func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, schedulerName string) error {
+	operationsIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+		Min: "-inf",
+		Max: "+inf",
+	}).Result()
+
+	if err != nil {
+		return errors.NewErrUnexpected("failed to list operations for \"%s\" when trying to clean expired operations", schedulerName).WithError(err)
+	}
+
+	if len(operationsIDs) > 0 {
+
+		pipe := r.client.Pipeline()
+		for _, operationID := range operationsIDs {
+			operationExists, _ := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
+			if operationExists == 0 {
+				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+			}
+		}
+
+		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+			_, err = pipe.Exec(ctx)
+			return err
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to clean expired operations: %w", err)
+		}
+	}
+	return nil
+}
+
 func (r *redisOperationStorage) removeNonExistentOperationFromHistory(ctx context.Context, name string, operations []string) {
 	go func() {
 		pipe := r.client.Pipeline()
@@ -375,6 +392,29 @@ func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Con
 	return operationsIDs, err
 }
 
+func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, pipe redis.Pipeliner, schedulerName string, op *operation.Operation, newStatus operation.Status) error {
+	var listKey string
+	operationTookAction, err := operationHasNoAction(op)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to check if operation took action when updating status").WithError(err)
+	}
+
+	switch {
+	case newStatus == operation.StatusInProgress:
+		listKey = r.buildSchedulerActiveOperationsKey(schedulerName)
+	case newStatus == operation.StatusFinished && operationTookAction:
+		listKey = r.buildSchedulerNoActionKey(schedulerName)
+	default:
+		listKey = r.buildSchedulerHistoryOperationsKey(schedulerName)
+	}
+
+	pipe.ZRem(ctx, r.buildSchedulerActiveOperationsKey(schedulerName), op.ID)
+	pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), op.ID)
+	pipe.ZRem(ctx, r.buildSchedulerNoActionKey(schedulerName), op.ID)
+	pipe.ZAdd(ctx, listKey, &redis.Z{Member: op.ID, Score: float64(r.clock.Now().Unix())})
+	return nil
+}
+
 func operationHasNoAction(op *operation.Operation) (bool, error) {
 	if op.DefinitionName == healthcontroller.OperationName {
 		def := healthcontroller.SchedulerHealthControllerDefinition{}
@@ -415,36 +455,4 @@ func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error
 		Input:            []byte(opMap[definitionContentsRedisKey]),
 		ExecutionHistory: executionHistory,
 	}, nil
-}
-
-func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, schedulerName string) error {
-	operationsIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
-		Min: "-inf",
-		Max: "+inf",
-	}).Result()
-
-	if err != nil {
-		return errors.NewErrUnexpected("failed to list operations for \"%s\" when trying to clean expired operations", schedulerName).WithError(err)
-	}
-
-	if len(operationsIDs) > 0 {
-
-		pipe := r.client.Pipeline()
-		for _, operationID := range operationsIDs {
-			operationExists, _ := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
-			if operationExists == 0 {
-				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
-			}
-		}
-
-		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-			_, err = pipe.Exec(ctx)
-			return err
-		})
-
-		if err != nil {
-			return fmt.Errorf("failed to clean expired operations: %w", err)
-		}
-	}
-	return nil
 }
