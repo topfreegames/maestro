@@ -365,3 +365,35 @@ func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error
 		ExecutionHistory: executionHistory,
 	}, nil
 }
+
+func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, schedulerName string) error {
+	operationsIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+		Min: "-inf",
+		Max: "+inf",
+	}).Result()
+
+	if err != nil {
+		return errors.NewErrUnexpected("failed to list operations for \"%s\" when trying to clean expired operations", schedulerName).WithError(err)
+	}
+
+	if len(operationsIDs) > 0 {
+
+		pipe := r.client.Pipeline()
+		for _, operationID := range operationsIDs {
+			operationExists, _ := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
+			if operationExists == 0 {
+				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+			}
+		}
+
+		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+			_, err = pipe.Exec(ctx)
+			return err
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to clean expired operations: %w", err)
+		}
+	}
+	return nil
+}
