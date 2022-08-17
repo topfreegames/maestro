@@ -90,7 +90,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, request.GetSchedulerName())
+	finishedOperationEntities, _, err := h.operationManager.ListSchedulerFinishedOperations(ctx, request.GetSchedulerName(), 0, -1)
 	if err != nil {
 		handlerLogger.Error("error listing finished operations", zap.Error(err))
 		return nil, status.Error(codes.Unknown, err.Error())
