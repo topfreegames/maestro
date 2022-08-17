@@ -90,7 +90,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().GrantLease(gomock.AssignableToTypeOf(workerContext), expectedOperation)
 		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any())
 		operationManager.EXPECT().StartLeaseRenewGoRoutine(gomock.AssignableToTypeOf(workerContext), expectedOperation)
-		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation, operationDefinition)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
 
@@ -166,7 +166,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation rollback")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
 
-		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation, operationDefinition)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
 
@@ -235,7 +235,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation rollback")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
 
-		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation, operationDefinition)
 		operationManager.EXPECT().RevokeLease(gomock.Any(), expectedOperation)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
 
@@ -282,7 +282,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().GetOperation(gomock.Any(), scheduler.Name, expectedOperation.ID).Return(expectedOperation, operationDefinition, nil)
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation evicted")
-		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation, operationDefinition)
 
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
@@ -331,7 +331,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), expectedOperation.SchedulerName).Return(pendingOpsChan)
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(false)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation evicted")
-		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation, operationDefinition)
 
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
@@ -388,7 +388,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
 		operationManager.EXPECT().GrantLease(gomock.AssignableToTypeOf(workerContext), expectedOperation).Return(nil)
 		operationManager.EXPECT().StartOperation(gomock.AssignableToTypeOf(operationContext), expectedOperation, gomock.Any()).Return(errors.New("some error starting operation"))
-		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation, operationDefinition)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Failed to start operation, reason: some error starting operation")
 
 		go func() {
@@ -443,7 +443,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationDefinition.EXPECT().ShouldExecute(gomock.Any(), []*operation.Operation{}).Return(true)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation")
 		operationManager.EXPECT().GrantLease(gomock.AssignableToTypeOf(workerContext), expectedOperation).Return(errors.New("some error granting lease"))
-		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation)
+		operationManager.EXPECT().FinishOperation(gomock.Any(), expectedOperation, operationDefinition)
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Failed to grant lease to operation, reason: some error granting lease")
 		// Ends the worker by cancelling it
 

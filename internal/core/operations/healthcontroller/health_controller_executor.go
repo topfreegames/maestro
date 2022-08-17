@@ -81,6 +81,7 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
+	def := definition.(*SchedulerHealthControllerDefinition)
 
 	gameRoomIDs, instances, scheduler, err := ex.loadActualState(ctx, op, logger)
 	if err != nil {
@@ -108,7 +109,7 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		return err
 	}
 
-	err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), desiredNumberOfRooms)
+	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, logger, len(availableRooms), desiredNumberOfRooms)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
 		return err
@@ -158,8 +159,9 @@ func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx 
 	}
 }
 
-func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, logger *zap.Logger, actualAmount, desiredAmount int) error {
+func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *SchedulerHealthControllerDefinition, logger *zap.Logger, actualAmount, desiredAmount int) error {
 	var msgToAppend string
+	var tookAction bool
 
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
@@ -170,6 +172,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 		if err != nil {
 			return err
 		}
+		tookAction = true
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
 	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
@@ -179,14 +182,16 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 		if err != nil {
 			return err
 		}
+		tookAction = true
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to add %v rooms.", addOperation.ID, addAmount)
 	default: // No need to scale
+		tookAction = false
 		msgToAppend = "current amount of rooms is equal to desired amount, no changes needed"
-
 	}
 
 	logger.Info(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
+	def.TookAction = &tookAction
 	return nil
 }
 

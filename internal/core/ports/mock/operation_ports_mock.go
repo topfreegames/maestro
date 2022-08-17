@@ -95,17 +95,17 @@ func (mr *MockOperationManagerMockRecorder) EnqueueOperationCancellationRequest(
 }
 
 // FinishOperation mocks base method.
-func (m *MockOperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {
+func (m *MockOperationManager) FinishOperation(ctx context.Context, op *operation.Operation, def operations.Definition) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FinishOperation", ctx, op)
+	ret := m.ctrl.Call(m, "FinishOperation", ctx, op, def)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // FinishOperation indicates an expected call of FinishOperation.
-func (mr *MockOperationManagerMockRecorder) FinishOperation(ctx, op interface{}) *gomock.Call {
+func (mr *MockOperationManagerMockRecorder) FinishOperation(ctx, op, def interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinishOperation", reflect.TypeOf((*MockOperationManager)(nil).FinishOperation), ctx, op)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinishOperation", reflect.TypeOf((*MockOperationManager)(nil).FinishOperation), ctx, op, def)
 }
 
 // GetOperation mocks base method.
@@ -468,6 +468,20 @@ func (m *MockOperationStorage) ListSchedulerFinishedOperations(ctx context.Conte
 func (mr *MockOperationStorageMockRecorder) ListSchedulerFinishedOperations(ctx, schedulerName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerFinishedOperations", reflect.TypeOf((*MockOperationStorage)(nil).ListSchedulerFinishedOperations), ctx, schedulerName)
+}
+
+// UpdateOperationDefinition mocks base method.
+func (m *MockOperationStorage) UpdateOperationDefinition(ctx context.Context, schedulerName, operationID string, def operations.Definition) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateOperationDefinition", ctx, schedulerName, operationID, def)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateOperationDefinition indicates an expected call of UpdateOperationDefinition.
+func (mr *MockOperationStorageMockRecorder) UpdateOperationDefinition(ctx, schedulerName, operationID, def interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOperationDefinition", reflect.TypeOf((*MockOperationStorage)(nil).UpdateOperationDefinition), ctx, schedulerName, operationID, def)
 }
 
 // UpdateOperationExecutionHistory mocks base method.

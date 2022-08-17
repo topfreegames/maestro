@@ -33,7 +33,9 @@ import (
 
 const OperationName = "health_controller"
 
-type SchedulerHealthControllerDefinition struct{}
+type SchedulerHealthControllerDefinition struct {
+	TookAction *bool `json:"took_action,omitempty"`
+}
 
 func (def *SchedulerHealthControllerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
