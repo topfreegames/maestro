@@ -589,9 +589,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		}
 
 		schedulerName := "test-scheduler"
-		page := "0"
-		pageSize := "-1"
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize).Return(operationsResult, nil)
+
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, 0, -1).Return(operationsResult, nil)
 		operations, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName)
 		require.NoError(t, err)
 		require.ElementsMatch(t, operationsResult, operations)
