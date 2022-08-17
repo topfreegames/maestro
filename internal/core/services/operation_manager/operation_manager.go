@@ -192,10 +192,14 @@ func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context,
 	return operations, err
 }
 
-func (om *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation) error {
-	err := om.Storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, op.Status)
+func (om *OperationManager) FinishOperation(ctx context.Context, op *operation.Operation, def operations.Definition) error {
+	err := om.Storage.UpdateOperationDefinition(ctx, op.SchedulerName, op.ID, def)
 	if err != nil {
-		return fmt.Errorf("failed to finish operation: %w", err)
+		return fmt.Errorf("failed to update operation definition: %w", err)
+	}
+	err = om.Storage.UpdateOperationStatus(ctx, op.SchedulerName, op.ID, op.Status)
+	if err != nil {
+		return fmt.Errorf("failed to update operation status: %w", err)
 	}
 
 	om.OperationCancelFunctions.removeFunction(op.SchedulerName, op.ID)

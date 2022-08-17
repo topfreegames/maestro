@@ -29,6 +29,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations"
+
+	"go.uber.org/zap"
+
 	"github.com/topfreegames/maestro/internal/adapters/metrics"
 
 	"github.com/go-redis/redis/v8"
@@ -289,6 +293,34 @@ func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, sche
 	}
 
 	return nil
+}
+
+func (r *redisOperationStorage) UpdateOperationDefinition(ctx context.Context, schedulerName string, operationID string, def operations.Definition) error {
+	_, err := r.client.HSet(ctx, r.buildSchedulerOperationKey(schedulerName, operationID), map[string]interface{}{
+		definitionNameRedisKey:     def.Name(),
+		definitionContentsRedisKey: def.Marshal(),
+	}).Result()
+
+	if err != nil {
+		return fmt.Errorf("failed to update operation definition: %w", err)
+	}
+	return nil
+}
+
+func (r *redisOperationStorage) removeNonExistentOperationFromHistory(ctx context.Context, name string, operations []string) {
+	go func() {
+		pipe := r.client.Pipeline()
+		for _, operationID := range operations {
+			pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(name), operationID)
+		}
+		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+			_, err := pipe.Exec(context.Background())
+			if err != nil {
+				zap.L().Error("failed to remove non-existent operations from history", zap.Error(err))
+			}
+			return err
+		})
+	}()
 }
 
 func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID string) string {
