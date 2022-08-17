@@ -422,7 +422,7 @@ func operationHasNoAction(op *operation.Operation) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		return !*def.TookAction, nil
+		return def.TookAction != nil && !*def.TookAction, nil
 	}
 	return false, nil
 }

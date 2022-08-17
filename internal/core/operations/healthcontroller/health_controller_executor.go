@@ -101,6 +101,7 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		if err != nil {
 			logger.Error("could not enqueue operation to delete expired rooms", zap.Error(err))
 		}
+		ex.setTookAction(def, true)
 	}
 
 	desiredNumberOfRooms, err := ex.getDesiredNumberOfRooms(ctx, logger, scheduler)
@@ -191,7 +192,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 
 	logger.Info(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
-	def.TookAction = &tookAction
+	ex.setTookAction(def, tookAction)
 	return nil
 }
 
@@ -293,4 +294,11 @@ func (ex *SchedulerHealthControllerExecutor) mapExistentAndNonExistentGameRooms(
 	}
 
 	return nonexistentGameRoomsIDs, existentGameRoomsInstancesMap
+}
+
+func (ex *SchedulerHealthControllerExecutor) setTookAction(def *SchedulerHealthControllerDefinition, tookAction bool) {
+	if def.TookAction != nil && *def.TookAction == true {
+		return
+	}
+	def.TookAction = &tookAction
 }
