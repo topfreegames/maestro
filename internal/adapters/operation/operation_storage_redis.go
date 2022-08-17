@@ -264,7 +264,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 }
 
 func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, schedulerName string) error {
-	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, -1, 0)
+	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, 0, -1)
 	if err != nil {
 		return err
 	}
