@@ -552,76 +552,182 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 }
 
 func TestUpdateOperationStatus(t *testing.T) {
-	t.Run("set operation as active", func(t *testing.T) {
-		client := test.GetRedisConnection(t, redisAddress)
-		now := time.Now()
-		clock := clockmock.NewFakeClock(now)
-		operationsTTLMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+	schedulerName := "test-scheduler"
 
-		op := &operation.Operation{
-			ID:            "some-op-id",
-			SchedulerName: "test-scheduler",
-			Status:        operation.StatusPending,
-		}
+	baseOperation := &operation.Operation{
+		ID:             "some-op-id-1",
+		SchedulerName:  schedulerName,
+		DefinitionName: "test-definition",
+		CreatedAt:      time.Date(2022, time.November, 19, 6, 12, 15, 0, time.UTC),
+		Input:          []byte("hello test"),
+		ExecutionHistory: []operation.OperationEvent{
+			{
+				CreatedAt: time.Date(1999, time.November, 19, 6, 12, 15, 0, time.UTC),
+				Event:     "some-event",
+			},
+		},
+	}
 
-		err := storage.CreateOperation(context.Background(), op)
-		require.NoError(t, err)
+	t.Run("with success", func(t *testing.T) {
 
-		err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusInProgress)
-		require.NoError(t, err)
+		t.Run("transit operation from pending to in-progress, update status and store it in active sorted set", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			now := time.Now()
+			clock := clockmock.NewFakeClock(now)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+			op := *baseOperation
+			op.Status = operation.StatusPending
 
-		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
-		require.NoError(t, err)
+			// Create Operation hashmap
+			executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
+			require.NoError(t, err)
+			err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+				idRedisKey:                 op.ID,
+				schedulerNameRedisKey:      op.SchedulerName,
+				statusRedisKey:             strconv.Itoa(int(op.Status)),
+				definitionNameRedisKey:     op.DefinitionName,
+				createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+				definitionContentsRedisKey: op.Input,
+				executionHistoryRedisKey:   executionHistoryJson,
+			}).Err()
+			require.NoError(t, err)
 
-		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
-		require.NoError(t, err)
-		require.Equal(t, operation.StatusInProgress, operation.Status(intStatus))
+			err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusInProgress)
+			assert.NoError(t, err)
 
-		score, err := client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Result()
-		require.NoError(t, err)
-		require.Equal(t, float64(now.Unix()), score)
+			// Assert the status was updated
+			updatedStatus, err := client.HGet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), statusRedisKey).Result()
+			assert.NoError(t, err)
+			intStatus, err := strconv.Atoi(updatedStatus)
+			assert.NoError(t, err)
+			assert.Equal(t, operation.StatusInProgress, operation.Status(intStatus))
 
-		err = client.ZScore(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), op.ID).Err()
-		require.ErrorIs(t, redis.Nil, err)
+			// Assert the operation was added to the active sorted set
+			updatedAt, err := client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Result()
+			assert.NoError(t, err)
+			assert.Equal(t, float64(now.Unix()), updatedAt)
+		})
+
+		t.Run("transit operation from in-progress to finished, update status and store it in history sorted set", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			now := time.Now()
+			clock := clockmock.NewFakeClock(now)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+			op := *baseOperation
+			op.Status = operation.StatusInProgress
+
+			// Create Operation hashmap and add it to active sorted set
+			err := client.ZAdd(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), &redis.Z{
+				Member: op.ID,
+				Score:  float64(op.CreatedAt.Unix()),
+			}).Err()
+			require.NoError(t, err)
+			executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
+			require.NoError(t, err)
+			err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+				idRedisKey:                 op.ID,
+				schedulerNameRedisKey:      op.SchedulerName,
+				statusRedisKey:             strconv.Itoa(int(op.Status)),
+				definitionNameRedisKey:     op.DefinitionName,
+				createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+				definitionContentsRedisKey: op.Input,
+				executionHistoryRedisKey:   executionHistoryJson,
+			}).Err()
+			require.NoError(t, err)
+
+			err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusFinished)
+			assert.NoError(t, err)
+
+			// Assert the status was updated
+			updatedStatus, err := client.HGet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), statusRedisKey).Result()
+			assert.NoError(t, err)
+			intStatus, err := strconv.Atoi(updatedStatus)
+			assert.NoError(t, err)
+			assert.Equal(t, operation.StatusFinished, operation.Status(intStatus))
+
+			// Assert the operation was added to the history sorted set
+			updatedAt, err := client.ZScore(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), op.ID).Result()
+			assert.NoError(t, err)
+			assert.Equal(t, float64(now.Unix()), updatedAt)
+
+			// Assert the operation was removed from the active sorted set
+			_, err = client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Result()
+			assert.ErrorIs(t, redis.Nil, err)
+		})
+
+		t.Run("transit a no-action operation from in-progress to finished, update status and store it in noaction sorted set", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			now := time.Now()
+			clock := clockmock.NewFakeClock(now)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+			op := *baseOperation
+			op.Status = operation.StatusInProgress
+			op.DefinitionName = healthcontroller.OperationName
+			tookAction := false
+			definition := &healthcontroller.SchedulerHealthControllerDefinition{TookAction: &tookAction}
+			op.Input = definition.Marshal()
+
+			// Create Operation hashmap and add it to active sorted set
+			err := client.ZAdd(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), &redis.Z{
+				Member: op.ID,
+				Score:  float64(op.CreatedAt.Unix()),
+			}).Err()
+			require.NoError(t, err)
+			executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
+			require.NoError(t, err)
+			err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
+				idRedisKey:                 op.ID,
+				schedulerNameRedisKey:      op.SchedulerName,
+				statusRedisKey:             strconv.Itoa(int(op.Status)),
+				definitionNameRedisKey:     op.DefinitionName,
+				createdAtRedisKey:          op.CreatedAt.Format(time.RFC3339Nano),
+				definitionContentsRedisKey: op.Input,
+				executionHistoryRedisKey:   executionHistoryJson,
+			}).Err()
+			require.NoError(t, err)
+
+			err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusFinished)
+			assert.NoError(t, err)
+
+			// Assert the status was updated
+			updatedStatus, err := client.HGet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), statusRedisKey).Result()
+			assert.NoError(t, err)
+			intStatus, err := strconv.Atoi(updatedStatus)
+			assert.NoError(t, err)
+			assert.Equal(t, operation.StatusFinished, operation.Status(intStatus))
+
+			// Assert the operation was added to the noaction sorted set
+			updatedAt, err := client.ZScore(context.Background(), storage.buildSchedulerNoActionKey(op.SchedulerName), op.ID).Result()
+			assert.NoError(t, err)
+			assert.Equal(t, float64(now.Unix()), updatedAt)
+
+			// Assert the operation was removed from the active sorted set
+			_, err = client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Result()
+			assert.ErrorIs(t, redis.Nil, err)
+		})
 	})
 
-	t.Run("update operation status to inactive", func(t *testing.T) {
-		client := test.GetRedisConnection(t, redisAddress)
-		now := time.Now()
-		clock := clockmock.NewFakeClock(now)
-		operationsTTLMap := map[Definition]time.Duration{}
-		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+	t.Run("with error", func(t *testing.T) {
 
-		op := &operation.Operation{
-			ID:            "some-op-id",
-			SchedulerName: "test-scheduler",
-			Status:        operation.StatusPending,
-		}
+		t.Run("returns error when the client is closed", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			now := time.Now()
+			clock := clockmock.NewFakeClock(now)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+			op := *baseOperation
 
-		err := storage.CreateOperation(context.Background(), op)
-		require.NoError(t, err)
+			err := client.Close()
+			require.NoError(t, err)
 
-		err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusInProgress)
-		require.NoError(t, err)
-
-		err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusError)
-		require.NoError(t, err)
-
-		operationStored, err := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Result()
-		require.NoError(t, err)
-
-		intStatus, err := strconv.Atoi(operationStored[statusRedisKey])
-		require.NoError(t, err)
-		require.Equal(t, operation.StatusError, operation.Status(intStatus))
-
-		score, err := client.ZScore(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), op.ID).Result()
-		require.NoError(t, err)
-		require.Equal(t, float64(now.Unix()), score)
-
-		err = client.ZScore(context.Background(), storage.buildSchedulerActiveOperationsKey(op.SchedulerName), op.ID).Err()
-		require.ErrorIs(t, redis.Nil, err)
+			err = storage.UpdateOperationStatus(context.Background(), op.SchedulerName, op.ID, operation.StatusInProgress)
+			assert.ErrorContains(t, err, "failed to fetch operation for updating status: redis: client is closed")
+		})
 	})
+
 }
 
 func TestUpdateOperationDefinition(t *testing.T) {
