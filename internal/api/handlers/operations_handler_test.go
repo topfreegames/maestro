@@ -197,9 +197,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(-1)).Return(finishedOperations, int64(0), nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -221,9 +219,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(-1)).Return(finishedOperations, int64(0), nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -246,9 +242,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(-1)).Return(finishedOperations, int64(0), nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -361,11 +355,11 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
-	t.Run("with success and operations final stage", func(t *testing.T) {
+	t.Run("with success and operations final stage with default pagination", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName).Return(finishedOperations, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -380,6 +374,28 @@ func TestListOperations(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 200, rr.Code)
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_final_stage_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with success and operations final stage with custom pagination", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(1), int64(10)).Return(finishedOperations, int64(13), nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&page=1&perPage=10", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 200, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_final_stage_pagination_success.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
@@ -430,9 +446,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(-1)).Return(nil, int64(0), errors.NewErrUnexpected("error listing finished operations"))
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(nil, int64(0), errors.NewErrUnexpected("error listing finished operations"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))

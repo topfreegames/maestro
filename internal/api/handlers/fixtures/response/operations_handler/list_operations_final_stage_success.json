@@ -1,4 +1,7 @@
 {
+  "page": 0,
+  "pageSize": 15,
+  "total": 3,
   "operations": [
     {
       "id": "ae218cc1-2dd8-448b-a78f-0cc979f89f37",

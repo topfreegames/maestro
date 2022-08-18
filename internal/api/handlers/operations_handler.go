@@ -63,14 +63,11 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		handlerLogger.Error(fmt.Sprintf("error parsing sorting parameters, orderBy: %+v", request.OrderBy), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-
+	page, pageSize := extractPaginationParameters(request)
 	operationStage := request.Stage
-	if err != nil {
-		handlerLogger.Error(fmt.Sprintf("error parsing stage filter parameters, stage: %s", request.Stage), zap.Error(err))
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
 
 	var operations []*operation.Operation
+	var total uint32
 
 	switch operationStage {
 	case "pending":
@@ -78,33 +75,42 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		if err != nil {
 			return nil, status.Error(codes.Unknown, "error listing operations on pending stage")
 		}
+		total = uint32(len(operations))
+		pageSize = total
 
 	case "active":
 		operations, err = h.queryActiveOperations(ctx, request.SchedulerName, sortingOrder)
 		if err != nil {
 			return nil, status.Error(codes.Unknown, "error listing operations on active stage")
 		}
+		total = uint32(len(operations))
+		pageSize = total
 
 	case "final":
-		operations, err = h.queryFinishedOperations(ctx, request.SchedulerName, sortingOrder)
+		operations, total, err = h.queryFinishedOperations(ctx, request.SchedulerName, sortingOrder, int64(page), int64(pageSize))
 		if err != nil {
 			return nil, status.Error(codes.Unknown, "error listing operations on final stage")
 		}
 
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "invalid stage filter: %s", request.Stage)
-
-	finishedOperationEntities, _, err := h.operationManager.ListSchedulerFinishedOperations(ctx, request.GetSchedulerName(), 0, -1)
-	if err != nil {
-		handlerLogger.Error("error listing finished operations", zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	responseOperations, err := h.parseListOperationsResponse(ctx, operations)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	return &api.ListOperationsResponse{Operations: responseOperations}, nil
+	return &api.ListOperationsResponse{Operations: responseOperations, Total: &total, Page: &page, PageSize: &pageSize}, nil
+}
+
+func extractPaginationParameters(request *api.ListOperationsRequest) (uint32, uint32) {
+	page := request.GetPage()
+	pageSize := request.GetPerPage()
+
+	if pageSize == 0 {
+		pageSize = 15
+	}
+	return page, pageSize
 }
 
 func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.CancelOperationRequest) (*api.CancelOperationResponse, error) {
@@ -175,15 +181,15 @@ func (h *OperationsHandler) queryActiveOperations(ctx context.Context, scheduler
 	return activeOperationEntities, nil
 }
 
-func (h *OperationsHandler) queryFinishedOperations(ctx context.Context, schedulerName, sortingOrder string) ([]*operation.Operation, error) {
-	finishedOperationEntities, err := h.operationManager.ListSchedulerFinishedOperations(ctx, schedulerName)
+func (h *OperationsHandler) queryFinishedOperations(ctx context.Context, schedulerName, sortingOrder string, page, pageSize int64) ([]*operation.Operation, uint32, error) {
+	finishedOperationEntities, total, err := h.operationManager.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize)
 	if err != nil {
 		h.logger.Error("error listing finished operations", zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, uint32(0), status.Error(codes.Unknown, err.Error())
 	}
 	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
 
-	return finishedOperationEntities, nil
+	return finishedOperationEntities, uint32(total), nil
 }
 
 func sortOperationsByCreatedAt(operations []*operation.Operation, order string) {
