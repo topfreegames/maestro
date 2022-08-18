@@ -61,11 +61,11 @@ type Definition string
 type redisOperationStorage struct {
 	client           *redis.Client
 	clock            ports.Clock
-	operationsTTlMap map[Definition]time.Duration
+	operationsTTLMap map[Definition]time.Duration
 }
 
-func NewRedisOperationStorage(client *redis.Client, clock ports.Clock, operationsTTlMap map[Definition]time.Duration) *redisOperationStorage {
-	return &redisOperationStorage{client, clock, operationsTTlMap}
+func NewRedisOperationStorage(client *redis.Client, clock ports.Clock, operationsTTLMap map[Definition]time.Duration) *redisOperationStorage {
+	return &redisOperationStorage{client, clock, operationsTTLMap}
 }
 
 // CreateOperation marshal and pushes the operation to the scheduler pending
@@ -88,7 +88,7 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 		executionHistoryRedisKey:   executionHistoryJson,
 	})
 
-	if tll, ok := r.operationsTTlMap[Definition(op.DefinitionName)]; ok {
+	if tll, ok := r.operationsTTLMap[Definition(op.DefinitionName)]; ok {
 		pipe.Expire(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), tll)
 	}
 
@@ -217,12 +217,12 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 
 func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) (operations []*operation.Operation, total int64, err error) {
 	if err := r.CleanExpiredOperations(ctx, schedulerName); err != nil {
-		return nil, 0, fmt.Errorf("failed to clean scheduler expired operations: %w", err)
+		return nil, -1, fmt.Errorf("failed to clean scheduler expired operations: %w", err)
 	}
 
 	total, err = r.client.ZCard(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName)).Result()
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count finished operations: %w", err)
+		return nil, -1, fmt.Errorf("failed to count finished operations: %w", err)
 	}
 
 	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, page, pageSize)
@@ -230,7 +230,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	executions := make([]redis.Cmder, len(operationsIDs))
 
 	if err != nil {
-		return nil, 0, err
+		return nil, -1, err
 	}
 
 	pipe := r.client.Pipeline()
@@ -246,18 +246,18 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	})
 
 	if err != nil {
-		return nil, 0, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
+		return nil, -1, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
 	}
 
 	for i, cmder := range executions {
 		res, err := cmder.(*redis.StringStringMapCmd).Result()
 		if err != nil && err != redis.Nil {
-			return nil, 0, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
+			return nil, -1, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
 		}
 
 		op, err := buildOperationFromMap(res)
 		if err != nil {
-			return nil, 0, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
+			return nil, -1, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
 		}
 		operations[i] = op
 	}

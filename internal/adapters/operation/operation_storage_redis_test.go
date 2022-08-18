@@ -341,8 +341,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return operations list and total using pagination parameters, it returns less elements than the page size", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			expectedOperations := []*operation.Operation{operations[0], operations[1], operations[2], operations[3]}
 			page := int64(0)
 			pageSize := int64(4)
@@ -379,8 +379,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return operations list and total using pagination parameters, it returns same element's number as the page size", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			expectedOperations := []*operation.Operation{operations[2], operations[3]}
 			page := int64(1)
 			pageSize := int64(2)
@@ -417,8 +417,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return operations list and total using pagination parameters, it returns an empty page", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			page := int64(2)
 			pageSize := int64(2)
 
@@ -453,8 +453,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		t.Run("return empty list when there is no operation stored", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.NoError(t, err)
@@ -897,8 +897,8 @@ func TestCleanOperationsHistory(t *testing.T) {
 		t.Run("if operations history is not empty it deletes all operations and history", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			expectedOperations := []*operation.Operation{operations[0], operations[1]}
 
 			for _, op := range operations {
@@ -946,9 +946,10 @@ func TestCleanOperationsHistory(t *testing.T) {
 			operationsTTLMap := map[Definition]time.Duration{}
 			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
-			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned)
+			assert.Equal(t, total, int64(0))
 
 			err = storage.CleanOperationsHistory(context.Background(), schedulerName)
 
@@ -1044,8 +1045,8 @@ func TestCleanExpiredOperations(t *testing.T) {
 		t.Run("if operations history is not empty it deletes all expired operations", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 			for _, op := range operations {
 				executionHistoryJson, err := json.Marshal(op.ExecutionHistory)
@@ -1087,8 +1088,8 @@ func TestCleanExpiredOperations(t *testing.T) {
 		t.Run("if operations history is empty it returns with no error", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 
 			err := storage.CleanExpiredOperations(context.Background(), schedulerName)
 			assert.NoError(t, err)
@@ -1107,8 +1108,8 @@ func TestCleanExpiredOperations(t *testing.T) {
 		t.Run("if client is closed it returns error", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTlMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			client.Close()
 
 			err := storage.CleanExpiredOperations(context.Background(), schedulerName)
