@@ -636,7 +636,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		}
 
 		schedulerName := "test-scheduler"
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName).Return(operationsResult, nil)
+
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, int64(0), int64(-1)).Return(operationsResult, int64(0), nil)
 		operations, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName)
 		require.NoError(t, err)
 		require.ElementsMatch(t, operationsResult, operations)
