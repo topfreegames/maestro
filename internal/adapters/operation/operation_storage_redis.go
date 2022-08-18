@@ -314,11 +314,7 @@ func (r *redisOperationStorage) UpdateOperationDefinition(ctx context.Context, s
 }
 
 func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, schedulerName string) error {
-	operationsIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
-		Min: "-inf",
-		Max: "+inf",
-	}).Result()
-
+	operationsIDs, err := r.getAllFinishedOperationIDs(ctx, schedulerName)
 	if err != nil {
 		return errors.NewErrUnexpected("failed to list operations for \"%s\" when trying to clean expired operations", schedulerName).WithError(err)
 	}
@@ -330,6 +326,7 @@ func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, sche
 			operationExists, _ := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
 			if operationExists == 0 {
 				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+				pipe.ZRem(ctx, r.buildSchedulerNoActionKey(schedulerName), operationID)
 			}
 		}
 
@@ -375,6 +372,28 @@ func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName
 
 func (r *redisOperationStorage) buildSchedulerNoActionKey(schedulerName string) string {
 	return fmt.Sprintf("operations:%s:lists:noaction", schedulerName)
+}
+
+func (r *redisOperationStorage) getAllFinishedOperationIDs(ctx context.Context, schedulerName string) ([]string, error) {
+	operationsIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+		Min: "-inf",
+		Max: "+inf",
+	}).Result()
+
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to list operations from history for \"%s\"", schedulerName).WithError(err)
+	}
+
+	noActionOpIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerNoActionKey(schedulerName), &redis.ZRangeBy{
+		Min: "-inf",
+		Max: "+inf",
+	}).Result()
+
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to list no action operations for \"%s\" ", schedulerName).WithError(err)
+	}
+
+	return append(operationsIDs, noActionOpIDs...), nil
 }
 
 func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string, from, to time.Time) (operationsIDs []string, err error) {
