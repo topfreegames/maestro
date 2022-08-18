@@ -617,7 +617,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 }
 
 func TestListSchedulerFinishedOperations(t *testing.T) {
-	t.Run("it returns an operation list with finished status", func(t *testing.T) {
+	t.Run("return an operation list with finished status and its total", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
@@ -636,11 +636,35 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		}
 
 		schedulerName := "test-scheduler"
+		page := int64(0)
+		pageSize := int64(10)
 
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, int64(0), int64(-1)).Return(operationsResult, int64(0), nil)
-		operations, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize).Return(operationsResult, int64(3), nil)
+		operations, total, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize)
 		require.NoError(t, err)
+		assert.Equal(t, int64(3), total)
 		require.ElementsMatch(t, operationsResult, operations)
+	})
+	t.Run("return error when some error occurs in operation storage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		definitionConstructors := operations.NewDefinitionConstructors()
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		config := OperationManagerConfig{OperationLeaseTtl: time.Millisecond * 1000}
+		opManager := New(operationFlow, operationStorage, definitionConstructors, operationLeaseStorage, config, schedulerStorage)
+
+		ctx := context.Background()
+
+		schedulerName := "test-scheduler"
+		page := int64(0)
+		pageSize := int64(10)
+
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize).Return(nil, int64(0), errors.New("some error"))
+		_, _, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize)
+		require.ErrorContains(t, err, "failed to list finished operations for scheduler test-scheduler : some error")
 	})
 }
 

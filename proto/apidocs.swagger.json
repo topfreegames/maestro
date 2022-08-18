@@ -1180,6 +1180,33 @@
       },
       "title": "Delete scheduler payload"
     },
+    "v1ForwardPlayerEventRequest": {
+      "type": "object",
+      "properties": {
+        "schedulerName": {
+          "type": "string",
+          "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param."
+        },
+        "roomName": {
+          "type": "string",
+          "description": "Target room name.\nNOTE: On http protocol, this operates as a path param."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Player event metadata."
+        },
+        "event": {
+          "type": "string",
+          "description": "The player event name."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the player event."
+        }
+      },
+      "description": "The player event request."
+    },
     "v1ForwardPlayerEventResponse": {
       "type": "object",
       "properties": {
@@ -1193,6 +1220,33 @@
         }
       },
       "description": "The player event response."
+    },
+    "v1ForwardRoomEventRequest": {
+      "type": "object",
+      "properties": {
+        "schedulerName": {
+          "type": "string",
+          "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param."
+        },
+        "roomName": {
+          "type": "string",
+          "description": "Target room name.\nNOTE: On http protocol, this operates as a path param."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Room event metadata."
+        },
+        "event": {
+          "type": "string",
+          "description": "The room event name."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the room event."
+        }
+      },
+      "description": "The room event request."
     },
     "v1ForwardRoomEventResponse": {
       "type": "object",
@@ -1397,6 +1451,48 @@
       },
       "description": "The list schedulers response message."
     },
+    "v1NewSchedulerVersionRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique identifier for the scheduler."
+        },
+        "game": {
+          "type": "string",
+          "description": "Game the new scheduler will be part of."
+        },
+        "spec": {
+          "$ref": "#/definitions/v1Spec",
+          "description": "The spec object defines all the game room container configurations and spec."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "The port range object describes what is the port range used to allocate game rooms."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "The max surge of new rooms, used to scale and update"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The rooms replicas is the desired number of rooms that maestro should keep available."
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1Autoscaling",
+          "title": "The autoscaling defines the autoscaling and its policy to be followed"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
+        }
+      },
+      "description": "Scheduler is the struct that defines a maestro scheduler."
+    },
     "v1NewSchedulerVersionResponse": {
       "type": "object",
       "properties": {
@@ -1518,6 +1614,44 @@
         }
       },
       "description": "OptionalSpec is the specifications of the scheduler, with relevant info about what is being used.\nThis message is used to patch spec configuration."
+    },
+    "v1PatchSchedulerRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique identifier for the scheduler."
+        },
+        "spec": {
+          "$ref": "#/definitions/v1OptionalSpec",
+          "description": "The spec object defines all the game room container configurations and spec."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "The port range object describes what is the port range used to allocate game rooms."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "The max surge of new rooms, used to scale and update"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms Replicas is the desired number of rooms"
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1OptionalAutoscaling",
+          "title": "Autoscaling rules to the scheduler"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
+        }
+      },
+      "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
     },
     "v1PatchSchedulerResponse": {
       "type": "object",
@@ -1772,6 +1906,20 @@
       },
       "description": "Spec is the specifications of the scheduler, with relevant info about what is being used."
     },
+    "v1SwitchActiveVersionRequest": {
+      "type": "object",
+      "properties": {
+        "schedulerName": {
+          "type": "string",
+          "title": "Scheduler Name"
+        },
+        "version": {
+          "type": "string",
+          "title": "Version that will be activate in Scheduler"
+        }
+      },
+      "title": "Switch Active Version Request"
+    },
     "v1SwitchActiveVersionResponse": {
       "type": "object",
       "properties": {
@@ -1782,6 +1930,33 @@
       },
       "title": "Switch Active Version Response"
     },
+    "v1UpdateRoomStatusRequest": {
+      "type": "object",
+      "properties": {
+        "schedulerName": {
+          "type": "string",
+          "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param."
+        },
+        "roomName": {
+          "type": "string",
+          "description": "Target room name.\nNOTE: On http protocol, this operates as a path param."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Status update metadata."
+        },
+        "status": {
+          "type": "string",
+          "description": "The room status."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the status update."
+        }
+      },
+      "description": "The player event request."
+    },
     "v1UpdateRoomStatusResponse": {
       "type": "object",
       "properties": {
@@ -1791,6 +1966,33 @@
         }
       },
       "description": "The player event response."
+    },
+    "v1UpdateRoomWithPingRequest": {
+      "type": "object",
+      "properties": {
+        "schedulerName": {
+          "type": "string",
+          "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param."
+        },
+        "roomName": {
+          "type": "string",
+          "description": "Target room name.\nNOTE: On http protocol, this operates as a path param."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Target room metadata."
+        },
+        "status": {
+          "type": "string",
+          "description": "Indicates the room status."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the ping event."
+        }
+      },
+      "description": "The ping request."
     },
     "v1UpdateRoomWithPingResponse": {
       "type": "object",
