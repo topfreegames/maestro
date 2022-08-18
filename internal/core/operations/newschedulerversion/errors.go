@@ -28,17 +28,51 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 )
 
-// GameRoomValidationError is a struct that holds the error to game room validation.
-type GameRoomValidationError struct {
+type ValidationTimeoutError struct {
 	Err      error
 	GameRoom *game_room.GameRoom
 }
 
-// NewGameRoomValidationError create a new game room error on validation with game room and the original error
-func NewGameRoomValidationError(gameRoom *game_room.GameRoom, err error) *GameRoomValidationError {
-	return &GameRoomValidationError{Err: err, GameRoom: gameRoom}
+func NewValidationTimeoutError(GameRoom *game_room.GameRoom, err error) *ValidationTimeoutError {
+	return &ValidationTimeoutError{Err: err, GameRoom: GameRoom}
 }
 
-func (e *GameRoomValidationError) Error() string {
-	return fmt.Sprintf("error validating game room with ID %s-%s: %s", e.GameRoom.SchedulerID, e.GameRoom.ID, e.Err.Error())
+func (e *ValidationTimeoutError) Unwrap() error {
+	return e.Err
+}
+
+func (e *ValidationTimeoutError) Is(other error) bool {
+	if _, ok := other.(*ValidationTimeoutError); ok {
+		return true
+	}
+	return false
+}
+
+func (e ValidationTimeoutError) Error() string {
+	return fmt.Sprintf("error validating game room with ID %s, got timeout waiting waiting for room to be ready : %s", e.GameRoom.ID, e.Err.Error())
+}
+
+type ValidationPodInErrorError struct {
+	Err               error
+	GameRoomID        string
+	StatusDescription string
+}
+
+func NewValidationPodInErrorError(gameRoomID, statusDescription string, err error) *ValidationPodInErrorError {
+	return &ValidationPodInErrorError{Err: err, GameRoomID: gameRoomID, StatusDescription: statusDescription}
+}
+
+func (e *ValidationPodInErrorError) Unwrap() error {
+	return e.Err
+}
+
+func (e *ValidationPodInErrorError) Is(other error) bool {
+	if _, ok := other.(*ValidationPodInErrorError); ok {
+		return true
+	}
+	return false
+}
+
+func (e ValidationPodInErrorError) Error() string {
+	return fmt.Sprintf("error validating game room with ID %s, instance is entering in error: %s, %s", e.GameRoomID, e.StatusDescription, e.Err)
 }

@@ -32,8 +32,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations"
-
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
@@ -222,7 +220,6 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMinorScheduler.Name}, noReplaceDefinition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't delete room", func(t *testing.T) {
@@ -257,7 +254,6 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't find max surge", func(t *testing.T) {
@@ -271,7 +267,6 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't list rooms to delete", func(t *testing.T) {
@@ -290,7 +285,6 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't count total rooms amount", func(t *testing.T) {
@@ -307,7 +301,6 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't get new scheduler", func(t *testing.T) {
@@ -319,7 +312,6 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 
 	t.Run("should fail - Can't get active scheduler", func(t *testing.T) {
@@ -332,7 +324,6 @@ func TestSwitchActiveVersionOperation_Execute(t *testing.T) {
 		executor := switch_active_version.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 	})
 }
 
@@ -424,7 +415,6 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 		}
 		execErr := executor.Execute(context.Background(), op, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 
 		for range append(gameRoomListCycle1, gameRoomListCycle2...) {
 			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
@@ -495,7 +485,6 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 		}
 		execErr := executor.Execute(context.Background(), op, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 
 		for i := range allRooms {
 			if i == len(allRooms)-1 {
@@ -563,7 +552,6 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 		}
 		execErr := executor.Execute(context.Background(), op, definition)
 		require.NotNil(t, execErr)
-		require.Equal(t, operations.ErrKindUnexpected, execErr.Kind())
 
 		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(errors.New("error"))
 

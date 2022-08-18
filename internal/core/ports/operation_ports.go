@@ -46,13 +46,13 @@ type OperationManager interface {
 	// StartOperation used when an operation will start executing.
 	StartOperation(ctx context.Context, op *operation.Operation, cancelFunction context.CancelFunc) error
 	// FinishOperation used when an operation has finished executing, with error or not.
-	FinishOperation(ctx context.Context, op *operation.Operation) error
+	FinishOperation(ctx context.Context, op *operation.Operation, def operations.Definition) error
 	// ListSchedulerPendingOperations returns a list of operations with pending status for the given scheduler.
 	ListSchedulerPendingOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 	// ListSchedulerActiveOperations returns a list of operations with active status for the given scheduler.
 	ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 	// ListSchedulerFinishedOperations returns a list of operations with finished status for the given scheduler.
-	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
+	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) ([]*operation.Operation, int64, error)
 	// EnqueueOperationCancellationRequest enqueues a cancellation request for the given operation.
 	EnqueueOperationCancellationRequest(ctx context.Context, schedulerName, operationID string) error
 	// WatchOperationCancellationRequests starts an async process to watch for cancellation requests for the given operation and cancels it.
@@ -92,7 +92,7 @@ type OperationStorage interface {
 	// ListSchedulerActiveOperations list scheduler active operations.
 	ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 	// ListSchedulerFinishedOperations list scheduler finished operations.
-	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
+	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) ([]*operation.Operation, int64, error)
 	// UpdateOperationStatus only updates the operation status for the given
 	// operation ID.
 	UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error
@@ -100,6 +100,8 @@ type OperationStorage interface {
 	UpdateOperationExecutionHistory(ctx context.Context, op *operation.Operation) error
 	// CleanOperationsHistory clears the operation execution history.
 	CleanOperationsHistory(ctx context.Context, schedulerName string) error
+	// UpdateOperationDefinition updates the operation definition.
+	UpdateOperationDefinition(ctx context.Context, schedulerName string, operationID string, def operations.Definition) error
 }
 
 type OperationLeaseStorage interface {

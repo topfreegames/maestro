@@ -74,17 +74,18 @@ func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomIn
 }
 
 // Execute run the operation health_controller.
-func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) operations.ExecutionError {
+func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
 		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
+	def := definition.(*SchedulerHealthControllerDefinition)
 
 	gameRoomIDs, instances, scheduler, err := ex.loadActualState(ctx, op, logger)
 	if err != nil {
-		return operations.NewErrUnexpected(err)
+		return err
 	}
 
 	nonexistentGameRoomsIDs, existentGameRoomsInstancesMap := ex.mapExistentAndNonExistentGameRooms(gameRoomIDs, instances)
@@ -100,25 +101,26 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		if err != nil {
 			logger.Error("could not enqueue operation to delete expired rooms", zap.Error(err))
 		}
+		ex.setTookAction(def, true)
 	}
 
 	desiredNumberOfRooms, err := ex.getDesiredNumberOfRooms(ctx, logger, scheduler)
 	if err != nil {
 		logger.Error("error getting the desired number of rooms", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return err
 	}
 
-	err = ex.ensureDesiredAmountOfInstances(ctx, op, logger, len(availableRooms), desiredNumberOfRooms)
+	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, logger, len(availableRooms), desiredNumberOfRooms)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
-		return operations.NewErrUnexpected(err)
+		return err
 	}
 
 	return nil
 }
 
 // Rollback does not execute anything when a rollback executes.
-func (ex *SchedulerHealthControllerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr operations.ExecutionError) error {
+func (ex *SchedulerHealthControllerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	return nil
 }
 
@@ -158,8 +160,9 @@ func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx 
 	}
 }
 
-func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, logger *zap.Logger, actualAmount, desiredAmount int) error {
+func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *SchedulerHealthControllerDefinition, logger *zap.Logger, actualAmount, desiredAmount int) error {
 	var msgToAppend string
+	var tookAction bool
 
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
@@ -170,6 +173,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 		if err != nil {
 			return err
 		}
+		tookAction = true
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
 	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
@@ -179,14 +183,16 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 		if err != nil {
 			return err
 		}
+		tookAction = true
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to add %v rooms.", addOperation.ID, addAmount)
 	default: // No need to scale
+		tookAction = false
 		msgToAppend = "current amount of rooms is equal to desired amount, no changes needed"
-
 	}
 
 	logger.Info(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
+	ex.setTookAction(def, tookAction)
 	return nil
 }
 
@@ -288,4 +294,11 @@ func (ex *SchedulerHealthControllerExecutor) mapExistentAndNonExistentGameRooms(
 	}
 
 	return nonexistentGameRoomsIDs, existentGameRoomsInstancesMap
+}
+
+func (ex *SchedulerHealthControllerExecutor) setTookAction(def *SchedulerHealthControllerDefinition, tookAction bool) {
+	if def.TookAction != nil && *def.TookAction {
+		return
+	}
+	def.TookAction = &tookAction
 }

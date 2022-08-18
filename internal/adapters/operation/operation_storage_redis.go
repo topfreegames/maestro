@@ -29,7 +29,9 @@ import (
 	"strconv"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+
+	"github.com/topfreegames/maestro/internal/core/operations"
 
 	"github.com/topfreegames/maestro/internal/adapters/metrics"
 
@@ -61,11 +63,11 @@ type Definition string
 type redisOperationStorage struct {
 	client           *redis.Client
 	clock            ports.Clock
-	operationsTTlMap map[Definition]time.Duration
+	operationsTTLMap map[Definition]time.Duration
 }
 
-func NewRedisOperationStorage(client *redis.Client, clock ports.Clock, operationsTTlMap map[Definition]time.Duration) *redisOperationStorage {
-	return &redisOperationStorage{client, clock, operationsTTlMap}
+func NewRedisOperationStorage(client *redis.Client, clock ports.Clock, operationsTTLMap map[Definition]time.Duration) *redisOperationStorage {
+	return &redisOperationStorage{client, clock, operationsTTLMap}
 }
 
 // CreateOperation marshal and pushes the operation to the scheduler pending
@@ -88,7 +90,7 @@ func (r *redisOperationStorage) CreateOperation(ctx context.Context, op *operati
 		executionHistoryRedisKey:   executionHistoryJson,
 	})
 
-	if tll, ok := r.operationsTTlMap[Definition(op.DefinitionName)]; ok {
+	if tll, ok := r.operationsTTLMap[Definition(op.DefinitionName)]; ok {
 		pipe.Expire(ctx, r.buildSchedulerOperationKey(op.SchedulerName, op.ID), tll)
 	}
 
@@ -122,29 +124,33 @@ func (r *redisOperationStorage) GetOperation(ctx context.Context, schedulerName,
 }
 
 func (r *redisOperationStorage) UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) (err error) {
+	operationHash, err := r.client.HGetAll(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
+	if err != nil {
+		return errors.NewErrUnexpected("failed to fetch operation for updating status").WithError(err)
+	}
+	op, err := buildOperationFromMap(operationHash)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to parse operation for updating status").WithError(err)
+	}
+
 	pipe := r.client.Pipeline()
-	pipe.ZRem(ctx, r.buildSchedulerActiveOperationsKey(schedulerName), operationID)
-	pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+
+	err = r.updateOperationInSortedSet(ctx, pipe, schedulerName, op, status)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to update the operation on sorted set").WithError(err)
+	}
+
 	pipe.HSet(ctx, r.buildSchedulerOperationKey(schedulerName, operationID), map[string]interface{}{
 		statusRedisKey: strconv.Itoa(int(status)),
 	})
 
-	operationsList := r.buildSchedulerHistoryOperationsKey(schedulerName)
-	if status == operation.StatusInProgress {
-		operationsList = r.buildSchedulerActiveOperationsKey(schedulerName)
-	}
-
-	pipe.ZAdd(ctx, operationsList, &redis.Z{
-		Member: operationID,
-		Score:  float64(r.clock.Now().Unix()),
-	})
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
 		_, err = pipe.Exec(ctx)
 		return err
 	})
 
 	if err != nil {
-		return errors.NewErrUnexpected("failed to update operations").WithError(err)
+		return errors.NewErrUnexpected("failed to update operation status").WithError(err)
 	}
 
 	return nil
@@ -215,22 +221,29 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 	return operations, nil
 }
 
-func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string) (operations []*operation.Operation, err error) {
-	currentTime := r.clock.Now()
-	lastDay := r.clock.Now().Add(-24 * time.Hour)
-	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, lastDay, currentTime)
-	var nonExistentOperations []string
-	var executions = make(map[string]redis.Cmder)
+func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) (operations []*operation.Operation, total int64, err error) {
+	if err := r.CleanExpiredOperations(ctx, schedulerName); err != nil {
+		return nil, -1, fmt.Errorf("failed to clean scheduler expired operations: %w", err)
+	}
+
+	total, err = r.client.ZCard(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName)).Result()
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to count finished operations: %w", err)
+	}
+
+	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, page, pageSize)
+	operations = make([]*operation.Operation, len(operationsIDs))
+	executions := make([]redis.Cmder, len(operationsIDs))
 
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 
 	pipe := r.client.Pipeline()
 
-	for _, operationID := range operationsIDs {
+	for i, operationID := range operationsIDs {
 		cmd := pipe.HGetAll(ctx, fmt.Sprintf("operations:%s:%s", schedulerName, operationID))
-		executions[operationID] = cmd
+		executions[i] = cmd
 	}
 
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
@@ -239,34 +252,27 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 	})
 
 	if err != nil {
-		return nil, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
+		return nil, -1, errors.NewErrUnexpected("failed execute pipe for retrieving schedulers").WithError(err)
 	}
 
-	for opID, cmder := range executions {
+	for i, cmder := range executions {
 		res, err := cmder.(*redis.StringStringMapCmd).Result()
 		if err != nil && err != redis.Nil {
-			return nil, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
-		}
-
-		if len(res) == 0 {
-			nonExistentOperations = append(nonExistentOperations, opID)
-			continue
+			return nil, -1, errors.NewErrUnexpected("failed to fetch operation").WithError(err)
 		}
 
 		op, err := buildOperationFromMap(res)
 		if err != nil {
-			return nil, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
+			return nil, -1, errors.NewErrUnexpected("failed to build operation from the hash").WithError(err)
 		}
-		operations = append(operations, op)
+		operations[i] = op
 	}
 
-	r.removeNonExistentOperationFromHistory(ctx, schedulerName, nonExistentOperations)
-
-	return operations, nil
+	return operations, total, nil
 }
 
 func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, schedulerName string) error {
-	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, time.Time{}, time.Now())
+	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, 0, -1)
 	if err != nil {
 		return err
 	}
@@ -293,20 +299,45 @@ func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, sche
 	return nil
 }
 
-func (r *redisOperationStorage) removeNonExistentOperationFromHistory(ctx context.Context, name string, operations []string) {
-	go func() {
+func (r *redisOperationStorage) UpdateOperationDefinition(ctx context.Context, schedulerName string, operationID string, def operations.Definition) error {
+	_, err := r.client.HSet(ctx, r.buildSchedulerOperationKey(schedulerName, operationID), map[string]interface{}{
+		definitionNameRedisKey:     def.Name(),
+		definitionContentsRedisKey: def.Marshal(),
+	}).Result()
+
+	if err != nil {
+		return fmt.Errorf("failed to update operation definition: %w", err)
+	}
+	return nil
+}
+
+func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, schedulerName string) error {
+	operationsIDs, err := r.getAllFinishedOperationIDs(ctx, schedulerName)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to list operations for \"%s\" when trying to clean expired operations", schedulerName).WithError(err)
+	}
+
+	if len(operationsIDs) > 0 {
+
 		pipe := r.client.Pipeline()
-		for _, operationID := range operations {
-			pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(name), operationID)
-		}
-		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-			_, err := pipe.Exec(context.Background())
-			if err != nil {
-				zap.L().Error("failed to remove non-existent operations from history", zap.Error(err))
+		for _, operationID := range operationsIDs {
+			operationExists, _ := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
+			if operationExists == 0 {
+				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+				pipe.ZRem(ctx, r.buildSchedulerNoActionKey(schedulerName), operationID)
 			}
+		}
+
+		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
+			_, err = pipe.Exec(ctx)
 			return err
 		})
-	}()
+
+		if err != nil {
+			return fmt.Errorf("failed to clean expired operations: %w", err)
+		}
+	}
+	return nil
 }
 
 func (r *redisOperationStorage) buildSchedulerOperationKey(schedulerName, opID string) string {
@@ -321,12 +352,39 @@ func (r *redisOperationStorage) buildSchedulerHistoryOperationsKey(schedulerName
 	return fmt.Sprintf("operations:%s:lists:history", schedulerName)
 }
 
-func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string, from, to time.Time) (operationsIDs []string, err error) {
-	// TODO(guilhermocc): receive this time range as filter argument
+func (r *redisOperationStorage) buildSchedulerNoActionKey(schedulerName string) string {
+	return fmt.Sprintf("operations:%s:lists:noaction", schedulerName)
+}
+
+func (r *redisOperationStorage) getAllFinishedOperationIDs(ctx context.Context, schedulerName string) ([]string, error) {
+	operationsIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+		Min: "-inf",
+		Max: "+inf",
+	}).Result()
+
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to list operations from history for \"%s\"", schedulerName).WithError(err)
+	}
+
+	noActionOpIDs, err := r.client.ZRangeByScore(ctx, r.buildSchedulerNoActionKey(schedulerName), &redis.ZRangeBy{
+		Min: "-inf",
+		Max: "+inf",
+	}).Result()
+
+	if err != nil {
+		return nil, errors.NewErrUnexpected("failed to list no action operations for \"%s\" ", schedulerName).WithError(err)
+	}
+
+	return append(operationsIDs, noActionOpIDs...), nil
+}
+
+func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string, page, pageSize int64) (operationsIDs []string, err error) {
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-		operationsIDs, err = r.client.ZRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
-			Min: fmt.Sprint(from.Unix()),
-			Max: fmt.Sprint(to.Unix()),
+		operationsIDs, err = r.client.ZRevRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+			Min:    "-inf",
+			Max:    "+inf",
+			Offset: page * pageSize,
+			Count:  pageSize,
 		}).Result()
 		return err
 	})
@@ -334,6 +392,41 @@ func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Con
 		return nil, errors.NewErrUnexpected("failed to list finished operations for \"%s\"", schedulerName).WithError(err)
 	}
 	return operationsIDs, err
+}
+
+func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, pipe redis.Pipeliner, schedulerName string, op *operation.Operation, newStatus operation.Status) error {
+	var listKey string
+	operationTookAction, err := operationHasAction(op)
+	if err != nil {
+		return errors.NewErrUnexpected("failed to check if operation took action when updating status").WithError(err)
+	}
+
+	switch {
+	case newStatus == operation.StatusInProgress:
+		listKey = r.buildSchedulerActiveOperationsKey(schedulerName)
+	case newStatus == operation.StatusFinished && !operationTookAction:
+		listKey = r.buildSchedulerNoActionKey(schedulerName)
+	default:
+		listKey = r.buildSchedulerHistoryOperationsKey(schedulerName)
+	}
+
+	pipe.ZRem(ctx, r.buildSchedulerActiveOperationsKey(schedulerName), op.ID)
+	pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), op.ID)
+	pipe.ZRem(ctx, r.buildSchedulerNoActionKey(schedulerName), op.ID)
+	pipe.ZAdd(ctx, listKey, &redis.Z{Member: op.ID, Score: float64(r.clock.Now().Unix())})
+	return nil
+}
+
+func operationHasAction(op *operation.Operation) (bool, error) {
+	if op.DefinitionName == healthcontroller.OperationName {
+		def := healthcontroller.SchedulerHealthControllerDefinition{}
+		err := def.Unmarshal(op.Input)
+		if err != nil {
+			return false, err
+		}
+		return def.TookAction != nil && *def.TookAction, nil
+	}
+	return true, nil
 }
 
 func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error) {

@@ -31,8 +31,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"go.uber.org/zap"
 
-	"github.com/topfreegames/maestro/internal/core/operations"
-
 	"context"
 	"testing"
 
@@ -124,7 +122,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 		err := executor.Execute(context.Background(), &op, &definition)
 
 		require.NotNil(t, err)
-		require.Equal(t, err.Kind(), operations.ErrKindUnexpected)
+		require.ErrorContains(t, err, "error while creating room: error")
 	})
 
 	t.Run("should fail - no scheduler found => returns error", func(t *testing.T) {
@@ -134,7 +132,7 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 
 		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &op, &definition)
 		require.NotNil(t, err)
-		require.Equal(t, err.Kind(), operations.ErrKindUnexpected)
+		require.ErrorContains(t, err, "scheduler not found")
 	})
 }
 

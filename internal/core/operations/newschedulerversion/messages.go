@@ -20,46 +20,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package healthcontroller
+package newschedulerversion
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
+const (
+	startingValidationMessageTemplate = "Major version detected, starting game room validation process..."
 
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"go.uber.org/zap"
+	enqueuedSwitchVersionMessageTemplate = "enqueued switch active version operation with id: %s"
+
+	validationSuccessMessageTemplate = "%dº Attempt: Game room validation success!"
+
+	allAttemptsFailedMessageTemplate = "All validation attempts have failed, operation aborted!"
+
+	validationTimeoutMessageTemplate = `%dº Attempt: Got timeout waiting for the GRU with ID: %s to be ready. You can check if
+		the GRU image is stable on its logs.`
+
+	validationPodInErrorMessageTemplate = `%dº Attempt: The room created for validation with ID %s is entering in error state. You can check if
+		the GRU image is stable on its logs using the provided room id. Last event in the game room: %s.`
+
+	validationUnexpectedErrorMessageTemplate = `%dº Attempt: Unexpected Error: %s - Contact the Maestro's responsible team for helping.`
 )
-
-const OperationName = "health_controller"
-
-type SchedulerHealthControllerDefinition struct {
-	TookAction *bool `json:"took_action,omitempty"`
-}
-
-func (def *SchedulerHealthControllerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
-	return true
-}
-
-func (def *SchedulerHealthControllerDefinition) Name() string {
-	return OperationName
-}
-
-func (def *SchedulerHealthControllerDefinition) Marshal() []byte {
-	bytes, err := json.Marshal(def)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Error("error marshalling update scheduler operation definition")
-		return nil
-	}
-
-	return bytes
-}
-
-func (def *SchedulerHealthControllerDefinition) Unmarshal(raw []byte) error {
-	err := json.Unmarshal(raw, def)
-	if err != nil {
-		return fmt.Errorf("error marshalling update scheduler operation definition: %w", err)
-	}
-
-	return nil
-}
