@@ -77,11 +77,13 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 	genericOperation := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 
 	testCases := []struct {
-		title string
+		title      string
+		definition *healthcontroller.SchedulerHealthControllerDefinition
 		executionPlan
 	}{
 		{
-			title: "nothing to do, no operations enqueued",
+			title:      "nothing to do, no operations enqueued",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: false,
 				planMocks: func(
@@ -105,7 +107,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "game room status pending with no initialization timeout found, considered available, so nothing to do, no operations enqueued",
+			title:      "game room status pending with no initialization timeout found, considered available, so nothing to do, no operations enqueued",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: false,
 				planMocks: func(
@@ -159,7 +162,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "game room status pending with initialization timeout found, considered expired, remove room operation enqueued",
+			title:      "game room status pending with initialization timeout found, considered expired, remove room operation enqueued",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -219,7 +223,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "game room status unready with initialization timeout found, considered expired, remove room operation enqueued",
+			title:      "game room status unready with initialization timeout found, considered expired, remove room operation enqueued",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -279,7 +284,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "game room status unready and not expired found, considered available, so nothing to do, no operations enqueued",
+			title:      "game room status unready and not expired found, considered available, so nothing to do, no operations enqueued",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: false,
 				planMocks: func(
@@ -333,7 +339,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "nonexistent game room IDs found, deletes from storage",
+			title:      "nonexistent game room IDs found, deletes from storage",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: false,
 				planMocks: func(
@@ -373,7 +380,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "nonexistent game room IDs found but fails on first, keeps trying to delete",
+			title:      "nonexistent game room IDs found but fails on first, keeps trying to delete",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: false,
 				planMocks: func(
@@ -414,9 +422,10 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "expired room found, enqueue remove rooms with specified ID",
+			title:      "expired room found, enqueue remove rooms with specified ID",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
-				tookAction: false,
+				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *ismock.MockGameRoomInstanceStorage,
@@ -471,7 +480,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "instance is still pending, do nothing",
+			title:      "instance is still pending, do nothing",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: false,
 				planMocks: func(
@@ -500,7 +510,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "expired room found, enqueue remove rooms with specified ID fails, continues operation and enqueue new add rooms",
+			title:      "expired room found, enqueue remove rooms with specified ID fails, continues operation and enqueue new add rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -558,7 +569,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "autoscaling not configured, have less available rooms than expected, enqueue add rooms",
+			title:      "autoscaling not configured, have less available rooms than expected, enqueue add rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -583,7 +595,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "autoscaling configured but disabled, have less available rooms than expected, enqueue add rooms",
+			title:      "autoscaling configured but disabled, have less available rooms than expected, enqueue add rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -608,7 +621,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "autoscaling configured and enabled, have less available rooms than expected, enqueue add rooms",
+			title:      "autoscaling configured and enabled, have less available rooms than expected, enqueue add rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -633,7 +647,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "enqueue add rooms fails, finish operation",
+			title:      "enqueue add rooms fails, finish operation",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -657,7 +672,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "autoscaling not configured, have more available rooms than expected, enqueue remove rooms",
+			title:      "autoscaling not configured, have more available rooms than expected, enqueue remove rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -698,7 +714,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "autoscaling configured but disabled, have more available rooms than expected, enqueue remove rooms",
+			title:      "autoscaling configured but disabled, have more available rooms than expected, enqueue remove rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -739,7 +756,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "autoscaling configured and enabled, have more available rooms than expected, enqueue remove rooms",
+			title:      "autoscaling configured and enabled, have more available rooms than expected, enqueue remove rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -780,7 +798,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "enqueue remove rooms fails, finish operation with error",
+			title:      "enqueue remove rooms fails, finish operation with error",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -820,7 +839,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "fails loading rooms, stops operation",
+			title:      "fails loading rooms, stops operation",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -836,7 +856,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "fails loading instances, stops operation",
+			title:      "fails loading instances, stops operation",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -853,7 +874,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "fails loading scheduler, stops operation",
+			title:      "fails loading scheduler, stops operation",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -871,7 +893,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "fails calculating the desired number of rooms with autoscaler, stops operation and return error",
+			title:      "fails calculating the desired number of rooms with autoscaler, stops operation and return error",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -909,7 +932,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "fails on getRoom, consider room ignored and enqueues new add rooms",
+			title:      "fails on getRoom, consider room ignored and enqueues new add rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -956,7 +980,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "room with status error, consider room ignored and enqueues new add rooms",
+			title:      "room with status error, consider room ignored and enqueues new add rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -1010,7 +1035,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "room with status terminating, and considered valid, consider room ignored and enqueues new add rooms",
+			title:      "room with status terminating, and considered valid, consider room ignored and enqueues new add rooms",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -1064,7 +1090,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title: "game room status terminating with terminating timeout found, considered expired, remove room operation enqueued",
+			title:      "game room status terminating with terminating timeout found, considered expired, remove room operation enqueued",
+			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: true,
 				planMocks: func(
@@ -1143,12 +1170,12 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			testCase.executionPlan.planMocks(roomsStorage, instanceStorage, schedulerStorage, operationManager, autoscaler)
 
 			ctx := context.Background()
-			err := executor.Execute(ctx, genericOperation, definition)
+			err := executor.Execute(ctx, genericOperation, testCase.definition)
 			if testCase.executionPlan.shouldFail {
 				assert.NotNil(t, err)
 			} else {
 				assert.Nil(t, err)
-				assert.Equal(t, testCase.executionPlan.tookAction, *definition.TookAction)
+				assert.Equal(t, testCase.executionPlan.tookAction, *testCase.definition.TookAction)
 			}
 		})
 	}

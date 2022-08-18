@@ -297,7 +297,7 @@ func (ex *SchedulerHealthControllerExecutor) mapExistentAndNonExistentGameRooms(
 }
 
 func (ex *SchedulerHealthControllerExecutor) setTookAction(def *SchedulerHealthControllerDefinition, tookAction bool) {
-	if def.TookAction != nil && *def.TookAction == true {
+	if def.TookAction != nil && *def.TookAction {
 		return
 	}
 	def.TookAction = &tookAction
