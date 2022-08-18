@@ -394,7 +394,7 @@ func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Con
 
 func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, pipe redis.Pipeliner, schedulerName string, op *operation.Operation, newStatus operation.Status) error {
 	var listKey string
-	operationTookAction, err := operationHasNoAction(op)
+	operationTookAction, err := operationHasAction(op)
 	if err != nil {
 		return errors.NewErrUnexpected("failed to check if operation took action when updating status").WithError(err)
 	}
@@ -402,7 +402,7 @@ func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, 
 	switch {
 	case newStatus == operation.StatusInProgress:
 		listKey = r.buildSchedulerActiveOperationsKey(schedulerName)
-	case newStatus == operation.StatusFinished && operationTookAction:
+	case newStatus == operation.StatusFinished && !operationTookAction:
 		listKey = r.buildSchedulerNoActionKey(schedulerName)
 	default:
 		listKey = r.buildSchedulerHistoryOperationsKey(schedulerName)
@@ -415,16 +415,16 @@ func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, 
 	return nil
 }
 
-func operationHasNoAction(op *operation.Operation) (bool, error) {
+func operationHasAction(op *operation.Operation) (bool, error) {
 	if op.DefinitionName == healthcontroller.OperationName {
 		def := healthcontroller.SchedulerHealthControllerDefinition{}
 		err := def.Unmarshal(op.Input)
 		if err != nil {
 			return false, err
 		}
-		return def.TookAction != nil && !*def.TookAction, nil
+		return def.TookAction != nil && *def.TookAction, nil
 	}
-	return false, nil
+	return true, nil
 }
 
 func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error) {
