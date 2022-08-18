@@ -617,7 +617,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 }
 
 func TestListSchedulerFinishedOperations(t *testing.T) {
-	t.Run("Return an operation list with finished status and its total", func(t *testing.T) {
+	t.Run("return an operation list with finished status and its total", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
@@ -645,7 +645,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		assert.Equal(t, int64(3), total)
 		require.ElementsMatch(t, operationsResult, operations)
 	})
-	t.Run("Return error when an error occurs in operation storage", func(t *testing.T) {
+	t.Run("return error when some error occurs in operation storage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
