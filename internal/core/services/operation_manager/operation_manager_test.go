@@ -664,7 +664,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 
 		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize).Return(nil, int64(0), errors.New("some error"))
 		_, _, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize)
-		require.ErrorContains(t, err, "failed to list scheduler finished operations for scheduler test-scheduler : some error")
+		require.ErrorContains(t, err, "failed to list finished operations for scheduler test-scheduler : some error")
 	})
 }
 
