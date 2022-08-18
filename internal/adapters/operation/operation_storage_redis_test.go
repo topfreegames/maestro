@@ -546,7 +546,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 			client.Close()
 			_, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
-			assert.ErrorContains(t, err, "failed to clean scheduler expired operations: failed to list operations for \"test-scheduler\" when trying to clean expired operations: redis: client is closed")
+			assert.ErrorContains(t, err, "failed to clean scheduler expired operations: failed to list operations for \"test-scheduler\" when trying to clean expired operations")
 		})
 	})
 }
@@ -1148,7 +1148,87 @@ func TestCleanExpiredOperations(t *testing.T) {
 			},
 		}
 
-		t.Run("if operations history is not empty it deletes all expired operations", func(t *testing.T) {
+		t.Run("if operations lists are not empty it deletes all expired operations", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+
+			for _, op := range operations[:2] {
+				err := client.ZAdd(context.Background(), storage.buildSchedulerHistoryOperationsKey(op.SchedulerName), &redis.Z{
+					Member: op.ID,
+					Score:  float64(op.CreatedAt.Unix()),
+				}).Err()
+				require.NoError(t, err)
+			}
+
+			for _, op := range operations[2:] {
+				err := client.ZAdd(context.Background(), storage.buildSchedulerNoActionKey(op.SchedulerName), &redis.Z{
+					Member: op.ID,
+					Score:  float64(op.CreatedAt.Unix()),
+				}).Err()
+				require.NoError(t, err)
+			}
+
+			firstOperation := operations[0]
+			executionHistoryJson, err := json.Marshal(firstOperation.ExecutionHistory)
+			require.NoError(t, err)
+			err = client.HSet(context.Background(), storage.buildSchedulerOperationKey(operations[0].SchedulerName, operations[0].ID), map[string]interface{}{
+				idRedisKey:                 firstOperation.ID,
+				schedulerNameRedisKey:      firstOperation.SchedulerName,
+				statusRedisKey:             strconv.Itoa(int(firstOperation.Status)),
+				definitionNameRedisKey:     firstOperation.DefinitionName,
+				createdAtRedisKey:          firstOperation.CreatedAt.Format(time.RFC3339Nano),
+				definitionContentsRedisKey: firstOperation.Input,
+				executionHistoryRedisKey:   executionHistoryJson,
+			}).Err()
+			require.NoError(t, err)
+
+			err = storage.CleanExpiredOperations(context.Background(), schedulerName)
+			assert.NoError(t, err)
+
+			operationIDs, err := client.ZRangeByScore(context.Background(), storage.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+				Min: "-inf",
+				Max: "+inf",
+			}).Result()
+			require.NoError(t, err)
+			assert.NotEmpty(t, operationIDs)
+			assert.Contains(t, operationIDs, operations[0].ID)
+			assert.NotContains(t, operationIDs, operations[1].ID)
+
+			noActionOpIDs, err := client.ZRangeByScore(context.Background(), storage.buildSchedulerNoActionKey(schedulerName), &redis.ZRangeBy{
+				Min: "-inf",
+				Max: "+inf",
+			}).Result()
+			require.NoError(t, err)
+			assert.Empty(t, noActionOpIDs)
+		})
+
+		t.Run("if operations list is empty it returns with no error", func(t *testing.T) {
+			client := test.GetRedisConnection(t, redisAddress)
+			clock := clockmock.NewFakeClock(time.Now())
+			operationsTTLMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+
+			err := storage.CleanExpiredOperations(context.Background(), schedulerName)
+			assert.NoError(t, err)
+
+			operationIDs, err := client.ZRangeByScore(context.Background(), storage.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
+				Min: "-inf",
+				Max: "+inf",
+			}).Result()
+			require.NoError(t, err)
+			assert.Empty(t, operationIDs)
+
+			noActionOpIDs, err := client.ZRangeByScore(context.Background(), storage.buildSchedulerNoActionKey(schedulerName), &redis.ZRangeBy{
+				Min: "-inf",
+				Max: "+inf",
+			}).Result()
+			require.NoError(t, err)
+			assert.Empty(t, noActionOpIDs)
+		})
+
+		t.Run("if no action operation is empty it deletes all expired operations", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
 			operationsTTLMap := map[Definition]time.Duration{}
@@ -1191,22 +1271,6 @@ func TestCleanExpiredOperations(t *testing.T) {
 			}
 		})
 
-		t.Run("if operations history is empty it returns with no error", func(t *testing.T) {
-			client := test.GetRedisConnection(t, redisAddress)
-			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTLMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
-
-			err := storage.CleanExpiredOperations(context.Background(), schedulerName)
-			assert.NoError(t, err)
-
-			operationIds, err := client.ZRangeByScore(context.Background(), fmt.Sprintf("operations:%s:lists:history", schedulerName), &redis.ZRangeBy{
-				Min: "-inf",
-				Max: "+inf",
-			}).Result()
-			require.NoError(t, err)
-			assert.Empty(t, operationIds)
-		})
 	})
 
 	t.Run("with error", func(t *testing.T) {
@@ -1214,13 +1278,13 @@ func TestCleanExpiredOperations(t *testing.T) {
 		t.Run("if client is closed it returns error", func(t *testing.T) {
 			client := test.GetRedisConnection(t, redisAddress)
 			clock := clockmock.NewFakeClock(time.Now())
-			operationsTTLMap := map[Definition]time.Duration{}
-			storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
+			operationsTTlMap := map[Definition]time.Duration{}
+			storage := NewRedisOperationStorage(client, clock, operationsTTlMap)
 			client.Close()
 
 			err := storage.CleanExpiredOperations(context.Background(), schedulerName)
 
-			assert.EqualError(t, err, "failed to list operations for \"test-scheduler\" when trying to clean expired operations: redis: client is closed")
+			assert.ErrorContains(t, err, "failed to list operations for \"test-scheduler\" when trying to clean expired operations")
 		})
 
 	})
