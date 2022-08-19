@@ -107,22 +107,6 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	return &api.ListOperationsResponse{Operations: responseOperations, Total: &total, Page: &page, PageSize: &pageSize}, nil
 }
 
-func extractPaginationParameters(request *api.ListOperationsRequest) (uint32, uint32, error) {
-	page := request.GetPage()
-	pageSize := request.GetPerPage()
-	operationStage := request.Stage
-
-	if pageSize == 0 {
-		pageSize = 15
-	}
-
-	if operationStage != "final" && (request.Page != nil || request.PerPage != nil) {
-		return 0, 0, status.Errorf(codes.InvalidArgument, "there is no pagination filter implemented in : %s stage", operationStage)
-	}
-
-	return page, pageSize, nil
-}
-
 func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.CancelOperationRequest) (*api.CancelOperationResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()))
 	handlerLogger.Info("received request to cancel operation")
@@ -200,6 +184,22 @@ func (h *OperationsHandler) queryFinishedOperations(ctx context.Context, schedul
 	sortOperationsByCreatedAt(finishedOperationEntities, sortingOrder)
 
 	return finishedOperationEntities, uint32(total), nil
+}
+
+func extractPaginationParameters(request *api.ListOperationsRequest) (uint32, uint32, error) {
+	page := request.GetPage()
+	pageSize := request.GetPerPage()
+	operationStage := request.Stage
+
+	if pageSize == 0 {
+		pageSize = 15
+	}
+
+	if operationStage != "final" && (request.Page != nil || request.PerPage != nil) {
+		return 0, 0, status.Errorf(codes.InvalidArgument, "there is no pagination filter implemented in : %s stage", operationStage)
+	}
+
+	return page, pageSize, nil
 }
 
 func sortOperationsByCreatedAt(operations []*operation.Operation, order string) {
