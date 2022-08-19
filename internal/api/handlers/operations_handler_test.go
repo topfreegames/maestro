@@ -420,7 +420,7 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
-	t.Run("with error when listing operations in pending stage when parsing pagination filter", func(t *testing.T) {
+	t.Run("with error when listing operations in pending stage with invalid pagination parameters", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
@@ -462,7 +462,7 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
-	t.Run("with error when listing operations in active stage when parsing pagination filter", func(t *testing.T) {
+	t.Run("with error when listing operations in active stage with invalid pagination parameters", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 

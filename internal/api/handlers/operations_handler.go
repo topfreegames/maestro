@@ -64,11 +64,11 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	page, pageSize, err := extractPaginationParameters(request)
-	operationStage := request.Stage
-
 	if err != nil {
+		handlerLogger.Error(fmt.Sprintf("error parsing pagination parameters"), zap.Error(err))
 		return nil, err
 	}
+	operationStage := request.Stage
 
 	var operations []*operation.Operation
 	var total uint32
@@ -196,7 +196,7 @@ func extractPaginationParameters(request *api.ListOperationsRequest) (uint32, ui
 	}
 
 	if operationStage != "final" && (request.Page != nil || request.PerPage != nil) {
-		return 0, 0, status.Errorf(codes.InvalidArgument, "there is no pagination filter implemented in : %s stage", operationStage)
+		return 0, 0, status.Errorf(codes.InvalidArgument, "there is no pagination filter implemented for %s stage", operationStage)
 	}
 
 	return page, pageSize, nil

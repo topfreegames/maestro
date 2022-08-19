@@ -1,5 +1,5 @@
 {
     "code": 3,
-    "message": "there is no pagination filter implemented in : active stage",
+    "message": "there is no pagination filter implemented for active stage",
     "details": []
 }
