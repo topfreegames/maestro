@@ -144,6 +144,7 @@ func TestListOperations(t *testing.T) {
 			Input: []byte("{\"scheduler\": {\"name\": \"some-scheduler\"}}"),
 		},
 	}
+
 	activeOperations := []*operation.Operation{
 		&operation.Operation{
 			ID:             "72e108f8-8025-4e96-9f3f-b81ac5b40d50",
@@ -196,15 +197,13 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(-1)).Return(finishedOperations, int64(0), nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -220,15 +219,13 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(-1)).Return(finishedOperations, int64(0), nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?order_by=createdAt asc", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&order_by=createdAt asc", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -245,15 +242,13 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(-1)).Return(finishedOperations, int64(0), nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?order_by=createdAt desc", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&order_by=createdAt desc", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -276,7 +271,7 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?order_by=invalidField", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&order_by=invalidField", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -301,7 +296,7 @@ func TestListOperations(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?order_by=createdAt invalidOrder", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&order_by=createdAt invalidOrder", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -316,17 +311,104 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, "invalid sorting order: invalidOrder", body["message"])
 	})
 
-	t.Run("with error when listing pending operations", func(t *testing.T) {
+	t.Run("with success and operations pending stage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing pending operations"))
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=pending", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 200, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_pending_stage_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with success and operations active stage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=active", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 200, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_active_stage_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with success and operations final stage with default pagination", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 200, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_final_stage_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with success and operations final stage with custom pagination", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(10)).Return(finishedOperations, int64(13), nil)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&page=1&perPage=10", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 200, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/list_operations_final_stage_pagination_success.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with error when listing operations in pending stage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("some error"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=pending", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -338,18 +420,37 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
-	t.Run("with error when listing active operations", func(t *testing.T) {
+	t.Run("with error when listing operations in pending stage with invalid pagination parameters", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
-
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("error listing active operations"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=pending&page=1&perPage=15", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 400, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_pending_operations_with_pag_parameters.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with error when listing operations in active stage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(nil, errors.NewErrUnexpected("some error"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=active", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -361,19 +462,37 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
-	t.Run("with error when listing finished operations", func(t *testing.T) {
+	t.Run("with error when listing operations in active stage with invalid pagination parameters", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
-
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), schedulerName).Return(pendingOperations, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), schedulerName).Return(activeOperations, nil)
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(-1)).Return(nil, int64(0), errors.NewErrUnexpected("error listing finished operations"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=active&page=1&perPage=15", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 400, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_active_operations_with_pag_parameters.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with error when listing operations in final stage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(nil, int64(0), errors.NewErrUnexpected("error listing finished operations"))
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -381,9 +500,30 @@ func TestListOperations(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 500, rr.Code)
-		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_finished_operations.json")
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_final_operations.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
+
+	t.Run("with error when listing operations in invalid stage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=invalid", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 400, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_invalid_operations.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
 }
 
 func TestCancelOperation(t *testing.T) {

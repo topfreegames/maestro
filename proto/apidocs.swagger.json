@@ -716,6 +716,29 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "stage",
+            "description": "Required parameter for enabling filter by operation execution stage, can be one of [pending, active, final].",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "description": "Parameter for pagination, indicates the page number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "perPage",
+            "description": "Optional parameter for pagination, indicates the number of items per page.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -1360,21 +1383,22 @@
     "v1ListOperationsResponse": {
       "type": "object",
       "properties": {
-        "pendingOperations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1ListOperationItem"
-          },
-          "description": "List of the scheduler pending operations."
+        "page": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Parameter for pagination."
         },
-        "activeOperations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1ListOperationItem"
-          },
-          "description": "List of the scheduler active operations."
+        "pageSize": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Optional parameter for pagination."
         },
-        "finishedOperations": {
+        "total": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Optional parameter for total."
+        },
+        "operations": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1ListOperationItem"
