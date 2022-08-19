@@ -381,7 +381,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(1), int64(10)).Return(finishedOperations, int64(13), nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(10)).Return(finishedOperations, int64(13), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -428,7 +428,7 @@ func TestListOperations(t *testing.T) {
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=pending&page=0&perPage=15", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=pending&page=1&perPage=15", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -470,7 +470,7 @@ func TestListOperations(t *testing.T) {
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
 		require.NoError(t, err)
 
-		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=active&page=0&perPage=15", nil)
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=active&page=1&perPage=15", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
