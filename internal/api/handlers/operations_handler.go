@@ -65,7 +65,7 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	}
 	page, pageSize, err := extractPaginationParameters(request)
 	if err != nil {
-		handlerLogger.Error(fmt.Sprintf("error parsing pagination parameters"), zap.Error(err))
+		handlerLogger.Error("error parsing pagination parameters", zap.Error(err))
 		return nil, err
 	}
 	operationStage := request.Stage
