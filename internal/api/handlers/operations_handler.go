@@ -63,8 +63,12 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 		handlerLogger.Error(fmt.Sprintf("error parsing sorting parameters, orderBy: %+v", request.OrderBy), zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	page, pageSize := extractPaginationParameters(request)
+	page, pageSize, err := extractPaginationParameters(request)
 	operationStage := request.Stage
+
+	if err != nil {
+		return nil, err
+	}
 
 	var operations []*operation.Operation
 	var total uint32
@@ -103,14 +107,20 @@ func (h *OperationsHandler) ListOperations(ctx context.Context, request *api.Lis
 	return &api.ListOperationsResponse{Operations: responseOperations, Total: &total, Page: &page, PageSize: &pageSize}, nil
 }
 
-func extractPaginationParameters(request *api.ListOperationsRequest) (uint32, uint32) {
+func extractPaginationParameters(request *api.ListOperationsRequest) (uint32, uint32, error) {
 	page := request.GetPage()
 	pageSize := request.GetPerPage()
+	operationStage := request.Stage
 
 	if pageSize == 0 {
 		pageSize = 15
 	}
-	return page, pageSize
+
+	if operationStage != "final" && (request.Page != nil || request.PerPage != nil) {
+		return 0, 0, status.Errorf(codes.InvalidArgument, "there is no pagination filter implemented in : %s stage", operationStage)
+	}
+
+	return page, pageSize, nil
 }
 
 func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.CancelOperationRequest) (*api.CancelOperationResponse, error) {

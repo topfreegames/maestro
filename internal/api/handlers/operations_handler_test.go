@@ -420,6 +420,26 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
+	t.Run("with error when listing operations in pending stage when parsing pagination filter", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=pending&page=0&perPage=15", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 400, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_pending_operations_with_pag_parameters.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
 	t.Run("with error when listing operations in active stage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -439,6 +459,26 @@ func TestListOperations(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 500, rr.Code)
 		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_active_operations.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("with error when listing operations in active stage when parsing pagination filter", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=active&page=0&perPage=15", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 400, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_active_operations_with_pag_parameters.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
