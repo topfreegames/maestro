@@ -504,6 +504,26 @@ func TestListOperations(t *testing.T) {
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
+	t.Run("with error when listing operations in final with invalid pagination parameters", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&page=0", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 400, rr.Code)
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_final_operations_invalid_pag.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
 	t.Run("with error when listing operations in invalid stage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)

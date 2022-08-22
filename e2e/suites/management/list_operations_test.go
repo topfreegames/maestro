@@ -25,11 +25,12 @@ package management
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
-	"testing"
-	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
