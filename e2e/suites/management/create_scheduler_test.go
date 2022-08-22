@@ -115,17 +115,17 @@ func TestCreateScheduler(t *testing.T) {
 			assert.Eventually(t, func() bool {
 				listOperationsRequest := &maestrov1.ListOperationsRequest{}
 				listOperationsResponse := &maestrov1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final", schedulerName), listOperationsRequest, listOperationsResponse)
 				assert.NoError(t, err)
 
-				if len(listOperationsResponse.FinishedOperations) == 0 {
+				if len(listOperationsResponse.Operations) == 0 {
 					return false
 				}
 
-				assert.Equal(t, create_scheduler.OperationName, listOperationsResponse.FinishedOperations[0].DefinitionName)
+				assert.Equal(t, create_scheduler.OperationName, listOperationsResponse.Operations[0].DefinitionName)
 
 				statusFinished, _ := operation.StatusFinished.String()
-				assert.Equal(t, statusFinished, listOperationsResponse.FinishedOperations[0].Status)
+				assert.Equal(t, statusFinished, listOperationsResponse.Operations[0].Status)
 
 				return true
 			}, 30*time.Second, time.Second)
@@ -188,17 +188,17 @@ func TestCreateScheduler(t *testing.T) {
 			assert.Eventually(t, func() bool {
 				listOperationsRequest := &maestrov1.ListOperationsRequest{}
 				listOperationsResponse := &maestrov1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final", schedulerName), listOperationsRequest, listOperationsResponse)
 				assert.NoError(t, err)
 
-				if len(listOperationsResponse.FinishedOperations) == 0 {
+				if len(listOperationsResponse.Operations) == 0 {
 					return false
 				}
 
-				assert.Equal(t, create_scheduler.OperationName, listOperationsResponse.FinishedOperations[0].DefinitionName)
+				assert.Equal(t, create_scheduler.OperationName, listOperationsResponse.Operations[0].DefinitionName)
 
 				statusError, _ := operation.StatusError.String()
-				assert.Equal(t, statusError, listOperationsResponse.FinishedOperations[0].Status)
+				assert.Equal(t, statusError, listOperationsResponse.Operations[0].Status)
 				return true
 			}, 30*time.Second, time.Second)
 

@@ -63,7 +63,7 @@ func TestAutoscaling(t *testing.T) {
 					schedulerInfo.GetRoomsOccupied() == int32(0) &&
 					schedulerInfo.GetRoomsTerminating() == int32(0) &&
 					schedulerInfo.GetRoomsPending() == int32(0)
-			}, time.Minute*1, time.Second*5, "Scheduler info should be updated to match rooms replicas")
+			}, time.Minute*2, time.Second*5, "Scheduler info should be updated to match rooms replicas")
 		})
 
 		t.Run("Autoscaling configured and disabled - use rooms replicas value to maintain state", func(t *testing.T) {
