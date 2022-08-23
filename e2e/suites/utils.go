@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package management
+package suites
 
 import (
 	"bytes"
@@ -288,7 +288,7 @@ func createTestOperation(ctx context.Context, t *testing.T, operationStorage por
 
 func addStubRequestToMockedGrpcServer(stubFileName string) error {
 	httpClient := &http.Client{}
-	stubsPath := "../../framework/maestro/servermocks/"
+	stubsPath := "../framework/maestro/servermocks/"
 	stub, err := ioutil.ReadFile(stubsPath + stubFileName + ".json")
 	if err != nil {
 		return err
