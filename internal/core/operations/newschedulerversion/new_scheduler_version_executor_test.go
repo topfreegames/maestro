@@ -456,6 +456,47 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		require.ErrorContains(t, operationExecutionError, "error validating game room with ID")
 	})
 
+	t.Run("should fail - major version update, game room is valid, context is canceled during validation", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		currentActiveScheduler := newValidSchedulerWithImageVersion("image-v1")
+		newScheduler := *newValidSchedulerWithImageVersion("image-v2")
+		op := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newschedulerversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		roomManager := mockports.NewMockRoomManager(mockCtrl)
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		config := newschedulerversion.Config{
+			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationAttempts:    3,
+		}
+		ctx, cancelFn := context.WithCancel(context.Background())
+
+		executor := newschedulerversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+
+		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}, {Version: "v1.1.0"}, {Version: "v1.2.0"}}
+
+		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Times(1).DoAndReturn(func(ctx context.Context, scheduler entities.Scheduler, isValidation bool) (*game_room.GameRoom, *game_room.Instance, error) {
+			cancelFn()
+			return nil, nil, errors.NewErrUnexpected("some error")
+		})
+
+		schedulerManager.EXPECT().GetActiveScheduler(ctx, newScheduler.Name).Return(currentActiveScheduler, nil)
+		schedulerManager.EXPECT().GetSchedulerVersions(ctx, newScheduler.Name).Return(schedulerVersions, nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "Major version detected, starting game room validation process...")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "1º Attempt: Unexpected Error: some error - Contact the Maestro's responsible team for helping.")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "All validation attempts have failed, operation aborted!")
+
+		result := executor.Execute(ctx, op, operationDef)
+
+		require.ErrorContains(t, result, "context canceled")
+	})
+
 	t.Run("should fail - major version update, game room is invalid, timeout error -> returns error, don't create new version/switch to it", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
