@@ -95,7 +95,7 @@ func TestListOperations(t *testing.T) {
 				require.NoError(t, err)
 
 				if len(listActiveOperationsResponse.Operations) == 1 && listActiveOperationsResponse.Operations[0].Id == activeOp.ID {
-					assertPaginationInfo(t, listActiveOperationsResponse, uint32(1), uint32(1), uint32(1))
+					assertPaginationInfo(t, "active", listActiveOperationsResponse, uint32(1), uint32(1), uint32(1))
 					assertEqualOperations(t, listActiveOperationsResponse.Operations[0], activeOp, inProgressStatus)
 					return true
 				}
@@ -110,7 +110,7 @@ func TestListOperations(t *testing.T) {
 			listPendingOperationsResponse := &maestroApiV1.ListOperationsResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=pending", scheduler.Name), listOperationsRequest, listPendingOperationsResponse)
 			require.NoError(t, err)
-			assertPaginationInfo(t, listPendingOperationsResponse, uint32(numberOfPendingTestOps), uint32(1), uint32(numberOfPendingTestOps))
+			assertPaginationInfo(t, "pending", listPendingOperationsResponse, uint32(numberOfPendingTestOps), uint32(1), uint32(numberOfPendingTestOps))
 			testOpsResponseCount := 0
 			for _, pendingOp := range listPendingOperationsResponse.Operations {
 				if pendingOp.DefinitionName == test_operation.OperationName {
@@ -135,7 +135,7 @@ func TestListOperations(t *testing.T) {
 
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final&page=1&perPage=%d", scheduler.Name, perPage), listOperationsRequest, listFinalOperationsResponse)
 			require.NoError(t, err)
-			assertPaginationInfo(t, listFinalOperationsResponse, uint32(10), uint32(1), uint32(5))
+			assertPaginationInfo(t, "final", listFinalOperationsResponse, uint32(10), uint32(1), uint32(perPage))
 			assert.Len(t, listFinalOperationsResponse.Operations, perPage)
 
 			for _, pendingOp := range listFinalOperationsResponse.Operations {
@@ -153,7 +153,7 @@ func TestListOperations(t *testing.T) {
 
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final&page=2&perPage=%d", scheduler.Name, perPage), listOperationsRequest, listFinalOperationsResponse)
 			require.NoError(t, err)
-			assertPaginationInfo(t, listFinalOperationsResponse, uint32(10), uint32(2), uint32(5))
+			assertPaginationInfo(t, "final", listFinalOperationsResponse, uint32(10), uint32(2), uint32(perPage))
 			assert.Len(t, listFinalOperationsResponse.Operations, int(perPage)-1)
 			for _, pendingOp := range listFinalOperationsResponse.Operations {
 				if pendingOp.DefinitionName == test_operation.OperationName {
@@ -170,7 +170,7 @@ func TestListOperations(t *testing.T) {
 
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final&page=3&perPage=%d", scheduler.Name, perPage), listOperationsRequest, listFinalOperationsResponse)
 			require.NoError(t, err)
-			assertPaginationInfo(t, listFinalOperationsResponse, uint32(10), uint32(3), uint32(5))
+			assertPaginationInfo(t, "final", listFinalOperationsResponse, uint32(10), uint32(3), uint32(perPage))
 			assert.Empty(t, listFinalOperationsResponse.Operations)
 
 			assert.Equal(t, numberOfFinishedTestOps, testOpsResponseCount)
@@ -187,9 +187,13 @@ func assertHealthControllerTookAction(t *testing.T, redisClient *redis.Client, s
 	assert.Equal(t, true, healthControllerDef.TookAction)
 }
 
-func assertPaginationInfo(t *testing.T, response *maestroApiV1.ListOperationsResponse, total uint32, page uint32, pageSize uint32) {
+func assertPaginationInfo(t *testing.T, stage string, response *maestroApiV1.ListOperationsResponse, total uint32, page uint32, pageSize uint32) {
 	assert.GreaterOrEqual(t, *response.Total, total)
-	assert.GreaterOrEqual(t, *response.PageSize, pageSize)
+	if stage == "final" {
+		assert.Equal(t, *response.PageSize, pageSize)
+	} else {
+		assert.GreaterOrEqual(t, *response.PageSize, pageSize)
+	}
 	assert.Equal(t, page, *response.Page)
 }
 
