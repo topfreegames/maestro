@@ -26,7 +26,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager"
+	operation_manager2 "github.com/topfreegames/maestro/internal/core/services/operation/manager"
+	room_manager2 "github.com/topfreegames/maestro/internal/core/services/room/manager"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
@@ -41,12 +43,6 @@ import (
 
 	autoscalerports "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
 
-	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
-	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
-
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
@@ -56,7 +52,10 @@ import (
 	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
+	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -92,17 +91,17 @@ const (
 
 // NewSchedulerManager instantiates a new scheduler manager.
 func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache ports.SchedulerCache, operationManager ports.OperationManager, roomStorage ports.RoomStorage) ports.SchedulerManager {
-	return scheduler_manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+	return manager.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 }
 
 // NewOperationManager instantiates a new operation manager
-func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {
-	return operation_manager.New(flow, storage, operationDefinitionConstructors, leaseStorage, config, schedulerStorage)
+func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager2.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {
+	return operation_manager2.New(flow, storage, operationDefinitionConstructors, leaseStorage, config, schedulerStorage)
 }
 
 // NewRoomManager instantiates a room manager.
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config room_manager.RoomManagerConfig) ports.RoomManager {
-	return room_manager.New(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config room_manager2.RoomManagerConfig) ports.RoomManager {
+	return room_manager2.New(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
 }
 
 // NewEventsForwarder instantiates GRPC as events forwarder.

@@ -28,7 +28,7 @@ package metricsreporter
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
+	"github.com/topfreegames/maestro/internal/core/services/worker/manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	workerconfigs "github.com/topfreegames/maestro/internal/core/workers/config"
 	"github.com/topfreegames/maestro/internal/core/workers/metricsreporter"
@@ -53,7 +53,7 @@ var WorkerOptionsSet = wire.NewSet(
 	provideMetricsReporterConfig,
 	wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))
 
-func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager, error) {
+func initializeMetricsReporter(c config.Config) (*manager.WorkersManager, error) {
 	wire.Build(
 		// workers options
 		WorkerOptionsSet,
@@ -63,8 +63,8 @@ func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager
 
 		service.NewSchedulerStoragePg,
 
-		workers_manager.NewWorkersManager,
+		manager.NewWorkersManager,
 	)
 
-	return &workers_manager.WorkersManager{}, nil
+	return &manager.WorkersManager{}, nil
 }

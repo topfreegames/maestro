@@ -9,7 +9,7 @@ package metricsreporter
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
+	"github.com/topfreegames/maestro/internal/core/services/worker/manager"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	config2 "github.com/topfreegames/maestro/internal/core/workers/config"
 	"github.com/topfreegames/maestro/internal/core/workers/metricsreporter"
@@ -18,7 +18,7 @@ import (
 
 // Injectors from wire.go:
 
-func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager, error) {
+func initializeMetricsReporter(c config.Config) (*manager.WorkersManager, error) {
 	workerBuilder := provideMetricsReporterBuilder()
 	schedulerStorage, err := service.NewSchedulerStoragePg(c)
 	if err != nil {
@@ -38,7 +38,7 @@ func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager
 		InstanceStorage:       gameRoomInstanceStorage,
 		MetricsReporterConfig: metricsReporterConfig,
 	}
-	workersManager := workers_manager.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
+	workersManager := manager.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
 }
 
