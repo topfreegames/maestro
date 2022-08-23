@@ -33,7 +33,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -461,7 +460,6 @@ func TestGetSchedulerVersions(t *testing.T) {
 }
 
 func TestCreateScheduler(t *testing.T) {
-	dirPath, _ := os.Getwd()
 
 	err := validations.RegisterValidations()
 	if err != nil {
@@ -567,7 +565,7 @@ func TestCreateScheduler(t *testing.T) {
 		err = api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
+		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
@@ -589,7 +587,7 @@ func TestCreateScheduler(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/bad-scheduler-config.json")
+		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/bad-scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
@@ -639,7 +637,7 @@ func TestCreateScheduler(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
+		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
@@ -661,7 +659,6 @@ func TestCreateScheduler(t *testing.T) {
 }
 
 func TestNewSchedulerVersion(t *testing.T) {
-	dirPath, _ := os.Getwd()
 
 	err := validations.RegisterValidations()
 	if err != nil {
@@ -687,7 +684,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
+		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
@@ -717,7 +714,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
+		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
@@ -751,7 +748,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(dirPath + "/fixtures/request/scheduler-config.json")
+		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
@@ -1081,7 +1078,6 @@ func TestPatchScheduler(t *testing.T) {
 	err := validations.RegisterValidations()
 	require.NoError(t, err)
 
-	dirPath, _ := os.Getwd()
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
@@ -1109,7 +1105,7 @@ func TestPatchScheduler(t *testing.T) {
 
 			url := "/schedulers/scheduler-name-1"
 
-			requestFile := fmt.Sprintf("%s/fixtures/request/%s", dirPath, testCase.Mocks.RequestFile)
+			requestFile := fmt.Sprintf("%s/request/%s", fixturesRelativePath, testCase.Mocks.RequestFile)
 			request, err := ioutil.ReadFile(requestFile)
 			require.NoError(t, err)
 
