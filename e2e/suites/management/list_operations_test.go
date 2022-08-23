@@ -178,9 +178,9 @@ func TestListOperations(t *testing.T) {
 	})
 }
 
-func assertHealthControllerTookAction(t *testing.T, redisClient *redis.Client, scheduler *maestroApiV1.Scheduler, pendingOp *maestroApiV1.ListOperationItem) {
+func assertHealthControllerTookAction(t *testing.T, redisClient *redis.Client, scheduler *maestroApiV1.Scheduler, finishedOp *maestroApiV1.ListOperationItem) {
 	healthControllerDef := healthcontroller.SchedulerHealthControllerDefinition{}
-	definitionContents, err := redisClient.HGet(context.Background(), fmt.Sprintf("operations:%s:%s", scheduler.Name, pendingOp.Id), "definitionContents").Result()
+	definitionContents, err := redisClient.HGet(context.Background(), fmt.Sprintf("operations:%s:%s", scheduler.Name, finishedOp.Id), "definitionContents").Result()
 	require.NoError(t, err)
 	err = healthControllerDef.Unmarshal([]byte(definitionContents))
 	require.NoError(t, err)
