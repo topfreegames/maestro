@@ -68,7 +68,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Image: "alpine:3.15.0",
 							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
 								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 20; done"},
 							ImagePullPolicy: "IfNotPresent",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
@@ -130,7 +130,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				}
 
 				return true
-			}, 1*time.Minute, 10*time.Millisecond)
+			}, 1*time.Minute, 10*time.Millisecond, "failed wait for minor version updated")
 
 			require.Eventually(t, func() bool {
 				podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
@@ -376,7 +376,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Image: "alpine:3.15.0",
 							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
 								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 20; done"},
 							ImagePullPolicy: "IfNotPresent",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{
@@ -529,7 +529,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 							Image: "alpine:3.15.0",
 							Command: []string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
 								"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
+								"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 20; done"},
 							ImagePullPolicy: "IfNotPresent",
 							Environment: []*maestroApiV1.ContainerEnvironment{
 								{

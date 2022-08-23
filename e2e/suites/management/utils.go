@@ -117,15 +117,15 @@ func createSchedulerAndWaitForIt(
 	require.Eventually(t, func() bool {
 		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final", schedulerName), listOperationsRequest, listOperationsResponse)
 		require.NoError(t, err)
 
-		if len(listOperationsResponse.FinishedOperations) == 0 {
+		if len(listOperationsResponse.Operations) == 0 {
 			return false
 		}
 
-		require.Equal(t, "create_scheduler", listOperationsResponse.FinishedOperations[0].DefinitionName)
-		require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
+		require.Equal(t, "create_scheduler", listOperationsResponse.Operations[0].DefinitionName)
+		require.Equal(t, "finished", listOperationsResponse.Operations[0].Status)
 		return true
 	}, 30*time.Second, time.Second)
 
@@ -236,15 +236,15 @@ func createSchedulerWithForwardersAndWaitForIt(
 	require.Eventually(t, func() bool {
 		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final", schedulerName), listOperationsRequest, listOperationsResponse)
 		require.NoError(t, err)
 
-		if len(listOperationsResponse.FinishedOperations) == 0 {
+		if len(listOperationsResponse.Operations) == 0 {
 			return false
 		}
 
-		require.Equal(t, "create_scheduler", listOperationsResponse.FinishedOperations[0].DefinitionName)
-		require.Equal(t, "finished", listOperationsResponse.FinishedOperations[0].Status)
+		require.Equal(t, "create_scheduler", listOperationsResponse.Operations[0].DefinitionName)
+		require.Equal(t, "finished", listOperationsResponse.Operations[0].Status)
 		return true
 	}, 30*time.Second, time.Second)
 
@@ -317,7 +317,7 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 		game,
 		[]string{"/bin/sh", "-c", "apk add curl && " + "while true; do curl --request PUT " +
 			"$ROOMS_API_ADDRESS/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping " +
-			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"},
+			"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 20; done"},
 	)
 	require.NoError(t, err)
 
@@ -340,7 +340,7 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 		}
 
 		return true
-	}, 4*time.Minute, 10*time.Millisecond)
+	}, 4*time.Minute, 10*time.Millisecond, "failed to create scheduler")
 
 	require.Eventually(t, func() bool {
 		pods, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
@@ -357,7 +357,7 @@ func createSchedulerWithRoomsAndWaitForIt(t *testing.T, maestro *maestro.Maestro
 		}
 
 		return true
-	}, 2*time.Minute, 10*time.Millisecond)
+	}, 2*time.Minute, 10*time.Millisecond, "failed to wait for initial pods to be created")
 
 	scheduler.RoomsReplicas = 2
 
@@ -368,11 +368,11 @@ func waitForOperationToFinish(t *testing.T, managementApiClient *framework.APICl
 	require.Eventually(t, func() bool {
 		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
+		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final", schedulerName), listOperationsRequest, listOperationsResponse)
 		require.NoError(t, err)
 
-		if len(listOperationsResponse.FinishedOperations) >= 1 {
-			for _, _operation := range listOperationsResponse.FinishedOperations {
+		if len(listOperationsResponse.Operations) >= 1 {
+			for _, _operation := range listOperationsResponse.Operations {
 				if _operation.DefinitionName == operation && _operation.Status == "finished" {
 					return true
 				}
@@ -398,25 +398,6 @@ func waitForOperationToFinishByOperationId(t *testing.T, managementApiClient *fr
 
 		return false
 	}, 4*time.Minute, time.Second*5, "Timeout waiting operation to reach finished status")
-}
-
-func waitForOperationToFail(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operation string) {
-	require.Eventually(t, func() bool {
-		listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
-		listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-		err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", schedulerName), listOperationsRequest, listOperationsResponse)
-		require.NoError(t, err)
-
-		if len(listOperationsResponse.FinishedOperations) >= 1 {
-			for _, _operation := range listOperationsResponse.FinishedOperations {
-				if _operation.DefinitionName == operation && _operation.Status == "error" {
-					return true
-				}
-			}
-		}
-
-		return false
-	}, 4*time.Minute, time.Second)
 }
 
 func waitForOperationToFailById(t *testing.T, managementApiClient *framework.APIClient, schedulerName, operationId string) {

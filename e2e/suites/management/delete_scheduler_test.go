@@ -98,11 +98,16 @@ func TestDeleteScheduler(t *testing.T) {
 			assert.Eventually(t, func() bool {
 				getOperationsRequest := &maestroApiV1.ListOperationsRequest{SchedulerName: scheduler.Name}
 				getOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/scheduler/%s/operations", scheduler.Name), getOperationsRequest, getOperationsResponse)
+				listFinalErr := managementApiClient.Do("GET", fmt.Sprintf("/scheduler/%s/operations?stage=final", scheduler.Name), getOperationsRequest, getOperationsResponse)
+				listPendingErr := managementApiClient.Do("GET", fmt.Sprintf("/scheduler/%s/operations?stage=pending", scheduler.Name), getOperationsRequest, getOperationsResponse)
+				listActiveErr := managementApiClient.Do("GET", fmt.Sprintf("/scheduler/%s/operations?stage=active", scheduler.Name), getOperationsRequest, getOperationsResponse)
 
-				if len(getOperationsResponse.GetFinishedOperations()) == 0 &&
-					len(getOperationsResponse.GetActiveOperations()) == 0 &&
-					len(getOperationsResponse.GetPendingOperations()) == 0 {
+				if listFinalErr != nil &&
+					listPendingErr != nil &&
+					listActiveErr != nil {
+					require.ErrorContains(t, listFinalErr, "Not Found")
+					require.ErrorContains(t, listPendingErr, "Not Found")
+					require.ErrorContains(t, listActiveErr, "Not Found")
 					return true
 				}
 				return false

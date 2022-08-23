@@ -187,23 +187,29 @@ func (h *OperationsHandler) queryFinishedOperations(ctx context.Context, schedul
 }
 
 func extractPaginationParameters(request *api.ListOperationsRequest) (uint32, uint32, error) {
-	page := request.GetPage()
-	pageSize := request.GetPerPage()
+	page := request.Page
+	pageSize := request.PerPage
 	operationStage := request.Stage
+	defaultPageValue := uint32(1)
+	defaultPageSizeValue := uint32(15)
 
-	if page == 0 {
-		page = 1
+	if page == nil {
+		page = &defaultPageValue
+	} else if *page < 1 {
+		return 0, 0, status.Error(codes.InvalidArgument, "page must be greater than 0")
 	}
 
-	if pageSize == 0 {
-		pageSize = 15
+	if pageSize == nil {
+		pageSize = &defaultPageSizeValue
+	} else if *pageSize < 1 || *pageSize > 100 {
+		return 0, 0, status.Error(codes.InvalidArgument, "page size must be between 0 and 100")
 	}
 
 	if operationStage != "final" && (request.Page != nil || request.PerPage != nil) {
 		return 0, 0, status.Errorf(codes.InvalidArgument, "there is no pagination filter implemented for %s stage", operationStage)
 	}
 
-	return page, pageSize, nil
+	return *page, *pageSize, nil
 }
 
 func sortOperationsByCreatedAt(operations []*operation.Operation, order string) {

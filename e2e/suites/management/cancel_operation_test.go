@@ -138,10 +138,10 @@ func TestCancelOperation(t *testing.T) {
 
 			listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 			listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
+			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=final", scheduler.Name), listOperationsRequest, listOperationsResponse)
 			require.NoError(t, err)
 
-			finishedOpId := listOperationsResponse.FinishedOperations[0].Id
+			finishedOpId := listOperationsResponse.Operations[0].Id
 
 			finishedOpCancelRequest := &maestroApiV1.CancelOperationRequest{SchedulerName: scheduler.Name, OperationId: finishedOpId}
 			finishedOpCancelResponse := &maestroApiV1.CancelOperationResponse{}

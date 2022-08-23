@@ -77,10 +77,10 @@ func TestOperationLease(t *testing.T) {
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=active", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
-				activeOperation := listOperationsResponse.ActiveOperations[0]
+				activeOperation := listOperationsResponse.Operations[0]
 				if activeOperation.Id != slowOp.ID {
 					return false
 				}
@@ -119,14 +119,14 @@ func TestOperationLease(t *testing.T) {
 			require.Eventually(t, func() bool {
 				listOperationsRequest := &maestroApiV1.ListOperationsRequest{}
 				listOperationsResponse := &maestroApiV1.ListOperationsResponse{}
-				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations", scheduler.Name), listOperationsRequest, listOperationsResponse)
+				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations?stage=active", scheduler.Name), listOperationsRequest, listOperationsResponse)
 				require.NoError(t, err)
 
-				if len(listOperationsResponse.ActiveOperations) <= 0 {
+				if len(listOperationsResponse.Operations) <= 0 {
 					return false
 				}
 
-				activeOperation := listOperationsResponse.ActiveOperations[0]
+				activeOperation := listOperationsResponse.Operations[0]
 				if activeOperation.Id != slowOp.ID {
 					return false
 				}
