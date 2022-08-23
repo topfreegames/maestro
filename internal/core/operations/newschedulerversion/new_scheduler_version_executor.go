@@ -110,7 +110,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 			currentAttempt++
 			validationError := ex.validateGameRoomCreation(ctx, newScheduler, logger)
 			return ex.treatValidationError(ctx, op, validationError, currentAttempt)
-		}, retry.Attempts(uint(ex.config.RoomValidationAttempts)))
+		}, retry.Attempts(uint(ex.config.RoomValidationAttempts)), retry.Context(ctx))
 		if retryError != nil {
 			logger.Error("game room validation failed after all attempts", zap.Error(retryError))
 			ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, allAttemptsFailedMessageTemplate)
