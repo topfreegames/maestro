@@ -32,7 +32,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	autoscalerPorts "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"
 )
 
@@ -47,7 +46,7 @@ type Policy struct {
 	roomStorage ports.RoomStorage
 }
 
-var _ autoscalerPorts.Policy = new(Policy)
+var _ ports.Policy = new(Policy)
 
 // NewPolicy create a new room occupancy autoscaling policy.
 func NewPolicy(roomStorage ports.RoomStorage) *Policy {

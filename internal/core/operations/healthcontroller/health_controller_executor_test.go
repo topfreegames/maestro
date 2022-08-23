@@ -38,7 +38,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	ismock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -51,7 +50,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 	type executionPlan struct {
 		planMocks func(
 			roomStorage *mockports.MockRoomStorage,
-			instanceStorage *ismock.MockGameRoomInstanceStorage,
+			instanceStorage *mockports.MockGameRoomInstanceStorage,
 			schedulerStorage *mockports.MockSchedulerStorage,
 			operationManager *mockports.MockOperationManager,
 			autoscaler *mockports.MockAutoscaler,
@@ -89,7 +88,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -114,7 +113,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -169,7 +168,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -230,7 +229,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -291,7 +290,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -346,7 +345,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -387,7 +386,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -429,7 +428,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -487,7 +486,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -517,7 +516,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -576,7 +575,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -602,7 +601,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -628,7 +627,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -654,7 +653,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -679,7 +678,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -721,7 +720,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -763,7 +762,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -805,7 +804,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -846,7 +845,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -863,7 +862,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -881,7 +880,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -900,7 +899,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -939,7 +938,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -987,7 +986,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -1042,7 +1041,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -1097,7 +1096,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				tookAction: true,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
-					instanceStorage *ismock.MockGameRoomInstanceStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
 					schedulerStorage *mockports.MockSchedulerStorage,
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
@@ -1157,7 +1156,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		t.Run(testCase.title, func(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			roomsStorage := mockports.NewMockRoomStorage(mockCtrl)
-			instanceStorage := ismock.NewMockGameRoomInstanceStorage(mockCtrl)
+			instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
 			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 			operationManager := mockports.NewMockOperationManager(mockCtrl)
 			autoscaler := mockports.NewMockAutoscaler(mockCtrl)

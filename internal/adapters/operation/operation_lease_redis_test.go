@@ -31,11 +31,12 @@ import (
 	"testing"
 	"time"
 
+	clockmock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
-	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	errors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/test"
 )

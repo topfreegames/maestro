@@ -32,14 +32,13 @@ import (
 	"testing"
 	"time"
 
-	events_forwarder2 "github.com/topfreegames/maestro/internal/core/services/events/forwarder"
+	eventsforwarder "github.com/topfreegames/maestro/internal/core/services/events/forwarder"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/golang/mock/gomock"
-	isMock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -647,17 +646,17 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 
 }
 
-func testSetup(t *testing.T) (ports.EventsService, events_forwarder2.EventsForwarderConfig, *mockports.MockEventsForwarder, *mockports.MockSchedulerStorage, *mockports.MockRoomStorage, *isMock.MockGameRoomInstanceStorage, *mockports.MockSchedulerCache) {
+func testSetup(t *testing.T) (ports.EventsService, eventsforwarder.EventsForwarderConfig, *mockports.MockEventsForwarder, *mockports.MockSchedulerStorage, *mockports.MockRoomStorage, *mockports.MockGameRoomInstanceStorage, *mockports.MockSchedulerCache) {
 	mockCtrl := gomock.NewController(t)
 
 	eventsForwarder := mockports.NewMockEventsForwarder(mockCtrl)
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-	instanceStorage := isMock.NewMockGameRoomInstanceStorage(mockCtrl)
+	instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
 	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	config := events_forwarder2.EventsForwarderConfig{SchedulerCacheTtl: time.Minute}
+	config := eventsforwarder.EventsForwarderConfig{SchedulerCacheTtl: time.Minute}
 
-	eventsForwarderService := events_forwarder2.NewEventsForwarderService(eventsForwarder, schedulerStorage, instanceStorage, roomStorage, schedulerCache, config)
+	eventsForwarderService := eventsforwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, instanceStorage, roomStorage, schedulerCache, config)
 
 	return eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache
 }

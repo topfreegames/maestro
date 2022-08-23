@@ -38,9 +38,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	instancestoragemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
-	portallocatormock "github.com/topfreegames/maestro/internal/adapters/port_allocator/mock"
-	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -54,10 +51,10 @@ type mockRoomAndSchedulerAndOperationManager struct {
 	roomManager      *mockports.MockRoomManager
 	schedulerManager *mockports.MockSchedulerManager
 	operationManager *mockports.MockOperationManager
-	portAllocator    *portallocatormock.MockPortAllocator
+	portAllocator    *mockports.MockPortAllocator
 	roomStorage      *mockports.MockRoomStorage
-	instanceStorage  *instancestoragemock.MockGameRoomInstanceStorage
-	runtime          *runtimemock.MockRuntime
+	instanceStorage  *mockports.MockGameRoomInstanceStorage
+	runtime          *mockports.MockRuntime
 	eventsService    ports.EventsService
 	schedulerStorage *mockports.MockSchedulerStorage
 	schedulerCache   *mockports.MockSchedulerCache
@@ -561,10 +558,10 @@ func TestSwitchActiveVersionOperation_Rollback(t *testing.T) {
 }
 
 func newMockRoomAndSchedulerManager(mockCtrl *gomock.Controller) *mockRoomAndSchedulerAndOperationManager {
-	portAllocator := portallocatormock.NewMockPortAllocator(mockCtrl)
+	portAllocator := mockports.NewMockPortAllocator(mockCtrl)
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-	instanceStorage := instancestoragemock.NewMockGameRoomInstanceStorage(mockCtrl)
-	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
+	runtime := mockports.NewMockRuntime(mockCtrl)
 	eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)

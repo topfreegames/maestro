@@ -26,6 +26,10 @@ import (
 	"fmt"
 	"time"
 
+	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/instance/redis"
+	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/room/redis"
+	"github.com/topfreegames/maestro/internal/adapters/storage/scheduler"
+
 	"github.com/topfreegames/maestro/internal/core/operations/room/add"
 	"github.com/topfreegames/maestro/internal/core/operations/room/remove"
 
@@ -39,16 +43,10 @@ import (
 
 	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
 
-	scheduleradapters "github.com/topfreegames/maestro/internal/adapters/scheduler"
-
-	autoscalerports "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
-
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
-	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/instance_storage/redis"
-	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/port_allocator/random"
-	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/room_storage/redis"
+	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/portallocator/random"
 	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -182,7 +180,7 @@ func NewSchedulerCacheRedis(c config.Config) (ports.SchedulerCache, error) {
 		return nil, fmt.Errorf("failed to initialize Redis scheduler cache: %w", err)
 	}
 
-	return scheduleradapters.NewRedisSchedulerCache(client), nil
+	return scheduler.NewRedisSchedulerCache(client), nil
 }
 
 // NewClockTime instantiates a new clock.
@@ -207,7 +205,7 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
 
-	return scheduleradapters.NewSchedulerStorage(opts), nil
+	return scheduler.NewSchedulerStorage(opts), nil
 }
 
 // GetSchedulerStoragePostgresURL get scheduler storage postgres URL.
@@ -232,7 +230,7 @@ func NewPolicyMap(roomStorage ports.RoomStorage) autoscaler.PolicyMap {
 }
 
 // NewAutoscaler instantiates  a new autoscaler expecting a Policy Map as parameter.
-func NewAutoscaler(policies autoscaler.PolicyMap) autoscalerports.Autoscaler {
+func NewAutoscaler(policies autoscaler.PolicyMap) ports.Autoscaler {
 	return autoscaler.NewAutoscaler(policies)
 }
 

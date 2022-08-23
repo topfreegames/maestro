@@ -34,7 +34,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -42,10 +41,10 @@ import (
 	"github.com/topfreegames/maestro/internal/core/workers"
 )
 
-func workerOptions(t *testing.T) (*gomock.Controller, *runtimemock.MockRuntime, *mockports.MockRoomManager, *workers.WorkerOptions) {
+func workerOptions(t *testing.T) (*gomock.Controller, *mockports.MockRuntime, *mockports.MockRoomManager, *workers.WorkerOptions) {
 	mockCtrl := gomock.NewController(t)
 
-	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	runtime := mockports.NewMockRuntime(mockCtrl)
 	roomManager := mockports.NewMockRoomManager(mockCtrl)
 
 	return mockCtrl, runtime, roomManager, &workers.WorkerOptions{
@@ -67,7 +66,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 			scheduler := &entities.Scheduler{Name: "test"}
 			watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
 
-			runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
+			runtimeWatcher := mockports.NewMockRuntimeWatcher(mockCtrl)
 			runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
 
 			resultChan := make(chan game_room.InstanceEvent)
@@ -108,7 +107,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 			scheduler := &entities.Scheduler{Name: "test"}
 			watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
 
-			runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
+			runtimeWatcher := mockports.NewMockRuntimeWatcher(mockCtrl)
 			runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
 
 			resultChan := make(chan game_room.InstanceEvent)
@@ -173,7 +172,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
 
-		runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
+		runtimeWatcher := mockports.NewMockRuntimeWatcher(mockCtrl)
 		runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
 		roomManager.EXPECT().CleanRoomState(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
@@ -212,7 +211,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
 
-		runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
+		runtimeWatcher := mockports.NewMockRuntimeWatcher(mockCtrl)
 		runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
 		roomManager.EXPECT().CleanRoomState(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("error"))
 
@@ -251,7 +250,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
 
-		runtimeWatcher := runtimemock.NewMockRuntimeWatcher(mockCtrl)
+		runtimeWatcher := mockports.NewMockRuntimeWatcher(mockCtrl)
 		runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
 
 		resultChan := make(chan game_room.InstanceEvent)

@@ -33,6 +33,8 @@ import (
 	"testing"
 	"time"
 
+	clockmock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
+
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +42,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	clockmock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/test"

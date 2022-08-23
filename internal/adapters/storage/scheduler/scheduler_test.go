@@ -81,7 +81,7 @@ func TestMain(m *testing.M) {
 
 func migrate(opts *pg.Options) error {
 	dbUrl := getDBUrl(opts)
-	m, err := golangMigrate.New("file://../../service/migrations", dbUrl)
+	m, err := golangMigrate.New("file://../../../service/migrations", dbUrl)
 	if err != nil {
 		return err
 	}

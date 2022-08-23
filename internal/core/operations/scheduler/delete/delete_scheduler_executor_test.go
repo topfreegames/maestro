@@ -30,8 +30,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	instancemock "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
-	runtimemock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -312,18 +310,18 @@ func prepareMocks(t *testing.T) (
 	*DeleteSchedulerExecutor,
 	*mockports.MockSchedulerStorage,
 	*mockports.MockSchedulerCache,
-	*instancemock.MockGameRoomInstanceStorage,
+	*mockports.MockGameRoomInstanceStorage,
 	*mockports.MockOperationStorage,
 	*mockports.MockOperationManager,
-	*runtimemock.MockRuntime,
+	*mockports.MockRuntime,
 ) {
 	mockCtrl := gomock.NewController(t)
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-	instanceStorage := instancemock.NewMockGameRoomInstanceStorage(mockCtrl)
+	instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
 	operationStorage := mockports.NewMockOperationStorage(mockCtrl)
 	operationManager := mockports.NewMockOperationManager(mockCtrl)
-	runtime := runtimemock.NewMockRuntime(mockCtrl)
+	runtime := mockports.NewMockRuntime(mockCtrl)
 
 	op := NewExecutor(
 		schedulerStorage,

@@ -36,7 +36,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
-	runtimeMock "github.com/topfreegames/maestro/internal/adapters/runtime/mock"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
@@ -46,7 +45,7 @@ func TestExecute(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		runtime := runtimeMock.NewMockRuntime(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 
 		definition := CreateSchedulerDefinition{}
@@ -67,7 +66,7 @@ func TestExecute(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 
-		runtime := runtimeMock.NewMockRuntime(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 
 		definition := CreateSchedulerDefinition{}
@@ -88,7 +87,7 @@ func TestExecute(t *testing.T) {
 func TestRollback(t *testing.T) {
 	t.Run("it returns nil when delete scheduler on execution error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		runtime := runtimeMock.NewMockRuntime(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		definition := &CreateSchedulerDefinition{}
 		op := operation.Operation{
@@ -106,7 +105,7 @@ func TestRollback(t *testing.T) {
 
 	t.Run("it returns error when couldn't delete scheduler on execution error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
-		runtime := runtimeMock.NewMockRuntime(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		definition := &CreateSchedulerDefinition{}
 		op := operation.Operation{

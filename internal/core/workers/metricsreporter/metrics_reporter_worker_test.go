@@ -37,7 +37,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
-	mockinstance "github.com/topfreegames/maestro/internal/adapters/instance_storage/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
@@ -50,7 +49,7 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 
 		mockCtl := gomock.NewController(t)
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
-		instanceStorage := mockinstance.NewMockGameRoomInstanceStorage(mockCtl)
+		instanceStorage := mock.NewMockGameRoomInstanceStorage(mockCtl)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		instances := newInstancesList(40)
@@ -109,7 +108,7 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 
 		mockCtl := gomock.NewController(t)
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
-		instanceStorage := mockinstance.NewMockGameRoomInstanceStorage(mockCtl)
+		instanceStorage := mock.NewMockGameRoomInstanceStorage(mockCtl)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}

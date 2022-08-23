@@ -28,6 +28,8 @@ package add
 import (
 	"time"
 
+	clock_mock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
+
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"go.uber.org/zap"
 
@@ -36,7 +38,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	clock_mock "github.com/topfreegames/maestro/internal/adapters/clock/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"

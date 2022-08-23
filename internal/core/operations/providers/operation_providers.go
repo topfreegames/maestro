@@ -33,7 +33,6 @@ import (
 	switchversion "github.com/topfreegames/maestro/internal/core/operations/scheduler/version/switch"
 	"github.com/topfreegames/maestro/internal/core/operations/test"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/ports/autoscaler"
 )
 
 // ProvideDefinitionConstructors create definition constructors.
@@ -80,7 +79,7 @@ func ProvideExecutors(
 	schedulerCache ports.SchedulerCache,
 	operationStorage ports.OperationStorage,
 	operationManager ports.OperationManager,
-	autoscaler autoscaler.Autoscaler,
+	autoscaler ports.Autoscaler,
 	newSchedulerVersionConfig newversion.Config,
 	healthControllerConfig healthcontroller.Config,
 ) map[string]operations.Executor {
