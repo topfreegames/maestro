@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2021 TFG Co
+// Copyright (c) 01 TFG Co
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,14 @@ package providers
 
 import (
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
-	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
-	"github.com/topfreegames/maestro/internal/core/operations/deletescheduler"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
-	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
-	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
-	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
+	addrooms "github.com/topfreegames/maestro/internal/core/operations/room/add"
+	removerooms "github.com/topfreegames/maestro/internal/core/operations/room/remove"
+	createscheduler "github.com/topfreegames/maestro/internal/core/operations/scheduler/create"
+	deletescheduler "github.com/topfreegames/maestro/internal/core/operations/scheduler/delete"
+	newversion "github.com/topfreegames/maestro/internal/core/operations/scheduler/version/new"
+	switchversion "github.com/topfreegames/maestro/internal/core/operations/scheduler/version/switch"
+	"github.com/topfreegames/maestro/internal/core/operations/test"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/autoscaler"
 )
@@ -40,23 +40,23 @@ import (
 func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor {
 
 	definitionConstructors := map[string]operations.DefinitionConstructor{}
-	definitionConstructors[create_scheduler.OperationName] = func() operations.Definition {
-		return &create_scheduler.CreateSchedulerDefinition{}
+	definitionConstructors[createscheduler.OperationName] = func() operations.Definition {
+		return &createscheduler.CreateSchedulerDefinition{}
 	}
-	definitionConstructors[add_rooms.OperationName] = func() operations.Definition {
-		return &add_rooms.AddRoomsDefinition{}
+	definitionConstructors[addrooms.OperationName] = func() operations.Definition {
+		return &addrooms.AddRoomsDefinition{}
 	}
-	definitionConstructors[remove_rooms.OperationName] = func() operations.Definition {
-		return &remove_rooms.RemoveRoomsDefinition{}
+	definitionConstructors[removerooms.OperationName] = func() operations.Definition {
+		return &removerooms.RemoveRoomsDefinition{}
 	}
-	definitionConstructors[test_operation.OperationName] = func() operations.Definition {
-		return &test_operation.TestOperationDefinition{}
+	definitionConstructors[test.OperationName] = func() operations.Definition {
+		return &test.TestOperationDefinition{}
 	}
-	definitionConstructors[newschedulerversion.OperationName] = func() operations.Definition {
-		return &newschedulerversion.CreateNewSchedulerVersionDefinition{}
+	definitionConstructors[newversion.OperationName] = func() operations.Definition {
+		return &newversion.CreateNewSchedulerVersionDefinition{}
 	}
-	definitionConstructors[switch_active_version.OperationName] = func() operations.Definition {
-		return &switch_active_version.SwitchActiveVersionDefinition{}
+	definitionConstructors[switchversion.OperationName] = func() operations.Definition {
+		return &switchversion.SwitchActiveVersionDefinition{}
 	}
 	definitionConstructors[healthcontroller.OperationName] = func() operations.Definition {
 		return &healthcontroller.SchedulerHealthControllerDefinition{}
@@ -81,17 +81,17 @@ func ProvideExecutors(
 	operationStorage ports.OperationStorage,
 	operationManager ports.OperationManager,
 	autoscaler autoscaler.Autoscaler,
-	newSchedulerVersionConfig newschedulerversion.Config,
+	newSchedulerVersionConfig newversion.Config,
 	healthControllerConfig healthcontroller.Config,
 ) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
-	executors[create_scheduler.OperationName] = create_scheduler.NewExecutor(runtime, schedulerManager)
-	executors[add_rooms.OperationName] = add_rooms.NewExecutor(roomManager, schedulerStorage)
-	executors[remove_rooms.OperationName] = remove_rooms.NewExecutor(roomManager, roomStorage, operationManager)
-	executors[test_operation.OperationName] = test_operation.NewExecutor()
-	executors[switch_active_version.OperationName] = switch_active_version.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)
-	executors[newschedulerversion.OperationName] = newschedulerversion.NewExecutor(roomManager, schedulerManager, operationManager, newSchedulerVersionConfig)
+	executors[createscheduler.OperationName] = createscheduler.NewExecutor(runtime, schedulerManager)
+	executors[addrooms.OperationName] = addrooms.NewExecutor(roomManager, schedulerStorage)
+	executors[removerooms.OperationName] = removerooms.NewExecutor(roomManager, roomStorage, operationManager)
+	executors[test.OperationName] = test.NewExecutor()
+	executors[switchversion.OperationName] = switchversion.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)
+	executors[newversion.OperationName] = newversion.NewExecutor(roomManager, schedulerManager, operationManager, newSchedulerVersionConfig)
 	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, autoscaler, healthControllerConfig)
 	executors[deletescheduler.OperationName] = deletescheduler.NewExecutor(schedulerStorage, schedulerCache, instanceStorage, operationStorage, operationManager, runtime)
 

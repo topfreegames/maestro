@@ -31,15 +31,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager/patch"
+	"github.com/topfreegames/maestro/internal/core/operations/scheduler/delete"
+	"github.com/topfreegames/maestro/internal/core/operations/scheduler/version/new"
 
-	"github.com/topfreegames/maestro/internal/core/operations/deletescheduler"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager/patch"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
 
@@ -307,7 +307,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 	t.Run("return the operation when no error occurs using cache", func(t *testing.T) {
 		scheduler := newValidScheduler()
 		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
-		opDef := &deletescheduler.DeleteSchedulerDefinition{}
+		opDef := &delete.DeleteSchedulerDefinition{}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -328,7 +328,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 	t.Run("return the operation when no error occurs using storage", func(t *testing.T) {
 		scheduler := newValidScheduler()
 		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
-		opDef := &deletescheduler.DeleteSchedulerDefinition{}
+		opDef := &delete.DeleteSchedulerDefinition{}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -350,7 +350,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 	t.Run("return error when some error occurs while creating operation", func(t *testing.T) {
 		scheduler := newValidScheduler()
 		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
-		opDef := &deletescheduler.DeleteSchedulerDefinition{}
+		opDef := &delete.DeleteSchedulerDefinition{}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -1018,7 +1018,7 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 			mockSchedulerStorage.EXPECT().GetScheduler(gomock.Any(), scheduler.Name).Return(scheduler, testCase.ExpectedMock.GetSchedulerError)
 			mockOperationManager.EXPECT().
 				CreateOperation(gomock.Any(), scheduler.Name, gomock.Any()).Do(func(_ context.Context, _ string, op operations.Definition) {
-				newSchedulerVersion, ok := op.(*newschedulerversion.CreateNewSchedulerVersionDefinition)
+				newSchedulerVersion, ok := op.(*new.CreateNewSchedulerVersionDefinition)
 				assert.True(t, ok)
 				assert.EqualValues(t, testCase.ExpectedMock.ChangedSchedulerFunction(), newSchedulerVersion.NewScheduler)
 			}).

@@ -25,12 +25,13 @@ package service
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/scheduler/version/new"
+
 	"github.com/topfreegames/maestro/internal/core/services/events/forwarder"
 	operationmanager "github.com/topfreegames/maestro/internal/core/services/operation/manager"
 	roommanager "github.com/topfreegames/maestro/internal/core/services/room/manager"
 
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
 	"github.com/topfreegames/maestro/internal/core/workers"
 
 	"github.com/topfreegames/maestro/internal/config"
@@ -47,14 +48,14 @@ const (
 )
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
-func NewCreateSchedulerVersionConfig(c config.Config) newschedulerversion.Config {
+func NewCreateSchedulerVersionConfig(c config.Config) new.Config {
 	initializationTimeout := time.Duration(c.GetInt(roomInitializationTimeoutMillisConfigPath)) * time.Millisecond
 	roomValidationAttempts := c.GetInt(roomRoomValidationAttemptsConfigPath)
 	if roomValidationAttempts < 1 {
 		roomValidationAttempts = 1
 	}
 
-	createSchedulerVersionConfig := newschedulerversion.Config{
+	createSchedulerVersionConfig := new.Config{
 		RoomInitializationTimeout: initializationTimeout,
 		RoomValidationAttempts:    roomValidationAttempts,
 	}

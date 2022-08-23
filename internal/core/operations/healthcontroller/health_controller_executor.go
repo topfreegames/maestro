@@ -27,14 +27,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/room/add"
+	"github.com/topfreegames/maestro/internal/core/operations/room/remove"
+
 	"github.com/topfreegames/maestro/internal/core/ports/autoscaler"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
-	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
-	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
-
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -167,7 +167,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
 		removeAmount := actualAmount - desiredAmount
-		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove_rooms.RemoveRoomsDefinition{
+		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.RemoveRoomsDefinition{
 			Amount: removeAmount,
 		})
 		if err != nil {
@@ -177,7 +177,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
 	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
-		addOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add_rooms.AddRoomsDefinition{
+		addOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add.AddRoomsDefinition{
 			Amount: int32(addAmount),
 		})
 		if err != nil {
@@ -248,7 +248,7 @@ func (ex *SchedulerHealthControllerExecutor) isRoomStatus(room *game_room.GameRo
 }
 
 func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
-	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove_rooms.RemoveRoomsDefinition{
+	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.RemoveRoomsDefinition{
 		RoomsIDs: expiredRoomsIDs,
 	})
 	if err != nil {

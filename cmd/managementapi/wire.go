@@ -28,11 +28,12 @@ package managementapi
 import (
 	"context"
 
+	"github.com/topfreegames/maestro/internal/core/operations/providers"
+
 	"github.com/google/wire"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/service"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )

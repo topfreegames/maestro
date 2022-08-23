@@ -33,7 +33,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
+	"github.com/topfreegames/maestro/internal/core/operations/test"
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	v1 "k8s.io/api/core/v1"
@@ -265,7 +265,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 }
 
 func createTestOperation(ctx context.Context, t *testing.T, operationStorage ports.OperationStorage, operationFlow ports.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
-	definition := test_operation.TestOperationDefinition{
+	definition := test.TestOperationDefinition{
 		SleepSeconds: sleepSeconds,
 	}
 

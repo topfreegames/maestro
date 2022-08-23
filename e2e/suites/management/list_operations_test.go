@@ -30,7 +30,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/operations/test_operation"
+	"github.com/topfreegames/maestro/internal/core/operations/test"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
@@ -113,7 +113,7 @@ func TestListOperations(t *testing.T) {
 			assertPaginationInfo(t, "pending", listPendingOperationsResponse, uint32(numberOfPendingTestOps), uint32(1), uint32(numberOfPendingTestOps))
 			testOpsResponseCount := 0
 			for _, pendingOp := range listPendingOperationsResponse.Operations {
-				if pendingOp.DefinitionName == test_operation.OperationName {
+				if pendingOp.DefinitionName == test.OperationName {
 					testOpsResponseCount++
 				}
 
@@ -139,7 +139,7 @@ func TestListOperations(t *testing.T) {
 			assert.Len(t, listFinalOperationsResponse.Operations, perPage)
 
 			for _, pendingOp := range listFinalOperationsResponse.Operations {
-				if pendingOp.DefinitionName == test_operation.OperationName {
+				if pendingOp.DefinitionName == test.OperationName {
 					testOpsResponseCount++
 				}
 
@@ -156,7 +156,7 @@ func TestListOperations(t *testing.T) {
 			assertPaginationInfo(t, "final", listFinalOperationsResponse, uint32(10), uint32(2), uint32(perPage))
 			assert.Len(t, listFinalOperationsResponse.Operations, int(perPage)-1)
 			for _, pendingOp := range listFinalOperationsResponse.Operations {
-				if pendingOp.DefinitionName == test_operation.OperationName {
+				if pendingOp.DefinitionName == test.OperationName {
 					testOpsResponseCount++
 				}
 

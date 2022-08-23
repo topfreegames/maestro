@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
+	"github.com/topfreegames/maestro/internal/core/operations/scheduler/create"
 
 	"github.com/stretchr/testify/assert"
 
@@ -122,7 +122,7 @@ func TestCreateScheduler(t *testing.T) {
 					return false
 				}
 
-				assert.Equal(t, create_scheduler.OperationName, listOperationsResponse.Operations[0].DefinitionName)
+				assert.Equal(t, create.OperationName, listOperationsResponse.Operations[0].DefinitionName)
 
 				statusFinished, _ := operation.StatusFinished.String()
 				assert.Equal(t, statusFinished, listOperationsResponse.Operations[0].Status)
@@ -195,7 +195,7 @@ func TestCreateScheduler(t *testing.T) {
 					return false
 				}
 
-				assert.Equal(t, create_scheduler.OperationName, listOperationsResponse.Operations[0].DefinitionName)
+				assert.Equal(t, create.OperationName, listOperationsResponse.Operations[0].DefinitionName)
 
 				statusError, _ := operation.StatusError.String()
 				assert.Equal(t, statusError, listOperationsResponse.Operations[0].Status)

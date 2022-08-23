@@ -26,16 +26,16 @@ import (
 	"fmt"
 	"time"
 
-	operation_manager2 "github.com/topfreegames/maestro/internal/core/services/operation/manager"
-	room_manager2 "github.com/topfreegames/maestro/internal/core/services/room/manager"
+	"github.com/topfreegames/maestro/internal/core/operations/room/add"
+	"github.com/topfreegames/maestro/internal/core/operations/room/remove"
+
+	operationmanager "github.com/topfreegames/maestro/internal/core/services/operation/manager"
+	roommanager "github.com/topfreegames/maestro/internal/core/services/room/manager"
 	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager"
 
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"github.com/topfreegames/maestro/internal/core/operations/add_rooms"
-	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-	"github.com/topfreegames/maestro/internal/core/operations/remove_rooms"
-
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
 	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
 
@@ -95,13 +95,13 @@ func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache
 }
 
 // NewOperationManager instantiates a new operation manager
-func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operation_manager2.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {
-	return operation_manager2.New(flow, storage, operationDefinitionConstructors, leaseStorage, config, schedulerStorage)
+func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorage, operationDefinitionConstructors map[string]operations.DefinitionConstructor, leaseStorage ports.OperationLeaseStorage, config operationmanager.OperationManagerConfig, schedulerStorage ports.SchedulerStorage) ports.OperationManager {
+	return operationmanager.New(flow, storage, operationDefinitionConstructors, leaseStorage, config, schedulerStorage)
 }
 
 // NewRoomManager instantiates a room manager.
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config room_manager2.RoomManagerConfig) ports.RoomManager {
-	return room_manager2.New(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config roommanager.RoomManagerConfig) ports.RoomManager {
+	return roommanager.New(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
 }
 
 // NewEventsForwarder instantiates GRPC as events forwarder.
@@ -138,8 +138,8 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 
 	operationsTTLPathMap := map[operationadapters.Definition]time.Duration{
 		healthcontroller.OperationName: c.GetDuration(operationsTTLPath),
-		add_rooms.OperationName:        c.GetDuration(operationsTTLPath),
-		remove_rooms.OperationName:     c.GetDuration(operationsTTLPath),
+		add.OperationName:              c.GetDuration(operationsTTLPath),
+		remove.OperationName:           c.GetDuration(operationsTTLPath),
 	}
 
 	return operationadapters.NewRedisOperationStorage(client, clock, operationsTTLPathMap), nil

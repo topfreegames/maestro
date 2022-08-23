@@ -27,18 +27,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager/patch"
+	"github.com/topfreegames/maestro/internal/core/operations/scheduler/create"
+	"github.com/topfreegames/maestro/internal/core/operations/scheduler/delete"
+	"github.com/topfreegames/maestro/internal/core/operations/scheduler/version/new"
+	_switch "github.com/topfreegames/maestro/internal/core/operations/scheduler/version/switch"
 
-	"github.com/topfreegames/maestro/internal/core/operations/deletescheduler"
+	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager/patch"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/logs"
-	"github.com/topfreegames/maestro/internal/core/operations/create_scheduler"
-	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
-	"github.com/topfreegames/maestro/internal/core/operations/switch_active_version"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
@@ -95,9 +95,9 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 		return nil, err
 	}
 
-	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create_scheduler.CreateSchedulerDefinition{NewScheduler: scheduler})
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create.CreateSchedulerDefinition{NewScheduler: scheduler})
 	if err != nil {
-		return nil, fmt.Errorf("failing in creating the operation: %s: %s", create_scheduler.OperationName, err)
+		return nil, fmt.Errorf("failing in creating the operation: %s: %s", create.OperationName, err)
 	}
 
 	s.logger.Info("scheduler enqueued to be created", zap.String("scheduler", scheduler.Name), zap.String("operation", op.ID))
@@ -163,7 +163,7 @@ func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(c
 		return nil, portsErrors.NewErrInvalidArgument("invalid patched scheduler: %s", err.Error())
 	}
 
-	opDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
+	opDef := &new.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
 
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
 	if err != nil {
@@ -200,7 +200,7 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 		return nil, err
 	}
 
-	opDef := &newschedulerversion.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
+	opDef := &new.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
 
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
 	if err != nil {
@@ -211,7 +211,7 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 }
 
 func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error) {
-	opDef := &switch_active_version.SwitchActiveVersionDefinition{NewActiveVersion: newVersion}
+	opDef := &_switch.SwitchActiveVersionDefinition{NewActiveVersion: newVersion}
 	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
@@ -229,7 +229,7 @@ func (s *SchedulerManager) EnqueueDeleteSchedulerOperation(ctx context.Context, 
 
 		return nil, portsErrors.NewErrUnexpected("unexpected error getting scheduler to delete: %s", err.Error())
 	}
-	opDef := &deletescheduler.DeleteSchedulerDefinition{}
+	opDef := &delete.DeleteSchedulerDefinition{}
 	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
