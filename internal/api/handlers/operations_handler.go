@@ -201,6 +201,8 @@ func extractPaginationParameters(request *api.ListOperationsRequest) (uint32, ui
 
 	if pageSize == nil {
 		pageSize = &defaultPageSizeValue
+	} else if *pageSize < 1 || *pageSize > 100 {
+		return 0, 0, status.Error(codes.InvalidArgument, "page size must be between 0 and 100")
 	}
 
 	if operationStage != "final" && (request.Page != nil || request.PerPage != nil) {

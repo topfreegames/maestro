@@ -520,7 +520,18 @@ func TestListOperations(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, 400, rr.Code)
-		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_final_operations_invalid_pag.json")
+		responseBody, expectedResponseBody := extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_final_operations_invalid_page.json")
+		require.Equal(t, expectedResponseBody, responseBody)
+
+		req, err = http.NewRequest(http.MethodGet, "/schedulers/zooba/operations?stage=final&page=10&perPage=101", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr = httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		require.Equal(t, 400, rr.Code)
+		responseBody, expectedResponseBody = extractBodyForComparison(t, rr.Body.Bytes(), "operations_handler/error_listing_final_operations_invalid_per_page.json")
 		require.Equal(t, expectedResponseBody, responseBody)
 	})
 
