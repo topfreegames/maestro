@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
+	operationredis "github.com/topfreegames/maestro/internal/adapters/storage/operation/redis"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
@@ -49,13 +49,13 @@ func TestCancelOperation(t *testing.T) {
 	duration, err := time.ParseDuration("24h")
 	require.NoError(t, err)
 
-	operationsTTLMap := map[operationadapters.Definition]time.Duration{
+	operationsTTLMap := map[operationredis.Definition]time.Duration{
 		healthcontroller.OperationName: duration,
 	}
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
-		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)
+		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
+		operationFlow := operationredis.NewRedisOperationFlow(redisClient)
 
 		t.Run("cancel pending and in-progress operations successfully", func(t *testing.T) {
 			ctx := context.Background()

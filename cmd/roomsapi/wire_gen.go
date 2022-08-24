@@ -11,7 +11,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/topfreegames/maestro/internal/api/handlers"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/events/forwarder"
+	"github.com/topfreegames/maestro/internal/core/services/events"
 	"github.com/topfreegames/maestro/internal/service"
 	"github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -52,7 +52,7 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 	if err != nil {
 		return nil, err
 	}
-	eventsService := forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, roomStorage, schedulerCache, eventsForwarderConfig)
+	eventsService := events.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, roomStorage, schedulerCache, eventsForwarderConfig)
 	roomManagerConfig, err := service.NewRoomManagerConfig(conf)
 	if err != nil {
 		return nil, err

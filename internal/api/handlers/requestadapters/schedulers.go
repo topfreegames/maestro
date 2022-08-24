@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/schedulers/manager/patch"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 

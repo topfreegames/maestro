@@ -25,11 +25,10 @@ package service
 import (
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations/schedulers/version/new"
-
-	"github.com/topfreegames/maestro/internal/core/services/events/forwarder"
-	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations/manager"
-	roommanager "github.com/topfreegames/maestro/internal/core/services/rooms/manager"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
+	"github.com/topfreegames/maestro/internal/core/services/events"
+	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations"
+	roommanager "github.com/topfreegames/maestro/internal/core/services/rooms"
 
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/workers"
@@ -48,14 +47,14 @@ const (
 )
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
-func NewCreateSchedulerVersionConfig(c config.Config) new.Config {
+func NewCreateSchedulerVersionConfig(c config.Config) newversion.Config {
 	initializationTimeout := time.Duration(c.GetInt(roomInitializationTimeoutMillisConfigPath)) * time.Millisecond
 	roomValidationAttempts := c.GetInt(roomRoomValidationAttemptsConfigPath)
 	if roomValidationAttempts < 1 {
 		roomValidationAttempts = 1
 	}
 
-	createSchedulerVersionConfig := new.Config{
+	createSchedulerVersionConfig := newversion.Config{
 		RoomInitializationTimeout: initializationTimeout,
 		RoomValidationAttempts:    roomValidationAttempts,
 	}
@@ -113,7 +112,7 @@ func NewOperationManagerConfig(c config.Config) (operationmanager.OperationManag
 }
 
 // NewEventsForwarderServiceConfig instantiate a new EventsForwarderConfig to be used by the EventsForwarder to customize its configuration.
-func NewEventsForwarderServiceConfig(c config.Config) (forwarder.EventsForwarderConfig, error) {
+func NewEventsForwarderServiceConfig(c config.Config) (events.EventsForwarderConfig, error) {
 	var schedulerCacheTTL time.Duration
 	defaultSchedulerCacheTTL := time.Hour * 24
 
@@ -123,7 +122,7 @@ func NewEventsForwarderServiceConfig(c config.Config) (forwarder.EventsForwarder
 		schedulerCacheTTL = defaultSchedulerCacheTTL
 	}
 
-	eventsForwarderConfig := forwarder.EventsForwarderConfig{
+	eventsForwarderConfig := events.EventsForwarderConfig{
 		SchedulerCacheTtl: schedulerCacheTTL,
 	}
 

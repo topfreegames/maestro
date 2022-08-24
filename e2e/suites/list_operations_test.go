@@ -28,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	operationredis "github.com/topfreegames/maestro/internal/adapters/storage/operation/redis"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/test"
@@ -35,7 +37,6 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
-	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
@@ -51,13 +52,13 @@ func TestListOperations(t *testing.T) {
 	duration, err := time.ParseDuration("24h")
 	require.NoError(t, err)
 
-	operationsTTLMap := map[operationadapters.Definition]time.Duration{
+	operationsTTLMap := map[operationredis.Definition]time.Duration{
 		healthcontroller.OperationName: duration,
 	}
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
-		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)
+		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
+		operationFlow := operationredis.NewRedisOperationFlow(redisClient)
 		inProgressStatus, _ := operation.StatusInProgress.String()
 		pendingStatus, _ := operation.StatusPending.String()
 		finishedStatus, _ := operation.StatusFinished.String()

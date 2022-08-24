@@ -29,8 +29,8 @@ import (
 	removerooms "github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 	createscheduler "github.com/topfreegames/maestro/internal/core/operations/schedulers/create"
 	deletescheduler "github.com/topfreegames/maestro/internal/core/operations/schedulers/delete"
-	newversion "github.com/topfreegames/maestro/internal/core/operations/schedulers/version/new"
-	switchversion "github.com/topfreegames/maestro/internal/core/operations/schedulers/version/switch"
+	newversion "github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/switchversion"
 	"github.com/topfreegames/maestro/internal/core/operations/test"
 	"github.com/topfreegames/maestro/internal/core/ports"
 )

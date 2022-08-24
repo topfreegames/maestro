@@ -28,7 +28,7 @@ package roomsapi
 import (
 	"context"
 
-	"github.com/topfreegames/maestro/internal/core/services/events/forwarder"
+	"github.com/topfreegames/maestro/internal/core/services/events"
 
 	"github.com/google/wire"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -54,7 +54,7 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 		service.NewEventsForwarderServiceConfig,
 
 		// services
-		forwarder.NewEventsForwarderService,
+		events.NewEventsForwarderService,
 
 		// api handlers
 		handlers.ProvideRoomsHandler,

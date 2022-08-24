@@ -9,15 +9,15 @@ package worker
 import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
-	"github.com/topfreegames/maestro/internal/core/services/events/forwarder"
-	"github.com/topfreegames/maestro/internal/core/services/worker/manager"
+	"github.com/topfreegames/maestro/internal/core/services/events"
+	"github.com/topfreegames/maestro/internal/core/services/worker"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
 // Injectors from wire.go:
 
-func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*manager.WorkersManager, error) {
+func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*worker.WorkersManager, error) {
 	schedulerStorage, err := service.NewSchedulerStoragePg(c)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*manager
 	if err != nil {
 		return nil, err
 	}
-	eventsService := forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, roomStorage, schedulerCache, eventsForwarderConfig)
+	eventsService := events.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, roomStorage, schedulerCache, eventsForwarderConfig)
 	roomManagerConfig, err := service.NewRoomManagerConfig(c)
 	if err != nil {
 		return nil, err
@@ -86,6 +86,6 @@ func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*manager
 		return nil, err
 	}
 	workerOptions := workers.ProvideWorkerOptions(operationManager, v2, roomManager, runtime, configuration)
-	workersManager := manager.NewWorkersManager(builder, c, schedulerStorage, workerOptions)
+	workersManager := worker.NewWorkersManager(builder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
 }

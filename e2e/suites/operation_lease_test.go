@@ -28,7 +28,8 @@ import (
 	"testing"
 	"time"
 
-	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
+	operationredis "github.com/topfreegames/maestro/internal/adapters/storage/operation/redis"
+
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 
@@ -51,14 +52,14 @@ func TestOperationLease(t *testing.T) {
 	duration, err := time.ParseDuration("24h")
 	require.NoError(t, err)
 
-	operationsTTLMap := map[operationadapters.Definition]time.Duration{
+	operationsTTLMap := map[operationredis.Definition]time.Duration{
 		healthcontroller.OperationName: duration,
 	}
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationadapters.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
-		operationFlow := operationadapters.NewRedisOperationFlow(redisClient)
-		operationLeaseStorage := operationadapters.NewRedisOperationLeaseStorage(redisClient, timeClock.NewClock())
+		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
+		operationFlow := operationredis.NewRedisOperationFlow(redisClient)
+		operationLeaseStorage := operationredis.NewRedisOperationLeaseStorage(redisClient, timeClock.NewClock())
 
 		t.Run("When the operation executes with success, then the lease keeps being renewed while it executes", func(t *testing.T) {
 			t.Parallel()

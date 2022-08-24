@@ -28,8 +28,8 @@ package runtimewatcher
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/events/forwarder"
-	"github.com/topfreegames/maestro/internal/core/services/worker/manager"
+	"github.com/topfreegames/maestro/internal/core/services/events"
+	"github.com/topfreegames/maestro/internal/core/services/worker"
 	"github.com/topfreegames/maestro/internal/core/workers"
 	"github.com/topfreegames/maestro/internal/core/workers/runtime_watcher_worker"
 	"github.com/topfreegames/maestro/internal/service"
@@ -57,11 +57,11 @@ var RoomManagerSet = wire.NewSet(
 	service.NewRoomManagerConfig,
 	service.NewRoomManager,
 	service.NewEventsForwarder,
-	forwarder.NewEventsForwarderService,
+	events.NewEventsForwarderService,
 	service.NewEventsForwarderServiceConfig,
 )
 
-func initializeRuntimeWatcher(c config.Config) (*manager.WorkersManager, error) {
+func initializeRuntimeWatcher(c config.Config) (*worker.WorkersManager, error) {
 	wire.Build(
 		// workers options
 		WorkerOptionsSet,
@@ -69,8 +69,8 @@ func initializeRuntimeWatcher(c config.Config) (*manager.WorkersManager, error) 
 		// watcher builder
 		provideRuntimeWatcherBuilder,
 
-		manager.NewWorkersManager,
+		worker.NewWorkersManager,
 	)
 
-	return &manager.WorkersManager{}, nil
+	return &worker.WorkersManager{}, nil
 }
