@@ -27,12 +27,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/operations/scheduler/create"
-	"github.com/topfreegames/maestro/internal/core/operations/scheduler/delete"
-	"github.com/topfreegames/maestro/internal/core/operations/scheduler/version/new"
-	_switch "github.com/topfreegames/maestro/internal/core/operations/scheduler/version/switch"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/create"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/delete"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/version/new"
+	_switch "github.com/topfreegames/maestro/internal/core/operations/schedulers/version/switch"
 
-	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager/patch"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/manager/patch"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -95,7 +95,7 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 		return nil, err
 	}
 
-	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create.CreateSchedulerDefinition{NewScheduler: scheduler})
+	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, &create.Definition{NewScheduler: scheduler})
 	if err != nil {
 		return nil, fmt.Errorf("failing in creating the operation: %s: %s", create.OperationName, err)
 	}

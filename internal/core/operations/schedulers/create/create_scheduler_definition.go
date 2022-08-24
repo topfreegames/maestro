@@ -34,20 +34,20 @@ import (
 
 const OperationName = "create_scheduler"
 
-type CreateSchedulerDefinition struct {
+type Definition struct {
 	NewScheduler *entities.Scheduler `json:"scheduler"`
 }
 
 // ShouldExecute we're going to always perform the scheduler creation.
-func (d *CreateSchedulerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+func (d *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
-func (d *CreateSchedulerDefinition) Name() string {
+func (d *Definition) Name() string {
 	return OperationName
 }
 
-func (d *CreateSchedulerDefinition) Marshal() []byte {
+func (d *Definition) Marshal() []byte {
 	bytes, err := json.Marshal(d)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("error marshalling update scheduler operation definition")
@@ -57,7 +57,7 @@ func (d *CreateSchedulerDefinition) Marshal() []byte {
 	return bytes
 }
 
-func (d *CreateSchedulerDefinition) Unmarshal(raw []byte) error {
+func (d *Definition) Unmarshal(raw []byte) error {
 	err := json.Unmarshal(raw, d)
 	if err != nil {
 		return fmt.Errorf("error marshalling update scheduler operation definition: %w", err)

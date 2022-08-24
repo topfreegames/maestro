@@ -31,8 +31,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations/room/add"
-	"github.com/topfreegames/maestro/internal/core/operations/room/remove"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 

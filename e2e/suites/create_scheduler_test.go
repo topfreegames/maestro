@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/operations/scheduler/create"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/create"
 
 	"github.com/stretchr/testify/assert"
 

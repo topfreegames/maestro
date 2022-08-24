@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager/patch"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/manager/patch"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 

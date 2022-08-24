@@ -30,12 +30,12 @@ import (
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/room/redis"
 	"github.com/topfreegames/maestro/internal/adapters/storage/scheduler"
 
-	"github.com/topfreegames/maestro/internal/core/operations/room/add"
-	"github.com/topfreegames/maestro/internal/core/operations/room/remove"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 
-	operationmanager "github.com/topfreegames/maestro/internal/core/services/operation/manager"
-	roommanager "github.com/topfreegames/maestro/internal/core/services/room/manager"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler/manager"
+	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations/manager"
+	roommanager "github.com/topfreegames/maestro/internal/core/services/rooms/manager"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/manager"
 
 	operationadapters "github.com/topfreegames/maestro/internal/adapters/operation"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"

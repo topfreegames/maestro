@@ -25,12 +25,12 @@ package providers
 import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-	addrooms "github.com/topfreegames/maestro/internal/core/operations/room/add"
-	removerooms "github.com/topfreegames/maestro/internal/core/operations/room/remove"
-	createscheduler "github.com/topfreegames/maestro/internal/core/operations/scheduler/create"
-	deletescheduler "github.com/topfreegames/maestro/internal/core/operations/scheduler/delete"
-	newversion "github.com/topfreegames/maestro/internal/core/operations/scheduler/version/new"
-	switchversion "github.com/topfreegames/maestro/internal/core/operations/scheduler/version/switch"
+	addrooms "github.com/topfreegames/maestro/internal/core/operations/rooms/add"
+	removerooms "github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
+	createscheduler "github.com/topfreegames/maestro/internal/core/operations/schedulers/create"
+	deletescheduler "github.com/topfreegames/maestro/internal/core/operations/schedulers/delete"
+	newversion "github.com/topfreegames/maestro/internal/core/operations/schedulers/version/new"
+	switchversion "github.com/topfreegames/maestro/internal/core/operations/schedulers/version/switch"
 	"github.com/topfreegames/maestro/internal/core/operations/test"
 	"github.com/topfreegames/maestro/internal/core/ports"
 )
@@ -40,7 +40,7 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 
 	definitionConstructors := map[string]operations.DefinitionConstructor{}
 	definitionConstructors[createscheduler.OperationName] = func() operations.Definition {
-		return &createscheduler.CreateSchedulerDefinition{}
+		return &createscheduler.Definition{}
 	}
 	definitionConstructors[addrooms.OperationName] = func() operations.Definition {
 		return &addrooms.AddRoomsDefinition{}

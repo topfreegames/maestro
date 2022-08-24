@@ -32,7 +32,7 @@ import (
 	"testing"
 	"time"
 
-	_switch "github.com/topfreegames/maestro/internal/core/operations/scheduler/version/switch"
+	_switch "github.com/topfreegames/maestro/internal/core/operations/schedulers/version/switch"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 

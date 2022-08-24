@@ -25,11 +25,11 @@ package service
 import (
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations/scheduler/version/new"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/version/new"
 
 	"github.com/topfreegames/maestro/internal/core/services/events/forwarder"
-	operationmanager "github.com/topfreegames/maestro/internal/core/services/operation/manager"
-	roommanager "github.com/topfreegames/maestro/internal/core/services/room/manager"
+	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations/manager"
+	roommanager "github.com/topfreegames/maestro/internal/core/services/rooms/manager"
 
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/workers"

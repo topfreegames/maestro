@@ -48,7 +48,7 @@ func TestExecute(t *testing.T) {
 		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 
-		definition := CreateSchedulerDefinition{}
+		definition := Definition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
@@ -69,7 +69,7 @@ func TestExecute(t *testing.T) {
 		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 
-		definition := CreateSchedulerDefinition{}
+		definition := Definition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
@@ -89,7 +89,7 @@ func TestRollback(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
-		definition := &CreateSchedulerDefinition{}
+		definition := &Definition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
@@ -107,7 +107,7 @@ func TestRollback(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
-		definition := &CreateSchedulerDefinition{}
+		definition := &Definition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",

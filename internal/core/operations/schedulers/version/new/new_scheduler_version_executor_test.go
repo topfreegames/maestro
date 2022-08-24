@@ -26,8 +26,8 @@
 package new_test
 
 import (
-	"github.com/topfreegames/maestro/internal/core/operations/room/add"
-	"github.com/topfreegames/maestro/internal/core/operations/scheduler/version/new"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/version/new"
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"context"
