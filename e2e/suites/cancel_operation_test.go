@@ -28,7 +28,8 @@ import (
 	"testing"
 	"time"
 
-	operationredis "github.com/topfreegames/maestro/internal/adapters/storage/operation/redis"
+	operation2 "github.com/topfreegames/maestro/internal/adapters/flow/redis/operation"
+	operationredis "github.com/topfreegames/maestro/internal/adapters/storage/redis/operation"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
@@ -55,7 +56,7 @@ func TestCancelOperation(t *testing.T) {
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
 		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
-		operationFlow := operationredis.NewRedisOperationFlow(redisClient)
+		operationFlow := operation2.NewRedisOperationFlow(redisClient)
 
 		t.Run("cancel pending and in-progress operations successfully", func(t *testing.T) {
 			ctx := context.Background()

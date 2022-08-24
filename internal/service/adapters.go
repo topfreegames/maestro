@@ -26,16 +26,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/adapters/storage/scheduler/postgres"
+	schedulerredis "github.com/topfreegames/maestro/internal/adapters/cache/redis/scheduler"
+	"github.com/topfreegames/maestro/internal/adapters/flow/redis/operation"
+	operation2 "github.com/topfreegames/maestro/internal/adapters/lease/redis/operation"
+	"github.com/topfreegames/maestro/internal/adapters/storage/postgres/scheduler"
+	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/instance"
+	redis2 "github.com/topfreegames/maestro/internal/adapters/storage/redis/operation"
+	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/room"
 
-	operationredis "github.com/topfreegames/maestro/internal/adapters/storage/operation/redis"
-	schedulerredis "github.com/topfreegames/maestro/internal/adapters/storage/scheduler/redis"
 	operationservice "github.com/topfreegames/maestro/internal/core/services/operations"
 	"github.com/topfreegames/maestro/internal/core/services/rooms"
 	"github.com/topfreegames/maestro/internal/core/services/schedulers"
 
-	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/instance/redis"
-	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/room/redis"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 
@@ -133,13 +135,13 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	operationsTTLPathMap := map[operationredis.Definition]time.Duration{
+	operationsTTLPathMap := map[redis2.Definition]time.Duration{
 		healthcontroller.OperationName: c.GetDuration(operationsTTLPath),
 		add.OperationName:              c.GetDuration(operationsTTLPath),
 		remove.OperationName:           c.GetDuration(operationsTTLPath),
 	}
 
-	return operationredis.NewRedisOperationStorage(client, clock, operationsTTLPathMap), nil
+	return redis2.NewRedisOperationStorage(client, clock, operationsTTLPathMap), nil
 }
 
 // NewOperationLeaseStorageRedis instantiates redis as operation lease storage.
@@ -149,7 +151,7 @@ func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.Op
 		return nil, fmt.Errorf("failed to initialize Redis operation lease storage: %w", err)
 	}
 
-	return operationredis.NewRedisOperationLeaseStorage(client, clock), nil
+	return operation2.NewRedisOperationLeaseStorage(client, clock), nil
 }
 
 // NewRoomStorageRedis instantiates redis as room storage.
@@ -204,7 +206,7 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
 
-	return postgres.NewSchedulerStorage(opts), nil
+	return scheduler.NewSchedulerStorage(opts), nil
 }
 
 // GetSchedulerStoragePostgresURL get scheduler storage postgres URL.
@@ -240,7 +242,7 @@ func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
 
-	return operationredis.NewRedisOperationFlow(client), nil
+	return operation.NewRedisOperationFlow(client), nil
 }
 
 func connectToPostgres(url string) (*pg.Options, error) {
