@@ -20,39 +20,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package worker
+package runtimewatcher
 
 import (
+	"fmt"
+
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
 var (
-	currentWorkersGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+	watcherEventProcessingCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
-		Name:      "current_workers",
-		Help:      "Current number of alive workers",
+		Subsystem: monitoring.SubsystemWatcher,
+		Name:      "number_of_events_processed",
+		Help:      "Amount of instance events processed",
 		Labels: []string{
 			monitoring.LabelScheduler,
-			monitoring.LabelComponent,
+			monitoring.LabelInstanceEventType,
+			monitoring.LabelSuccess,
 		},
-	})
-
-	workersSyncCounterMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
-		Namespace: monitoring.Namespace,
-		Name:      "workers_sync",
-		Help:      "Times of the workers sync processes",
-		Labels:    []string{},
 	})
 )
 
-func reportWorkerStart(schedulerName string, component string) {
-	currentWorkersGaugeMetric.WithLabelValues(schedulerName, component).Inc()
-}
-
-func reportWorkerStop(schedulerName string, component string) {
-	currentWorkersGaugeMetric.WithLabelValues(schedulerName, component).Dec()
-}
-
-func reportWorkersSynced() {
-	workersSyncCounterMetric.WithLabelValues().Inc()
+func reportEventProcessingStatus(event game_room.InstanceEvent, success bool) {
+	watcherEventProcessingCounterMetric.WithLabelValues(
+		event.Instance.SchedulerID,
+		event.Type.String(),
+		fmt.Sprint(success),
+	).Inc()
 }

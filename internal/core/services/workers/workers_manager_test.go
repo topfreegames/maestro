@@ -23,7 +23,7 @@
 //go:build unit
 // +build unit
 
-package worker
+package workers
 
 import (
 	"context"
@@ -41,8 +41,8 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
-	"github.com/topfreegames/maestro/internal/core/workers"
-	workermock "github.com/topfreegames/maestro/internal/core/workers/mock"
+	"github.com/topfreegames/maestro/internal/core/worker"
+	workermock "github.com/topfreegames/maestro/internal/core/worker/mock"
 )
 
 var (
@@ -67,7 +67,7 @@ func TestStart(t *testing.T) {
 		configs := configmock.NewMockConfig(mockCtrl)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		workerStopCh := make(chan struct{})
-		workerBuilder := &workers.WorkerBuilder{Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+		workerBuilder := &worker.WorkerBuilder{Func: func(_ *entities.Scheduler, _ *worker.WorkerOptions) worker.Worker {
 			return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
 		}, ComponentName: "mock"}
 
@@ -131,7 +131,7 @@ func TestStart(t *testing.T) {
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
 		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
-		workerBuilder := &workers.WorkerBuilder{Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+		workerBuilder := &worker.WorkerBuilder{Func: func(_ *entities.Scheduler, _ *worker.WorkerOptions) worker.Worker {
 			return &workermock.MockWorker{Run: false}
 		}, ComponentName: "mock"}
 
@@ -164,8 +164,8 @@ func TestStart(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
-		workerBuilder := &workers.WorkerBuilder{
-			Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+		workerBuilder := &worker.WorkerBuilder{
+			Func: func(_ *entities.Scheduler, _ *worker.WorkerOptions) worker.Worker {
 				return &workermock.MockWorker{
 					Run:    false,
 					StopCh: workerStopCh,
@@ -230,8 +230,8 @@ func TestStart(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
-		workerBuilder := &workers.WorkerBuilder{
-			Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+		workerBuilder := &worker.WorkerBuilder{
+			Func: func(_ *entities.Scheduler, _ *worker.WorkerOptions) worker.Worker {
 				return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
 			},
 			ComponentName: "mock",
@@ -315,8 +315,8 @@ func TestStart(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		workerStopCh := make(chan struct{})
-		workerBuilder := &workers.WorkerBuilder{
-			Func: func(_ *entities.Scheduler, _ *workers.WorkerOptions) workers.Worker {
+		workerBuilder := &worker.WorkerBuilder{
+			Func: func(_ *entities.Scheduler, _ *worker.WorkerOptions) worker.Worker {
 				return &workermock.MockWorker{Run: false, StopCh: workerStopCh}
 			}, ComponentName: "mock",
 		}

@@ -32,7 +32,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/workers/config"
+	"github.com/topfreegames/maestro/internal/core/worker/config"
 
 	"github.com/golang/mock/gomock"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -40,7 +40,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 )
 
 func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
@@ -54,7 +54,7 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		instances := newInstancesList(40)
 
-		workerOpts := &workers.WorkerOptions{
+		workerOpts := &worker.WorkerOptions{
 			RoomStorage:           roomStorage,
 			InstanceStorage:       instanceStorage,
 			MetricsReporterConfig: &config.MetricsReporterConfig{MetricsReporterIntervalMillis: 500},
@@ -113,7 +113,7 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 
-		workerOpts := &workers.WorkerOptions{
+		workerOpts := &worker.WorkerOptions{
 			RoomStorage:           roomStorage,
 			InstanceStorage:       instanceStorage,
 			MetricsReporterConfig: &config.MetricsReporterConfig{MetricsReporterIntervalMillis: 500},

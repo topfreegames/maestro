@@ -29,23 +29,23 @@ import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/services/events"
-	"github.com/topfreegames/maestro/internal/core/services/worker"
-	"github.com/topfreegames/maestro/internal/core/workers"
-	"github.com/topfreegames/maestro/internal/core/workers/runtime_watcher_worker"
+	"github.com/topfreegames/maestro/internal/core/services/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
+	"github.com/topfreegames/maestro/internal/core/worker/runtimewatcher"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
-func provideRuntimeWatcherBuilder() *workers.WorkerBuilder {
-	return &workers.WorkerBuilder{
-		Func:          runtime_watcher_worker.NewRuntimeWatcherWorker,
-		ComponentName: runtime_watcher_worker.WorkerName,
+func provideRuntimeWatcherBuilder() *worker.WorkerBuilder {
+	return &worker.WorkerBuilder{
+		Func:          runtimewatcher.NewRuntimeWatcherWorker,
+		ComponentName: runtimewatcher.WorkerName,
 	}
 }
 
 var WorkerOptionsSet = wire.NewSet(
 	service.NewRuntimeKubernetes,
 	RoomManagerSet,
-	wire.Struct(new(workers.WorkerOptions), "RoomManager", "Runtime"))
+	wire.Struct(new(worker.WorkerOptions), "RoomManager", "Runtime"))
 
 var RoomManagerSet = wire.NewSet(
 	service.NewSchedulerStoragePg,
@@ -61,7 +61,7 @@ var RoomManagerSet = wire.NewSet(
 	service.NewEventsForwarderServiceConfig,
 )
 
-func initializeRuntimeWatcher(c config.Config) (*worker.WorkersManager, error) {
+func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) {
 	wire.Build(
 		// workers options
 		WorkerOptionsSet,
@@ -69,8 +69,8 @@ func initializeRuntimeWatcher(c config.Config) (*worker.WorkersManager, error) {
 		// watcher builder
 		provideRuntimeWatcherBuilder,
 
-		worker.NewWorkersManager,
+		workers.NewWorkersManager,
 	)
 
-	return &worker.WorkersManager{}, nil
+	return &workers.WorkersManager{}, nil
 }

@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package worker
+package workers
 
 import (
 	"context"
@@ -33,7 +33,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 	"go.uber.org/zap"
 )
 
@@ -49,25 +49,25 @@ const (
 
 // WorkersManager is the default struct of WorkersManager service
 type WorkersManager struct {
-	builder                    *workers.WorkerBuilder
+	builder                    *worker.WorkerBuilder
 	configs                    config.Config
 	schedulerStorage           ports.SchedulerStorage
-	CurrentWorkers             map[string]workers.Worker
+	CurrentWorkers             map[string]worker.Worker
 	syncWorkersInterval        time.Duration
-	WorkerOptions              *workers.WorkerOptions
+	WorkerOptions              *worker.WorkerOptions
 	workersStopTimeoutDuration time.Duration
 	workersWaitGroup           sync.WaitGroup
 	logger                     *zap.Logger
 }
 
 // NewWorkersManager is the default constructor of WorkersManager
-func NewWorkersManager(builder *workers.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, workerOptions *workers.WorkerOptions) *WorkersManager {
+func NewWorkersManager(builder *worker.WorkerBuilder, configs config.Config, schedulerStorage ports.SchedulerStorage, workerOptions *worker.WorkerOptions) *WorkersManager {
 
 	return &WorkersManager{
 		builder:                    builder,
 		configs:                    configs,
 		schedulerStorage:           schedulerStorage,
-		CurrentWorkers:             map[string]workers.Worker{},
+		CurrentWorkers:             map[string]worker.Worker{},
 		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
 		WorkerOptions:              workerOptions,
 		workersStopTimeoutDuration: configs.GetDuration(workersStopTimeoutDurationPath),
@@ -149,7 +149,7 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	return nil
 }
 
-func (w *WorkersManager) startWorker(ctx context.Context, name string, wkr workers.Worker) {
+func (w *WorkersManager) startWorker(ctx context.Context, name string, wkr worker.Worker) {
 	w.workersWaitGroup.Add(1)
 	w.CurrentWorkers[name] = wkr
 	go func() {
@@ -167,9 +167,9 @@ func (w *WorkersManager) startWorker(ctx context.Context, name string, wkr worke
 }
 
 // Gets all desirable operation workers, the ones that are not running
-func (w *WorkersManager) getDesirableWorkers(schedulers []*entities.Scheduler) map[string]workers.Worker {
+func (w *WorkersManager) getDesirableWorkers(schedulers []*entities.Scheduler) map[string]worker.Worker {
 
-	desirableWorkers := map[string]workers.Worker{}
+	desirableWorkers := map[string]worker.Worker{}
 	for _, scheduler := range schedulers {
 		desirableWorkers[scheduler.Name] = w.builder.Func(scheduler, w.WorkerOptions)
 	}
@@ -183,9 +183,9 @@ func (w *WorkersManager) getDesirableWorkers(schedulers []*entities.Scheduler) m
 }
 
 // Gets all dispensable operation workers, the ones that are running but no more required
-func (w *WorkersManager) getDispensableWorkers(schedulers []*entities.Scheduler) map[string]workers.Worker {
+func (w *WorkersManager) getDispensableWorkers(schedulers []*entities.Scheduler) map[string]worker.Worker {
 
-	dispensableWorkers := map[string]workers.Worker{}
+	dispensableWorkers := map[string]worker.Worker{}
 	for name, worker := range w.CurrentWorkers {
 		dispensableWorkers[name] = worker
 	}

@@ -9,16 +9,16 @@ package metricsreporter
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/worker"
-	"github.com/topfreegames/maestro/internal/core/workers"
-	workersconfig "github.com/topfreegames/maestro/internal/core/workers/config"
-	"github.com/topfreegames/maestro/internal/core/workers/metricsreporter"
+	"github.com/topfreegames/maestro/internal/core/services/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
+	config2 "github.com/topfreegames/maestro/internal/core/worker/config"
+	"github.com/topfreegames/maestro/internal/core/worker/metricsreporter"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
 // Injectors from wire.go:
 
-func initializeMetricsReporter(c config.Config) (*worker.WorkersManager, error) {
+func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error) {
 	workerBuilder := provideMetricsReporterBuilder()
 	schedulerStorage, err := service.NewSchedulerStoragePg(c)
 	if err != nil {
@@ -33,27 +33,27 @@ func initializeMetricsReporter(c config.Config) (*worker.WorkersManager, error) 
 		return nil, err
 	}
 	metricsReporterConfig := provideMetricsReporterConfig(c)
-	workerOptions := &workers.WorkerOptions{
+	workerOptions := &worker.WorkerOptions{
 		RoomStorage:           roomStorage,
 		InstanceStorage:       gameRoomInstanceStorage,
 		MetricsReporterConfig: metricsReporterConfig,
 	}
-	workersManager := worker.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
+	workersManager := workers.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
 }
 
 // wire.go:
 
-func provideMetricsReporterBuilder() *workers.WorkerBuilder {
-	return &workers.WorkerBuilder{
+func provideMetricsReporterBuilder() *worker.WorkerBuilder {
+	return &worker.WorkerBuilder{
 		Func:          metricsreporter.NewMetricsReporterWorker,
 		ComponentName: metricsreporter.WorkerName,
 	}
 }
 
-func provideMetricsReporterConfig(c config.Config) *workersconfig.MetricsReporterConfig {
-	return &workersconfig.MetricsReporterConfig{MetricsReporterIntervalMillis: c.GetDuration("reporter.metrics.intervalMillis")}
+func provideMetricsReporterConfig(c config.Config) *config2.MetricsReporterConfig {
+	return &config2.MetricsReporterConfig{MetricsReporterIntervalMillis: c.GetDuration("reporter.metrics.intervalMillis")}
 
 }
 
-var WorkerOptionsSet = wire.NewSet(service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, provideMetricsReporterConfig, wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))
+var WorkerOptionsSet = wire.NewSet(service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, provideMetricsReporterConfig, wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))

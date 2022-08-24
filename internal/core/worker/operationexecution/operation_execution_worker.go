@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package operation_execution_worker
+package operationexecution
 
 import (
 	"context"
@@ -30,18 +30,18 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-	workererrors "github.com/topfreegames/maestro/internal/core/workers/errors"
+	workererrors "github.com/topfreegames/maestro/internal/core/worker/errors"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 	"go.uber.org/zap"
 )
 
-var _ workers.Worker = (*OperationExecutionWorker)(nil)
+var _ worker.Worker = (*OperationExecutionWorker)(nil)
 
 const WorkerName = "operation_execution"
 
@@ -61,7 +61,7 @@ type OperationExecutionWorker struct {
 }
 
 // NewOperationExecutionWorker instantiate a new OperationExecutionWorker to a specified scheduler.
-func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
+func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &OperationExecutionWorker{
 		healthControllerExecutionInterval: opts.Configuration.HealthControllerExecutionInterval,
 		operationManager:                  opts.OperationManager,

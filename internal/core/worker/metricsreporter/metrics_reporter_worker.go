@@ -26,7 +26,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/workers/config"
+	"github.com/topfreegames/maestro/internal/core/worker/config"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -34,11 +34,11 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 	"go.uber.org/zap"
 )
 
-var _ workers.Worker = (*MetricsReporterWorker)(nil)
+var _ worker.Worker = (*MetricsReporterWorker)(nil)
 
 const WorkerName = "metrics_reporter"
 
@@ -53,7 +53,7 @@ type MetricsReporterWorker struct {
 	logger              *zap.Logger
 }
 
-func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
+func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &MetricsReporterWorker{
 		scheduler:       scheduler,
 		config:          opts.MetricsReporterConfig,

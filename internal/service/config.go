@@ -31,7 +31,7 @@ import (
 	roommanager "github.com/topfreegames/maestro/internal/core/services/rooms"
 
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 
 	"github.com/topfreegames/maestro/internal/config"
 )
@@ -91,9 +91,9 @@ func NewRoomManagerConfig(c config.Config) (roommanager.RoomManagerConfig, error
 }
 
 // NewWorkersConfig instantiate a new workers Config stucture to be used by the workers to customize them from the config package.
-func NewWorkersConfig(c config.Config) (workers.Configuration, error) {
+func NewWorkersConfig(c config.Config) (worker.Configuration, error) {
 	healthControllerExecutionInterval := c.GetDuration(healthControllerExecutionIntervalConfigPath)
-	config := workers.Configuration{
+	config := worker.Configuration{
 		HealthControllerExecutionInterval: healthControllerExecutionInterval,
 	}
 

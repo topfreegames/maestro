@@ -20,13 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package workers
+package worker
 
 import (
 	"context"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/workers/config"
+	"github.com/topfreegames/maestro/internal/core/worker/config"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/operations"

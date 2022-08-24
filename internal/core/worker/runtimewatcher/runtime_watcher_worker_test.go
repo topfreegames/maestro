@@ -23,7 +23,7 @@
 //go:build unit
 // +build unit
 
-package runtime_watcher_worker
+package runtimewatcher
 
 import (
 	"context"
@@ -38,16 +38,16 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 )
 
-func workerOptions(t *testing.T) (*gomock.Controller, *mockports.MockRuntime, *mockports.MockRoomManager, *workers.WorkerOptions) {
+func workerOptions(t *testing.T) (*gomock.Controller, *mockports.MockRuntime, *mockports.MockRoomManager, *worker.WorkerOptions) {
 	mockCtrl := gomock.NewController(t)
 
 	runtime := mockports.NewMockRuntime(mockCtrl)
 	roomManager := mockports.NewMockRoomManager(mockCtrl)
 
-	return mockCtrl, runtime, roomManager, &workers.WorkerOptions{
+	return mockCtrl, runtime, roomManager, &worker.WorkerOptions{
 		Runtime:     runtime,
 		RoomManager: roomManager,
 	}

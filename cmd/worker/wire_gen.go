@@ -10,14 +10,14 @@ import (
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/events"
-	"github.com/topfreegames/maestro/internal/core/services/worker"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/services/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
 // Injectors from wire.go:
 
-func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*worker.WorkersManager, error) {
+func initializeWorker(c config.Config, builder *worker.WorkerBuilder) (*workers.WorkersManager, error) {
 	schedulerStorage, err := service.NewSchedulerStoragePg(c)
 	if err != nil {
 		return nil, err
@@ -78,14 +78,14 @@ func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*worker.
 	schedulerManager := service.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 	policyMap := service.NewPolicyMap(roomStorage)
 	autoscaler := service.NewAutoscaler(policyMap)
-	newConfig := service.NewCreateSchedulerVersionConfig(c)
+	newversionConfig := service.NewCreateSchedulerVersionConfig(c)
 	healthcontrollerConfig := service.NewHealthControllerConfig(c)
-	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, schedulerCache, operationStorage, operationManager, autoscaler, newConfig, healthcontrollerConfig)
+	v2 := providers.ProvideExecutors(runtime, schedulerStorage, roomManager, roomStorage, schedulerManager, gameRoomInstanceStorage, schedulerCache, operationStorage, operationManager, autoscaler, newversionConfig, healthcontrollerConfig)
 	configuration, err := service.NewWorkersConfig(c)
 	if err != nil {
 		return nil, err
 	}
-	workerOptions := workers.ProvideWorkerOptions(operationManager, v2, roomManager, runtime, configuration)
-	workersManager := worker.NewWorkersManager(builder, c, schedulerStorage, workerOptions)
+	workerOptions := worker.ProvideWorkerOptions(operationManager, v2, roomManager, runtime, configuration)
+	workersManager := workers.NewWorkersManager(builder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
 }

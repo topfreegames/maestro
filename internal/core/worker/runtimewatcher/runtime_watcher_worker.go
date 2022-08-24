@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package runtime_watcher_worker
+package runtimewatcher
 
 import (
 	"context"
@@ -32,11 +32,11 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 	"go.uber.org/zap"
 )
 
-var _ workers.Worker = (*runtimeWatcherWorker)(nil)
+var _ worker.Worker = (*runtimeWatcherWorker)(nil)
 
 const WorkerName = "runtime_watcher"
 
@@ -54,7 +54,7 @@ type runtimeWatcherWorker struct {
 	cancelFunc context.CancelFunc
 }
 
-func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *workers.WorkerOptions) workers.Worker {
+func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &runtimeWatcherWorker{
 		scheduler:   scheduler,
 		roomManager: opts.RoomManager,
