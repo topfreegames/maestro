@@ -29,6 +29,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
+
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -40,7 +42,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
@@ -84,8 +85,8 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerSpec: map[string]interface{}{
-						patch_scheduler.LabelSpecTerminationGracePeriod: time.Duration(terminationValue),
+					patch.LabelSchedulerSpec: map[string]interface{}{
+						patch.LabelSpecTerminationGracePeriod: time.Duration(terminationValue),
 					},
 				},
 			},
@@ -102,7 +103,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerPortRange: entities.NewPortRange(10000, 60000),
+					patch.LabelSchedulerPortRange: entities.NewPortRange(10000, 60000),
 				},
 			},
 		},
@@ -115,7 +116,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerMaxSurge: maxSurgeValue,
+					patch.LabelSchedulerMaxSurge: maxSurgeValue,
 				},
 			},
 		},
@@ -128,7 +129,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerRoomsReplicas: int(roomsReplicasValue),
+					patch.LabelSchedulerRoomsReplicas: int(roomsReplicasValue),
 				},
 			},
 		},
@@ -158,7 +159,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerForwarders: []*forwarder.Forwarder{
+					patch.LabelSchedulerForwarders: []*forwarder.Forwarder{
 						{
 							Name:        "some-forwarder",
 							Enabled:     true,
@@ -192,7 +193,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerForwarders: []*forwarder.Forwarder{},
+					patch.LabelSchedulerForwarders: []*forwarder.Forwarder{},
 				},
 			},
 		},
@@ -248,22 +249,22 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerSpec: map[string]interface{}{
-						patch_scheduler.LabelSpecContainers: []map[string]interface{}{
+					patch.LabelSchedulerSpec: map[string]interface{}{
+						patch.LabelSpecContainers: []map[string]interface{}{
 							{
-								patch_scheduler.LabelContainerName: genericString,
+								patch.LabelContainerName: genericString,
 							},
 							{
-								patch_scheduler.LabelContainerImage: genericString,
+								patch.LabelContainerImage: genericString,
 							},
 							{
-								patch_scheduler.LabelContainerImagePullPolicy: genericString,
+								patch.LabelContainerImagePullPolicy: genericString,
 							},
 							{
-								patch_scheduler.LabelContainerCommand: genericStringList,
+								patch.LabelContainerCommand: genericStringList,
 							},
 							{
-								patch_scheduler.LabelContainerEnvironment: []game_room.ContainerEnvironment{
+								patch.LabelContainerEnvironment: []game_room.ContainerEnvironment{
 									{
 										Name:  genericString,
 										Value: genericString,
@@ -271,19 +272,19 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 								},
 							},
 							{
-								patch_scheduler.LabelContainerRequests: game_room.ContainerResources{
+								patch.LabelContainerRequests: game_room.ContainerResources{
 									CPU:    "100",
 									Memory: "1000m",
 								},
 							},
 							{
-								patch_scheduler.LabelContainerLimits: game_room.ContainerResources{
+								patch.LabelContainerLimits: game_room.ContainerResources{
 									CPU:    "200",
 									Memory: "2000m",
 								},
 							},
 							{
-								patch_scheduler.LabelContainerPorts: []game_room.ContainerPort{
+								patch.LabelContainerPorts: []game_room.ContainerPort{
 									{
 										Name:     "some-port",
 										Protocol: "TCP",
@@ -306,8 +307,8 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerSpec: map[string]interface{}{
-						patch_scheduler.LabelSpecToleration: genericString,
+					patch.LabelSchedulerSpec: map[string]interface{}{
+						patch.LabelSpecToleration: genericString,
 					},
 				},
 			},
@@ -321,8 +322,8 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelSchedulerSpec: map[string]interface{}{
-						patch_scheduler.LabelSpecAffinity: genericString,
+					patch.LabelSchedulerSpec: map[string]interface{}{
+						patch.LabelSpecAffinity: genericString,
 					},
 				},
 			},
@@ -348,11 +349,11 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelAutoscaling: map[string]interface{}{
-						patch_scheduler.LabelAutoscalingEnabled: pointerBool,
-						patch_scheduler.LabelAutoscalingMin:     pointerGenericInt32,
-						patch_scheduler.LabelAutoscalingMax:     pointerGenericInt32,
-						patch_scheduler.LabelAutoscalingPolicy: autoscaling.Policy{
+					patch.LabelAutoscaling: map[string]interface{}{
+						patch.LabelAutoscalingEnabled: pointerBool,
+						patch.LabelAutoscalingMin:     pointerGenericInt32,
+						patch.LabelAutoscalingMax:     pointerGenericInt32,
+						patch.LabelAutoscalingPolicy: autoscaling.Policy{
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
@@ -382,8 +383,8 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelAutoscaling: map[string]interface{}{
-						patch_scheduler.LabelAutoscalingPolicy: autoscaling.Policy{
+					patch.LabelAutoscaling: map[string]interface{}{
+						patch.LabelAutoscalingPolicy: autoscaling.Policy{
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
@@ -407,9 +408,9 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch_scheduler.LabelAutoscaling: map[string]interface{}{
-						patch_scheduler.LabelAutoscalingMin: pointerGenericInt32,
-						patch_scheduler.LabelAutoscalingMax: pointerGenericInt32,
+					patch.LabelAutoscaling: map[string]interface{}{
+						patch.LabelAutoscalingMin: pointerGenericInt32,
+						patch.LabelAutoscalingMax: pointerGenericInt32,
 					},
 				},
 			},

@@ -28,15 +28,15 @@ package metricsreporter
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
-	"github.com/topfreegames/maestro/internal/core/workers"
-	workerconfigs "github.com/topfreegames/maestro/internal/core/workers/config"
-	"github.com/topfreegames/maestro/internal/core/workers/metricsreporter"
+	"github.com/topfreegames/maestro/internal/core/services/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
+	workerconfigs "github.com/topfreegames/maestro/internal/core/worker/config"
+	"github.com/topfreegames/maestro/internal/core/worker/metricsreporter"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
-func provideMetricsReporterBuilder() *workers.WorkerBuilder {
-	return &workers.WorkerBuilder{
+func provideMetricsReporterBuilder() *worker.WorkerBuilder {
+	return &worker.WorkerBuilder{
 		Func:          metricsreporter.NewMetricsReporterWorker,
 		ComponentName: metricsreporter.WorkerName,
 	}
@@ -51,9 +51,9 @@ var WorkerOptionsSet = wire.NewSet(
 	service.NewRoomStorageRedis,
 	service.NewGameRoomInstanceStorageRedis,
 	provideMetricsReporterConfig,
-	wire.Struct(new(workers.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))
+	wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))
 
-func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager, error) {
+func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error) {
 	wire.Build(
 		// workers options
 		WorkerOptionsSet,
@@ -63,8 +63,8 @@ func initializeMetricsReporter(c config.Config) (*workers_manager.WorkersManager
 
 		service.NewSchedulerStoragePg,
 
-		workers_manager.NewWorkersManager,
+		workers.NewWorkersManager,
 	)
 
-	return &workers_manager.WorkersManager{}, nil
+	return &workers.WorkersManager{}, nil
 }

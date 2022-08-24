@@ -25,14 +25,15 @@ package service
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
+	"github.com/topfreegames/maestro/internal/core/services/events"
+	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations"
+	roommanager "github.com/topfreegames/maestro/internal/core/services/rooms"
+
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-	"github.com/topfreegames/maestro/internal/core/operations/newschedulerversion"
-	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/operation_manager"
-	"github.com/topfreegames/maestro/internal/core/services/room_manager"
 )
 
 const (
@@ -46,14 +47,14 @@ const (
 )
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
-func NewCreateSchedulerVersionConfig(c config.Config) newschedulerversion.Config {
+func NewCreateSchedulerVersionConfig(c config.Config) newversion.Config {
 	initializationTimeout := time.Duration(c.GetInt(roomInitializationTimeoutMillisConfigPath)) * time.Millisecond
 	roomValidationAttempts := c.GetInt(roomRoomValidationAttemptsConfigPath)
 	if roomValidationAttempts < 1 {
 		roomValidationAttempts = 1
 	}
 
-	createSchedulerVersionConfig := newschedulerversion.Config{
+	createSchedulerVersionConfig := newversion.Config{
 		RoomInitializationTimeout: initializationTimeout,
 		RoomValidationAttempts:    roomValidationAttempts,
 	}
@@ -77,11 +78,11 @@ func NewHealthControllerConfig(c config.Config) healthcontroller.Config {
 }
 
 // NewRoomManagerConfig instantiate a new RoomManagerConfig to be used by the RoomManager to customize its configuration.
-func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, error) {
+func NewRoomManagerConfig(c config.Config) (roommanager.RoomManagerConfig, error) {
 	pingTimeout := time.Duration(c.GetInt(roomPingTimeoutMillisConfigPath)) * time.Millisecond
 	deletionTimeout := time.Duration(c.GetInt(roomDeletionTimeoutMillisConfigPath)) * time.Millisecond
 
-	roomManagerConfig := room_manager.RoomManagerConfig{
+	roomManagerConfig := roommanager.RoomManagerConfig{
 		RoomPingTimeout:     pingTimeout,
 		RoomDeletionTimeout: deletionTimeout,
 	}
@@ -90,9 +91,9 @@ func NewRoomManagerConfig(c config.Config) (room_manager.RoomManagerConfig, erro
 }
 
 // NewWorkersConfig instantiate a new workers Config stucture to be used by the workers to customize them from the config package.
-func NewWorkersConfig(c config.Config) (workers.Configuration, error) {
+func NewWorkersConfig(c config.Config) (worker.Configuration, error) {
 	healthControllerExecutionInterval := c.GetDuration(healthControllerExecutionIntervalConfigPath)
-	config := workers.Configuration{
+	config := worker.Configuration{
 		HealthControllerExecutionInterval: healthControllerExecutionInterval,
 	}
 
@@ -100,10 +101,10 @@ func NewWorkersConfig(c config.Config) (workers.Configuration, error) {
 }
 
 // NewOperationManagerConfig instantiate a new OperationManagerConfig to be used by the OperationManager to customize its configuration.
-func NewOperationManagerConfig(c config.Config) (operation_manager.OperationManagerConfig, error) {
+func NewOperationManagerConfig(c config.Config) (operationmanager.OperationManagerConfig, error) {
 	operationLeaseTTL := time.Duration(c.GetInt(operationLeaseTTLMillisConfigPath)) * time.Millisecond
 
-	operationManagerConfig := operation_manager.OperationManagerConfig{
+	operationManagerConfig := operationmanager.OperationManagerConfig{
 		OperationLeaseTtl: operationLeaseTTL,
 	}
 
@@ -111,7 +112,7 @@ func NewOperationManagerConfig(c config.Config) (operation_manager.OperationMana
 }
 
 // NewEventsForwarderServiceConfig instantiate a new EventsForwarderConfig to be used by the EventsForwarder to customize its configuration.
-func NewEventsForwarderServiceConfig(c config.Config) (events_forwarder.EventsForwarderConfig, error) {
+func NewEventsForwarderServiceConfig(c config.Config) (events.EventsForwarderConfig, error) {
 	var schedulerCacheTTL time.Duration
 	defaultSchedulerCacheTTL := time.Hour * 24
 
@@ -121,7 +122,7 @@ func NewEventsForwarderServiceConfig(c config.Config) (events_forwarder.EventsFo
 		schedulerCacheTTL = defaultSchedulerCacheTTL
 	}
 
-	eventsForwarderConfig := events_forwarder.EventsForwarderConfig{
+	eventsForwarderConfig := events.EventsForwarderConfig{
 		SchedulerCacheTtl: schedulerCacheTTL,
 	}
 

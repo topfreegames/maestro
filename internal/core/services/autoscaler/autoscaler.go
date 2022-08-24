@@ -27,9 +27,10 @@ import (
 	"errors"
 	"fmt"
 
+	autoscalerPorts "github.com/topfreegames/maestro/internal/core/ports"
+
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	autoscalerPorts "github.com/topfreegames/maestro/internal/core/ports/autoscaler"
 )
 
 // PolicyMap is a type that corelates a policy type with an autoscaling policy.

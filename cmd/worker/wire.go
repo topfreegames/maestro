@@ -29,13 +29,13 @@ import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/operations/providers"
-	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/services/events"
+	workersservice "github.com/topfreegames/maestro/internal/core/services/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
-func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*workers_manager.WorkersManager, error) {
+func initializeWorker(c config.Config, builder *worker.WorkerBuilder) (*workersservice.WorkersManager, error) {
 	wire.Build(
 		// ports + adapters
 		service.NewRuntimeKubernetes,
@@ -65,11 +65,11 @@ func initializeWorker(c config.Config, builder *workers.WorkerBuilder) (*workers
 		providers.ProvideExecutors,
 
 		// services
-		events_forwarder.NewEventsForwarderService,
-		workers.ProvideWorkerOptions,
-		workers_manager.NewWorkersManager,
+		events.NewEventsForwarderService,
+		worker.ProvideWorkerOptions,
+		workersservice.NewWorkersManager,
 		service.NewSchedulerManager,
 	)
 
-	return &workers_manager.WorkersManager{}, nil
+	return &workersservice.WorkersManager{}, nil
 }

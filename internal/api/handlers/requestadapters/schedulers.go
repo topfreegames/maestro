@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
+
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	_struct "google.golang.org/protobuf/types/known/structpb"
@@ -34,7 +36,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/services/scheduler_manager/patch_scheduler"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
@@ -42,31 +43,31 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	patchMap := make(map[string]interface{})
 
 	if request.Spec != nil {
-		patchMap[patch_scheduler.LabelSchedulerSpec] = fromApiOptionalSpecToChangeMap(request.Spec)
+		patchMap[patch.LabelSchedulerSpec] = fromApiOptionalSpecToChangeMap(request.Spec)
 	}
 
 	if request.PortRange != nil {
-		patchMap[patch_scheduler.LabelSchedulerPortRange] = entities.NewPortRange(
+		patchMap[patch.LabelSchedulerPortRange] = entities.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		)
 	}
 
 	if request.MaxSurge != nil {
-		patchMap[patch_scheduler.LabelSchedulerMaxSurge] = request.GetMaxSurge()
+		patchMap[patch.LabelSchedulerMaxSurge] = request.GetMaxSurge()
 	}
 
 	if request.RoomsReplicas != nil {
-		patchMap[patch_scheduler.LabelSchedulerRoomsReplicas] = int(request.GetRoomsReplicas())
+		patchMap[patch.LabelSchedulerRoomsReplicas] = int(request.GetRoomsReplicas())
 	}
 
 	if request.Autoscaling != nil {
 		newAutoscaling := fromApiOptionalAutoscalingToChangeMap(request.GetAutoscaling())
-		patchMap[patch_scheduler.LabelAutoscaling] = newAutoscaling
+		patchMap[patch.LabelAutoscaling] = newAutoscaling
 	}
 
 	if request.Forwarders != nil {
-		patchMap[patch_scheduler.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
+		patchMap[patch.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
 
 	return patchMap
@@ -76,20 +77,20 @@ func fromApiOptionalAutoscalingToChangeMap(apiAutoscaling *api.OptionalAutoscali
 	changeMap := make(map[string]interface{})
 
 	if apiAutoscaling.Enabled != nil {
-		changeMap[patch_scheduler.LabelAutoscalingEnabled] = apiAutoscaling.GetEnabled()
+		changeMap[patch.LabelAutoscalingEnabled] = apiAutoscaling.GetEnabled()
 	}
 
 	if apiAutoscaling.Min != nil {
-		changeMap[patch_scheduler.LabelAutoscalingMin] = apiAutoscaling.GetMin()
+		changeMap[patch.LabelAutoscalingMin] = apiAutoscaling.GetMin()
 	}
 
 	if apiAutoscaling.Max != nil {
-		changeMap[patch_scheduler.LabelAutoscalingMax] = apiAutoscaling.GetMax()
+		changeMap[patch.LabelAutoscalingMax] = apiAutoscaling.GetMax()
 	}
 
 	if apiAutoscaling.Policy != nil {
 		autoscalingPolicy := fromApiAutoscalingPolicy(apiAutoscaling.GetPolicy())
-		changeMap[patch_scheduler.LabelAutoscalingPolicy] = autoscalingPolicy
+		changeMap[patch.LabelAutoscalingPolicy] = autoscalingPolicy
 	}
 
 	return changeMap
@@ -212,19 +213,19 @@ func fromApiOptionalSpecToChangeMap(request *api.OptionalSpec) map[string]interf
 	changeMap := make(map[string]interface{})
 
 	if request.TerminationGracePeriod != nil {
-		changeMap[patch_scheduler.LabelSpecTerminationGracePeriod] = time.Duration(request.GetTerminationGracePeriod())
+		changeMap[patch.LabelSpecTerminationGracePeriod] = time.Duration(request.GetTerminationGracePeriod())
 	}
 
 	if request.Containers != nil {
-		changeMap[patch_scheduler.LabelSpecContainers] = fromApiOptionalContainersToChangeMap(request.GetContainers())
+		changeMap[patch.LabelSpecContainers] = fromApiOptionalContainersToChangeMap(request.GetContainers())
 	}
 
 	if request.Toleration != nil {
-		changeMap[patch_scheduler.LabelSpecToleration] = request.GetToleration()
+		changeMap[patch.LabelSpecToleration] = request.GetToleration()
 	}
 
 	if request.Affinity != nil {
-		changeMap[patch_scheduler.LabelSpecAffinity] = request.GetAffinity()
+		changeMap[patch.LabelSpecAffinity] = request.GetAffinity()
 	}
 
 	return changeMap
@@ -237,41 +238,41 @@ func fromApiOptionalContainersToChangeMap(request []*api.OptionalContainer) []ma
 		changeMap := make(map[string]interface{})
 
 		if container.Name != nil {
-			changeMap[patch_scheduler.LabelContainerName] = container.GetName()
+			changeMap[patch.LabelContainerName] = container.GetName()
 		}
 
 		if container.Image != nil {
-			changeMap[patch_scheduler.LabelContainerImage] = container.GetImage()
+			changeMap[patch.LabelContainerImage] = container.GetImage()
 		}
 
 		if container.ImagePullPolicy != nil {
-			changeMap[patch_scheduler.LabelContainerImagePullPolicy] = container.GetImagePullPolicy()
+			changeMap[patch.LabelContainerImagePullPolicy] = container.GetImagePullPolicy()
 		}
 
 		if container.Command != nil {
-			changeMap[patch_scheduler.LabelContainerCommand] = container.GetCommand()
+			changeMap[patch.LabelContainerCommand] = container.GetCommand()
 		}
 
 		if container.Environment != nil {
-			changeMap[patch_scheduler.LabelContainerEnvironment] = fromApiContainerEnvironments(container.GetEnvironment())
+			changeMap[patch.LabelContainerEnvironment] = fromApiContainerEnvironments(container.GetEnvironment())
 		}
 
 		if container.Requests != nil {
-			changeMap[patch_scheduler.LabelContainerRequests] = game_room.ContainerResources{
+			changeMap[patch.LabelContainerRequests] = game_room.ContainerResources{
 				CPU:    container.GetRequests().GetCpu(),
 				Memory: container.GetRequests().GetMemory(),
 			}
 		}
 
 		if container.Limits != nil {
-			changeMap[patch_scheduler.LabelContainerLimits] = game_room.ContainerResources{
+			changeMap[patch.LabelContainerLimits] = game_room.ContainerResources{
 				CPU:    container.GetLimits().GetCpu(),
 				Memory: container.GetLimits().GetMemory(),
 			}
 		}
 
 		if container.Ports != nil {
-			changeMap[patch_scheduler.LabelContainerPorts] = fromApiContainerPorts(container.GetPorts())
+			changeMap[patch.LabelContainerPorts] = fromApiContainerPorts(container.GetPorts())
 		}
 
 		returnSlice = append(returnSlice, changeMap)

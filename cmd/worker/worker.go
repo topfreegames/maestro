@@ -26,10 +26,10 @@ import (
 	"context"
 
 	"github.com/topfreegames/maestro/cmd/commom"
-	"github.com/topfreegames/maestro/internal/core/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
 
 	"github.com/spf13/cobra"
-	"github.com/topfreegames/maestro/internal/core/workers/operation_execution_worker"
+	"github.com/topfreegames/maestro/internal/core/worker/operationexecution"
 	"go.uber.org/zap"
 )
 
@@ -63,9 +63,9 @@ func runWorker() {
 	}
 
 	// TODO(gabrielcorado): support multiple workers.
-	workerBuilder := &workers.WorkerBuilder{
-		Func:          operation_execution_worker.NewOperationExecutionWorker,
-		ComponentName: operation_execution_worker.WorkerName,
+	workerBuilder := &worker.WorkerBuilder{
+		Func:          operationexecution.NewOperationExecutionWorker,
+		ComponentName: operationexecution.WorkerName,
 	}
 	operationExecutionWorkerManager, err := initializeWorker(config, workerBuilder)
 	if err != nil {

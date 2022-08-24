@@ -9,16 +9,16 @@ package runtimewatcher
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
-	"github.com/topfreegames/maestro/internal/core/workers"
-	"github.com/topfreegames/maestro/internal/core/workers/runtime_watcher_worker"
+	"github.com/topfreegames/maestro/internal/core/services/events"
+	"github.com/topfreegames/maestro/internal/core/services/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
+	"github.com/topfreegames/maestro/internal/core/worker/runtimewatcher"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
 // Injectors from wire.go:
 
-func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager, error) {
+func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) {
 	workerBuilder := provideRuntimeWatcherBuilder()
 	schedulerStorage, err := service.NewSchedulerStoragePg(c)
 	if err != nil {
@@ -53,29 +53,29 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 	if err != nil {
 		return nil, err
 	}
-	eventsService := events_forwarder.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, roomStorage, schedulerCache, eventsForwarderConfig)
+	eventsService := events.NewEventsForwarderService(eventsForwarder, schedulerStorage, gameRoomInstanceStorage, roomStorage, schedulerCache, eventsForwarderConfig)
 	roomManagerConfig, err := service.NewRoomManagerConfig(c)
 	if err != nil {
 		return nil, err
 	}
 	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
-	workerOptions := &workers.WorkerOptions{
+	workerOptions := &worker.WorkerOptions{
 		RoomManager: roomManager,
 		Runtime:     runtime,
 	}
-	workersManager := workers_manager.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
+	workersManager := workers.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
 }
 
 // wire.go:
 
-func provideRuntimeWatcherBuilder() *workers.WorkerBuilder {
-	return &workers.WorkerBuilder{
-		Func:          runtime_watcher_worker.NewRuntimeWatcherWorker,
-		ComponentName: runtime_watcher_worker.WorkerName,
+func provideRuntimeWatcherBuilder() *worker.WorkerBuilder {
+	return &worker.WorkerBuilder{
+		Func:          runtimewatcher.NewRuntimeWatcherWorker,
+		ComponentName: runtimewatcher.WorkerName,
 	}
 }
 
-var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, RoomManagerSet, wire.Struct(new(workers.WorkerOptions), "RoomManager", "Runtime"))
+var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, RoomManagerSet, wire.Struct(new(worker.WorkerOptions), "RoomManager", "Runtime"))
 
-var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, service.NewRoomManagerConfig, service.NewRoomManager, service.NewEventsForwarder, events_forwarder.NewEventsForwarderService, service.NewEventsForwarderServiceConfig)
+var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, service.NewRoomManagerConfig, service.NewRoomManager, service.NewEventsForwarder, events.NewEventsForwarderService, service.NewEventsForwarderServiceConfig)

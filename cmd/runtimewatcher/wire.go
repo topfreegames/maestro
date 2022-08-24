@@ -28,24 +28,24 @@ package runtimewatcher
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/services/events_forwarder"
-	"github.com/topfreegames/maestro/internal/core/services/workers_manager"
-	"github.com/topfreegames/maestro/internal/core/workers"
-	"github.com/topfreegames/maestro/internal/core/workers/runtime_watcher_worker"
+	"github.com/topfreegames/maestro/internal/core/services/events"
+	"github.com/topfreegames/maestro/internal/core/services/workers"
+	"github.com/topfreegames/maestro/internal/core/worker"
+	"github.com/topfreegames/maestro/internal/core/worker/runtimewatcher"
 	"github.com/topfreegames/maestro/internal/service"
 )
 
-func provideRuntimeWatcherBuilder() *workers.WorkerBuilder {
-	return &workers.WorkerBuilder{
-		Func:          runtime_watcher_worker.NewRuntimeWatcherWorker,
-		ComponentName: runtime_watcher_worker.WorkerName,
+func provideRuntimeWatcherBuilder() *worker.WorkerBuilder {
+	return &worker.WorkerBuilder{
+		Func:          runtimewatcher.NewRuntimeWatcherWorker,
+		ComponentName: runtimewatcher.WorkerName,
 	}
 }
 
 var WorkerOptionsSet = wire.NewSet(
 	service.NewRuntimeKubernetes,
 	RoomManagerSet,
-	wire.Struct(new(workers.WorkerOptions), "RoomManager", "Runtime"))
+	wire.Struct(new(worker.WorkerOptions), "RoomManager", "Runtime"))
 
 var RoomManagerSet = wire.NewSet(
 	service.NewSchedulerStoragePg,
@@ -57,11 +57,11 @@ var RoomManagerSet = wire.NewSet(
 	service.NewRoomManagerConfig,
 	service.NewRoomManager,
 	service.NewEventsForwarder,
-	events_forwarder.NewEventsForwarderService,
+	events.NewEventsForwarderService,
 	service.NewEventsForwarderServiceConfig,
 )
 
-func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager, error) {
+func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) {
 	wire.Build(
 		// workers options
 		WorkerOptionsSet,
@@ -69,8 +69,8 @@ func initializeRuntimeWatcher(c config.Config) (*workers_manager.WorkersManager,
 		// watcher builder
 		provideRuntimeWatcherBuilder,
 
-		workers_manager.NewWorkersManager,
+		workers.NewWorkersManager,
 	)
 
-	return &workers_manager.WorkersManager{}, nil
+	return &workers.WorkersManager{}, nil
 }
