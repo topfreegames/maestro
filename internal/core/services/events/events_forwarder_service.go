@@ -300,8 +300,7 @@ func (es *EventsForwarderService) getPlayerInfo(event *events.Event) (string, er
 func (es *EventsForwarderService) isValidationRoom(ctx context.Context, event *events.Event) (bool, error) {
 	gameRoom, err := es.roomStorage.GetRoom(ctx, event.SchedulerID, event.RoomID)
 	if err != nil {
-		es.logger.Error(fmt.Sprintf("cannot produce event since room \"%s\" is not registered on storage for scheduler \"%s\"", event.RoomID, event.SchedulerID))
-		return false, err
+		return false, fmt.Errorf("failed to get room %s from storage: %v", event.RoomID, err)
 	}
 
 	if gameRoom.IsValidationRoom {
