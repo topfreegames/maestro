@@ -34,21 +34,21 @@ import (
 	"go.uber.org/zap"
 )
 
-type CreateSchedulerExecutor struct {
+type Executor struct {
 	runtime          ports.Runtime
 	schedulerManager ports.SchedulerManager
 }
 
-var _ operations.Executor = (*CreateSchedulerExecutor)(nil)
+var _ operations.Executor = (*Executor)(nil)
 
-func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager) *CreateSchedulerExecutor {
-	return &CreateSchedulerExecutor{
+func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager) *Executor {
+	return &Executor{
 		runtime:          runtime,
 		schedulerManager: schedulerManager,
 	}
 }
 
-func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -66,7 +66,7 @@ func (e *CreateSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 	return nil
 }
 
-func (e *CreateSchedulerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (e *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -82,6 +82,6 @@ func (e *CreateSchedulerExecutor) Rollback(ctx context.Context, op *operation.Op
 	return nil
 }
 
-func (e *CreateSchedulerExecutor) Name() string {
+func (e *Executor) Name() string {
 	return OperationName
 }

@@ -42,14 +42,14 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 )
 
-func TestExecute(t *testing.T) {
+func TestExecutor_Execute(t *testing.T) {
 
 	t.Run("RemoveRoom by Amount", func(t *testing.T) {
 		t.Run("should succeed - no rooms to be removed => returns without error", func(t *testing.T) {
 			executor, _, roomsManager, _ := testSetup(t)
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{Amount: 2}
+			definition := &Definition{Amount: 2}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			ctx := context.Background()
@@ -65,7 +65,7 @@ func TestExecute(t *testing.T) {
 			executor, _, roomsManager, _ := testSetup(t)
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{Amount: 2}
+			definition := &Definition{Amount: 2}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 			ctx := context.Background()
 			availableRooms := []*game_room.GameRoom{
@@ -83,7 +83,7 @@ func TestExecute(t *testing.T) {
 			executor, _, roomsManager, operationManager := testSetup(t)
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{Amount: 2}
+			definition := &Definition{Amount: 2}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			availableRooms := []*game_room.GameRoom{
@@ -106,7 +106,7 @@ func TestExecute(t *testing.T) {
 			executor, _, roomsManager, operationManager := testSetup(t)
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{Amount: 2}
+			definition := &Definition{Amount: 2}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			availableRooms := []*game_room.GameRoom{
@@ -127,7 +127,7 @@ func TestExecute(t *testing.T) {
 		t.Run("when list rooms has error returns with error", func(t *testing.T) {
 			executor, _, roomsManager, _ := testSetup(t)
 
-			definition := &RemoveRoomsDefinition{Amount: 2}
+			definition := &Definition{Amount: 2}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: uuid.NewString()}
 
 			ctx := context.Background()
@@ -144,7 +144,7 @@ func TestExecute(t *testing.T) {
 			executor, _, _, _ := testSetup(t)
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{RoomsIDs: []string{}}
+			definition := &Definition{RoomsIDs: []string{}}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			ctx := context.Background()
@@ -160,7 +160,7 @@ func TestExecute(t *testing.T) {
 			secondRoomID := "second-room-id"
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			ctx := context.Background()
@@ -192,7 +192,7 @@ func TestExecute(t *testing.T) {
 			secondRoomID := "second-room-id"
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			ctx := context.Background()
@@ -216,7 +216,7 @@ func TestExecute(t *testing.T) {
 			secondRoomID := "second-room-id"
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			ctx := context.Background()
@@ -249,7 +249,7 @@ func TestExecute(t *testing.T) {
 			secondRoomID := "second-room-id"
 
 			schedulerName := uuid.NewString()
-			definition := &RemoveRoomsDefinition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
 			operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 			ctx := context.Background()
 
@@ -279,7 +279,7 @@ func TestExecute(t *testing.T) {
 		executor, _, _, _ := testSetup(t)
 
 		schedulerName := uuid.NewString()
-		definition := &RemoveRoomsDefinition{}
+		definition := &Definition{}
 		operation := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 		ctx := context.Background()
@@ -297,7 +297,7 @@ func TestExecute(t *testing.T) {
 		fourthRoomID := "fourth-room-id"
 
 		schedulerName := uuid.NewString()
-		definition := &RemoveRoomsDefinition{
+		definition := &Definition{
 			RoomsIDs: []string{firstRoomID, secondRoomID},
 			Amount:   2,
 		}
@@ -338,7 +338,7 @@ func TestExecute(t *testing.T) {
 
 }
 
-func testSetup(t *testing.T) (*RemoveRoomsExecutor, *mockports.MockRoomStorage, *mockports.MockRoomManager, *mockports.MockOperationManager) {
+func testSetup(t *testing.T) (*Executor, *mockports.MockRoomStorage, *mockports.MockRoomManager, *mockports.MockOperationManager) {
 	mockCtrl := gomock.NewController(t)
 
 	roomsStorage := mockports.NewMockRoomStorage(mockCtrl)

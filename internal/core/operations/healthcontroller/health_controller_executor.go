@@ -165,7 +165,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
 		removeAmount := actualAmount - desiredAmount
-		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.RemoveRoomsDefinition{
+		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
 			Amount: removeAmount,
 		})
 		if err != nil {
@@ -175,7 +175,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 		msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
 	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
-		addOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add.AddRoomsDefinition{
+		addOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add.Definition{
 			Amount: int32(addAmount),
 		})
 		if err != nil {
@@ -246,7 +246,7 @@ func (ex *SchedulerHealthControllerExecutor) isRoomStatus(room *game_room.GameRo
 }
 
 func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
-	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.RemoveRoomsDefinition{
+	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
 		RoomsIDs: expiredRoomsIDs,
 	})
 	if err != nil {

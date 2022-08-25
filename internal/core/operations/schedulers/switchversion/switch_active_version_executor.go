@@ -39,7 +39,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type SwitchActiveVersionExecutor struct {
+type Executor struct {
 	roomManager         ports.RoomManager
 	schedulerManager    ports.SchedulerManager
 	operationManager    ports.OperationManager
@@ -49,13 +49,13 @@ type SwitchActiveVersionExecutor struct {
 	newCreatedRoomsLock sync.Mutex
 }
 
-var _ operations.Executor = (*SwitchActiveVersionExecutor)(nil)
+var _ operations.Executor = (*Executor)(nil)
 
-func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SwitchActiveVersionExecutor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *Executor {
 	// TODO(caio.rodrigues): change map to store a list of ids (less memory used)
 	newCreatedRoomsMap := make(map[string][]*game_room.GameRoom)
 
-	return &SwitchActiveVersionExecutor{
+	return &Executor{
 		roomManager:         roomManager,
 		schedulerManager:    schedulerManager,
 		operationManager:    operationManager,
@@ -74,7 +74,7 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 // 3. List all game rooms that need to be replaced and produce them into the
 //    replace goroutines channel;
 // 4. Switch the active version
-func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
@@ -82,9 +82,9 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 	)
 	logger.Info("start switching scheduler active version")
 
-	updateDefinition, ok := definition.(*SwitchActiveVersionDefinition)
+	updateDefinition, ok := definition.(*Definition)
 	if !ok {
-		return fmt.Errorf("the definition is invalid. Should be type SwitchActiveVersionDefinition")
+		return fmt.Errorf("the definition is invalid. Should be type Definition")
 	}
 
 	scheduler, err := ex.schedulerManager.GetSchedulerByVersion(ctx, op.SchedulerName, updateDefinition.NewActiveVersion)
@@ -124,7 +124,7 @@ func (ex *SwitchActiveVersionExecutor) Execute(ctx context.Context, op *operatio
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
@@ -142,11 +142,11 @@ func (ex *SwitchActiveVersionExecutor) Rollback(ctx context.Context, op *operati
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) Name() string {
+func (ex *Executor) Name() string {
 	return OperationName
 }
 
-func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
+func (ex *Executor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
 	logger.Info("deleting created rooms since switching active version had error - start")
 	for _, room := range ex.newCreatedRooms[schedulerName] {
 		err := ex.roomManager.DeleteRoom(ctx, room)
@@ -160,7 +160,7 @@ func (ex *SwitchActiveVersionExecutor) deleteNewCreatedRooms(ctx context.Context
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) startReplaceRoomsLoop(ctx context.Context, logger *zap.Logger, maxSurgeNum int, scheduler entities.Scheduler, op *operation.Operation) error {
+func (ex *Executor) startReplaceRoomsLoop(ctx context.Context, logger *zap.Logger, maxSurgeNum int, scheduler entities.Scheduler, op *operation.Operation) error {
 	logger.Info("replacing rooms loop - start")
 	roomsChan := make(chan *game_room.GameRoom)
 	errs, ctx := errgroup.WithContext(ctx)
@@ -221,7 +221,7 @@ roomsListLoop:
 	return nil
 }
 
-func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, roomsChan chan *game_room.GameRoom, roomManager ports.RoomManager, scheduler entities.Scheduler) error {
+func (ex *Executor) replaceRoom(logger *zap.Logger, roomsChan chan *game_room.GameRoom, roomManager ports.RoomManager, scheduler entities.Scheduler) error {
 
 	// we're going to use a separated context for each replaceRoom since we
 	// don't want to cancel the replacement in the middle (like creating a room and
@@ -256,17 +256,17 @@ func (ex *SwitchActiveVersionExecutor) replaceRoom(logger *zap.Logger, roomsChan
 	}
 }
 
-func (ex *SwitchActiveVersionExecutor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
+func (ex *Executor) appendToNewCreatedRooms(schedulerName string, gameRoom *game_room.GameRoom) {
 	ex.newCreatedRoomsLock.Lock()
 	defer ex.newCreatedRoomsLock.Unlock()
 	ex.newCreatedRooms[schedulerName] = append(ex.newCreatedRooms[schedulerName], gameRoom)
 }
 
-func (ex *SwitchActiveVersionExecutor) clearNewCreatedRooms(schedulerName string) {
+func (ex *Executor) clearNewCreatedRooms(schedulerName string) {
 	delete(ex.newCreatedRooms, schedulerName)
 }
 
-func (ex *SwitchActiveVersionExecutor) shouldReplacePods(ctx context.Context, newScheduler *entities.Scheduler) (bool, error) {
+func (ex *Executor) shouldReplacePods(ctx context.Context, newScheduler *entities.Scheduler) (bool, error) {
 	actualActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, newScheduler.Name)
 	if err != nil {
 		return false, err
@@ -274,7 +274,7 @@ func (ex *SwitchActiveVersionExecutor) shouldReplacePods(ctx context.Context, ne
 	return actualActiveScheduler.IsMajorVersion(newScheduler), nil
 }
 
-func (ex *SwitchActiveVersionExecutor) reportOperationProgress(ctx context.Context, logger *zap.Logger, totalAmount int, op *operation.Operation) {
+func (ex *Executor) reportOperationProgress(ctx context.Context, logger *zap.Logger, totalAmount int, op *operation.Operation) {
 	if totalAmount == 0 {
 		return
 	}
@@ -287,7 +287,7 @@ func (ex *SwitchActiveVersionExecutor) reportOperationProgress(ctx context.Conte
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
 }
 
-func (ex *SwitchActiveVersionExecutor) amountReplaced(schedulerName string) int {
+func (ex *Executor) amountReplaced(schedulerName string) int {
 	amountReplaced := len(ex.newCreatedRooms[schedulerName])
 	return amountReplaced
 }

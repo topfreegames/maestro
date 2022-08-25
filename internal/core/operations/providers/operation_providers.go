@@ -43,25 +43,25 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 		return &createscheduler.Definition{}
 	}
 	definitionConstructors[addrooms.OperationName] = func() operations.Definition {
-		return &addrooms.AddRoomsDefinition{}
+		return &addrooms.Definition{}
 	}
 	definitionConstructors[removerooms.OperationName] = func() operations.Definition {
-		return &removerooms.RemoveRoomsDefinition{}
+		return &removerooms.Definition{}
 	}
 	definitionConstructors[test.OperationName] = func() operations.Definition {
-		return &test.TestOperationDefinition{}
+		return &test.Definition{}
 	}
 	definitionConstructors[newversion.OperationName] = func() operations.Definition {
-		return &newversion.CreateNewSchedulerVersionDefinition{}
+		return &newversion.Definition{}
 	}
 	definitionConstructors[switchversion.OperationName] = func() operations.Definition {
-		return &switchversion.SwitchActiveVersionDefinition{}
+		return &switchversion.Definition{}
 	}
 	definitionConstructors[healthcontroller.OperationName] = func() operations.Definition {
 		return &healthcontroller.SchedulerHealthControllerDefinition{}
 	}
 	definitionConstructors[deletescheduler.OperationName] = func() operations.Definition {
-		return &deletescheduler.DeleteSchedulerDefinition{}
+		return &deletescheduler.Definition{}
 	}
 
 	return definitionConstructors

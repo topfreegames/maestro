@@ -33,19 +33,19 @@ import (
 
 const OperationName = "add_rooms"
 
-type AddRoomsDefinition struct {
+type Definition struct {
 	Amount int32 `json:"amount"`
 }
 
-func (d *AddRoomsDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+func (d *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
-func (d *AddRoomsDefinition) Name() string {
+func (d *Definition) Name() string {
 	return OperationName
 }
 
-func (d *AddRoomsDefinition) Marshal() []byte {
+func (d *Definition) Marshal() []byte {
 	bytes, err := json.Marshal(d)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("error marshalling add-rooms operation definition")
@@ -54,7 +54,7 @@ func (d *AddRoomsDefinition) Marshal() []byte {
 	return bytes
 }
 
-func (d *AddRoomsDefinition) Unmarshal(raw []byte) error {
+func (d *Definition) Unmarshal(raw []byte) error {
 	err := json.Unmarshal(raw, d)
 	if err != nil {
 		return fmt.Errorf("error marshalling add-rooms operation definition: %w", err)

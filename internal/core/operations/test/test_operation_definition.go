@@ -33,19 +33,19 @@ import (
 
 const OperationName = "test_operation"
 
-type TestOperationDefinition struct {
+type Definition struct {
 	SleepSeconds int `json:"sleepSeconds"`
 }
 
-func (d *TestOperationDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+func (d *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
-func (d *TestOperationDefinition) Name() string {
+func (d *Definition) Name() string {
 	return OperationName
 }
 
-func (d *TestOperationDefinition) Marshal() []byte {
+func (d *Definition) Marshal() []byte {
 	bytes, err := json.Marshal(d)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("error marshalling test operation definition")
@@ -55,7 +55,7 @@ func (d *TestOperationDefinition) Marshal() []byte {
 	return bytes
 }
 
-func (d *TestOperationDefinition) Unmarshal(raw []byte) error {
+func (d *Definition) Unmarshal(raw []byte) error {
 	err := json.Unmarshal(raw, d)
 	if err != nil {
 		return fmt.Errorf("error marshalling test operation definition: %w", err)

@@ -36,17 +36,17 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type RemoveRoomsExecutor struct {
+type Executor struct {
 	roomManager      ports.RoomManager
 	roomStorage      ports.RoomStorage
 	operationManager ports.OperationManager
 }
 
-var _ operations.Executor = (*RemoveRoomsExecutor)(nil)
+var _ operations.Executor = (*Executor)(nil)
 
 // NewExecutor creates a new RemoveRoomExecutor
-func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, operationManager ports.OperationManager) *RemoveRoomsExecutor {
-	return &RemoveRoomsExecutor{
+func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, operationManager ports.OperationManager) *Executor {
+	return &Executor{
 		roomManager,
 		roomStorage,
 		operationManager,
@@ -54,14 +54,14 @@ func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, o
 }
 
 // Execute execute operation RemoveRoom
-func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
-	removeDefinition := definition.(*RemoveRoomsDefinition)
+	removeDefinition := definition.(*Definition)
 
 	if len(removeDefinition.RoomsIDs) > 0 {
 		logger.Info("start removing rooms", zap.Strings("RoomIDs", removeDefinition.RoomsIDs))
@@ -89,7 +89,7 @@ func (e *RemoveRoomsExecutor) Execute(ctx context.Context, op *operation.Operati
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string, op *operation.Operation) error {
+func (e *Executor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string, op *operation.Operation) error {
 	rooms := make([]*game_room.GameRoom, 0, len(roomsIDs))
 	for _, roomID := range roomsIDs {
 		gameRoom, err := e.roomStorage.GetRoom(ctx, schedulerName, roomID)
@@ -108,7 +108,7 @@ func (e *RemoveRoomsExecutor) removeRoomsByIDs(ctx context.Context, schedulerNam
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int, op *operation.Operation) error {
+func (e *Executor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int, op *operation.Operation) error {
 	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", amount, &sync.Map{})
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func (e *RemoveRoomsExecutor) removeRoomsByAmount(ctx context.Context, scheduler
 	return nil
 }
 
-func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom, op *operation.Operation) error {
+func (e *Executor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom, op *operation.Operation) error {
 	errs, ctx := errgroup.WithContext(ctx)
 
 	for i := range rooms {
@@ -145,11 +145,11 @@ func (e *RemoveRoomsExecutor) deleteRooms(ctx context.Context, rooms []*game_roo
 }
 
 // Rollback applies the correct rollback to RemoveRoom
-func (e *RemoveRoomsExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
+func (e *Executor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
 	return nil
 }
 
 // Name returns the operation name
-func (e *RemoveRoomsExecutor) Name() string {
+func (e *Executor) Name() string {
 	return OperationName
 }

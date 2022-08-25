@@ -33,19 +33,19 @@ import (
 
 const OperationName = "switch_active_version"
 
-type SwitchActiveVersionDefinition struct {
+type Definition struct {
 	NewActiveVersion string `json:"newActiveVersion"`
 }
 
-func (d *SwitchActiveVersionDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+func (d *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
-func (d *SwitchActiveVersionDefinition) Name() string {
+func (d *Definition) Name() string {
 	return OperationName
 }
 
-func (d *SwitchActiveVersionDefinition) Marshal() []byte {
+func (d *Definition) Marshal() []byte {
 	bytes, err := json.Marshal(d)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("error marshalling switch active version operation definition")
@@ -55,7 +55,7 @@ func (d *SwitchActiveVersionDefinition) Marshal() []byte {
 	return bytes
 }
 
-func (d *SwitchActiveVersionDefinition) Unmarshal(raw []byte) error {
+func (d *Definition) Unmarshal(raw []byte) error {
 	err := json.Unmarshal(raw, d)
 	if err != nil {
 		return fmt.Errorf("error marshalling switch active version operation definition: %w", err)

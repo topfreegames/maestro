@@ -38,7 +38,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type DeleteSchedulerExecutor struct {
+type Executor struct {
 	schedulerStorage ports.SchedulerStorage
 	schedulerCache   ports.SchedulerCache
 	instanceStorage  ports.GameRoomInstanceStorage
@@ -47,7 +47,7 @@ type DeleteSchedulerExecutor struct {
 	runtime          ports.Runtime
 }
 
-var _ operations.Executor = (*DeleteSchedulerExecutor)(nil)
+var _ operations.Executor = (*Executor)(nil)
 
 func NewExecutor(
 	schedulerStorage ports.SchedulerStorage,
@@ -56,8 +56,8 @@ func NewExecutor(
 	operationStorage ports.OperationStorage,
 	operationManager ports.OperationManager,
 	runtime ports.Runtime,
-) *DeleteSchedulerExecutor {
-	return &DeleteSchedulerExecutor{
+) *Executor {
+	return &Executor{
 		schedulerStorage: schedulerStorage,
 		schedulerCache:   schedulerCache,
 		instanceStorage:  instanceStorage,
@@ -68,7 +68,7 @@ func NewExecutor(
 }
 
 // Execute deletes the scheduler, cleaning all bounded resources in the runtime and on storages.
-func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -123,16 +123,16 @@ func (e *DeleteSchedulerExecutor) Execute(ctx context.Context, op *operation.Ope
 }
 
 // Rollback does nothing.
-func (e *DeleteSchedulerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (e *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	return nil
 }
 
 // Name returns the name of the Operation.
-func (e *DeleteSchedulerExecutor) Name() string {
+func (e *Executor) Name() string {
 	return OperationName
 }
 
-func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Context, op *operation.Operation, scheduler *entities.Scheduler, logger *zap.Logger) error {
+func (e *Executor) waitForAllInstancesToBeDeleted(ctx context.Context, op *operation.Operation, scheduler *entities.Scheduler, logger *zap.Logger) error {
 	instancesCount, err := e.instanceStorage.GetInstanceCount(ctx, scheduler.Name)
 
 	if err != nil {
@@ -174,7 +174,7 @@ func (e *DeleteSchedulerExecutor) waitForAllInstancesToBeDeleted(ctx context.Con
 	return nil
 }
 
-func (e *DeleteSchedulerExecutor) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+func (e *Executor) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
 	scheduler, err := e.schedulerCache.GetScheduler(ctx, schedulerName)
 	if err != nil || scheduler == nil {
 		scheduler, err = e.schedulerStorage.GetScheduler(ctx, schedulerName)

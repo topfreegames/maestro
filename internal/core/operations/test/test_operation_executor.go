@@ -31,16 +31,16 @@ import (
 	"go.uber.org/zap"
 )
 
-type TestOperationExecutor struct{}
+type Executor struct{}
 
-var _ operations.Executor = (*TestOperationExecutor)(nil)
+var _ operations.Executor = (*Executor)(nil)
 
-func NewExecutor() *TestOperationExecutor {
-	return &TestOperationExecutor{}
+func NewExecutor() *Executor {
+	return &Executor{}
 }
 
-func (e *TestOperationExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
-	testOperationDefinition := definition.(*TestOperationDefinition)
+func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+	testOperationDefinition := definition.(*Definition)
 
 	zap.L().Sugar().Infof("sleeping routine for %d seconds", testOperationDefinition.SleepSeconds)
 
@@ -58,10 +58,10 @@ func (e *TestOperationExecutor) Execute(ctx context.Context, op *operation.Opera
 }
 
 // Rollback will do nothing.
-func (e *TestOperationExecutor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
+func (e *Executor) Rollback(_ context.Context, _ *operation.Operation, _ operations.Definition, _ error) error {
 	return nil
 }
 
-func (e *TestOperationExecutor) Name() string {
+func (e *Executor) Name() string {
 	return OperationName
 }

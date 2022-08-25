@@ -33,20 +33,20 @@ import (
 
 const OperationName = "delete_scheduler"
 
-type DeleteSchedulerDefinition struct{}
+type Definition struct{}
 
 // ShouldExecute always return true, we're going to always perform the scheduler deletion when requested.
-func (d *DeleteSchedulerDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+func (d *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
 // Name returns the scheduler name.
-func (d *DeleteSchedulerDefinition) Name() string {
+func (d *Definition) Name() string {
 	return OperationName
 }
 
 // Marshal returns the json encoding of the operation definition.
-func (d *DeleteSchedulerDefinition) Marshal() []byte {
+func (d *Definition) Marshal() []byte {
 	bytes, err := json.Marshal(d)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("error marshalling update scheduler operation definition")
@@ -57,7 +57,7 @@ func (d *DeleteSchedulerDefinition) Marshal() []byte {
 }
 
 // Unmarshal decodes the provided bytes array using definition struct.
-func (d *DeleteSchedulerDefinition) Unmarshal(raw []byte) error {
+func (d *Definition) Unmarshal(raw []byte) error {
 	err := json.Unmarshal(raw, d)
 	if err != nil {
 		return fmt.Errorf("error marshalling update scheduler operation definition: %w", err)

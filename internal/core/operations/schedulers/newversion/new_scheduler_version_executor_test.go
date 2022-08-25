@@ -47,7 +47,7 @@ import (
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
-func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
+func TestExecutor_Execute(t *testing.T) {
 	err := validations.RegisterValidations()
 	if err != nil {
 		t.Errorf("unexpected error %d'", err)
@@ -65,7 +65,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -115,7 +115,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -168,7 +168,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -218,7 +218,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -268,7 +268,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -317,7 +317,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -348,7 +348,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -380,7 +380,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -421,7 +421,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -467,7 +467,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -508,7 +508,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -551,7 +551,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -601,7 +601,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -646,7 +646,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -689,7 +689,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -732,7 +732,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -774,7 +774,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -804,7 +804,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -835,7 +835,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -871,7 +871,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -892,7 +892,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 		require.EqualError(t, result, "error getting active scheduler: some_error")
 	})
 
-	t.Run("should fail - valid scheduler when provided operation definition != CreateNewSchedulerVersionDefinition, returns error, don't create new version", func(t *testing.T) {
+	t.Run("should fail - valid scheduler when provided operation definition != Definition, returns error, don't create new version", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		newScheduler := *newValidSchedulerWithImageVersion("v1.0")
@@ -902,7 +902,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &add.AddRoomsDefinition{}
+		operationDef := &add.Definition{}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -933,7 +933,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -954,7 +954,7 @@ func TestCreateNewSchedulerVersionExecutor_Execute(t *testing.T) {
 
 }
 
-func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
+func TestExecutor_Rollback(t *testing.T) {
 	err := validations.RegisterValidations()
 	if err != nil {
 		t.Errorf("unexpected error %d'", err)
@@ -970,7 +970,7 @@ func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -997,7 +997,7 @@ func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
@@ -1024,7 +1024,7 @@ func TestCreateNewSchedulerVersionExecutor_Rollback(t *testing.T) {
 			DefinitionName: newversion.OperationName,
 			SchedulerName:  newScheduler.Name,
 		}
-		operationDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: &newScheduler}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
