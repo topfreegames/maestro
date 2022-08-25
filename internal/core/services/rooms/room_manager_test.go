@@ -504,6 +504,29 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
 
+	// This test case was created because the deletion function should remove from all Maestro structure,
+	// a room that could be only existent in one of them should be deleted as well.
+	t.Run("when fetching a room that does not exists returns room with ID", func(t *testing.T) {
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		availableRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusError},
+		}
+
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[1].ID}, nil)
+
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+
+		getRoomErr := porterrors.NewErrNotFound("failed to get")
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(nil, getRoomErr)
+
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		require.NoError(t, err)
+		require.Equal(t, rooms, availableRooms)
+	})
+
 	t.Run("when error happens while fetch a room it returns error", func(t *testing.T) {
 		ctx := context.Background()
 		schedulerName := "test-scheduler"

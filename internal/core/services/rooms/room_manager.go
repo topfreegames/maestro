@@ -241,7 +241,11 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 	for _, roomID := range schedulerRoomsIDs {
 		room, err := m.RoomStorage.GetRoom(ctx, schedulerName, roomID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch room information: %w", err)
+			if !errors.Is(err, porterrors.ErrNotFound) {
+				return nil, fmt.Errorf("failed to fetch room information: %w", err)
+			}
+
+			room = &game_room.GameRoom{ID: roomID, SchedulerID: schedulerName, Status: game_room.GameStatusError}
 		}
 
 		_, roomIsBeingReplaced := roomsBeingReplaced.Load(room.ID)
