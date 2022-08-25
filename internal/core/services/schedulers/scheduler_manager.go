@@ -162,7 +162,7 @@ func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(c
 		return nil, portsErrors.NewErrInvalidArgument("invalid patched scheduler: %s", err.Error())
 	}
 
-	opDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
+	opDef := &newversion.Definition{NewScheduler: scheduler}
 
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
 	if err != nil {
@@ -199,7 +199,7 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 		return nil, err
 	}
 
-	opDef := &newversion.CreateNewSchedulerVersionDefinition{NewScheduler: scheduler}
+	opDef := &newversion.Definition{NewScheduler: scheduler}
 
 	op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
 	if err != nil {
@@ -210,7 +210,7 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 }
 
 func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error) {
-	opDef := &switchversion.SwitchActiveVersionDefinition{NewActiveVersion: newVersion}
+	opDef := &switchversion.Definition{NewActiveVersion: newVersion}
 	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)
@@ -228,7 +228,7 @@ func (s *SchedulerManager) EnqueueDeleteSchedulerOperation(ctx context.Context, 
 
 		return nil, portsErrors.NewErrUnexpected("unexpected error getting scheduler to delete: %s", err.Error())
 	}
-	opDef := &delete.DeleteSchedulerDefinition{}
+	opDef := &delete.Definition{}
 	op, err := s.operationManager.CreateOperation(ctx, schedulerName, opDef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule %s operation: %w", opDef.Name(), err)

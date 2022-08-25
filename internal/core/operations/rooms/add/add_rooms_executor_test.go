@@ -45,13 +45,13 @@ import (
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
-func TestAddRoomsExecutor_Execute(t *testing.T) {
+func TestExecutor_Execute(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	clockMock := clock_mock.NewFakeClock(time.Now())
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
-	definition := AddRoomsDefinition{Amount: 10}
+	definition := Definition{Amount: 10}
 
 	container1 := game_room.Container{
 		Name: "container1",
@@ -137,12 +137,12 @@ func TestAddRoomsExecutor_Execute(t *testing.T) {
 	})
 }
 
-func TestAddRoomsExecutor_Rollback(t *testing.T) {
+func TestExecutor_Rollback(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
-	definition := AddRoomsDefinition{Amount: 10}
+	definition := Definition{Amount: 10}
 
 	op := operation.Operation{
 		ID:             "some-op-id",
@@ -154,7 +154,7 @@ func TestAddRoomsExecutor_Rollback(t *testing.T) {
 	t.Run("does nothing and return nil", func(t *testing.T) {
 		roomsManager := mockports.NewMockRoomManager(mockCtrl)
 
-		executor := &AddRoomsExecutor{
+		executor := &Executor{
 			roomManager: roomsManager,
 			storage:     schedulerStorage,
 			logger:      zap.L().With(zap.String(logs.LogFieldServiceName, "worker")),

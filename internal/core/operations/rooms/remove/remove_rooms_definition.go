@@ -33,20 +33,20 @@ import (
 
 const OperationName = "remove_rooms"
 
-type RemoveRoomsDefinition struct {
+type Definition struct {
 	Amount   int      `json:"amount"`
 	RoomsIDs []string `json:"rooms_ids"`
 }
 
-func (d *RemoveRoomsDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+func (d *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
-func (d *RemoveRoomsDefinition) Name() string {
+func (d *Definition) Name() string {
 	return OperationName
 }
 
-func (d *RemoveRoomsDefinition) Marshal() []byte {
+func (d *Definition) Marshal() []byte {
 	bytes, err := json.Marshal(d)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("error marshalling remove rooms operation definition")
@@ -56,7 +56,7 @@ func (d *RemoveRoomsDefinition) Marshal() []byte {
 	return bytes
 }
 
-func (d *RemoveRoomsDefinition) Unmarshal(raw []byte) error {
+func (d *Definition) Unmarshal(raw []byte) error {
 	err := json.Unmarshal(raw, d)
 	if err != nil {
 		return fmt.Errorf("error marshalling remove rooms operation definition: %w", err)

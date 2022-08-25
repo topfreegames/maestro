@@ -48,14 +48,14 @@ import (
 	"go.uber.org/zap"
 )
 
-// Config defines configurations for the CreateNewSchedulerVersionExecutor.
+// Config defines configurations for the Executor.
 type Config struct {
 	RoomInitializationTimeout time.Duration
 	RoomValidationAttempts    int
 }
 
-// CreateNewSchedulerVersionExecutor holds the dependecies to execute the operation to create a new scheduler version.
-type CreateNewSchedulerVersionExecutor struct {
+// Executor holds the dependecies to execute the operation to create a new scheduler version.
+type Executor struct {
 	roomManager          ports.RoomManager
 	schedulerManager     ports.SchedulerManager
 	operationManager     ports.OperationManager
@@ -63,11 +63,11 @@ type CreateNewSchedulerVersionExecutor struct {
 	config               Config
 }
 
-var _ operations.Executor = (*CreateNewSchedulerVersionExecutor)(nil)
+var _ operations.Executor = (*Executor)(nil)
 
 // NewExecutor instantiate a new create new scheduler version executor.
-func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, config Config) *CreateNewSchedulerVersionExecutor {
-	return &CreateNewSchedulerVersionExecutor{
+func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, config Config) *Executor {
+	return &Executor{
 		roomManager:          roomManager,
 		schedulerManager:     schedulerManager,
 		operationManager:     operationManager,
@@ -77,14 +77,14 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 }
 
 // Execute run the operation.
-func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
 		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	opDef, ok := definition.(*CreateNewSchedulerVersionDefinition)
+	opDef, ok := definition.(*Definition)
 	if !ok {
 		return fmt.Errorf("invalid operation definition for %s operation", ex.Name())
 	}
@@ -130,7 +130,7 @@ func (ex *CreateNewSchedulerVersionExecutor) Execute(ctx context.Context, op *op
 }
 
 // Rollback tries to undo the create new scheduler version modifications on the scheduler.
-func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
@@ -149,11 +149,11 @@ func (ex *CreateNewSchedulerVersionExecutor) Rollback(ctx context.Context, op *o
 }
 
 // Name returns the operation name.
-func (ex *CreateNewSchedulerVersionExecutor) Name() string {
+func (ex *Executor) Name() string {
 	return OperationName
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
+func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
 	gameRoom, _, err := ex.roomManager.CreateRoom(ctx, *scheduler, true)
 	if err != nil {
 		basicErrorMessage := "error creating new game room for validating new version"
@@ -209,15 +209,15 @@ func (ex *CreateNewSchedulerVersionExecutor) validateGameRoomCreation(ctx contex
 	return nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) AddValidationRoomID(schedulerName string, gameRoom *game_room.GameRoom) {
+func (ex *Executor) AddValidationRoomID(schedulerName string, gameRoom *game_room.GameRoom) {
 	ex.validationRoomIdsMap[schedulerName] = gameRoom
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) RemoveValidationRoomID(schedulerName string) {
+func (ex *Executor) RemoveValidationRoomID(schedulerName string) {
 	delete(ex.validationRoomIdsMap, schedulerName)
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) treatValidationError(ctx context.Context, op *operation.Operation, validationError error, currentAttempt int) error {
+func (ex *Executor) treatValidationError(ctx context.Context, op *operation.Operation, validationError error, currentAttempt int) error {
 	switch {
 	case errors.Is(validationError, &ValidationPodInErrorError{}):
 		err := validationError.(*ValidationPodInErrorError)
@@ -235,7 +235,7 @@ func (ex *CreateNewSchedulerVersionExecutor) treatValidationError(ctx context.Co
 	return nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) (string, error) {
+func (ex *Executor) createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx context.Context, newScheduler *entities.Scheduler, logger *zap.Logger, replacePods bool) (string, error) {
 	opId, err := ex.schedulerManager.CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, newScheduler)
 	if err != nil {
 		logger.Error("error creating new scheduler version in db", zap.Error(err))
@@ -244,7 +244,7 @@ func (ex *CreateNewSchedulerVersionExecutor) createNewSchedulerVersionAndEnqueue
 	return opId, nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) populateSchedulerNewVersion(ctx context.Context, newScheduler *entities.Scheduler, currentVersion string, isMajorVersion bool) error {
+func (ex *Executor) populateSchedulerNewVersion(ctx context.Context, newScheduler *entities.Scheduler, currentVersion string, isMajorVersion bool) error {
 	var newVersion semver.Version
 	currentVersionSemver, err := semver.NewVersion(currentVersion)
 	if err != nil {
@@ -266,7 +266,7 @@ func (ex *CreateNewSchedulerVersionExecutor) populateSchedulerNewVersion(ctx con
 	return nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) calculateNewMajorVersion(ctx context.Context, schedulerName string, currentActiveVersionSemver *semver.Version) (semver.Version, error) {
+func (ex *Executor) calculateNewMajorVersion(ctx context.Context, schedulerName string, currentActiveVersionSemver *semver.Version) (semver.Version, error) {
 	var newVersion semver.Version
 	var greatestMajorVersion = currentActiveVersionSemver
 	schedulerVersions, err := ex.schedulerManager.GetSchedulerVersions(ctx, schedulerName)
@@ -287,7 +287,7 @@ func (ex *CreateNewSchedulerVersionExecutor) calculateNewMajorVersion(ctx contex
 	return newVersion, nil
 }
 
-func (ex *CreateNewSchedulerVersionExecutor) calculateNewMinorVersion(ctx context.Context, schedulerName string, currentActiveVersionSemver *semver.Version) (semver.Version, error) {
+func (ex *Executor) calculateNewMinorVersion(ctx context.Context, schedulerName string, currentActiveVersionSemver *semver.Version) (semver.Version, error) {
 	var newVersion semver.Version
 	var greatestMinorVersion = currentActiveVersionSemver
 	schedulerVersions, err := ex.schedulerManager.GetSchedulerVersions(ctx, schedulerName)

@@ -39,29 +39,29 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 )
 
-type AddRoomsExecutor struct {
+type Executor struct {
 	roomManager ports.RoomManager
 	storage     ports.SchedulerStorage
 	logger      *zap.Logger
 }
 
-var _ operations.Executor = (*AddRoomsExecutor)(nil)
+var _ operations.Executor = (*Executor)(nil)
 
-func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) *AddRoomsExecutor {
-	return &AddRoomsExecutor{
+func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) *Executor {
+	return &Executor{
 		roomManager: roomManager,
 		storage:     storage,
 		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, "worker")),
 	}
 }
 
-func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	executionLogger := ex.logger.With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	amount := definition.(*AddRoomsDefinition).Amount
+	amount := definition.(*Definition).Amount
 	scheduler, err := ex.storage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
 		executionLogger.Error(fmt.Sprintf("Could not find scheduler with name %s, can not create rooms", op.SchedulerName), zap.Error(err))
@@ -86,15 +86,15 @@ func (ex *AddRoomsExecutor) Execute(ctx context.Context, op *operation.Operation
 	return nil
 }
 
-func (ex *AddRoomsExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	return nil
 }
 
-func (ex *AddRoomsExecutor) Name() string {
+func (ex *Executor) Name() string {
 	return OperationName
 }
 
-func (ex *AddRoomsExecutor) createRoom(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
+func (ex *Executor) createRoom(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) error {
 	_, _, err := ex.roomManager.CreateRoom(ctx, *scheduler, false)
 	if err != nil {
 		logger.Error("Error while creating room", zap.Error(err))

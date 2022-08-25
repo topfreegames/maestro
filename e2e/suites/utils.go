@@ -265,7 +265,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 }
 
 func createTestOperation(ctx context.Context, t *testing.T, operationStorage ports.OperationStorage, operationFlow ports.OperationFlow, schedulerName string, sleepSeconds int) *operation.Operation {
-	definition := test.TestOperationDefinition{
+	definition := test.Definition{
 		SleepSeconds: sleepSeconds,
 	}
 

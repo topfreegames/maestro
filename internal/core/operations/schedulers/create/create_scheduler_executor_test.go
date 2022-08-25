@@ -39,7 +39,7 @@ import (
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
-func TestExecute(t *testing.T) {
+func TestExecutor_Execute(t *testing.T) {
 
 	t.Run("with success", func(t *testing.T) {
 
@@ -84,7 +84,7 @@ func TestExecute(t *testing.T) {
 	})
 }
 
-func TestRollback(t *testing.T) {
+func TestExecutor_Rollback(t *testing.T) {
 	t.Run("it returns nil when delete scheduler on execution error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		runtime := mockports.NewMockRuntime(mockCtrl)
