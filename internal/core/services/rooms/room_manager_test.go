@@ -511,19 +511,22 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		schedulerName := "test-scheduler"
 		availableRooms := []*game_room.GameRoom{
 			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
-			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusError},
 		}
 
+		notFoundRoomID := "second-room"
+
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[1].ID}, nil)
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{notFoundRoomID}, nil)
 
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
 
 		getRoomErr := porterrors.NewErrNotFound("failed to get")
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(nil, getRoomErr)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, notFoundRoomID).Return(nil, getRoomErr)
 
 		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
 		require.NoError(t, err)
+
+		availableRooms = append(availableRooms, &game_room.GameRoom{ID: notFoundRoomID, SchedulerID: schedulerName, Status: game_room.GameStatusError})
 		require.Equal(t, rooms, availableRooms)
 	})
 
