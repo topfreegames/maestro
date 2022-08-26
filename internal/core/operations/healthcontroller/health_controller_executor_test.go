@@ -93,14 +93,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					operationManager *mockports.MockOperationManager,
 					autoscaler *mockports.MockAutoscaler,
 				) {
-					readyInstance := &game_room.Instance{
-						Status: game_room.InstanceStatus{
-							Type: game_room.InstanceReady,
-						},
-					}
 
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]string{}, nil)
-					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]*game_room.Instance{readyInstance}, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]*game_room.Instance{}, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(genericSchedulerNoAutoscaling, nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 				},
@@ -339,7 +334,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title:      "nonexistent game room IDs found, deletes from storage",
+			title:      "nonexistent game room IDs found, deletes from game room and instance storage",
 			definition: &healthcontroller.SchedulerHealthControllerDefinition{},
 			executionPlan: executionPlan{
 				tookAction: false,
@@ -376,6 +371,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 1
 					roomStorage.EXPECT().DeleteRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(nil)
+					instanceStorage.EXPECT().DeleteInstance(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(nil)
 				},
 			},
 		},
@@ -418,6 +414,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					genericSchedulerNoAutoscaling.RoomsReplicas = 1
 					roomStorage.EXPECT().DeleteRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(errors.New("error"))
 					roomStorage.EXPECT().DeleteRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[2]).Return(nil)
+					instanceStorage.EXPECT().DeleteInstance(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(errors.New("error"))
+					instanceStorage.EXPECT().DeleteInstance(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[2]).Return(nil)
 				},
 			},
 		},
