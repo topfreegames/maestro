@@ -148,13 +148,20 @@ func (ex *SchedulerHealthControllerExecutor) loadActualState(ctx context.Context
 
 func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx context.Context, op *operation.Operation, logger *zap.Logger, nonexistentGameRoomIDs []string) {
 	for _, gameRoomID := range nonexistentGameRoomIDs {
-		err := ex.roomStorage.DeleteRoom(ctx, op.SchedulerName, gameRoomID)
-		if err != nil {
+		roomStorageErr := ex.roomStorage.DeleteRoom(ctx, op.SchedulerName, gameRoomID)
+		instanceStorageErr := ex.instanceStorage.DeleteInstance(ctx, op.SchedulerName, gameRoomID)
+		if roomStorageErr != nil {
 			msg := fmt.Sprintf("could not delete nonexistent room %s from storage", gameRoomID)
-			logger.Warn(msg, zap.Error(err))
+			logger.Warn(msg, zap.Error(roomStorageErr))
+		}
+
+		if instanceStorageErr != nil {
+			msg := fmt.Sprintf("could not delete nonexistent instance %s from storage", gameRoomID)
+			logger.Warn(msg, zap.Error(instanceStorageErr))
 			continue
 		}
-		logger.Sugar().Infof("remove nonexistent room on storage: %s", gameRoomID)
+
+		logger.Sugar().Infof("removed nonexistent room from instance and game room storage: %s", gameRoomID)
 	}
 }
 
@@ -275,19 +282,25 @@ func (ex *SchedulerHealthControllerExecutor) getDesiredNumberOfRooms(ctx context
 }
 
 func (ex *SchedulerHealthControllerExecutor) mapExistentAndNonExistentGameRooms(gameRoomIDs []string, instances []*game_room.Instance) ([]string, map[string]*game_room.Instance) {
+	roomIdCountMap := make(map[string]int)
 	nonexistentGameRoomsIDs := make([]string, 0)
 	existentGameRoomsInstancesMap := make(map[string]*game_room.Instance)
 	for _, gameRoomID := range gameRoomIDs {
-		found := false
-		for _, instance := range instances {
-			if instance.ID == gameRoomID {
-				found = true
-				existentGameRoomsInstancesMap[gameRoomID] = instance
-				break
-			}
+		roomIdCountMap[gameRoomID]++
+	}
+	for _, instance := range instances {
+		roomIdCountMap[instance.ID]++
+	}
+
+	for roomId, count := range roomIdCountMap {
+		if count != 2 {
+			nonexistentGameRoomsIDs = append(nonexistentGameRoomsIDs, roomId)
 		}
-		if !found {
-			nonexistentGameRoomsIDs = append(nonexistentGameRoomsIDs, gameRoomID)
+	}
+
+	for _, instance := range instances {
+		if roomIdCountMap[instance.ID] == 2 {
+			existentGameRoomsInstancesMap[instance.ID] = instance
 		}
 	}
 
