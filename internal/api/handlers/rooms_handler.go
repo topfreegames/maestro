@@ -24,7 +24,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 
 	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	"github.com/topfreegames/maestro/internal/core/logs"
@@ -34,8 +33,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
-
-	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -98,12 +95,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 	err = h.roomManager.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		handlerLogger.Error("error updating room with ping", zap.Any("ping", message), zap.Error(err))
-		if errors.Is(err, portsErrors.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, err.Error())
-		}
-
-		// TODO(gabrielcorado): should we fail when the status transition fails?
-		return nil, status.Error(codes.Unknown, err.Error())
+		return &api.UpdateRoomWithPingResponse{Success: false}, nil
 	}
 
 	handlerLogger.Info("Room updated with ping successfully")

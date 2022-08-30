@@ -114,7 +114,8 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 404, rr.Code)
+		require.Equal(t, 200, rr.Code)
+		require.Equal(t, "{\"success\":false}", rr.Body.String())
 	})
 
 	t.Run("should fail - valid request, error while updating game room => return status code 500", func(t *testing.T) {
@@ -138,7 +139,8 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 500, rr.Code)
+		require.Equal(t, 200, rr.Code)
+		require.Equal(t, "{\"success\":false}", rr.Body.String())
 	})
 
 	t.Run("should fail - invalid request => return status code 400", func(t *testing.T) {
