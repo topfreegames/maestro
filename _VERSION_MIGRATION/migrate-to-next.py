@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 # global variables
 game = ""
+scheduler = ""
 backup_folder_absolute_path = ""
 maestro_v9_endpoint = ""
 maestro_next_endpoint = ""
@@ -234,7 +235,7 @@ def get_v9_game_schedulers():
         if r.status_code == 200:
             schedulers = r.json()
             schedulers = list(
-                filter(lambda x: x.get('game') == game, schedulers))
+                filter(lambda x: scheduler_name_present(x, game, scheduler), schedulers))
         else:
             raise Exception(
                 "could not fetch maestro-v9 endpoint. err =>", r.text)
@@ -242,6 +243,12 @@ def get_v9_game_schedulers():
         return schedulers
     except Exception as e:
         raise e
+
+def scheduler_name_present(x, game, scheduler):
+    if scheduler != "":
+        return x.get('game') == game and x.get('name') == scheduler
+    else:
+        return x.get('game') == game
 
 
 def delete_scheduler_from_v9(scheduler):
@@ -472,6 +479,7 @@ def setup():
     global maestro_v9_endpoint
     global maestro_next_endpoint
     global game
+    global scheduler
     global backup_folder_absolute_path
     global container_input_env_vars
     global port_range
@@ -506,6 +514,13 @@ def setup():
                            required=True,
                            help='Name of the game containing the schedulers to be migrated')
 
+    my_parser.add_argument('-s',
+                           '--scheduler',
+                           metavar='scheduler',
+                           type=str,
+                           required=False,
+                           help='Name of the scheduler containing the schedulers to be migrated')
+
     my_parser.add_argument('-f',
                            '--yaml_file',
                            metavar='container_env_vars_file',
@@ -530,6 +545,7 @@ def setup():
     maestro_v9_endpoint = args.old_url
     maestro_next_endpoint = args.new_url
     game = args.game
+    scheduler = args.scheduler
     backup_folder_absolute_path = args.backup
     dry_run = args.dry
     port_range = args.port_range
