@@ -13,31 +13,31 @@ import (
 	operations "github.com/topfreegames/maestro/internal/core/operations"
 )
 
-// MockExecutor is a mock of Executor interface.
-type MockExecutor struct {
+// Executor is a mock of Executor interface.
+type Executor struct {
 	ctrl     *gomock.Controller
-	recorder *MockExecutorMockRecorder
+	recorder *ExecutorMockRecorder
 }
 
-// MockExecutorMockRecorder is the mock recorder for MockExecutor.
-type MockExecutorMockRecorder struct {
-	mock *MockExecutor
+// ExecutorMockRecorder is the mock recorder for Executor.
+type ExecutorMockRecorder struct {
+	mock *Executor
 }
 
-// NewMockExecutor creates a new mock instance.
-func NewMockExecutor(ctrl *gomock.Controller) *MockExecutor {
-	mock := &MockExecutor{ctrl: ctrl}
-	mock.recorder = &MockExecutorMockRecorder{mock}
+// NewExecutor creates a new mock instance.
+func NewExecutor(ctrl *gomock.Controller) *Executor {
+	mock := &Executor{ctrl: ctrl}
+	mock.recorder = &ExecutorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
+func (m *Executor) EXPECT() *ExecutorMockRecorder {
 	return m.recorder
 }
 
 // Execute mocks base method.
-func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (m *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", ctx, op, definition)
 	ret0, _ := ret[0].(error)
@@ -45,13 +45,13 @@ func (m *MockExecutor) Execute(ctx context.Context, op *operation.Operation, def
 }
 
 // Execute indicates an expected call of Execute.
-func (mr *MockExecutorMockRecorder) Execute(ctx, op, definition interface{}) *gomock.Call {
+func (mr *ExecutorMockRecorder) Execute(ctx, op, definition interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockExecutor)(nil).Execute), ctx, op, definition)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*Executor)(nil).Execute), ctx, op, definition)
 }
 
 // Name mocks base method.
-func (m *MockExecutor) Name() string {
+func (m *Executor) Name() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Name")
 	ret0, _ := ret[0].(string)
@@ -59,13 +59,13 @@ func (m *MockExecutor) Name() string {
 }
 
 // Name indicates an expected call of Name.
-func (mr *MockExecutorMockRecorder) Name() *gomock.Call {
+func (mr *ExecutorMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockExecutor)(nil).Name))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*Executor)(nil).Name))
 }
 
 // Rollback mocks base method.
-func (m *MockExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (m *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Rollback", ctx, op, definition, executeErr)
 	ret0, _ := ret[0].(error)
@@ -73,7 +73,7 @@ func (m *MockExecutor) Rollback(ctx context.Context, op *operation.Operation, de
 }
 
 // Rollback indicates an expected call of Rollback.
-func (mr *MockExecutorMockRecorder) Rollback(ctx, op, definition, executeErr interface{}) *gomock.Call {
+func (mr *ExecutorMockRecorder) Rollback(ctx, op, definition, executeErr interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockExecutor)(nil).Rollback), ctx, op, definition, executeErr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*Executor)(nil).Rollback), ctx, op, definition, executeErr)
 }

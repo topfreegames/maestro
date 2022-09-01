@@ -47,8 +47,8 @@ type Config struct {
 	RoomDeletionTimeout       time.Duration
 }
 
-// SchedulerHealthControllerExecutor holds dependencies to execute SchedulerHealthControllerExecutor.
-type SchedulerHealthControllerExecutor struct {
+// Executor holds dependencies to execute Executor.
+type Executor struct {
 	autoscaler       ports.Autoscaler
 	roomStorage      ports.RoomStorage
 	instanceStorage  ports.GameRoomInstanceStorage
@@ -57,11 +57,11 @@ type SchedulerHealthControllerExecutor struct {
 	config           Config
 }
 
-var _ operations.Executor = (*SchedulerHealthControllerExecutor)(nil)
+var _ operations.Executor = (*Executor)(nil)
 
-// NewExecutor creates a new instance of SchedulerHealthControllerExecutor.
-func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, autoscaler ports.Autoscaler, config Config) *SchedulerHealthControllerExecutor {
-	return &SchedulerHealthControllerExecutor{
+// NewExecutor creates a new instance of Executor.
+func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, autoscaler ports.Autoscaler, config Config) *Executor {
+	return &Executor{
 		autoscaler:       autoscaler,
 		roomStorage:      roomStorage,
 		instanceStorage:  instanceStorage,
@@ -72,14 +72,14 @@ func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomIn
 }
 
 // Execute run the operation health_controller.
-func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
+func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, op.DefinitionName),
 		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	def := definition.(*SchedulerHealthControllerDefinition)
+	def := definition.(*Definition)
 
 	gameRoomIDs, instances, scheduler, err := ex.loadActualState(ctx, op, logger)
 	if err != nil {
@@ -118,16 +118,16 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 }
 
 // Rollback does not execute anything when a rollback executes.
-func (ex *SchedulerHealthControllerExecutor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
+func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
 	return nil
 }
 
 // Name return the name of the operation.
-func (ex *SchedulerHealthControllerExecutor) Name() string {
+func (ex *Executor) Name() string {
 	return OperationName
 }
 
-func (ex *SchedulerHealthControllerExecutor) loadActualState(ctx context.Context, op *operation.Operation, logger *zap.Logger) (gameRoomIDs []string, instances []*game_room.Instance, scheduler *entities.Scheduler, err error) {
+func (ex *Executor) loadActualState(ctx context.Context, op *operation.Operation, logger *zap.Logger) (gameRoomIDs []string, instances []*game_room.Instance, scheduler *entities.Scheduler, err error) {
 	gameRoomIDs, err = ex.roomStorage.GetAllRoomIDs(ctx, op.SchedulerName)
 	if err != nil {
 		logger.Error("error fetching game rooms")
@@ -146,7 +146,7 @@ func (ex *SchedulerHealthControllerExecutor) loadActualState(ctx context.Context
 	return
 }
 
-func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx context.Context, op *operation.Operation, logger *zap.Logger, nonexistentGameRoomIDs []string) {
+func (ex *Executor) tryEnsureCorrectRoomsOnStorage(ctx context.Context, op *operation.Operation, logger *zap.Logger, nonexistentGameRoomIDs []string) {
 	for _, gameRoomID := range nonexistentGameRoomIDs {
 		roomStorageErr := ex.roomStorage.DeleteRoom(ctx, op.SchedulerName, gameRoomID)
 		instanceStorageErr := ex.instanceStorage.DeleteInstance(ctx, op.SchedulerName, gameRoomID)
@@ -165,7 +165,7 @@ func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx 
 	}
 }
 
-func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *SchedulerHealthControllerDefinition, logger *zap.Logger, actualAmount, desiredAmount int) error {
+func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *Definition, logger *zap.Logger, actualAmount, desiredAmount int) error {
 	var msgToAppend string
 	var tookAction bool
 
@@ -201,7 +201,7 @@ func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx 
 	return nil
 }
 
-func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, existentGameRoomsInstancesMap map[string]*game_room.Instance) (availableRoomsIDs, expiredRoomsIDs []string) {
+func (ex *Executor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, existentGameRoomsInstancesMap map[string]*game_room.Instance) (availableRoomsIDs, expiredRoomsIDs []string) {
 	for gameRoomId, instance := range existentGameRoomsInstancesMap {
 		if instance.Status.Type == game_room.InstancePending {
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomId)
@@ -232,27 +232,27 @@ func (ex *SchedulerHealthControllerExecutor) findAvailableAndExpiredRooms(ctx co
 	return availableRoomsIDs, expiredRoomsIDs
 }
 
-func (ex *SchedulerHealthControllerExecutor) isInitializingRoomExpired(room *game_room.GameRoom) bool {
+func (ex *Executor) isInitializingRoomExpired(room *game_room.GameRoom) bool {
 	timeDurationInPendingState := time.Since(room.CreatedAt)
 	return (ex.isRoomStatus(room, game_room.GameStatusPending) || ex.isRoomStatus(room, game_room.GameStatusUnready)) &&
 		timeDurationInPendingState > ex.config.RoomInitializationTimeout
 }
 
-func (ex *SchedulerHealthControllerExecutor) isRoomPingExpired(room *game_room.GameRoom) bool {
+func (ex *Executor) isRoomPingExpired(room *game_room.GameRoom) bool {
 	timeDurationWithoutPing := time.Since(room.LastPingAt)
 	return !ex.isRoomStatus(room, game_room.GameStatusPending) && timeDurationWithoutPing > ex.config.RoomPingTimeout
 }
 
-func (ex *SchedulerHealthControllerExecutor) isRoomTerminatingExpired(room *game_room.GameRoom) bool {
+func (ex *Executor) isRoomTerminatingExpired(room *game_room.GameRoom) bool {
 	timeDurationWithoutPing := time.Since(room.LastPingAt)
 	return ex.isRoomStatus(room, game_room.GameStatusTerminating) && timeDurationWithoutPing > ex.config.RoomDeletionTimeout
 }
 
-func (ex *SchedulerHealthControllerExecutor) isRoomStatus(room *game_room.GameRoom, status game_room.GameRoomStatus) bool {
+func (ex *Executor) isRoomStatus(room *game_room.GameRoom, status game_room.GameRoomStatus) bool {
 	return room.Status == status
 }
 
-func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
+func (ex *Executor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
 	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
 		RoomsIDs: expiredRoomsIDs,
 	})
@@ -267,7 +267,7 @@ func (ex *SchedulerHealthControllerExecutor) enqueueRemoveExpiredRooms(ctx conte
 	return nil
 }
 
-func (ex *SchedulerHealthControllerExecutor) getDesiredNumberOfRooms(ctx context.Context, logger *zap.Logger, scheduler *entities.Scheduler) (int, error) {
+func (ex *Executor) getDesiredNumberOfRooms(ctx context.Context, logger *zap.Logger, scheduler *entities.Scheduler) (int, error) {
 	if scheduler.Autoscaling != nil && scheduler.Autoscaling.Enabled {
 		desiredNumberOfRooms, err := ex.autoscaler.CalculateDesiredNumberOfRooms(ctx, scheduler)
 		if err != nil {
@@ -281,7 +281,7 @@ func (ex *SchedulerHealthControllerExecutor) getDesiredNumberOfRooms(ctx context
 	return scheduler.RoomsReplicas, nil
 }
 
-func (ex *SchedulerHealthControllerExecutor) mapExistentAndNonExistentGameRooms(gameRoomIDs []string, instances []*game_room.Instance) ([]string, map[string]*game_room.Instance) {
+func (ex *Executor) mapExistentAndNonExistentGameRooms(gameRoomIDs []string, instances []*game_room.Instance) ([]string, map[string]*game_room.Instance) {
 	roomIdCountMap := make(map[string]int)
 	nonexistentGameRoomsIDs := make([]string, 0)
 	existentGameRoomsInstancesMap := make(map[string]*game_room.Instance)
@@ -307,7 +307,7 @@ func (ex *SchedulerHealthControllerExecutor) mapExistentAndNonExistentGameRooms(
 	return nonexistentGameRoomsIDs, existentGameRoomsInstancesMap
 }
 
-func (ex *SchedulerHealthControllerExecutor) setTookAction(def *SchedulerHealthControllerDefinition, tookAction bool) {
+func (ex *Executor) setTookAction(def *Definition, tookAction bool) {
 	if def.TookAction != nil && *def.TookAction {
 		return
 	}

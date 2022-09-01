@@ -12,31 +12,31 @@ import (
 	operation "github.com/topfreegames/maestro/internal/core/entities/operation"
 )
 
-// MockDefinition is a mock of Definition interface.
-type MockDefinition struct {
+// Definition is a mock of Definition interface.
+type Definition struct {
 	ctrl     *gomock.Controller
-	recorder *MockDefinitionMockRecorder
+	recorder *DefinitionMockRecorder
 }
 
-// MockDefinitionMockRecorder is the mock recorder for MockDefinition.
-type MockDefinitionMockRecorder struct {
-	mock *MockDefinition
+// DefinitionMockRecorder is the mock recorder for Definition.
+type DefinitionMockRecorder struct {
+	mock *Definition
 }
 
-// NewMockDefinition creates a new mock instance.
-func NewMockDefinition(ctrl *gomock.Controller) *MockDefinition {
-	mock := &MockDefinition{ctrl: ctrl}
-	mock.recorder = &MockDefinitionMockRecorder{mock}
+// NewDefinition creates a new mock instance.
+func NewDefinition(ctrl *gomock.Controller) *Definition {
+	mock := &Definition{ctrl: ctrl}
+	mock.recorder = &DefinitionMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDefinition) EXPECT() *MockDefinitionMockRecorder {
+func (m *Definition) EXPECT() *DefinitionMockRecorder {
 	return m.recorder
 }
 
 // Marshal mocks base method.
-func (m *MockDefinition) Marshal() []byte {
+func (m *Definition) Marshal() []byte {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Marshal")
 	ret0, _ := ret[0].([]byte)
@@ -44,13 +44,13 @@ func (m *MockDefinition) Marshal() []byte {
 }
 
 // Marshal indicates an expected call of Marshal.
-func (mr *MockDefinitionMockRecorder) Marshal() *gomock.Call {
+func (mr *DefinitionMockRecorder) Marshal() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Marshal", reflect.TypeOf((*MockDefinition)(nil).Marshal))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Marshal", reflect.TypeOf((*Definition)(nil).Marshal))
 }
 
 // Name mocks base method.
-func (m *MockDefinition) Name() string {
+func (m *Definition) Name() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Name")
 	ret0, _ := ret[0].(string)
@@ -58,13 +58,13 @@ func (m *MockDefinition) Name() string {
 }
 
 // Name indicates an expected call of Name.
-func (mr *MockDefinitionMockRecorder) Name() *gomock.Call {
+func (mr *DefinitionMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockDefinition)(nil).Name))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*Definition)(nil).Name))
 }
 
 // ShouldExecute mocks base method.
-func (m *MockDefinition) ShouldExecute(ctx context.Context, currentOperations []*operation.Operation) bool {
+func (m *Definition) ShouldExecute(ctx context.Context, currentOperations []*operation.Operation) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShouldExecute", ctx, currentOperations)
 	ret0, _ := ret[0].(bool)
@@ -72,13 +72,13 @@ func (m *MockDefinition) ShouldExecute(ctx context.Context, currentOperations []
 }
 
 // ShouldExecute indicates an expected call of ShouldExecute.
-func (mr *MockDefinitionMockRecorder) ShouldExecute(ctx, currentOperations interface{}) *gomock.Call {
+func (mr *DefinitionMockRecorder) ShouldExecute(ctx, currentOperations interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShouldExecute", reflect.TypeOf((*MockDefinition)(nil).ShouldExecute), ctx, currentOperations)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShouldExecute", reflect.TypeOf((*Definition)(nil).ShouldExecute), ctx, currentOperations)
 }
 
 // Unmarshal mocks base method.
-func (m *MockDefinition) Unmarshal(raw []byte) error {
+func (m *Definition) Unmarshal(raw []byte) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Unmarshal", raw)
 	ret0, _ := ret[0].(error)
@@ -86,7 +86,7 @@ func (m *MockDefinition) Unmarshal(raw []byte) error {
 }
 
 // Unmarshal indicates an expected call of Unmarshal.
-func (mr *MockDefinitionMockRecorder) Unmarshal(raw interface{}) *gomock.Call {
+func (mr *DefinitionMockRecorder) Unmarshal(raw interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unmarshal", reflect.TypeOf((*MockDefinition)(nil).Unmarshal), raw)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unmarshal", reflect.TypeOf((*Definition)(nil).Unmarshal), raw)
 }

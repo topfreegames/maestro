@@ -58,7 +58,7 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 		return &switchversion.Definition{}
 	}
 	definitionConstructors[healthcontroller.OperationName] = func() operations.Definition {
-		return &healthcontroller.SchedulerHealthControllerDefinition{}
+		return &healthcontroller.Definition{}
 	}
 	definitionConstructors[deletescheduler.OperationName] = func() operations.Definition {
 		return &deletescheduler.Definition{}
