@@ -57,7 +57,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationContext, operationCancel := context.WithCancel(workerContext)
 		defer operationCancel()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
@@ -120,7 +120,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationContext, operationCancel := context.WithCancel(workerContext)
 		defer operationCancel()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
@@ -189,7 +189,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationContext, operationCancel := context.WithCancel(workerContext)
 		defer operationCancel()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
@@ -256,7 +256,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		ctx := context.Background()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
 
 		defFunc := func() operations.Definition { return operationDefinition }
@@ -301,7 +301,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		ctx := context.Background()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
@@ -355,7 +355,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationContext, operationCancel := context.WithCancel(workerContext)
 		defer operationCancel()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
@@ -412,7 +412,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		workerContext, workerCancel := context.WithCancel(ctx)
 		defer workerCancel()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
@@ -466,7 +466,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		ctx := context.Background()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
 		operationDefinition.EXPECT().Name().Return(operationName).AnyTimes()
@@ -506,7 +506,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		ctx := context.Background()
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		operationExecutor.EXPECT().Name().Return(operationName).AnyTimes()
@@ -553,7 +553,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
@@ -592,7 +592,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		mockCtrl := gomock.NewController(t)
 		operationName := "test_operation"
-		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationDefinition := mockoperation.NewDefinition(mockCtrl)
 		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
