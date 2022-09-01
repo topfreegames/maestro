@@ -261,7 +261,7 @@ func (w *OperationExecutionWorker) shouldEvictOperation(op *operation.Operation,
 }
 
 func (w *OperationExecutionWorker) createHealthControllerOperation(ctx context.Context) error {
-	_, err := w.operationManager.CreateOperation(ctx, w.scheduler.Name, &healthcontroller.SchedulerHealthControllerDefinition{})
+	_, err := w.operationManager.CreateOperation(ctx, w.scheduler.Name, &healthcontroller.Definition{})
 	if err != nil {
 		return fmt.Errorf("not able to schedule the 'health_controller' operation: %w", err)
 	}

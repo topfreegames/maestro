@@ -79,7 +79,7 @@ func (ex *SchedulerHealthControllerExecutor) Execute(ctx context.Context, op *op
 		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	def := definition.(*SchedulerHealthControllerDefinition)
+	def := definition.(*Definition)
 
 	gameRoomIDs, instances, scheduler, err := ex.loadActualState(ctx, op, logger)
 	if err != nil {
@@ -165,7 +165,7 @@ func (ex *SchedulerHealthControllerExecutor) tryEnsureCorrectRoomsOnStorage(ctx 
 	}
 }
 
-func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *SchedulerHealthControllerDefinition, logger *zap.Logger, actualAmount, desiredAmount int) error {
+func (ex *SchedulerHealthControllerExecutor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *Definition, logger *zap.Logger, actualAmount, desiredAmount int) error {
 	var msgToAppend string
 	var tookAction bool
 
@@ -307,7 +307,7 @@ func (ex *SchedulerHealthControllerExecutor) mapExistentAndNonExistentGameRooms(
 	return nonexistentGameRoomsIDs, existentGameRoomsInstancesMap
 }
 
-func (ex *SchedulerHealthControllerExecutor) setTookAction(def *SchedulerHealthControllerDefinition, tookAction bool) {
+func (ex *SchedulerHealthControllerExecutor) setTookAction(def *Definition, tookAction bool) {
 	if def.TookAction != nil && *def.TookAction {
 		return
 	}

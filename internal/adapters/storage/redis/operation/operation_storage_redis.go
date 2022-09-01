@@ -419,7 +419,7 @@ func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, 
 
 func operationHasAction(op *operation.Operation) (bool, error) {
 	if op.DefinitionName == healthcontroller.OperationName {
-		def := healthcontroller.SchedulerHealthControllerDefinition{}
+		def := healthcontroller.Definition{}
 		err := def.Unmarshal(op.Input)
 		if err != nil {
 			return false, err

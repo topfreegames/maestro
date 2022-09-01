@@ -668,7 +668,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 			op.Status = operation.StatusInProgress
 			op.DefinitionName = healthcontroller.OperationName
 			tookAction := false
-			definition := &healthcontroller.SchedulerHealthControllerDefinition{TookAction: &tookAction}
+			definition := &healthcontroller.Definition{TookAction: &tookAction}
 			op.Input = definition.Marshal()
 
 			// Create Operation hashmap and add it to active sorted set
@@ -748,7 +748,7 @@ func TestUpdateOperationDefinition(t *testing.T) {
 		operationsTTLMap := map[Definition]time.Duration{}
 		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 		tookAction := true
-		definition := healthcontroller.SchedulerHealthControllerDefinition{TookAction: &tookAction}
+		definition := healthcontroller.Definition{TookAction: &tookAction}
 
 		err := client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
 			idRedisKey:                 op.ID,
@@ -764,7 +764,7 @@ func TestUpdateOperationDefinition(t *testing.T) {
 		require.NoError(t, err)
 
 		resultMap := client.HGetAll(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID)).Val()
-		updatedDefinition := healthcontroller.SchedulerHealthControllerDefinition{}
+		updatedDefinition := healthcontroller.Definition{}
 		definitionContents := resultMap[definitionContentsRedisKey]
 		err = updatedDefinition.Unmarshal([]byte(definitionContents))
 		require.NoError(t, err)
@@ -777,7 +777,7 @@ func TestUpdateOperationDefinition(t *testing.T) {
 		operationsTTLMap := map[Definition]time.Duration{}
 		storage := NewRedisOperationStorage(client, clock, operationsTTLMap)
 		tookAction := true
-		definition := healthcontroller.SchedulerHealthControllerDefinition{TookAction: &tookAction}
+		definition := healthcontroller.Definition{TookAction: &tookAction}
 
 		err := client.HSet(context.Background(), storage.buildSchedulerOperationKey(op.SchedulerName, op.ID), map[string]interface{}{
 			idRedisKey:                 op.ID,
