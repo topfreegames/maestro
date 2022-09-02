@@ -65,6 +65,6 @@ func (d *Definition) Unmarshal(raw []byte) error {
 	return nil
 }
 
-func (d *Definition) NoAction() bool {
+func (d *Definition) HasNoAction() bool {
 	return false
 }

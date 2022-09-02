@@ -48,6 +48,6 @@ type Definition interface {
 	// Name returns the definition name. This is used to compare and identify it
 	// among other definitions.
 	Name() string
-	// NoAction return a boolean showing when an operation does not change the runtime.
-	NoAction() bool
+	// HasNoAction return a boolean showing when an operation does not change the runtime.
+	HasNoAction() bool
 }

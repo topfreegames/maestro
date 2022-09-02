@@ -64,9 +64,9 @@ func (mr *MockDefinitionMockRecorder) Name() *gomock.Call {
 }
 
 // NoAction mocks base method.
-func (m *MockDefinition) NoAction() bool {
+func (m *MockDefinition) HasNoAction() bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NoAction")
+	ret := m.ctrl.Call(m, "HasNoAction")
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
@@ -74,7 +74,7 @@ func (m *MockDefinition) NoAction() bool {
 // NoAction indicates an expected call of NoAction.
 func (mr *MockDefinitionMockRecorder) NoAction() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NoAction", reflect.TypeOf((*MockDefinition)(nil).NoAction))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasNoAction", reflect.TypeOf((*MockDefinition)(nil).HasNoAction))
 }
 
 // ShouldExecute mocks base method.

@@ -423,7 +423,7 @@ func operationHasNoAction(op *operation.Operation) (bool, error) {
 		return true, err
 	}
 
-	return definition.NoAction(), nil
+	return definition.HasNoAction(), nil
 }
 
 func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error) {
