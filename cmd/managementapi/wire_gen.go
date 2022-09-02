@@ -32,11 +32,11 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		return nil, err
 	}
 	clock := service.NewClockTime()
-	operationStorage, err := service.NewOperationStorageRedis(clock, conf)
+	v := providers.ProvideDefinitionConstructors()
+	operationStorage, err := service.NewOperationStorageRedis(clock, v, conf)
 	if err != nil {
 		return nil, err
 	}
-	v := providers.ProvideDefinitionConstructors()
 	operationLeaseStorage, err := service.NewOperationLeaseStorageRedis(clock, conf)
 	if err != nil {
 		return nil, err

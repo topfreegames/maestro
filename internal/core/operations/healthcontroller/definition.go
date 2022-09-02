@@ -37,16 +37,16 @@ type Definition struct {
 	TookAction *bool `json:"took_action,omitempty"`
 }
 
-func (def *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
+func (d *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return true
 }
 
-func (def *Definition) Name() string {
+func (d *Definition) Name() string {
 	return OperationName
 }
 
-func (def *Definition) Marshal() []byte {
-	bytes, err := json.Marshal(def)
+func (d *Definition) Marshal() []byte {
+	bytes, err := json.Marshal(d)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Error("error marshalling update scheduler operation definition")
 		return nil
@@ -55,11 +55,19 @@ func (def *Definition) Marshal() []byte {
 	return bytes
 }
 
-func (def *Definition) Unmarshal(raw []byte) error {
-	err := json.Unmarshal(raw, def)
+func (d *Definition) Unmarshal(raw []byte) error {
+	err := json.Unmarshal(raw, d)
 	if err != nil {
 		return fmt.Errorf("error marshalling update scheduler operation definition: %w", err)
 	}
 
 	return nil
+}
+
+func (d *Definition) HasNoAction() bool {
+	if d.TookAction != nil {
+		return !*d.TookAction
+	}
+
+	return true
 }

@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // SchedulersServiceClient is the client API for SchedulersService service.
@@ -191,8 +192,8 @@ type UnsafeSchedulersServiceServer interface {
 	mustEmbedUnimplementedSchedulersServiceServer()
 }
 
-func RegisterSchedulersServiceServer(s *grpc.Server, srv SchedulersServiceServer) {
-	s.RegisterService(&_SchedulersService_serviceDesc, srv)
+func RegisterSchedulersServiceServer(s grpc.ServiceRegistrar, srv SchedulersServiceServer) {
+	s.RegisterService(&SchedulersService_ServiceDesc, srv)
 }
 
 func _SchedulersService_ListSchedulers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -357,7 +358,10 @@ func _SchedulersService_DeleteScheduler_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
-var _SchedulersService_serviceDesc = grpc.ServiceDesc{
+// SchedulersService_ServiceDesc is the grpc.ServiceDesc for SchedulersService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var SchedulersService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "api.v1.SchedulersService",
 	HandlerType: (*SchedulersServiceServer)(nil),
 	Methods: []grpc.MethodDesc{

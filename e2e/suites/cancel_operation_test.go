@@ -36,6 +36,7 @@ import (
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	operationsproviders "github.com/topfreegames/maestro/internal/core/operations/providers"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -55,7 +56,7 @@ func TestCancelOperation(t *testing.T) {
 	}
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
+		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap, operationsproviders.ProvideDefinitionConstructors())
 		operationFlow := operation2.NewRedisOperationFlow(redisClient)
 
 		t.Run("cancel pending and in-progress operations successfully", func(t *testing.T) {

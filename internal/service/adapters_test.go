@@ -38,6 +38,7 @@ import (
 	"github.com/stretchr/testify/require"
 	configmock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
@@ -62,12 +63,13 @@ func TestOperationStorageRedis(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 
+		definitionsProviders := map[string]operations.DefinitionConstructor{}
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
 		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(3)
-		opStorage, err := NewOperationStorageRedis(clock, config)
+		opStorage, err := NewOperationStorageRedis(clock, definitionsProviders, config)
 		require.NoError(t, err)
 
 		_, err = opStorage.GetOperation(context.Background(), "", "")
@@ -78,12 +80,13 @@ func TestOperationStorageRedis(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 
+		definitionsProviders := map[string]operations.DefinitionConstructor{}
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(3)
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		opStorage, err := NewOperationStorageRedis(clock, config)
+		opStorage, err := NewOperationStorageRedis(clock, definitionsProviders, config)
 		require.NoError(t, err)
 
 		_, err = opStorage.GetOperation(context.Background(), "", "")
@@ -94,10 +97,11 @@ func TestOperationStorageRedis(t *testing.T) {
 		t.Parallel()
 		mockCtrl := gomock.NewController(t)
 
+		definitionsProviders := map[string]operations.DefinitionConstructor{}
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return("")
-		_, err := NewOperationStorageRedis(clock, config)
+		_, err := NewOperationStorageRedis(clock, definitionsProviders, config)
 		require.Error(t, err)
 	})
 }

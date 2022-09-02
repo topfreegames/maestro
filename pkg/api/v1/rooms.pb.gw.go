@@ -467,7 +467,7 @@ func RegisterRoomsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/UpdateRoomWithPing")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/UpdateRoomWithPing", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/ping"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -490,7 +490,7 @@ func RegisterRoomsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/ForwardRoomEvent")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/ForwardRoomEvent", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/roomevent"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -513,7 +513,7 @@ func RegisterRoomsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/ForwardPlayerEvent")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/ForwardPlayerEvent", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/playerevent"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -536,7 +536,7 @@ func RegisterRoomsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/UpdateRoomStatus")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/UpdateRoomStatus", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -559,7 +559,7 @@ func RegisterRoomsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/GetRoomAddress")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.RoomsService/GetRoomAddress", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/address"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -621,7 +621,7 @@ func RegisterRoomsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/UpdateRoomWithPing")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/UpdateRoomWithPing", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/ping"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -641,7 +641,7 @@ func RegisterRoomsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/ForwardRoomEvent")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/ForwardRoomEvent", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/roomevent"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -661,7 +661,7 @@ func RegisterRoomsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/ForwardPlayerEvent")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/ForwardPlayerEvent", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/playerevent"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -681,7 +681,7 @@ func RegisterRoomsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/UpdateRoomStatus")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/UpdateRoomStatus", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -701,7 +701,7 @@ func RegisterRoomsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/GetRoomAddress")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.RoomsService/GetRoomAddress", runtime.WithHTTPPathPattern("/scheduler/{scheduler_name=*}/rooms/{room_name=*}/address"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

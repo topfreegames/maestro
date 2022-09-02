@@ -527,7 +527,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/ListSchedulers")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/ListSchedulers", runtime.WithHTTPPathPattern("/schedulers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -550,7 +550,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/GetScheduler")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/GetScheduler", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -573,7 +573,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/CreateScheduler")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/CreateScheduler", runtime.WithHTTPPathPattern("/schedulers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -596,7 +596,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/NewSchedulerVersion")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/NewSchedulerVersion", runtime.WithHTTPPathPattern("/schedulers/{name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -619,7 +619,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/PatchScheduler")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/PatchScheduler", runtime.WithHTTPPathPattern("/schedulers/{name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -642,7 +642,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/GetSchedulerVersions")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/GetSchedulerVersions", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}/versions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -665,7 +665,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/SwitchActiveVersion")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/SwitchActiveVersion", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -688,7 +688,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/GetSchedulersInfo")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/GetSchedulersInfo", runtime.WithHTTPPathPattern("/schedulers/info"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -711,7 +711,7 @@ func RegisterSchedulersServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/DeleteScheduler")
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.v1.SchedulersService/DeleteScheduler", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -773,7 +773,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/ListSchedulers")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/ListSchedulers", runtime.WithHTTPPathPattern("/schedulers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -793,7 +793,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/GetScheduler")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/GetScheduler", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -813,7 +813,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/CreateScheduler")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/CreateScheduler", runtime.WithHTTPPathPattern("/schedulers"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -833,7 +833,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/NewSchedulerVersion")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/NewSchedulerVersion", runtime.WithHTTPPathPattern("/schedulers/{name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -853,7 +853,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/PatchScheduler")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/PatchScheduler", runtime.WithHTTPPathPattern("/schedulers/{name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -873,7 +873,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/GetSchedulerVersions")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/GetSchedulerVersions", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}/versions"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -893,7 +893,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/SwitchActiveVersion")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/SwitchActiveVersion", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -913,7 +913,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/GetSchedulersInfo")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/GetSchedulersInfo", runtime.WithHTTPPathPattern("/schedulers/info"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -933,7 +933,7 @@ func RegisterSchedulersServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/DeleteScheduler")
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/api.v1.SchedulersService/DeleteScheduler", runtime.WithHTTPPathPattern("/schedulers/{scheduler_name=*}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
