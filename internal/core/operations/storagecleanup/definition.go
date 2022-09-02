@@ -63,5 +63,5 @@ func (d *Definition) Unmarshal(raw []byte) error {
 }
 
 func (d *Definition) HasNoAction() bool {
-	return false
+	return true
 }
