@@ -39,6 +39,7 @@ import (
 	"github.com/stretchr/testify/require"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	operationsproviders "github.com/topfreegames/maestro/internal/core/operations/providers"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -58,7 +59,7 @@ func TestListOperations(t *testing.T) {
 	}
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
+		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap, operationsproviders.ProvideDefinitionConstructors())
 		operationFlow := operation2.NewRedisOperationFlow(redisClient)
 		inProgressStatus, _ := operation.StatusInProgress.String()
 		pendingStatus, _ := operation.StatusPending.String()
