@@ -58,6 +58,7 @@ type testOperationDefinition struct {
 func (d *testOperationDefinition) Marshal() []byte            { return d.marshalResult }
 func (d *testOperationDefinition) Unmarshal(raw []byte) error { return d.unmarshalResult }
 func (d *testOperationDefinition) Name() string               { return "testOperationDefinition" }
+func (d *testOperationDefinition) NoAction() bool             { return false }
 func (d *testOperationDefinition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
 	return false
 }

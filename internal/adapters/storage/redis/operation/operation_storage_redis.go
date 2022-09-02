@@ -29,11 +29,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
-
-	"github.com/topfreegames/maestro/internal/core/operations"
-
 	"github.com/topfreegames/maestro/internal/adapters/metrics"
+	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/operations/providers"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -396,7 +394,7 @@ func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Con
 
 func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, pipe redis.Pipeliner, schedulerName string, op *operation.Operation, newStatus operation.Status) error {
 	var listKey string
-	operationTookAction, err := operationHasAction(op)
+	operationNoAction, err := operationHasNoAction(op)
 	if err != nil {
 		return errors.NewErrUnexpected("failed to check if operation took action when updating status").WithError(err)
 	}
@@ -404,7 +402,7 @@ func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, 
 	switch {
 	case newStatus == operation.StatusInProgress:
 		listKey = r.buildSchedulerActiveOperationsKey(schedulerName)
-	case newStatus == operation.StatusFinished && !operationTookAction:
+	case newStatus == operation.StatusFinished && operationNoAction:
 		listKey = r.buildSchedulerNoActionKey(schedulerName)
 	default:
 		listKey = r.buildSchedulerHistoryOperationsKey(schedulerName)
@@ -417,16 +415,15 @@ func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, 
 	return nil
 }
 
-func operationHasAction(op *operation.Operation) (bool, error) {
-	if op.DefinitionName == healthcontroller.OperationName {
-		def := healthcontroller.Definition{}
-		err := def.Unmarshal(op.Input)
-		if err != nil {
-			return false, err
-		}
-		return def.TookAction != nil && *def.TookAction, nil
+func operationHasNoAction(op *operation.Operation) (bool, error) {
+	providersMap := providers.ProvideDefinitionConstructors()
+	definition := providersMap[op.DefinitionName]()
+	err := definition.Unmarshal(op.Input)
+	if err != nil {
+		return true, err
 	}
-	return true, nil
+
+	return definition.NoAction(), nil
 }
 
 func buildOperationFromMap(opMap map[string]string) (*operation.Operation, error) {

@@ -12,31 +12,31 @@ import (
 	operation "github.com/topfreegames/maestro/internal/core/entities/operation"
 )
 
-// Definition is a mock of Definition interface.
-type Definition struct {
+// MockDefinition is a mock of Definition interface.
+type MockDefinition struct {
 	ctrl     *gomock.Controller
-	recorder *DefinitionMockRecorder
+	recorder *MockDefinitionMockRecorder
 }
 
-// DefinitionMockRecorder is the mock recorder for Definition.
-type DefinitionMockRecorder struct {
-	mock *Definition
+// MockDefinitionMockRecorder is the mock recorder for MockDefinition.
+type MockDefinitionMockRecorder struct {
+	mock *MockDefinition
 }
 
-// NewDefinition creates a new mock instance.
-func NewDefinition(ctrl *gomock.Controller) *Definition {
-	mock := &Definition{ctrl: ctrl}
-	mock.recorder = &DefinitionMockRecorder{mock}
+// NewMockDefinition creates a new mock instance.
+func NewMockDefinition(ctrl *gomock.Controller) *MockDefinition {
+	mock := &MockDefinition{ctrl: ctrl}
+	mock.recorder = &MockDefinitionMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *Definition) EXPECT() *DefinitionMockRecorder {
+func (m *MockDefinition) EXPECT() *MockDefinitionMockRecorder {
 	return m.recorder
 }
 
 // Marshal mocks base method.
-func (m *Definition) Marshal() []byte {
+func (m *MockDefinition) Marshal() []byte {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Marshal")
 	ret0, _ := ret[0].([]byte)
