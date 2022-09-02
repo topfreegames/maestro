@@ -599,7 +599,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 			clock := clockmock.NewFakeClock(now)
 			operationsTTLMap := map[Definition]time.Duration{}
 			definitionProvider, mockDefinition := createOperationDefinitionProvider(t)
-			mockDefinition.EXPECT().NoAction().Return(false)
+			mockDefinition.EXPECT().HasNoAction().Return(false)
 			mockDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 			storage := NewRedisOperationStorage(client, clock, operationsTTLMap, definitionProvider)
 
@@ -642,7 +642,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 			clock := clockmock.NewFakeClock(now)
 			operationsTTLMap := map[Definition]time.Duration{}
 			definitionProvider, mockDefinition := createOperationDefinitionProvider(t)
-			mockDefinition.EXPECT().NoAction().Return(false)
+			mockDefinition.EXPECT().HasNoAction().Return(false)
 			mockDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
 			storage := NewRedisOperationStorage(client, clock, operationsTTLMap, definitionProvider)
 
@@ -695,7 +695,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 			operationsTTLMap := map[Definition]time.Duration{}
 			definitionProvider, mockDefinition := createOperationDefinitionProvider(t)
 			mockDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil)
-			mockDefinition.EXPECT().NoAction().Return(true)
+			mockDefinition.EXPECT().HasNoAction().Return(true)
 			storage := NewRedisOperationStorage(client, clock, operationsTTLMap, definitionProvider)
 			op := *baseOperation
 			op.Status = operation.StatusInProgress
@@ -913,7 +913,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		now := time.Now()
 		operationsTTLMap := map[Definition]time.Duration{}
 		definitionProvider, mockDefinition := createOperationDefinitionProvider(t)
-		mockDefinition.EXPECT().NoAction().Return(false).AnyTimes()
+		mockDefinition.EXPECT().HasNoAction().Return(false).AnyTimes()
 		mockDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil).AnyTimes()
 		storage := NewRedisOperationStorage(client, clockmock.NewFakeClock(now), operationsTTLMap, definitionProvider)
 
@@ -961,7 +961,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		now := time.Now()
 		operationsTTLMap := map[Definition]time.Duration{}
 		definitionProvider, mockDefinition := createOperationDefinitionProvider(t)
-		mockDefinition.EXPECT().NoAction().Return(false).AnyTimes()
+		mockDefinition.EXPECT().HasNoAction().Return(false).AnyTimes()
 		mockDefinition.EXPECT().Unmarshal(gomock.Any()).Return(nil).AnyTimes()
 		storage := NewRedisOperationStorage(client, clockmock.NewFakeClock(now), operationsTTLMap, definitionProvider)
 
