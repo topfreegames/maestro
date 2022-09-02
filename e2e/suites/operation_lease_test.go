@@ -34,6 +34,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	operationsproviders "github.com/topfreegames/maestro/internal/core/operations/providers"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
@@ -59,7 +60,7 @@ func TestOperationLease(t *testing.T) {
 	}
 
 	framework.WithClients(t, func(roomsApiClient *framework.APIClient, managementApiClient *framework.APIClient, kubeClient kubernetes.Interface, redisClient *redis.Client, maestro *maestro.MaestroInstance) {
-		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap)
+		operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap, operationsproviders.ProvideDefinitionConstructors())
 		operationFlow := operation2.NewRedisOperationFlow(redisClient)
 		operationLeaseStorage := operation3.NewRedisOperationLeaseStorage(redisClient, timeClock.NewClock())
 

@@ -31,7 +31,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/adapters/metrics"
 	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/operations/providers"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -59,13 +58,19 @@ type Definition string
 // redisOperationStorage adapter of the OperationStorage port. It store store
 // the operations in lists to keep their creation/update order.
 type redisOperationStorage struct {
-	client           *redis.Client
-	clock            ports.Clock
-	operationsTTLMap map[Definition]time.Duration
+	client                      *redis.Client
+	clock                       ports.Clock
+	operationsTTLMap            map[Definition]time.Duration
+	operationDefinitionProvider map[string]operations.DefinitionConstructor
 }
 
-func NewRedisOperationStorage(client *redis.Client, clock ports.Clock, operationsTTLMap map[Definition]time.Duration) *redisOperationStorage {
-	return &redisOperationStorage{client, clock, operationsTTLMap}
+func NewRedisOperationStorage(
+	client *redis.Client,
+	clock ports.Clock,
+	operationsTTLMap map[Definition]time.Duration,
+	operationsDefinitionProviders map[string]operations.DefinitionConstructor,
+) *redisOperationStorage {
+	return &redisOperationStorage{client, clock, operationsTTLMap, operationsDefinitionProviders}
 }
 
 // CreateOperation marshal and pushes the operation to the scheduler pending
@@ -394,7 +399,7 @@ func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Con
 
 func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, pipe redis.Pipeliner, schedulerName string, op *operation.Operation, newStatus operation.Status) error {
 	var listKey string
-	operationNoAction, err := operationHasNoAction(op)
+	operationNoAction, err := r.operationHasNoAction(op)
 	if err != nil {
 		return errors.NewErrUnexpected("failed to check if operation took action when updating status").WithError(err)
 	}
@@ -415,9 +420,8 @@ func (r *redisOperationStorage) updateOperationInSortedSet(ctx context.Context, 
 	return nil
 }
 
-func operationHasNoAction(op *operation.Operation) (bool, error) {
-	providersMap := providers.ProvideDefinitionConstructors()
-	definition := providersMap[op.DefinitionName]()
+func (r *redisOperationStorage) operationHasNoAction(op *operation.Operation) (bool, error) {
+	definition := r.operationDefinitionProvider[op.DefinitionName]()
 	err := definition.Unmarshal(op.Input)
 	if err != nil {
 		return true, err

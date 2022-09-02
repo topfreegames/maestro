@@ -129,7 +129,7 @@ func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 }
 
 // NewOperationStorageRedis instantiates redis as operation storage.
-func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.OperationStorage, error) {
+func NewOperationStorageRedis(clock ports.Clock, operationDefinitionProviders map[string]operations.DefinitionConstructor, c config.Config) (ports.OperationStorage, error) {
 	client, err := createRedisClient(c, c.GetString(operationStorageRedisURLPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
@@ -141,7 +141,7 @@ func NewOperationStorageRedis(clock ports.Clock, c config.Config) (ports.Operati
 		remove.OperationName:           c.GetDuration(operationsTTLPath),
 	}
 
-	return redis2.NewRedisOperationStorage(client, clock, operationsTTLPathMap), nil
+	return redis2.NewRedisOperationStorage(client, clock, operationsTTLPathMap, operationDefinitionProviders), nil
 }
 
 // NewOperationLeaseStorageRedis instantiates redis as operation lease storage.

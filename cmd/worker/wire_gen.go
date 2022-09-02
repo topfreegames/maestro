@@ -27,11 +27,11 @@ func initializeWorker(c config.Config, builder *worker.WorkerBuilder) (*workers.
 		return nil, err
 	}
 	clock := service.NewClockTime()
-	operationStorage, err := service.NewOperationStorageRedis(clock, c)
+	v := providers.ProvideDefinitionConstructors()
+	operationStorage, err := service.NewOperationStorageRedis(clock, v, c)
 	if err != nil {
 		return nil, err
 	}
-	v := providers.ProvideDefinitionConstructors()
 	operationLeaseStorage, err := service.NewOperationLeaseStorageRedis(clock, c)
 	if err != nil {
 		return nil, err
