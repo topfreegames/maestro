@@ -100,6 +100,8 @@ type OperationStorage interface {
 	UpdateOperationExecutionHistory(ctx context.Context, op *operation.Operation) error
 	// CleanOperationsHistory clears the operation execution history.
 	CleanOperationsHistory(ctx context.Context, schedulerName string) error
+	// CleanExpiredOperations remove from storage all references to the expired operations.
+	CleanExpiredOperations(ctx context.Context, schedulerName string) error
 	// UpdateOperationDefinition updates the operation definition.
 	UpdateOperationDefinition(ctx context.Context, schedulerName string, operationID string, def operations.Definition) error
 }

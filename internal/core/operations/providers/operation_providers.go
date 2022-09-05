@@ -31,6 +31,7 @@ import (
 	deletescheduler "github.com/topfreegames/maestro/internal/core/operations/schedulers/delete"
 	newversion "github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/switchversion"
+	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
 	"github.com/topfreegames/maestro/internal/core/operations/test"
 	"github.com/topfreegames/maestro/internal/core/ports"
 )
@@ -62,6 +63,9 @@ func ProvideDefinitionConstructors() map[string]operations.DefinitionConstructor
 	}
 	definitionConstructors[deletescheduler.OperationName] = func() operations.Definition {
 		return &deletescheduler.Definition{}
+	}
+	definitionConstructors[storagecleanup.OperationName] = func() operations.Definition {
+		return &storagecleanup.Definition{}
 	}
 
 	return definitionConstructors
