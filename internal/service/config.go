@@ -38,6 +38,7 @@ import (
 
 const (
 	healthControllerExecutionIntervalConfigPath = "workers.healthControllerInterval"
+	storagecleanupExecutionIntervalConfigPath   = "workers.storageClenupInterval"
 	roomInitializationTimeoutMillisConfigPath   = "services.roomManager.roomInitializationTimeoutMillis"
 	roomRoomValidationAttemptsConfigPath        = "services.roomManager.roomValidationAttempts"
 	roomPingTimeoutMillisConfigPath             = "services.roomManager.roomPingTimeoutMillis"
@@ -93,8 +94,10 @@ func NewRoomManagerConfig(c config.Config) (roommanager.RoomManagerConfig, error
 // NewWorkersConfig instantiate a new workers Config stucture to be used by the workers to customize them from the config package.
 func NewWorkersConfig(c config.Config) (worker.Configuration, error) {
 	healthControllerExecutionInterval := c.GetDuration(healthControllerExecutionIntervalConfigPath)
+	storagecleanupExecutionInterval := c.GetDuration(storagecleanupExecutionIntervalConfigPath)
 	config := worker.Configuration{
 		HealthControllerExecutionInterval: healthControllerExecutionInterval,
+		StorageCleanupExecutionInterval:   storagecleanupExecutionInterval,
 	}
 
 	return config, nil

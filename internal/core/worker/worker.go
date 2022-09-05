@@ -60,6 +60,7 @@ type WorkerOptions struct {
 // Configuration holds all worker configuration parameters.
 type Configuration struct {
 	HealthControllerExecutionInterval time.Duration
+	StorageCleanupExecutionInterval   time.Duration
 }
 
 // ProvideWorkerOptions instantiate an WorkerOptions structure.

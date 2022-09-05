@@ -30,6 +30,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
 	workererrors "github.com/topfreegames/maestro/internal/core/worker/errors"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
@@ -50,6 +51,7 @@ const WorkerName = "operation_execution"
 type OperationExecutionWorker struct {
 	scheduler                         *entities.Scheduler
 	healthControllerExecutionInterval time.Duration
+	storagecleanupExecutionInterval   time.Duration
 	operationManager                  ports.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
@@ -64,6 +66,7 @@ type OperationExecutionWorker struct {
 func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &OperationExecutionWorker{
 		healthControllerExecutionInterval: opts.Configuration.HealthControllerExecutionInterval,
+		storagecleanupExecutionInterval:   opts.Configuration.StorageCleanupExecutionInterval,
 		operationManager:                  opts.OperationManager,
 		executorsByName:                   opts.OperationExecutors,
 		scheduler:                         scheduler,
@@ -83,6 +86,9 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	healthControllerTicker := time.NewTicker(w.healthControllerExecutionInterval)
 	defer healthControllerTicker.Stop()
 
+	storagecleanupTicker := time.NewTicker(w.storagecleanupExecutionInterval)
+	defer storagecleanupTicker.Stop()
+
 	for {
 		select {
 		case <-w.workerContext.Done():
@@ -98,9 +104,14 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				w.logger.Error("Error executing operation", zap.Error(err))
 			}
 		case <-healthControllerTicker.C:
-			err := w.createHealthControllerOperation(w.workerContext)
+			err := w.createOperation(w.workerContext, new(healthcontroller.Definition))
 			if err != nil {
 				w.logger.Error("Error enqueueing new health_controller operation", zap.Error(err))
+			}
+		case <-storagecleanupTicker.C:
+			err := w.createOperation(w.workerContext, new(storagecleanup.Definition))
+			if err != nil {
+				w.logger.Error("Error enqueueing new storage clean up operation", zap.Error(err))
 			}
 		}
 	}
@@ -260,10 +271,10 @@ func (w *OperationExecutionWorker) shouldEvictOperation(op *operation.Operation,
 	return false
 }
 
-func (w *OperationExecutionWorker) createHealthControllerOperation(ctx context.Context) error {
-	_, err := w.operationManager.CreateOperation(ctx, w.scheduler.Name, &healthcontroller.Definition{})
+func (w *OperationExecutionWorker) createOperation(ctx context.Context, operationDefinition operations.Definition) error {
+	_, err := w.operationManager.CreateOperation(ctx, w.scheduler.Name, operationDefinition)
 	if err != nil {
-		return fmt.Errorf("not able to schedule the 'health_controller' operation: %w", err)
+		return fmt.Errorf("not able to schedule the '%s' operation: %w", operationDefinition.Name(), err)
 	}
 
 	return nil

@@ -40,6 +40,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
+	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
 
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis/v8"
@@ -139,6 +140,7 @@ func NewOperationStorageRedis(clock ports.Clock, operationDefinitionProviders ma
 		healthcontroller.OperationName: c.GetDuration(operationsTTLPath),
 		add.OperationName:              c.GetDuration(operationsTTLPath),
 		remove.OperationName:           c.GetDuration(operationsTTLPath),
+		storagecleanup.OperationName:   c.GetDuration(operationsTTLPath),
 	}
 
 	return redis2.NewRedisOperationStorage(client, clock, operationsTTLPathMap, operationDefinitionProviders), nil

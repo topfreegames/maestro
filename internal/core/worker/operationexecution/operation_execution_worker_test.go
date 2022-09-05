@@ -42,6 +42,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	mockoperation "github.com/topfreegames/maestro/internal/core/operations/mock"
+	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
 	"github.com/topfreegames/maestro/internal/core/worker"
 )
 
@@ -79,6 +80,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
 		pendingOpsChan := make(chan string)
@@ -142,6 +144,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -211,6 +214,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -274,6 +278,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors := map[string]operations.Executor{}
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -322,6 +327,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -376,6 +382,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -433,6 +440,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -487,6 +495,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -528,6 +537,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   duration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -551,6 +561,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		duration, err := time.ParseDuration("1ms")
 		require.NoError(t, err)
 
+		longDuration, err := time.ParseDuration("10m")
+		require.NoError(t, err)
+
 		mockCtrl := gomock.NewController(t)
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
@@ -567,6 +580,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   longDuration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -590,6 +604,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		duration, err := time.ParseDuration("1ms")
 		require.NoError(t, err)
 
+		longDuration, err := time.ParseDuration("10m")
+		require.NoError(t, err)
+
 		mockCtrl := gomock.NewController(t)
 		operationName := "test_operation"
 		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
@@ -606,6 +623,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executors[operationName] = operationExecutor
 		config := worker.Configuration{
 			HealthControllerExecutionInterval: duration,
+			StorageCleanupExecutionInterval:   longDuration,
 		}
 
 		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
@@ -613,6 +631,92 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), gomock.Any()).Return(pendingOpsChan)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &healthcontroller.Definition{}).Return(nil, fmt.Errorf("Error on creating operation")).MaxTimes(5)
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		go func() {
+			time.Sleep(5 * time.Millisecond)
+			cancel()
+		}()
+
+		err = workerService.Start(ctx)
+		require.NoError(t, err)
+	})
+
+	t.Run("when storagecleanup ticks, call operation manager creating a new storagecleanup operation", func(t *testing.T) {
+		duration, err := time.ParseDuration("1ms")
+		require.NoError(t, err)
+
+		longDuration, err := time.ParseDuration("10m")
+		require.NoError(t, err)
+
+		mockCtrl := gomock.NewController(t)
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		config := worker.Configuration{
+			HealthControllerExecutionInterval: longDuration,
+			StorageCleanupExecutionInterval:   duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
+		pendingOpsChan := make(chan string)
+
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), gomock.Any()).Return(pendingOpsChan)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &storagecleanup.Definition{}).Return(&operation.Operation{}, nil).MaxTimes(5)
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		go func() {
+			time.Sleep(5 * time.Millisecond)
+			cancel()
+		}()
+
+		err = workerService.Start(ctx)
+		require.NoError(t, err)
+	})
+
+	t.Run("when storagecleanup ticks and CreateOperation return in error, continue the execution normally", func(t *testing.T) {
+		duration, err := time.ParseDuration("1ms")
+		require.NoError(t, err)
+
+		longDuration, err := time.ParseDuration("10m")
+		require.NoError(t, err)
+
+		mockCtrl := gomock.NewController(t)
+		operationName := "test_operation"
+		operationDefinition := mockoperation.NewMockDefinition(mockCtrl)
+		operationExecutor := mockoperation.NewMockExecutor(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+
+		defFunc := func() operations.Definition { return operationDefinition }
+		definitionConstructors := operations.NewDefinitionConstructors()
+		definitionConstructors[operationName] = defFunc
+
+		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+
+		executors := map[string]operations.Executor{}
+		executors[operationName] = operationExecutor
+		config := worker.Configuration{
+			HealthControllerExecutionInterval: longDuration,
+			StorageCleanupExecutionInterval:   duration,
+		}
+
+		workerService := NewOperationExecutionWorker(scheduler, worker.ProvideWorkerOptions(operationManager, executors, nil, nil, config))
+		pendingOpsChan := make(chan string)
+
+		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), gomock.Any()).Return(pendingOpsChan)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &storagecleanup.Definition{}).Return(nil, fmt.Errorf("Error on creating operation")).MaxTimes(5)
 
 		ctx, cancel := context.WithCancel(context.Background())
 
