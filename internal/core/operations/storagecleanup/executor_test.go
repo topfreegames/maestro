@@ -49,10 +49,10 @@ func TestExecutor_Execute(t *testing.T) {
 	definition := &storagecleanup.Definition{}
 
 	t.Run("should succeed", func(t *testing.T) {
-		t.Run("operation storage CleanOperationHistory return no error => return no error", func(t *testing.T) {
+		t.Run("operation storage CleanExpiredOperations return no error => return no error", func(t *testing.T) {
 			operationStorage := mockports.NewMockOperationStorage(mockCtrl)
 
-			operationStorage.EXPECT().CleanOperationsHistory(context.Background(), operation.SchedulerName).Return(nil)
+			operationStorage.EXPECT().CleanExpiredOperations(context.Background(), operation.SchedulerName).Return(nil)
 
 			executor := storagecleanup.NewExecutor(operationStorage)
 			err := executor.Execute(context.Background(), operation, definition)
@@ -62,14 +62,14 @@ func TestExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("should fail", func(t *testing.T) {
-		t.Run("operation storage CleaOperationHistory fails return unexpected error", func(t *testing.T) {
+		t.Run("operation storage CleanExpiredOperations fails return unexpected error", func(t *testing.T) {
 			operationStorage := mockports.NewMockOperationStorage(mockCtrl)
 
-			operationStorage.EXPECT().CleanOperationsHistory(context.Background(), operation.SchedulerName).Return(errors.New("error"))
+			operationStorage.EXPECT().CleanExpiredOperations(context.Background(), operation.SchedulerName).Return(errors.New("error"))
 
 			executor := storagecleanup.NewExecutor(operationStorage)
 			err := executor.Execute(context.Background(), operation, definition)
-			require.ErrorContains(t, err, "failed to clean operation history on storage clean up operation: ")
+			require.ErrorContains(t, err, "failed to clean expired operations references on storage clean up operation: ")
 		})
 	})
 }

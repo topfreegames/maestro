@@ -56,9 +56,9 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
-	if err := e.operationStorage.CleanOperationsHistory(ctx, op.SchedulerName); err != nil {
-		logger.Warn("failed to clean operation history on storage clean up operation", zap.Error(err))
-		return fmt.Errorf("failed to clean operation history on storage clean up operation: %w", err)
+	if err := e.operationStorage.CleanExpiredOperations(ctx, op.SchedulerName); err != nil {
+		logger.Warn("failed to clean expired operations references on storage clean up operation", zap.Error(err))
+		return fmt.Errorf("failed to clean expired operations references on storage clean up operation: %w", err)
 	}
 
 	return nil

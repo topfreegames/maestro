@@ -398,6 +398,20 @@ func (m *MockOperationStorage) EXPECT() *MockOperationStorageMockRecorder {
 	return m.recorder
 }
 
+// CleanExpiredOperations mocks base method.
+func (m *MockOperationStorage) CleanExpiredOperations(ctx context.Context, schedulerName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CleanExpiredOperations", ctx, schedulerName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CleanExpiredOperations indicates an expected call of CleanExpiredOperations.
+func (mr *MockOperationStorageMockRecorder) CleanExpiredOperations(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanExpiredOperations", reflect.TypeOf((*MockOperationStorage)(nil).CleanExpiredOperations), ctx, schedulerName)
+}
+
 // CleanOperationsHistory mocks base method.
 func (m *MockOperationStorage) CleanOperationsHistory(ctx context.Context, schedulerName string) error {
 	m.ctrl.T.Helper()
