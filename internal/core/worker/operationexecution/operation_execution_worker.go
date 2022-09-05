@@ -104,12 +104,12 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 				w.logger.Error("Error executing operation", zap.Error(err))
 			}
 		case <-healthControllerTicker.C:
-			err := w.createOperation(w.workerContext, new(healthcontroller.Definition))
+			err := w.createOperation(w.workerContext, &healthcontroller.Definition{})
 			if err != nil {
 				w.logger.Error("Error enqueueing new health_controller operation", zap.Error(err))
 			}
 		case <-storagecleanupTicker.C:
-			err := w.createOperation(w.workerContext, new(storagecleanup.Definition))
+			err := w.createOperation(w.workerContext, &storagecleanup.Definition{})
 			if err != nil {
 				w.logger.Error("Error enqueueing new storage clean up operation", zap.Error(err))
 			}
