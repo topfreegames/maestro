@@ -52,6 +52,7 @@ workers:
   redis:
     operationsTTL: 24h
   healthControllerInterval: 1m
+  storageClenupInterval: 3h
 metricsReporter:
     intervalMillis: 10000
 

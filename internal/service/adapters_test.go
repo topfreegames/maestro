@@ -68,7 +68,7 @@ func TestOperationStorageRedis(t *testing.T) {
 
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(3)
+		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(4)
 		opStorage, err := NewOperationStorageRedis(clock, definitionsProviders, config)
 		require.NoError(t, err)
 
@@ -84,7 +84,7 @@ func TestOperationStorageRedis(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return("redis://somewhere-in-the-world:6379")
-		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(3)
+		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(4)
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
 		opStorage, err := NewOperationStorageRedis(clock, definitionsProviders, config)
 		require.NoError(t, err)
