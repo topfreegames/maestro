@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/m-lab/go/memoryless"
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
@@ -86,7 +87,16 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 	healthControllerTicker := time.NewTicker(w.healthControllerExecutionInterval)
 	defer healthControllerTicker.Stop()
 
-	storagecleanupTicker := time.NewTicker(w.storagecleanupExecutionInterval)
+	storagecleanupTicker, err := memoryless.NewTicker(context.Background(), memoryless.Config{
+		Expected: w.storagecleanupExecutionInterval,
+		Min:      time.Duration(0.1 * float64(w.storagecleanupExecutionInterval)),
+		Max:      time.Duration(2.5 * float64(w.storagecleanupExecutionInterval)),
+	})
+	if err != nil {
+		w.logger.Error("Error creating ticker to storage clean-up operation", zap.Error(err))
+		return fmt.Errorf("Error creating ticker to storage clean-up operation: %w", err)
+	}
+
 	defer storagecleanupTicker.Stop()
 
 	for {

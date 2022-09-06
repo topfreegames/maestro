@@ -673,7 +673,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), gomock.Any()).Return(pendingOpsChan)
-		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &storagecleanup.Definition{}).Return(&operation.Operation{}, nil).MaxTimes(5)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &storagecleanup.Definition{}).Return(&operation.Operation{}, nil).AnyTimes()
 
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -716,7 +716,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		pendingOpsChan := make(chan string)
 
 		operationManager.EXPECT().PendingOperationsChan(gomock.Any(), gomock.Any()).Return(pendingOpsChan)
-		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &storagecleanup.Definition{}).Return(nil, fmt.Errorf("Error on creating operation")).MaxTimes(5)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, &storagecleanup.Definition{}).Return(nil, fmt.Errorf("Error on creating operation")).AnyTimes()
 
 		ctx, cancel := context.WithCancel(context.Background())
 
