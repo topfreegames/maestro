@@ -89,8 +89,10 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 	storagecleanupTicker, err := memoryless.NewTicker(context.Background(), memoryless.Config{
 		Expected: w.storagecleanupExecutionInterval,
-		Min:      time.Duration(0.1 * float64(w.storagecleanupExecutionInterval)),
-		Max:      time.Duration(2.5 * float64(w.storagecleanupExecutionInterval)),
+		// This minimum value was took from the memoryless documentation https://pkg.go.dev/github.com/m-lab/go@v0.1.53/memoryless#Ticker
+		Min: time.Duration(0.1 * float64(w.storagecleanupExecutionInterval)),
+		// This maximum value was took from the memoryless documentation https://pkg.go.dev/github.com/m-lab/go@v0.1.53/memoryless#Ticker
+		Max: time.Duration(2.5 * float64(w.storagecleanupExecutionInterval)),
 	})
 	if err != nil {
 		w.logger.Error("Error creating ticker to storage clean-up operation", zap.Error(err))
