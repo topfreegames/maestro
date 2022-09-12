@@ -29,17 +29,12 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 	timeClock "github.com/topfreegames/maestro/internal/adapters/clock/time"
-	operation2 "github.com/topfreegames/maestro/internal/adapters/flow/redis/operation"
 	operationredis "github.com/topfreegames/maestro/internal/adapters/storage/redis/operation"
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	operationsproviders "github.com/topfreegames/maestro/internal/core/operations/providers"
-	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
-	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -53,7 +48,6 @@ func TestStorageCleanUpOperation(t *testing.T) {
 		t.Run("When storage cleanup operation runs, should clear the operation history", func(t *testing.T) {
 			operationsTTLMap := map[operationredis.Definition]time.Duration{}
 			operationStorage := operationredis.NewRedisOperationStorage(redisClient, timeClock.NewClock(), operationsTTLMap, operationsproviders.ProvideDefinitionConstructors())
-			operationFlow := operation2.NewRedisOperationFlow(redisClient)
 
 			scheduler, err := createSchedulerAndWaitForIt(t,
 				maestro,
@@ -77,53 +71,36 @@ func TestStorageCleanUpOperation(t *testing.T) {
 			_, err = pipe.Exec(context.Background())
 			require.NoError(t, err)
 
-			// Execute storagecleaup operation
-			storageCleanUpOperation := operation.New(scheduler.Name, storagecleanup.OperationName, (&storagecleanup.Definition{}).Marshal())
-
-			err = operationStorage.CreateOperation(context.Background(), storageCleanUpOperation)
-			require.NoError(t, err)
-
-			err = operationFlow.InsertOperationID(context.Background(), scheduler.Name, storageCleanUpOperation.ID)
-			require.NoError(t, err)
-
 			// Ensure storagecleanup ran
 			require.Eventually(t, func() bool {
-				getOperationRequest := &maestroApiV1.GetOperationRequest{}
-				getOperationResponse := &maestroApiV1.GetOperationResponse{}
-				err := managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s/operations/%s", scheduler.Name, storageCleanUpOperation.ID), getOperationRequest, getOperationResponse)
+				newOperations, _, err := operationStorage.ListSchedulerFinishedOperations(context.Background(), scheduler.Name, 0, -1)
 				require.NoError(t, err)
 
-				if getOperationResponse.Operation.Status != "finished" {
-					return false
+				for _, op := range newOperations {
+					for _, inexistentsOperations := range operations {
+						if op.ID == inexistentsOperations.ID {
+							return false
+						}
+					}
+				}
+
+				newOperationsIDs, err := redisClient.ZRangeByScore(context.Background(), fmt.Sprintf("operations:%s:lists:history", scheduler.Name), &redis.ZRangeBy{
+					Min: "-inf",
+					Max: "+inf",
+				}).Result()
+				require.NoError(t, err)
+
+				for _, opIDs := range newOperationsIDs {
+					for _, inexistentsOperations := range operations {
+						if opIDs == inexistentsOperations.ID {
+							return false
+						}
+					}
 				}
 
 				return true
 			}, 4*time.Minute, 10*time.Millisecond, "failed to create scheduler")
 
-			newOperations, _, err := operationStorage.ListSchedulerFinishedOperations(context.Background(), scheduler.Name, 0, -1)
-			require.NoError(t, err)
-
-			for _, op := range newOperations {
-				for _, inexistentsOperations := range operations {
-					if op.ID == inexistentsOperations.ID {
-						assert.FailNow(t, "operation keep existing after storagecleanup execution")
-					}
-				}
-			}
-
-			newOperationsIDs, err := redisClient.ZRangeByScore(context.Background(), fmt.Sprintf("operations:%s:lists:history", scheduler.Name), &redis.ZRangeBy{
-				Min: "-inf",
-				Max: "+inf",
-			}).Result()
-			require.NoError(t, err)
-
-			for _, opIDs := range newOperationsIDs {
-				for _, inexistentsOperations := range operations {
-					if opIDs == inexistentsOperations.ID {
-						assert.FailNow(t, "operation ID keep existing after storagecleanup execution")
-					}
-				}
-			}
 		})
 	})
 }
