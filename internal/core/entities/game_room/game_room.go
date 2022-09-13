@@ -162,7 +162,9 @@ var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{
 		GameStatusUnready:     struct{}{},
 		GameStatusReady:       struct{}{},
 	},
-	GameStatusTerminating: {},
+	GameStatusTerminating: {
+		GameStatusError: struct{}{},
+	},
 }
 
 // roomStatusComposition define what is the "final" game room status based on
