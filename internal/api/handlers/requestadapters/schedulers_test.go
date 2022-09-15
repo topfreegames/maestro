@@ -32,6 +32,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -60,7 +61,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 		Error          bool
 	}
 
-	terminationValue := int64(62)
+	terminationValue := durationpb.New(time.Duration(62))
 	maxSurgeValue := "60%"
 	roomsReplicasValue := int32(2)
 	genericString := "some-value"
@@ -79,14 +80,14 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			Input: Input{
 				PatchScheduler: &api.PatchSchedulerRequest{
 					Spec: &api.OptionalSpec{
-						TerminationGracePeriod: &terminationValue,
+						TerminationGracePeriod: terminationValue,
 					},
 				},
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
 					patch.LabelSchedulerSpec: map[string]interface{}{
-						patch.LabelSpecTerminationGracePeriod: time.Duration(terminationValue),
+						patch.LabelSpecTerminationGracePeriod: terminationValue.AsDuration(),
 					},
 				},
 			},
@@ -461,7 +462,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					Game: genericString,
 					Spec: &api.Spec{
 						Version:                genericValidVersion,
-						TerminationGracePeriod: 10,
+						TerminationGracePeriod: durationpb.New(time.Duration(10)),
 						Toleration:             genericString,
 						Affinity:               genericString,
 						Containers: []*api.Container{
@@ -657,7 +658,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					Game: genericString,
 					Spec: &api.Spec{
 						Version:                genericValidVersion,
-						TerminationGracePeriod: 10,
+						TerminationGracePeriod: durationpb.New(time.Duration(10)),
 						Toleration:             genericString,
 						Affinity:               genericString,
 						Containers: []*api.Container{
@@ -1105,7 +1106,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					Game: genericString,
 					Spec: &api.Spec{
 						Version:                genericValidVersion,
-						TerminationGracePeriod: 10,
+						TerminationGracePeriod: durationpb.New(time.Duration(10)),
 						Toleration:             genericString,
 						Affinity:               genericString,
 						Containers: []*api.Container{
@@ -1430,7 +1431,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					CreatedAt: timestamppb.New(genericTime),
 					Spec: &api.Spec{
 						Version:                genericValidVersion,
-						TerminationGracePeriod: 10,
+						TerminationGracePeriod: durationpb.New(time.Duration(10)),
 						Containers: []*api.Container{
 							{
 								Name:            genericString,
@@ -1606,7 +1607,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					CreatedAt: timestamppb.New(genericTime),
 					Spec: &api.Spec{
 						Version:                genericValidVersion,
-						TerminationGracePeriod: 10,
+						TerminationGracePeriod: durationpb.New(time.Duration(10)),
 						Containers: []*api.Container{
 							{
 								Name:            genericString,
