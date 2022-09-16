@@ -213,7 +213,7 @@ func TestGetScheduler(t *testing.T) {
 			RollbackVersion: "1.0.0",
 			Spec: game_room.Spec{
 				Version:                "v1.0.0",
-				TerminationGracePeriod: 100 * time.Nanosecond,
+				TerminationGracePeriod: 100 * time.Second,
 				Containers: []game_room.Container{
 					{
 						Name:            "game-room-container-name",
@@ -482,7 +482,7 @@ func TestCreateScheduler(t *testing.T) {
 			RoomsReplicas: 6,
 			Spec: game_room.Spec{
 				Version:                "v1.0.0",
-				TerminationGracePeriod: 100 * time.Nanosecond,
+				TerminationGracePeriod: 100 * time.Second,
 				Containers: []game_room.Container{
 					{
 						Name:            "game-room-container-name",

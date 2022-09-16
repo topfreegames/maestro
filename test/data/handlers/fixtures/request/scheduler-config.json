@@ -9,7 +9,7 @@
   },
   "spec": {
     "version": "v1.0.0",
-    "terminationGracePeriod": 100,
+    "terminationGracePeriod": "100s",
     "containers": [{
       "name": "game-room-container-name",
       "image": "game-room-container-image",

@@ -1522,7 +1522,6 @@
       "properties": {
         "terminationGracePeriod": {
           "type": "string",
-          "format": "int64",
           "description": "The game room termination grace period."
         },
         "containers": {
@@ -1775,7 +1774,6 @@
         },
         "terminationGracePeriod": {
           "type": "string",
-          "format": "int64",
           "description": "The game room termination grace period."
         },
         "containers": {

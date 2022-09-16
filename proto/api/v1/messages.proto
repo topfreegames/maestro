@@ -9,6 +9,7 @@ option go_package = "github.com/topfreegames/maestro/pkg/api/v1";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/duration.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
@@ -129,7 +130,7 @@ message Spec {
   // GameRoom.spec version
   string version = 1;
   // The game room termination grace period.
-  int64 termination_grace_period = 2;
+  google.protobuf.Duration termination_grace_period = 2;
   // The container object array defines all the game room container configurations.
   repeated Container containers = 3;
   // Runtime game room toleration configuration.
@@ -142,7 +143,7 @@ message Spec {
 // This message is used to patch spec configuration.
 message OptionalSpec {
   // The game room termination grace period.
-  optional int64 termination_grace_period = 2;
+  optional google.protobuf.Duration termination_grace_period = 2;
   // The container object array defines all the game room container configurations.
   repeated OptionalContainer containers = 3;
   // Runtime game room toleration configuration.

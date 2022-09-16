@@ -30,6 +30,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
+	"google.golang.org/protobuf/types/known/durationpb"
 	_struct "google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -213,7 +214,7 @@ func fromApiOptionalSpecToChangeMap(request *api.OptionalSpec) map[string]interf
 	changeMap := make(map[string]interface{})
 
 	if request.TerminationGracePeriod != nil {
-		changeMap[patch.LabelSpecTerminationGracePeriod] = time.Duration(request.GetTerminationGracePeriod())
+		changeMap[patch.LabelSpecTerminationGracePeriod] = time.Duration(request.GetTerminationGracePeriod().AsDuration())
 	}
 
 	if request.Containers != nil {
@@ -318,7 +319,7 @@ func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderO
 func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
 	return game_room.NewSpec(
 		"",
-		time.Duration(apiSpec.GetTerminationGracePeriod()),
+		time.Duration(apiSpec.GetTerminationGracePeriod().AsDuration()),
 		fromApiContainers(apiSpec.GetContainers()),
 		apiSpec.GetToleration(),
 		apiSpec.GetAffinity(),
@@ -475,7 +476,7 @@ func getSpec(spec game_room.Spec) *api.Spec {
 			Version:                spec.Version,
 			Toleration:             spec.Toleration,
 			Containers:             fromEntityContainerToApiContainer(spec.Containers),
-			TerminationGracePeriod: int64(spec.TerminationGracePeriod),
+			TerminationGracePeriod: durationpb.New(spec.TerminationGracePeriod),
 			Affinity:               spec.Affinity,
 		}
 	}
