@@ -102,8 +102,8 @@ def get_spec(config):
     terminationGracePeriod = "100s"
     if config.get('containers'):
         containers = config['containers']
-    if "terminationGracePeriod" in config:
-        terminationGracePeriod = config['terminationGracePeriod']
+    if "shutdownTimeout" in config:
+        terminationGracePeriod = f"{config['shutdownTimeout']}s"
     return {
         'terminationGracePeriod': terminationGracePeriod,
         'toleration': config['toleration'],
