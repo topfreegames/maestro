@@ -71,7 +71,8 @@ def get_ports(ports):
 
 def get_env(env):
     for env_var in container_input_env_vars:
-        exists_to_override = [(index, var) for index, var in enumerate(env) if env_var['name'] == var['name']]
+        exists_to_override = [(index, var) for index, var in enumerate(
+            env) if env_var['name'] == var['name']]
         if len(exists_to_override) > 0:
             env[exists_to_override[0][0]] = env_var
         else:
@@ -98,11 +99,13 @@ def get_containers(containers):
 
 def get_spec(config):
     containers = [config]
+    terminationGracePeriod = "100s"
     if config.get('containers'):
         containers = config['containers']
-
+    if "terminationGracePeriod" in config:
+        terminationGracePeriod = config['terminationGracePeriod']
     return {
-        'terminationGracePeriod': "100s",
+        'terminationGracePeriod': terminationGracePeriod,
         'toleration': config['toleration'],
         'affinity': config['affinity'],
         'containers': get_containers(containers)
@@ -244,6 +247,7 @@ def get_v9_game_schedulers():
     except Exception as e:
         raise e
 
+
 def scheduler_name_present(x, game, scheduler):
     if scheduler != "":
         return x.get('game') == game and x.get('name') == scheduler
@@ -296,7 +300,8 @@ def delete_scheduler_from_v9(scheduler):
     reason = ""
     retry = 3
     for i in range(0, retry):
-        r = requests.delete(f'{maestro_v9_endpoint}/scheduler/{scheduler["name"]}')
+        r = requests.delete(
+            f'{maestro_v9_endpoint}/scheduler/{scheduler["name"]}')
         if r.status_code == 200:
             succeed = wait_for_scheduler_to_be_deleted()
             reason = ""
@@ -345,9 +350,11 @@ def create_next_scheduler(scheduler):
         """
         timeout_in_seconds = 30
         for i in range(0, timeout_in_seconds):
-            request = requests.get(f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}')
+            request = requests.get(
+                f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}')
             if request.status_code == 200:
-                request2 = requests.get(f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}/operations')
+                request2 = requests.get(
+                    f'{maestro_next_endpoint}/schedulers/{scheduler["name"]}/operations')
                 if request2.status_code == 200:
                     finished_operations = request2.json()["finishedOperations"]
                     # if the operation finishes with error, in this case, it's like it never existed
@@ -422,8 +429,10 @@ def main():
         print("...success")
 
         if dry_run:
-            print('schedulers meant to be migrated:\n', *list(map(lambda x: f"{x.get('name')}\n", schedulers)))
-            print(f'converted scheduler example:\n', yaml.dump(schedulers[0]['next-config'], indent=2))
+            print('schedulers meant to be migrated:\n', *
+                  list(map(lambda x: f"{x.get('name')}\n", schedulers)))
+            print(f'converted scheduler example:\n', yaml.dump(
+                schedulers[0]['next-config'], indent=2))
             sys.exit()
 
         print("##### all set to start migration! #####")
@@ -438,7 +447,8 @@ def main():
             print(f'.{scheduler.get("name")} - setting min to 0...')
             success, reason = set_min_to_zero(scheduler["name"])
             if not success:
-                print(f"ERROR: could not set min to 0 to scheduler '{scheduler_name}'. reason=> {reason}")
+                print(
+                    f"ERROR: could not set min to 0 to scheduler '{scheduler_name}'. reason=> {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
             print("...success")
@@ -446,7 +456,8 @@ def main():
             print(f'.{scheduler.get("name")} - setting replica to 0...')
             success, reason = set_replica_amount(scheduler["name"], 0)
             if not success:
-                print(f"ERROR: could not set replicas to 0 to scheduler '{scheduler_name}'. reason=> {reason}")
+                print(
+                    f"ERROR: could not set replicas to 0 to scheduler '{scheduler_name}'. reason=> {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
             print("...success")
@@ -454,7 +465,8 @@ def main():
             print(f'.{scheduler.get("name")} - deleting...')
             deleted, reason = delete_scheduler_from_v9(scheduler)
             if not deleted:
-                print(f"ERROR: could not delete scheduler '{scheduler_name}'. reason=> {reason}")
+                print(
+                    f"ERROR: could not delete scheduler '{scheduler_name}'. reason=> {reason}")
                 print(f"INFO: stop execution")
                 sys.exit()
             print("...success")
@@ -485,7 +497,8 @@ def setup():
     global port_range
     global dry_run
 
-    my_parser = argparse.ArgumentParser(description='Args necessary to migrate schedulers from v9 to v10')
+    my_parser = argparse.ArgumentParser(
+        description='Args necessary to migrate schedulers from v9 to v10')
     my_parser.add_argument('-o',
                            '--old_url',
                            metavar='v9_url',
