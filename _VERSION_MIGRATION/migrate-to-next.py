@@ -102,7 +102,7 @@ def get_spec(config):
         containers = config['containers']
 
     return {
-        'terminationGracePeriod': 100,
+        'terminationGracePeriod': "100s",
         'toleration': config['toleration'],
         'affinity': config['affinity'],
         'containers': get_containers(containers)
