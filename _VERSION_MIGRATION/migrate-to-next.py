@@ -10,6 +10,7 @@ from tqdm import tqdm
 # global variables
 game = ""
 scheduler = ""
+matchmaker_endpoint = ""
 backup_folder_absolute_path = ""
 maestro_v9_endpoint = ""
 maestro_next_endpoint = ""
@@ -38,6 +39,11 @@ def get_port_range():
 
 
 def get_forwarders(forwarders):
+    matchmaker_address = 'matchmaker-rpc.matchmaker.svc.cluster.local:80'
+
+    if matchmaker_endpoint != "":
+        matchmaker_address = matchmaker_endpoint
+
     if not forwarders:
         return []
     try:
@@ -45,7 +51,7 @@ def get_forwarders(forwarders):
             "name": 'matchmaking',
             "enable": forwarders['grpc']['matchmaking']['enabled'],
             "type": "gRPC",
-            "address": 'matchmaker-rpc.matchmaker.svc.cluster.local:80',
+            "address": matchmaker_address,
             "options": {
                 "timeout": '1000',
                 "metadata": forwarders['grpc']['matchmaking']['metadata']
@@ -490,6 +496,7 @@ def main():
 def setup():
     global maestro_v9_endpoint
     global maestro_next_endpoint
+    global matchmaker_endpoint
     global game
     global scheduler
     global backup_folder_absolute_path
@@ -534,6 +541,13 @@ def setup():
                            required=False,
                            help='Name of the scheduler containing the schedulers to be migrated')
 
+    my_parser.add_argument('-m',
+                           '--matchmaker-url',
+                           metavar='matchmaker_url',
+                           type=str,
+                           required=False,
+                           help='URL of the matchmaker to forward rooms and player events')
+
     my_parser.add_argument('-f',
                            '--yaml_file',
                            metavar='container_env_vars_file',
@@ -557,6 +571,7 @@ def setup():
 
     maestro_v9_endpoint = args.old_url
     maestro_next_endpoint = args.new_url
+    matchmaker_endpoint = args.matchmaker_url
     game = args.game
     scheduler = args.scheduler
     backup_folder_absolute_path = args.backup
