@@ -41,7 +41,7 @@ def get_port_range():
 def get_forwarders(forwarders):
     matchmaker_address = 'matchmaker-rpc.matchmaker.svc.cluster.local:80'
 
-    if matchmaker_endpoint != ""
+    if matchmaker_endpoint != "":
         matchmaker_address = matchmaker_endpoint
 
     if not forwarders:
