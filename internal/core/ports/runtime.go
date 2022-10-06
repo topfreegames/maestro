@@ -38,11 +38,13 @@ type Runtime interface {
 	DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error
 	// CreateGameRoomInstance Creates a game room instance on the runtime using
 	// the specification provided.
-	CreateGameRoomInstance(ctx context.Context, schedulerId string, spec game_room.Spec) (*game_room.Instance, error)
+	CreateGameRoomInstance(ctx context.Context, schedulerId, gameRoomName string, spec game_room.Spec) (*game_room.Instance, error)
 	// DeleteGameRoomInstance Deletes a game room instance on the runtime.
 	DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error
 	// WatchGameRoomInstances Watches for changes of a scheduler game room instances.
 	WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (RuntimeWatcher, error)
+	// Create a name to the room.
+	CreateGameRoomName(ctx context.Context, scheduler entities.Scheduler) (string, error)
 }
 
 // RuntimeWatcher defines a process of watcher, it will have a chan with the

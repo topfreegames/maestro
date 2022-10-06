@@ -103,28 +103,29 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		PortRange: nil,
 	}
 
+	gameRoomName := "game-1"
+
 	gameRoom := game_room.GameRoom{
-		ID:          "game-1",
+		ID:          gameRoomName,
 		SchedulerID: "game",
 		Status:      game_room.GameStatusPending,
 		LastPingAt:  now,
 	}
 
 	gameRoomInstance := game_room.Instance{
-		ID:          "game-1",
+		ID:          gameRoomName,
 		SchedulerID: "game",
 	}
 
 	t.Run("when room creation is successful then it returns the game room and instance", func(t *testing.T) {
+		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
+
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(&gameRoomInstance, nil)
 
-		gameRoomReady := gameRoom
-		gameRoomReady.Status = game_room.GameStatusReady
-
-		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
@@ -133,25 +134,17 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		assert.Equal(t, &gameRoomInstance, instance)
 	})
 
-	t.Run("when game room creation fails while creating instance on runtime then it returns nil with proper error", func(t *testing.T) {
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
-		}).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
+	t.Run("When game room creation fails while creating game room name", func(t *testing.T) {
+		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return("", fmt.Errorf("error creating game room name"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
-		assert.EqualError(t, err, "error creating game room on runtime")
+		assert.EqualError(t, err, "error creating game room name")
 		assert.Nil(t, room)
 		assert.Nil(t, instance)
 	})
 
 	t.Run("when game room creation fails while creating game room on storage then it returns nil with proper error", func(t *testing.T) {
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
-		}).Return(&gameRoomInstance, nil)
-		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
-
+		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom).Return(porterrors.NewErrUnexpected("error storing room on redis"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
@@ -161,6 +154,9 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	})
 
 	t.Run("when game room creation fails while allocating ports then it returns nil with proper error", func(t *testing.T) {
+		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
+
 		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
@@ -169,11 +165,48 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		assert.Nil(t, instance)
 	})
 
-	t.Run("when upsert instance fails then it returns nil with proper error", func(t *testing.T) {
+	t.Run("when game room creation fails while creating instance on runtime then it returns nil with proper error", func(t *testing.T) {
+		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, game_room.Spec{
+
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, gameRoomName, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
+		}).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
+		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, gameRoom.ID)
+
+		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
+		assert.EqualError(t, err, "error creating game room on runtime")
+		assert.Nil(t, room)
+		assert.Nil(t, instance)
+	})
+
+	t.Run("when game room creation fails while creating instance on runtime then during delete room it returns nil with proper error", func(t *testing.T) {
+		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
+
+		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, gameRoomName, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
+		}).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
+
+		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, gameRoom.ID).Return(fmt.Errorf("error deleting room"))
+
+		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
+		assert.EqualError(t, err, "error deleting room during create game room instance error: error deleting room")
+		assert.Nil(t, room)
+		assert.Nil(t, instance)
+	})
+
+	t.Run("when upsert instance fails then it returns nil with proper error", func(t *testing.T) {
+		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
+
+		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2},
 		}).Return(&gameRoomInstance, nil)
+
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error creating instance"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)

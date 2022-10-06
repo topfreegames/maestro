@@ -88,26 +88,6 @@ func (m *RoomManager) GetRoomInstance(ctx context.Context, scheduler, roomID str
 	return instance, nil
 }
 
-func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*game_room.Spec, error) {
-	numberOfPorts := 0
-	spec := scheduler.Spec.DeepCopy()
-	for _, container := range spec.Containers {
-		numberOfPorts += len(container.Ports)
-	}
-	allocatedPorts, err := m.PortAllocator.Allocate(scheduler.PortRange, numberOfPorts)
-	if err != nil {
-		return nil, err
-	}
-	portIndex := 0
-	for _, container := range spec.Containers {
-		for i := range container.Ports {
-			container.Ports[i].HostPort = int(allocatedPorts[portIndex])
-			portIndex++
-		}
-	}
-	return spec, nil
-}
-
 func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
@@ -380,23 +360,13 @@ watchLoop:
 }
 
 func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
-	spec, err := m.populateSpecWithHostPort(scheduler)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	instance, err := m.Runtime.CreateGameRoomInstance(ctx, scheduler.Name, *spec)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = m.InstanceStorage.UpsertInstance(ctx, instance)
+	roomName, err := m.Runtime.CreateGameRoomName(ctx, scheduler)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	room := &game_room.GameRoom{
-		ID:               instance.ID,
+		ID:               roomName,
 		SchedulerID:      scheduler.Name,
 		Version:          scheduler.Spec.Version,
 		Status:           game_room.GameStatusPending,
@@ -408,7 +378,46 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 		return nil, nil, err
 	}
 
+	spec, err := m.populateSpecWithHostPort(scheduler)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	instance, err := m.Runtime.CreateGameRoomInstance(ctx, scheduler.Name, roomName, *spec)
+	if err != nil {
+		deleteRoomErr := m.RoomStorage.DeleteRoom(ctx, scheduler.Name, room.ID)
+		if deleteRoomErr != nil {
+			return nil, nil, fmt.Errorf("error deleting room during create game room instance error: %w", deleteRoomErr)
+		}
+		return nil, nil, err
+	}
+
+	err = m.InstanceStorage.UpsertInstance(ctx, instance)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return room, instance, err
+}
+
+func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*game_room.Spec, error) {
+	numberOfPorts := 0
+	spec := scheduler.Spec.DeepCopy()
+	for _, container := range spec.Containers {
+		numberOfPorts += len(container.Ports)
+	}
+	allocatedPorts, err := m.PortAllocator.Allocate(scheduler.PortRange, numberOfPorts)
+	if err != nil {
+		return nil, err
+	}
+	portIndex := 0
+	for _, container := range spec.Containers {
+		for i := range container.Ports {
+			container.Ports[i].HostPort = int(allocatedPorts[portIndex])
+			portIndex++
+		}
+	}
+	return spec, nil
 }
 
 func (m *RoomManager) forwardStatusTerminatingEvent(ctx context.Context, room *game_room.GameRoom) {

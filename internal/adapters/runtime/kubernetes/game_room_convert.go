@@ -28,8 +28,6 @@ import (
 	"net"
 	"strings"
 
-	utilrand "k8s.io/apimachinery/pkg/util/rand"
-
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -64,10 +62,10 @@ var invalidPodWaitingStates = []string{
 	"RunContainerError",
 }
 
-func convertGameRoomSpec(schedulerID string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
+func convertGameRoomSpec(schedulerID, gameRoomName string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      generateName(schedulerID),
+			Name:      gameRoomName,
 			Namespace: schedulerID,
 			Labels: map[string]string{
 				maestroLabelKey:   maestroLabelValue,
@@ -371,16 +369,4 @@ func convertPod(pod *v1.Pod, nodeAddress string) (*game_room.Instance, error) {
 		Address:         address,
 		ResourceVersion: pod.ResourceVersion,
 	}, nil
-}
-
-func generateName(base string) string {
-	const (
-		maxNameLength          = 63
-		randomLength           = 5
-		MaxGeneratedNameLength = maxNameLength - randomLength
-	)
-	if len(base) > MaxGeneratedNameLength {
-		base = base[:MaxGeneratedNameLength]
-	}
-	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength))
 }

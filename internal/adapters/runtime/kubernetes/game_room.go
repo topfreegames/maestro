@@ -24,15 +24,18 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
-func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, schedulerID string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
-	pod, err := convertGameRoomSpec(schedulerID, gameRoomSpec)
+func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, schedulerID, gameRoomName string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
+	pod, err := convertGameRoomSpec(schedulerID, gameRoomName, gameRoomSpec)
 	if err != nil {
 		return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
 	}
@@ -67,4 +70,17 @@ func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstanc
 	}
 
 	return nil
+}
+
+func (k *kubernetes) CreateGameRoomName(ctx context.Context, scheduler entities.Scheduler) (string, error) {
+	base := scheduler.Name
+	const (
+		maxNameLength          = 63
+		randomLength           = 5
+		MaxGeneratedNameLength = maxNameLength - randomLength
+	)
+	if len(base) > MaxGeneratedNameLength {
+		base = base[:MaxGeneratedNameLength]
+	}
+	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength)), nil
 }

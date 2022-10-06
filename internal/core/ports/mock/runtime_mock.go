@@ -38,18 +38,33 @@ func (m *MockRuntime) EXPECT() *MockRuntimeMockRecorder {
 }
 
 // CreateGameRoomInstance mocks base method.
-func (m *MockRuntime) CreateGameRoomInstance(ctx context.Context, schedulerId string, spec game_room.Spec) (*game_room.Instance, error) {
+func (m *MockRuntime) CreateGameRoomInstance(ctx context.Context, schedulerId, gameRoomName string, spec game_room.Spec) (*game_room.Instance, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateGameRoomInstance", ctx, schedulerId, spec)
+	ret := m.ctrl.Call(m, "CreateGameRoomInstance", ctx, schedulerId, gameRoomName, spec)
 	ret0, _ := ret[0].(*game_room.Instance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateGameRoomInstance indicates an expected call of CreateGameRoomInstance.
-func (mr *MockRuntimeMockRecorder) CreateGameRoomInstance(ctx, schedulerId, spec interface{}) *gomock.Call {
+func (mr *MockRuntimeMockRecorder) CreateGameRoomInstance(ctx, schedulerId, gameRoomName, spec interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGameRoomInstance", reflect.TypeOf((*MockRuntime)(nil).CreateGameRoomInstance), ctx, schedulerId, spec)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGameRoomInstance", reflect.TypeOf((*MockRuntime)(nil).CreateGameRoomInstance), ctx, schedulerId, gameRoomName, spec)
+}
+
+// CreateGameRoomName mocks base method.
+func (m *MockRuntime) CreateGameRoomName(ctx context.Context, scheduler entities.Scheduler) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateGameRoomName", ctx, scheduler)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateGameRoomName indicates an expected call of CreateGameRoomName.
+func (mr *MockRuntimeMockRecorder) CreateGameRoomName(ctx, scheduler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGameRoomName", reflect.TypeOf((*MockRuntime)(nil).CreateGameRoomName), ctx, scheduler)
 }
 
 // CreateScheduler mocks base method.
