@@ -372,17 +372,20 @@ func TestConvertContainer(t *testing.T) {
 func TestConvertGameSpec(t *testing.T) {
 	cases := map[string]struct {
 		schedulerID string
+		roomName    string
 		gameSpec    game_room.Spec
 		expectedPod v1.Pod
 		withError   bool
 	}{
 		"without containers": {
 			schedulerID: "sample",
+			roomName:    "roomName",
 			gameSpec: game_room.Spec{
 				Version: "version",
 			},
 			expectedPod: v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "roomName",
 					Namespace: "sample",
 					Labels: map[string]string{
 						maestroLabelKey:   maestroLabelValue,
@@ -394,6 +397,7 @@ func TestConvertGameSpec(t *testing.T) {
 		},
 		"with containers": {
 			schedulerID: "sample",
+			roomName:    "roomName",
 			gameSpec: game_room.Spec{
 				Version: "version",
 				Containers: []game_room.Container{
@@ -403,6 +407,7 @@ func TestConvertGameSpec(t *testing.T) {
 			},
 			expectedPod: v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "roomName",
 					Namespace: "sample",
 					Labels: map[string]string{
 						maestroLabelKey:   maestroLabelValue,
@@ -420,12 +425,14 @@ func TestConvertGameSpec(t *testing.T) {
 		},
 		"with toleration": {
 			schedulerID: "sample",
+			roomName:    "roomName",
 			gameSpec: game_room.Spec{
 				Version:    "version",
 				Toleration: "some-toleration",
 			},
 			expectedPod: v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "roomName",
 					Namespace: "sample",
 					Labels: map[string]string{
 						maestroLabelKey:   maestroLabelValue,
@@ -442,12 +449,14 @@ func TestConvertGameSpec(t *testing.T) {
 		},
 		"with affinity": {
 			schedulerID: "sample",
+			roomName:    "roomName",
 			gameSpec: game_room.Spec{
 				Version:  "version",
 				Affinity: "sample-affinity",
 			},
 			expectedPod: v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "roomName",
 					Namespace: "sample",
 					Labels: map[string]string{
 						maestroLabelKey:   maestroLabelValue,
@@ -462,12 +471,14 @@ func TestConvertGameSpec(t *testing.T) {
 		},
 		"with termination grace period": {
 			schedulerID: "sample",
+			roomName:    "roomName",
 			gameSpec: game_room.Spec{
 				Version:                "version",
 				TerminationGracePeriod: 10 * time.Second,
 			},
 			expectedPod: v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "roomName",
 					Namespace: "sample",
 					Labels: map[string]string{
 						maestroLabelKey:   maestroLabelValue,
@@ -484,7 +495,7 @@ func TestConvertGameSpec(t *testing.T) {
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			res, err := convertGameRoomSpec(test.schedulerID, test.gameSpec)
+			res, err := convertGameRoomSpec(test.schedulerID, test.roomName, test.gameSpec)
 			if test.withError {
 				require.Error(t, err)
 				return
@@ -492,6 +503,7 @@ func TestConvertGameSpec(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, test.expectedPod.ObjectMeta.Labels, res.ObjectMeta.Labels)
+			require.Equal(t, test.expectedPod.ObjectMeta.Name, res.ObjectMeta.Name)
 			require.Equal(t, test.expectedPod.ObjectMeta.Namespace, res.ObjectMeta.Namespace)
 			require.Equal(t, len(test.expectedPod.Spec.Containers), len(res.Spec.Containers))
 			require.Equal(t, len(test.expectedPod.Spec.Tolerations), len(res.Spec.Tolerations))

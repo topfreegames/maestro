@@ -39,6 +39,7 @@ import (
 
 func TestGameRoomsWatch(t *testing.T) {
 	t.Parallel()
+	gameRoomName := "some-game-room"
 
 	t.Run("watch pod addition", func(t *testing.T) {
 		t.Parallel()
@@ -63,7 +64,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -122,7 +123,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -177,7 +178,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -231,7 +232,7 @@ func TestGameRoomsWatch(t *testing.T) {
 			},
 		}
 
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
 		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance)

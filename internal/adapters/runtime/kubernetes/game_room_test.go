@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -41,6 +42,7 @@ import (
 func TestGameRoomCreation(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+	gameRoomName := "some-game-room-name"
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
 	kubernetesRuntime := New(client)
 
@@ -59,7 +61,7 @@ func TestGameRoomCreation(t *testing.T) {
 				},
 			},
 		}
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
 		pods, err := client.CoreV1().Pods(scheduler.Name).List(ctx, metav1.ListOptions{})
@@ -81,7 +83,7 @@ func TestGameRoomCreation(t *testing.T) {
 		// no containers, meaning it will fail (because it can be a pod
 		// without containers).
 		gameRoomSpec := game_room.Spec{}
-		_, err = kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+		_, err = kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec)
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrInvalidArgument)
 
@@ -95,6 +97,7 @@ func TestGameRoomDeletion(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
+	gameRoomName := "some-game-room"
 	kubernetesRuntime := New(client)
 
 	t.Run("successfully delete a room", func(t *testing.T) {
@@ -112,7 +115,7 @@ func TestGameRoomDeletion(t *testing.T) {
 				},
 			},
 		}
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomSpec)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
 		pods, err := client.CoreV1().Pods(scheduler.Name).List(ctx, metav1.ListOptions{})
@@ -145,5 +148,38 @@ func TestGameRoomDeletion(t *testing.T) {
 		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, gameRoomInstance)
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrNotFound)
+	})
+}
+
+func TestCreateGameRoomName(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
+	kubernetesRuntime := New(client)
+
+	t.Run("When scheduler name is greater than max name length minus randomLength", func(t *testing.T) {
+		t.Run("return the name with randomLength", func(t *testing.T) {
+			name, err := kubernetesRuntime.CreateGameRoomName(
+				ctx,
+				entities.Scheduler{
+					Name: "lllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+				},
+			)
+			assert.NoError(t, err)
+			assert.Len(t, name, 64)
+		})
+	})
+	t.Run("To any other scheduler name size lower than max name length minus randomLength", func(t *testing.T) {
+		t.Run("return the name plus 5 caracters random", func(t *testing.T) {
+			schedulerName := "lllllllllllllllllllllllllllllll"
+			name, err := kubernetesRuntime.CreateGameRoomName(
+				ctx,
+				entities.Scheduler{
+					Name: schedulerName,
+				},
+			)
+			assert.NoError(t, err)
+			assert.Len(t, name, len(schedulerName)+6)
+		})
 	})
 }
