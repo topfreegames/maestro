@@ -43,6 +43,7 @@ reporters:
     host: "0.0.0.0:8125"
     prefix: "maestro."
     region: "region"
+    restartTimeout: 30m
   http:
     timeout: "5s"
     putURL: "http://localhost:8080"
