@@ -25,7 +25,7 @@ type DogStatsD struct {
 	client       dogstatsd.Client
 	logger       *logrus.Logger
 	statsdClient *statsd.Client
-	mutex        sync.Mutex
+	mutex        sync.RWMutex
 	ticker       *time.Ticker
 	region       string
 	host         string
@@ -45,15 +45,15 @@ func toMapStringString(o map[string]interface{}) map[string]string {
 // Report finds a matching handler to some 'event' metric and delegates
 // further actions to it
 func (d *DogStatsD) Report(event string, opts map[string]interface{}) error {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
 	handlerI, prs := handlers.Find(event)
 	if prs == false {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
 	opts[constants.TagRegion] = d.region
 	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
-	d.mutex.Lock()
 	err := handler(d.client, event, toMapStringString(opts))
-	d.mutex.Unlock()
 	if err != nil {
 		d.logger.Error(err)
 	}
@@ -115,17 +115,25 @@ func NewDogStatsDFromClient(c dogstatsd.Client, r string) *DogStatsD {
 func (d *DogStatsD) restartTicker() {
 	for range d.ticker.C {
 		d.mutex.Lock()
-		if err := d.statsdClient.Close(); err != nil {
+		if err := d.restartDogStatsdClient(); err != nil {
 			d.logger.Errorf("DogStatsD: failed to close statsd connection during restart: %s", err.Error())
 		}
 		d.mutex.Unlock()
-
-		c, err := dogstatsd.New(d.host, d.prefix)
-		if err == nil {
-			d.statsdClient = c.Client.(*statsd.Client)
-			d.client = c
-		} else {
-			d.logger.Errorf("DogStatsD: failed to recreate dogstatsd client during restart. %s", err.Error())
-		}
 	}
+}
+
+func (d *DogStatsD) restartDogStatsdClient() error {
+	err := d.statsdClient.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close statsd connection: %w", err)
+	}
+
+	c, err := dogstatsd.New(d.host, d.prefix)
+	if err != nil {
+		return fmt.Errorf("failed to recreate dogstatsd client: %w", err)
+	}
+
+	d.statsdClient = c.Client.(*statsd.Client)
+	d.client = c
+	return nil
 }
