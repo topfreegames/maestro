@@ -25,7 +25,7 @@ type DogStatsD struct {
 	client       dogstatsd.Client
 	logger       *logrus.Logger
 	statsdClient *statsd.Client
-	mutex        sync.Mutex
+	mutex        sync.RWMutex
 	ticker       *time.Ticker
 	region       string
 	host         string
@@ -45,15 +45,15 @@ func toMapStringString(o map[string]interface{}) map[string]string {
 // Report finds a matching handler to some 'event' metric and delegates
 // further actions to it
 func (d *DogStatsD) Report(event string, opts map[string]interface{}) error {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
 	handlerI, prs := handlers.Find(event)
 	if prs == false {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
 	opts[constants.TagRegion] = d.region
 	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
-	d.mutex.Lock()
 	err := handler(d.client, event, toMapStringString(opts))
-	d.mutex.Unlock()
 	if err != nil {
 		d.logger.Error(err)
 	}
@@ -115,10 +115,12 @@ func NewDogStatsDFromClient(c dogstatsd.Client, r string) *DogStatsD {
 func (d *DogStatsD) restartTicker() {
 	for range d.ticker.C {
 		d.mutex.Lock()
-		if err := d.statsdClient.Close(); err != nil {
-			d.logger.Errorf("DogStatsD: failed to close statsd connection during restart: %s", err.Error())
-		}
+		err := d.statsdClient.Close()
 		d.mutex.Unlock()
+		if err != nil {
+			d.logger.Errorf("DogStatsD: failed to close statsd connection during restart: %s", err.Error())
+			continue
+		}
 
 		c, err := dogstatsd.New(d.host, d.prefix)
 		if err == nil {
