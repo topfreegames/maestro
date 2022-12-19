@@ -71,8 +71,7 @@ func GruStatusHandler(c dogstatsd.Client, event string,
 	if err != nil {
 		return err
 	}
-	c.Gauge(fmt.Sprintf("gru.%s", opts["status"]), gauge, tags, 1)
-	return nil
+	return c.Gauge(fmt.Sprintf("gru.%s", opts["status"]), gauge, tags, 1)
 }
 
 // GruTimingHandler calls dogstatsd.Client.Timing with tags formatted as key:value
@@ -135,6 +134,5 @@ func GaugeHandler(
 	if err != nil {
 		return err
 	}
-	c.Gauge(event, gauge, tags, 1)
-	return nil
+	return c.Gauge(event, gauge, tags, 1)
 }
