@@ -286,9 +286,11 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 		case <-podStateCountTicker.C:
 			w.PodStatesCount()
 		case <-roomStatusTicker.C:
+			w.Logger.Info("Start to report rooms status")
 			if err := w.ReportRoomsStatuses(); err != nil {
 				w.Logger.WithError(err).Error("failed to report room status")
 			}
+			w.Logger.Info("Finished to report rooms status")
 		}
 	}
 }
@@ -423,8 +425,6 @@ func (w *Watcher) ReportRoomsStatuses() error {
 		return nil
 	}
 
-	w.Logger.Info("Start to report RoomsStatuses")
-
 	var roomCountByStatus *models.RoomsStatusCount
 	err := w.MetricsReporter.WithSegment(models.SegmentGroupBy, func() error {
 		var err error
@@ -483,8 +483,6 @@ func (w *Watcher) ReportRoomsStatuses() error {
 			w.Logger.Infof("Finished to report status %s", r.Status)
 		}
 	}
-
-	w.Logger.Info("Finished to report RoomsStatuses")
 
 	return nil
 }
