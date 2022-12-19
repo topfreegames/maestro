@@ -52,8 +52,15 @@ func copyOpts(src map[string]interface{}) map[string]interface{} {
 
 // Report is Reporters' implementation of the Reporter interface
 func (r *Reporters) Report(event string, opts map[string]interface{}) error {
+	var aggregatedErrors []error
 	for _, reporter := range r.reporters {
-		reporter.Report(event, copyOpts(opts))
+		if err := reporter.Report(event, copyOpts(opts)); err != nil {
+			aggregatedErrors = append(aggregatedErrors, err)
+		}
+	}
+
+	if len(aggregatedErrors) > 0 {
+		return fmt.Errorf("failed to report '%s' event: %v", event, aggregatedErrors)
 	}
 	return nil
 }
@@ -80,7 +87,7 @@ func MakeReporters(config *viper.Viper, logger *logrus.Logger) {
 	for k := range GetInstance().reporters {
 		correctlySet = append(correctlySet, k)
 	}
-	logger.Info(fmt.Sprintf("Active reporters: %s", strings.Join(correctlySet, ", ")))
+	logger.Infof("Active reporters: %s", strings.Join(correctlySet, ", "))
 }
 
 // NewReporters ctor

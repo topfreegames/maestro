@@ -286,7 +286,11 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 		case <-podStateCountTicker.C:
 			w.PodStatesCount()
 		case <-roomStatusTicker.C:
-			_ = w.ReportRoomsStatuses()
+			w.Logger.Info("Start to report rooms status")
+			if err := w.ReportRoomsStatuses(); err != nil {
+				w.Logger.WithError(err).Error("failed to report room status")
+			}
+			w.Logger.Info("Finished to report rooms status")
 		}
 	}
 }
@@ -461,12 +465,23 @@ func (w *Watcher) ReportRoomsStatuses() error {
 	}
 
 	for _, r := range roomDataSlice {
-		_ = reporters.Report(reportersConstants.EventGruStatus, map[string]interface{}{
+		w.Logger.
+			WithField("gauge", r.Gauge).
+			Infof("Start reporting %s", r.Status)
+
+		err := reporters.Report(reportersConstants.EventGruStatus, map[string]interface{}{
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
 			"status":                        r.Status,
 			"gauge":                         r.Gauge,
 		})
+		if err != nil {
+			w.Logger.
+				WithError(err).
+				Errorf("Finished to report status %s with error", r.Status)
+		} else {
+			w.Logger.Infof("Finished to report status %s", r.Status)
+		}
 	}
 
 	return nil
@@ -741,8 +756,8 @@ func (w *Watcher) RemoveDeadRooms() error {
 		podsToDelete := w.filterPodsByName(logger, pods, append(roomsNoPingSince, roomsOnOccupiedTimeout...))
 
 		startedEvent := models.NewSchedulerEvent(
-			models.StartRemoveDeadRoomsEventName, 
-			w.SchedulerName, 
+			models.StartRemoveDeadRoomsEventName,
+			w.SchedulerName,
 			map[string]interface{}{
 				"amount": len(podsToDelete),
 			},
@@ -806,8 +821,8 @@ func (w *Watcher) RemoveDeadRooms() error {
 		}
 
 		finishedEvent := models.NewSchedulerEvent(
-			models.FinishedRemoveDeadRoomsEventName, 
-			w.SchedulerName, 
+			models.FinishedRemoveDeadRoomsEventName,
+			w.SchedulerName,
 			map[string]interface{}{
 				models.SuccessMetadataName: err == nil,
 			})
@@ -817,7 +832,6 @@ func (w *Watcher) RemoveDeadRooms() error {
 		}
 	}
 	logger.Info("finish check of dead rooms")
-
 
 	return nil
 }

@@ -49,15 +49,15 @@ func (d *DogStatsD) Report(event string, opts map[string]interface{}) error {
 	defer d.mutex.RUnlock()
 	handlerI, prs := handlers.Find(event)
 	if prs == false {
-		return fmt.Errorf("reportHandler for %s doesn't exist", event)
+		return fmt.Errorf("DogStatsD: reportHandler for %s doesn't exist", event)
 	}
 	opts[constants.TagRegion] = d.region
 	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
 	err := handler(d.client, event, toMapStringString(opts))
 	if err != nil {
-		d.logger.Error(err)
+		return fmt.Errorf("DogStatsD: failed to report event '%s': %w", event, err)
 	}
-	return err
+	return nil
 }
 
 // MakeDogStatsD adds a DogStatsD struct to the Reporters' singleton
@@ -116,13 +116,15 @@ func (d *DogStatsD) restartTicker() {
 	for range d.ticker.C {
 		d.mutex.Lock()
 		if err := d.restartDogStatsdClient(); err != nil {
-			d.logger.Errorf("DogStatsD: failed to close statsd connection during restart: %s", err.Error())
+			d.logger.WithError(err).Errorf("DogStatsD: failed to close statsd connection during restart")
 		}
 		d.mutex.Unlock()
 	}
 }
 
 func (d *DogStatsD) restartDogStatsdClient() error {
+	d.logger.Info("Trying to restart the dogstatsd client")
+
 	err := d.statsdClient.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close statsd connection: %w", err)
@@ -133,6 +135,7 @@ func (d *DogStatsD) restartDogStatsdClient() error {
 		return fmt.Errorf("failed to recreate dogstatsd client: %w", err)
 	}
 
+	d.logger.Info("DogStatsD was restarted successfully")
 	d.statsdClient = c.Client.(*statsd.Client)
 	d.client = c
 	return nil
