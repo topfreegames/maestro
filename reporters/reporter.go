@@ -76,7 +76,7 @@ func Report(event string, opts map[string]interface{}) error {
 }
 
 // MakeReporters creates Reporters' singleton from config/{}.yaml
-func MakeReporters(config *viper.Viper, logger *logrus.Logger) {
+func MakeReporters(config *viper.Viper, logger logrus.FieldLogger) {
 	if config.IsSet("reporters.dogstatsd") {
 		MakeDogStatsD(config, logger, GetInstance())
 	}

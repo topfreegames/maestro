@@ -9,6 +9,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/topfreegames/maestro/metadata"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
@@ -59,7 +60,11 @@ var startCmd = &cobra.Command{
 			cmdL.Fatal(err)
 		}
 
-		reporters.MakeReporters(config, log)
+		var reporterLogger logrus.FieldLogger = log.WithFields(logrus.Fields{
+			"source":  "maestro",
+			"version": metadata.Version,
+		})
+		reporters.MakeReporters(config, reporterLogger)
 
 		app.ListenAndServe()
 	},

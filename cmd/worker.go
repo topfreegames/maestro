@@ -9,6 +9,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/topfreegames/maestro/metadata"
 	"strconv"
 	"strings"
 
@@ -65,7 +66,11 @@ var workerCmd = &cobra.Command{
 			cmdL.Fatal("invalid port range", hostPortRange, err)
 		}
 
-		reporters.MakeReporters(config, log)
+		reporterLogger := log.WithFields(logrus.Fields{
+			"source":  "maestro-worker",
+			"version": metadata.Version,
+		})
+		reporters.MakeReporters(config, reporterLogger)
 
 		err = w.Start(startHostPortRange, endHostPortRange)
 		if err != nil {

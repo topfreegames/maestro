@@ -24,7 +24,7 @@ import (
 type HTTP struct {
 	client handlers.Client
 	region string
-	logger *logrus.Logger
+	logger logrus.FieldLogger
 }
 
 // HTTPClient implements reporters::http.Client interface
@@ -63,7 +63,7 @@ func (c *HTTPClient) Send(opts map[string]interface{}) error {
 		return err
 	}
 	if res.StatusCode > 299 {
-		return fmt.Errorf("reporters.HTTP error status code: %d", res.StatusCode)
+		return fmt.Errorf("error status code: %d", res.StatusCode)
 	}
 	return nil
 }
@@ -76,7 +76,7 @@ func (c *HTTPClient) Send(opts map[string]interface{}) error {
 // metadata = opts - opts[tags]
 func (h *HTTP) Report(event string, opts map[string]interface{}) error {
 	handlerI, prs := handlers.Find(event)
-	if prs == false {
+	if !prs {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
 	tags := []string{"maestro", event, h.region}
@@ -94,14 +94,14 @@ func (h *HTTP) Report(event string, opts map[string]interface{}) error {
 	handler := handlerI.(func(handlers.Client, map[string]interface{}) error)
 	err := handler(h.client, opts)
 	if err != nil {
-		h.logger.Error(err)
+		return fmt.Errorf("failed to report %s: %w", event, err)
 	}
-	return err
+	return nil
 }
 
 // MakeHTTP adds an HTTP struct to the Reporters' singleton
-func MakeHTTP(config *viper.Viper, logger *logrus.Logger, r *Reporters) {
-	httpR, err := NewHTTP(config, logger)
+func MakeHTTP(config *viper.Viper, logger logrus.FieldLogger, r *Reporters) {
+	httpR, err := NewHTTP(config, logger.WithField("reporter", "http"))
 	if err != nil {
 		logger.Error(err)
 		return
@@ -116,7 +116,7 @@ func loadDefaultHTTPConfigs(c *viper.Viper) {
 }
 
 // NewHTTP creates an HTTP struct using putURL and region from config
-func NewHTTP(config *viper.Viper, logger *logrus.Logger) (*HTTP, error) {
+func NewHTTP(config *viper.Viper, logger logrus.FieldLogger) (*HTTP, error) {
 	loadDefaultHTTPConfigs(config)
 	putURL := config.GetString("reporters.http.putURL")
 	region := config.GetString("reporters.http.region")
