@@ -12,19 +12,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DataDog/datadog-go/statsd"
+	"github.com/DataDog/datadog-go/v5/statsd"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/dogstatsd"
 	"github.com/topfreegames/maestro/reporters/constants"
 	handlers "github.com/topfreegames/maestro/reporters/dogstatsd"
 )
 
 // DogStatsD reports metrics to a dogstatsd.Client
 type DogStatsD struct {
-	client       dogstatsd.Client
+	client       statsd.ClientInterface
 	logger       logrus.FieldLogger
-	statsdClient *statsd.Client
 	mutex        sync.RWMutex
 	ticker       *time.Ticker
 	region       string
@@ -52,7 +50,7 @@ func (d *DogStatsD) Report(event string, opts map[string]interface{}) error {
 		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
 	opts[constants.TagRegion] = d.region
-	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
+	handler := handlerI.(func(statsd.ClientInterface, string, map[string]string) error)
 	err := handler(d.client, event, toMapStringString(opts))
 	if err != nil {
 		return fmt.Errorf("failed to report event '%s': %w", event, err)
@@ -81,7 +79,7 @@ func NewDogStatsD(config *viper.Viper, logger logrus.FieldLogger) (*DogStatsD, e
 	loadDefaultDogStatsDConfigs(config)
 	host := config.GetString("reporters.dogstatsd.host")
 	prefix := config.GetString("reporters.dogstatsd.prefix")
-	c, err := dogstatsd.New(host, prefix)
+	c, err := statsd.New(host, statsd.WithNamespace(prefix))
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +89,6 @@ func NewDogStatsD(config *viper.Viper, logger logrus.FieldLogger) (*DogStatsD, e
 
 	dogstatsdR := &DogStatsD{
 		client:       c,
-		statsdClient: c.Client.(*statsd.Client),
 		logger:       logger,
 		region:       r,
 		host:         host,
@@ -109,7 +106,7 @@ func NewDogStatsD(config *viper.Viper, logger logrus.FieldLogger) (*DogStatsD, e
 
 // NewDogStatsDFromClient creates a DogStatsD struct with an already configured
 // dogstatsd.Client -- or a mock client
-func NewDogStatsDFromClient(c dogstatsd.Client, r string) *DogStatsD {
+func NewDogStatsDFromClient(c statsd.ClientInterface, r string) *DogStatsD {
 	return &DogStatsD{client: c, region: r}
 }
 
@@ -125,18 +122,17 @@ func (d *DogStatsD) restartTicker() {
 }
 
 func (d *DogStatsD) restartDogStatsdClient() error {
-	err := d.statsdClient.Close()
+	err := d.client.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close statsd connection: %w", err)
 	}
 
-	c, err := dogstatsd.New(d.host, d.prefix)
+	c, err := statsd.New(d.host, statsd.WithNamespace(d.prefix))
 	if err != nil {
 		return fmt.Errorf("failed to recreate dogstatsd client: %w", err)
 	}
 
 	d.logger.Info("DogStatsD was restarted successfully")
-	d.statsdClient = c.Client.(*statsd.Client)
 	d.client = c
 	return nil
 }

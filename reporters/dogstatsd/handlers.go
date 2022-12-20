@@ -9,10 +9,10 @@ package dogstatsd
 
 import (
 	"fmt"
+	"github.com/DataDog/datadog-go/v5/statsd"
 	"strconv"
 	"time"
 
-	"github.com/topfreegames/extensions/dogstatsd"
 	"github.com/topfreegames/maestro/reporters/constants"
 )
 
@@ -56,7 +56,7 @@ func createAllowedTags(opts map[string]string, allowed []string) []string {
 }
 
 // GruIncrHandler calls dogstatsd.Client.Incr with tags formatted as key:value
-func GruIncrHandler(c dogstatsd.Client, event string,
+func GruIncrHandler(c statsd.ClientInterface, event string,
 	opts map[string]string) error {
 	tags := createTags(opts)
 	c.Incr(event, tags, 1)
@@ -64,7 +64,7 @@ func GruIncrHandler(c dogstatsd.Client, event string,
 }
 
 // GruStatusHandler calls dogstatsd.Client.Incr with tags formatted as key:value
-func GruStatusHandler(c dogstatsd.Client, event string,
+func GruStatusHandler(c statsd.ClientInterface, event string,
 	opts map[string]string) error {
 	tags := createAllowedTags(opts, []string{constants.TagGame, constants.TagScheduler, constants.TagRegion})
 	gauge, err := strconv.ParseFloat(opts["gauge"], 64)
@@ -78,7 +78,7 @@ func GruStatusHandler(c dogstatsd.Client, event string,
 }
 
 // GruTimingHandler calls dogstatsd.Client.Timing with tags formatted as key:value
-func GruTimingHandler(c dogstatsd.Client, event string,
+func GruTimingHandler(c statsd.ClientInterface, event string,
 	opts map[string]string) error {
 	tags := createAllowedTags(opts, []string{
 		constants.TagGame, constants.TagScheduler, constants.TagRegion,
@@ -90,7 +90,7 @@ func GruTimingHandler(c dogstatsd.Client, event string,
 }
 
 // HistogramHandler calls dogstatsd.Client.Histogram with tags formatted as key:value
-func HistogramHandler(c dogstatsd.Client, event string, opts map[string]string) error {
+func HistogramHandler(c statsd.ClientInterface, event string, opts map[string]string) error {
 	tags := createAllowedTags(opts, []string{
 		constants.TagGame, constants.TagScheduler, constants.TagRegion, constants.TagHTTPStatus})
 	histogram, err := strconv.ParseFloat(opts["histogram"], 64)
@@ -102,7 +102,7 @@ func HistogramHandler(c dogstatsd.Client, event string, opts map[string]string) 
 }
 
 // HTTPTimingHandler calls dogstatsd.Client.Timing with tags formatted as key:value for http calls
-func HTTPTimingHandler(c dogstatsd.Client, event string,
+func HTTPTimingHandler(c statsd.ClientInterface, event string,
 	opts map[string]string) error {
 	tags := createAllowedTags(opts, []string{
 		constants.TagRoute, constants.TagScheduler, constants.TagRegion,
@@ -113,7 +113,7 @@ func HTTPTimingHandler(c dogstatsd.Client, event string,
 }
 
 // TimingHandler calls dogstatsd.Client.Timing with tags formatted as key:value for internal calls
-func TimingHandler(c dogstatsd.Client, event string,
+func TimingHandler(c statsd.ClientInterface, event string,
 	opts map[string]string) error {
 	tags := createAllowedTags(opts, []string{
 		constants.TagScheduler, constants.TagRegion,
@@ -125,7 +125,7 @@ func TimingHandler(c dogstatsd.Client, event string,
 
 // GaugeHandler calls dogstatsd.Client.Gauge with tags formatted as key:value
 func GaugeHandler(
-	c dogstatsd.Client,
+	c statsd.ClientInterface,
 	event string,
 	opts map[string]string,
 ) error {

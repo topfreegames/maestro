@@ -8,8 +8,9 @@
 package reporters_test
 
 import (
+	"github.com/DataDog/datadog-go/v5/statsd/mocks"
 	"github.com/golang/mock/gomock"
-	"github.com/topfreegames/extensions/dogstatsd/mocks"
+
 	"github.com/topfreegames/maestro/reporters"
 	handlers "github.com/topfreegames/maestro/reporters/dogstatsd"
 
@@ -20,7 +21,7 @@ import (
 var _ = Describe("DogStatsD", func() {
 	var (
 		r    *reporters.Reporters
-		c    *mocks.MockClient
+		c    *mock_statsd.MockClientInterface
 		opts map[string]string
 	)
 
@@ -34,7 +35,7 @@ var _ = Describe("DogStatsD", func() {
 
 	BeforeEach(func() {
 		r = reporters.NewReporters()
-		c = mocks.NewMockClient(mockCtrl)
+		c = mock_statsd.NewMockClientInterface(mockCtrl)
 		opts = map[string]string{"game": "pong"}
 	})
 

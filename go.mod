@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go v0.34.0
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/DataDog/datadog-go v0.0.0-20170427165718-0ddda6bee211
+	github.com/DataDog/datadog-go/v5 v5.1.1
 	github.com/GuiaBolso/darwin v0.0.0-20170210191649-86919dfcf808
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20161001163130-7b3beb6df3c4
@@ -22,7 +23,7 @@ require (
 	github.com/go-redis/redis v6.12.0+incompatible
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gogo/protobuf v1.2.1
-	github.com/golang/mock v1.0.0
+	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.4.2
 	github.com/google/btree v1.0.0
 	github.com/google/gofuzz v1.0.0
@@ -57,18 +58,19 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pelletier/go-toml v1.2.0
 	github.com/petar/GoLLRB v0.0.0-20190514000832-33fb24c13b99
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.9.1
 	github.com/pmylund/go-cache v2.0.0+incompatible
 	github.com/rs/cors v0.0.0-20170727213201-7af7a1e09ba3
 	github.com/satori/go.uuid v1.1.0
 	github.com/sergi/go-diff v1.0.0
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v0.0.0-20170217164146-9be650865eab
 	github.com/spf13/cast v1.0.0
 	github.com/spf13/cobra v0.0.0-20170408144537-5deb57bbca49
 	github.com/spf13/jwalterweatherman v0.0.0-20170109133355-fa7ca7e836cf
 	github.com/spf13/pflag v0.0.0-20170412152249-e453343e6260
 	github.com/spf13/viper v1.1.0
+	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/topfreegames/extensions v6.4.0+incompatible
 	github.com/topfreegames/go-extensions-http v1.0.0
 	github.com/topfreegames/go-extensions-k8s-client-go v1.1.1-0.20190906200922-71e4464e67cb
@@ -80,12 +82,11 @@ require (
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3 // indirect
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
+	golang.org/x/sys v0.0.0-20210510120138-977fb7262007
 	golang.org/x/text v0.3.3
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
-	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/appengine v1.4.0
 	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8
 	google.golang.org/grpc v1.14.0
