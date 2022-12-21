@@ -5,7 +5,7 @@ package mocks
 
 import (
 	gomock "github.com/golang/mock/gomock"
-	interfaces "github.com/topfreegames/extensions/pg/interfaces"
+	interfaces "github.com/topfreegames/extensions/v9/pg/interfaces"
 	oauth2 "golang.org/x/oauth2"
 )
 

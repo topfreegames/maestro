@@ -5,41 +5,44 @@
 package mocks
 
 import (
-	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
+        reflect "reflect"
+
+        gomock "github.com/golang/mock/gomock"
 )
 
-// MockReporter is a mock of Reporter interface
+// MockReporter is a mock of Reporter interface.
 type MockReporter struct {
-	ctrl     *gomock.Controller
-	recorder *MockReporterMockRecorder
+        ctrl     *gomock.Controller
+        recorder *MockReporterMockRecorder
 }
 
-// MockReporterMockRecorder is the mock recorder for MockReporter
+// MockReporterMockRecorder is the mock recorder for MockReporter.
 type MockReporterMockRecorder struct {
-	mock *MockReporter
+        mock *MockReporter
 }
 
-// NewMockReporter creates a new mock instance
+// NewMockReporter creates a new mock instance.
 func NewMockReporter(ctrl *gomock.Controller) *MockReporter {
-	mock := &MockReporter{ctrl: ctrl}
-	mock.recorder = &MockReporterMockRecorder{mock}
-	return mock
+        mock := &MockReporter{ctrl: ctrl}
+        mock.recorder = &MockReporterMockRecorder{mock}
+        return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockReporter) EXPECT() *MockReporterMockRecorder {
-	return m.recorder
+        return m.recorder
 }
 
-// Report mocks base method
+// Report mocks base method.
 func (m *MockReporter) Report(event string, opts map[string]interface{}) error {
-	ret := m.ctrl.Call(m, "Report", event, opts)
-	ret0, _ := ret[0].(error)
-	return ret0
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "Report", event, opts)
+        ret0, _ := ret[0].(error)
+        return ret0
 }
 
-// Report indicates an expected call of Report
+// Report indicates an expected call of Report.
 func (mr *MockReporterMockRecorder) Report(event, opts interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Report", reflect.TypeOf((*MockReporter)(nil).Report), event, opts)
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Report", reflect.TypeOf((*MockReporter)(nil).Report), event, opts)
 }
