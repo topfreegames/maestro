@@ -16,7 +16,7 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/go-redis/redis"
 	"github.com/sirupsen/logrus"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
 	maestroErrors "github.com/topfreegames/maestro/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

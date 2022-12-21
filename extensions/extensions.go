@@ -13,15 +13,15 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/pg"
-	"github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/extensions/v9/pg"
+	"github.com/topfreegames/extensions/v9/redis"
 	kubernetesExtensions "github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
-	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
+	pginterfaces "github.com/topfreegames/extensions/v9/pg/interfaces"
 )
 
 // GetRedisClient returns a redis client

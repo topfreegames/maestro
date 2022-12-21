@@ -17,7 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	goredis "github.com/go-redis/redis"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
 )
 
 // OperationManager controls wheter a maestro operation should

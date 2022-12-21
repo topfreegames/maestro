@@ -12,7 +12,7 @@ import (
 	"strconv"
 
 	goredis "github.com/go-redis/redis"
-	redis "github.com/topfreegames/extensions/redis/interfaces"
+	redis "github.com/topfreegames/extensions/v9/redis/interfaces"
 )
 
 type scaleType string

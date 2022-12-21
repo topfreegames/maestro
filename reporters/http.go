@@ -16,7 +16,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	httpExtensions "github.com/topfreegames/extensions/http"
+	httpExtensions "github.com/topfreegames/extensions/v9/http"
 	handlers "github.com/topfreegames/maestro/reporters/http"
 )
 

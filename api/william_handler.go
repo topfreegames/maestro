@@ -10,7 +10,7 @@ package api
 import (
 	"encoding/json"
 	"github.com/sirupsen/logrus"
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/middleware"
 	"net/http"
 )
 

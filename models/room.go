@@ -18,9 +18,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/go-redis/redis"
-	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	"github.com/topfreegames/extensions/redis/interfaces"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	pginterfaces "github.com/topfreegames/extensions/v9/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"
 	"k8s.io/client-go/kubernetes"

@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/viper"
 
 	goredis "github.com/go-redis/redis"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
 )
 
 // LimitManager helps to manage scale ups on limit case.

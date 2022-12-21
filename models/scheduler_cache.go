@@ -6,7 +6,7 @@ import (
 
 	"github.com/pmylund/go-cache"
 	"github.com/sirupsen/logrus"
-	"github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 )
 

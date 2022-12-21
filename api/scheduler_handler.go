@@ -24,8 +24,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/sirupsen/logrus"
-	"github.com/topfreegames/extensions/clock"
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/clock"
+	"github.com/topfreegames/extensions/v9/middleware"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/models"
 )

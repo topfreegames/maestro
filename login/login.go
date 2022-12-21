@@ -15,7 +15,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
 	"golang.org/x/oauth2"

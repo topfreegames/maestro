@@ -3,7 +3,7 @@ package auth
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/login"
 	logininterfaces "github.com/topfreegames/maestro/login/interfaces"

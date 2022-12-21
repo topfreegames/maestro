@@ -26,12 +26,12 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	newrelic "github.com/newrelic/go-agent"
-	"github.com/topfreegames/extensions/middleware"
-	"github.com/topfreegames/extensions/pg"
-	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	"github.com/topfreegames/extensions/redis"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
-	"github.com/topfreegames/extensions/router"
+	"github.com/topfreegames/extensions/v9/middleware"
+	"github.com/topfreegames/extensions/v9/pg"
+	pginterfaces "github.com/topfreegames/extensions/v9/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/redis"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
+	"github.com/topfreegames/extensions/v9/router"
 	logininterfaces "github.com/topfreegames/maestro/login/interfaces"
 	storageredis "github.com/topfreegames/maestro/storage/redis"
 

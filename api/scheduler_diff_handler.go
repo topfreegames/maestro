@@ -14,7 +14,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/middleware"
 	"github.com/topfreegames/maestro/models"
 )
 

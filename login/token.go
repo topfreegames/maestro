@@ -10,7 +10,7 @@ package login
 import (
 	"time"
 
-	"github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"golang.org/x/oauth2"
 )

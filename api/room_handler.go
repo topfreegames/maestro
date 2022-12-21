@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/middleware"
 	"github.com/topfreegames/go-extensions-k8s-client-go/kubernetes"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/eventforwarder"

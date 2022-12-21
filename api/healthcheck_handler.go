@@ -10,7 +10,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/middleware"
 	"github.com/topfreegames/maestro/errors"
 )
 

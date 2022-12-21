@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	"github.com/go-redis/redis"
-	"github.com/topfreegames/extensions/redis/interfaces"
+	"github.com/topfreegames/extensions/v9/redis/interfaces"
 )
 
 // RoomsStatusCount is the struct that defines the rooms status status count

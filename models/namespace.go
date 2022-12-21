@@ -10,7 +10,7 @@ package models
 import (
 	"strings"
 
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"

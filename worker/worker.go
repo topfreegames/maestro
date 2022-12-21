@@ -31,10 +31,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 
-	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	"github.com/topfreegames/extensions/redis"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
-
+	pginterfaces "github.com/topfreegames/extensions/v9/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/redis"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
 )
 
 type gracefulShutdown struct {
@@ -131,7 +130,6 @@ func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 	if err != nil {
 		return err
 	}
-
 
 	return nil
 }

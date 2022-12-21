@@ -17,7 +17,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/middleware"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 )

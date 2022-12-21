@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
+	pginterfaces "github.com/topfreegames/extensions/v9/pg/interfaces"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/reporters"
 	reportersConstants "github.com/topfreegames/maestro/reporters/constants"

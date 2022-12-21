@@ -15,8 +15,8 @@ import (
 
 	"github.com/go-pg/pg"
 	"github.com/go-redis/redis"
-	"github.com/topfreegames/extensions/pg/interfaces"
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	"github.com/topfreegames/extensions/v9/pg/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metricsClient "k8s.io/metrics/pkg/client/clientset/versioned"
 )

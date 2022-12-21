@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/topfreegames/extensions/pg"
+	"github.com/topfreegames/extensions/v9/pg"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -396,7 +396,7 @@ var _ = Describe("Scheduler", func() {
 		It("should get schedulers names from the database", func() {
 			expectedNames := []string{"scheduler1", "scheduler2", "scheduler3"}
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Do(
-				func(schedulers *[]Scheduler, query string) {
+				func(schedulers *[]Scheduler, query string, _ ...interface{}) {
 					expectedSchedulers := make([]Scheduler, len(expectedNames))
 					for idx, name := range expectedNames {
 						expectedSchedulers[idx] = Scheduler{Name: name}

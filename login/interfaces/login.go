@@ -8,7 +8,7 @@
 package interfaces
 
 import (
-	"github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/pg/interfaces"
 	"golang.org/x/oauth2"
 )
 

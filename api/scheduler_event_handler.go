@@ -7,7 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/middleware"
 )
 
 // SchedulerEventHandler returns the scheduler events
@@ -27,9 +27,9 @@ func (g *SchedulerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	l := middleware.GetLogger(r.Context())
 	logger := l.WithFields(logrus.Fields{
-		"source":       "SchedulerEventHandler",
-		"operation":    "get scheduler events",
-		"scheduler":    schedulerName,
+		"source":    "SchedulerEventHandler",
+		"operation": "get scheduler events",
+		"scheduler": schedulerName,
 	})
 
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))

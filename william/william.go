@@ -10,7 +10,7 @@ package william
 import (
 	"fmt"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/pg/interfaces"
+	"github.com/topfreegames/extensions/v9/pg/interfaces"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 	"net/http"

@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
+	redisinterfaces "github.com/topfreegames/extensions/v9/redis/interfaces"
 )
 
 // Port has the port container port, protocol and hostPort which is binded to the host machine port
