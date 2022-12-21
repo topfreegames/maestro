@@ -213,7 +213,7 @@ var _ = Describe("SchedulerOperationHandler", func() {
 			createPod("pod1", schedulerName, "v1.0")
 			createPod("pod2", schedulerName, "v2.0")
 
-			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+			mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline).AnyTimes()
 			mockPipeline.EXPECT().HLen(models.GetPodMapRedisKey(schedulerName)).Return(goredis.NewIntResult(2, nil))
 			mockPipeline.EXPECT().Exec()
 

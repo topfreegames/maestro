@@ -10,6 +10,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/asaskevich/govalidator"
 	"net/http"
 	"strings"
 	"time"
@@ -64,4 +65,10 @@ func returnIfOperationManagerExists(
 
 	app.HandleError(w, http.StatusInternalServerError, "redis failed on get operation key", err)
 	return true
+}
+
+func CreateGoValidators() {
+	govalidator.TagMap["int64"] = govalidator.Validator(func(str string) bool {
+		return govalidator.IsInt(str)
+	})
 }

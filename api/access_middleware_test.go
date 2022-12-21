@@ -133,7 +133,7 @@ var _ = Describe("AccessMiddleware", func() {
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT name FROM schedulers").Do(
-					func(schedulers *[]models.Scheduler, query string) {
+					func(schedulers *[]models.Scheduler, query string, _ ...interface{}) {
 						expectedSchedulers := make([]models.Scheduler, len(expectedNames))
 						for idx, name := range expectedNames {
 							expectedSchedulers[idx] = models.Scheduler{Name: name}

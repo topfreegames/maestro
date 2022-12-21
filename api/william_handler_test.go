@@ -1,5 +1,7 @@
 // maestro
+//go:build unit
 // +build unit
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -19,7 +21,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/middleware"
 	. "github.com/topfreegames/maestro/api"
 )
 
@@ -45,7 +47,7 @@ var _ = Describe("WilliamHandler", func() {
 			mockCtxWrapper.EXPECT().WithContext(gomock.Any(), app.DBClient.DB).Return(app.DBClient.DB)
 			mockDb.EXPECT().
 				Query(gomock.Any(), "SELECT * FROM schedulers").
-				Do(func(scheds *[]models.Scheduler, _ string) {
+				Do(func(scheds *[]models.Scheduler, _ string, _ ...interface{}) {
 					*scheds = []models.Scheduler{}
 				})
 

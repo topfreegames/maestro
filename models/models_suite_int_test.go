@@ -11,7 +11,7 @@ package models_test
 import (
 	"testing"
 
-	"github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/extensions/v9/redis"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -19,7 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
 	"github.com/topfreegames/maestro/extensions"
 	"github.com/topfreegames/maestro/models"
 	mtesting "github.com/topfreegames/maestro/testing"

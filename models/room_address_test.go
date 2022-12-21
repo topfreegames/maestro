@@ -10,7 +10,7 @@ package models_test
 
 import (
 	"encoding/json"
-	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	redismocks "github.com/topfreegames/extensions/v9/redis/mocks"
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"

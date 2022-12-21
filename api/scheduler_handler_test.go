@@ -1,5 +1,7 @@
 // maestro
+//go:build unit
 // +build unit
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -27,7 +29,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
-	"github.com/topfreegames/extensions/pg"
+	"github.com/topfreegames/extensions/v9/pg"
 	"github.com/topfreegames/maestro/api"
 	"github.com/topfreegames/maestro/controller"
 	"github.com/topfreegames/maestro/login"
@@ -118,6 +120,7 @@ var _ = Describe("Scheduler Handler", func() {
 }`
 
 	BeforeEach(func() {
+		api.CreateGoValidators()
 		// Record HTTP responses.
 		recorder = httptest.NewRecorder()
 		node := &v1.Node{}
@@ -156,7 +159,7 @@ var _ = Describe("Scheduler Handler", func() {
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT name FROM schedulers").Do(
-					func(schedulers *[]models.Scheduler, query string) {
+					func(schedulers *[]models.Scheduler, query string, _ ...interface{}) {
 						expectedSchedulers := make([]models.Scheduler, len(expectedNames))
 						for idx, name := range expectedNames {
 							expectedSchedulers[idx] = models.Scheduler{Name: name}
@@ -180,7 +183,7 @@ var _ = Describe("Scheduler Handler", func() {
 
 				mockDb.EXPECT().
 					Query(gomock.Any(), "SELECT name FROM schedulers").Do(
-					func(schedulers *[]models.Scheduler, query string) {
+					func(schedulers *[]models.Scheduler, query string, _ ...interface{}) {
 						expectedSchedulers := make([]models.Scheduler, len(expectedNames))
 						for idx, name := range expectedNames {
 							expectedSchedulers[idx] = models.Scheduler{Name: name}
@@ -525,7 +528,7 @@ autoscaling:
 					var obj map[string]interface{}
 					err := json.Unmarshal([]byte(recorder.Body.String()), &obj)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(obj["code"]).To(Equal("MAE-000"))
+					Expect(obj["code"]).To(Equal("MAE-004"))
 					Expect(obj["error"]).To(Equal("Create scheduler failed"))
 					Expect(obj["description"]).To(Equal("node without label error"))
 					Expect(obj["success"]).To(Equal(false))
@@ -549,7 +552,7 @@ autoscaling:
 					MockReturnRedisLock(mockRedisClient, terminationLockKey, nil)
 
 					mockRedisTraceWrapper.EXPECT().WithContext(gomock.Any(), mockRedisClient).Return(mockRedisClient)
-					MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, query string, modifier string) {
+					MockLoadScheduler("schedulerName", mockDb).Do(func(scheduler *models.Scheduler, _ ...interface{}) {
 						scheduler.YAML = yamlString
 					})
 					mockDb.EXPECT().Exec("DELETE FROM schedulers WHERE name = ?", "schedulerName")
@@ -1758,7 +1761,7 @@ game: game-name
 						scheduler.YAML = yamlStr
 					})
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().
 					HLen(models.GetPodMapRedisKey(schedulerName)).
 					Return(redis.NewIntResult(int64(replicasBefore), nil))
@@ -1772,7 +1775,7 @@ game: game-name
 				MockReturnRedisLock(mockRedisClient, downscalingLockKey, nil)
 
 				readyKey := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, name := range names {
 					mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
 					MockPodNotFound(mockRedisClient, schedulerName, name)
@@ -1861,7 +1864,7 @@ game: game-name
 						scheduler.YAML = yamlStr
 					})
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().
 					HLen(models.GetPodMapRedisKey(schedulerName)).
 					Return(redis.NewIntResult(int64(replicasBefore), nil))
@@ -1875,7 +1878,7 @@ game: game-name
 				MockReturnRedisLock(mockRedisClient, downscalingLockKey, nil)
 
 				readyKey := models.GetRoomStatusSetRedisKey(schedulerName, models.StatusReady)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				for _, name := range names {
 					mockPipeline.EXPECT().SPop(readyKey).Return(redis.NewStringResult(name, nil))
 					MockPodNotFound(mockRedisClient, schedulerName, name)
@@ -2128,7 +2131,7 @@ game: game-name
 
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				// mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HLen(models.GetPodMapRedisKey(scheduler1.Name)).Return(redis.NewIntResult(0, nil))
 				mockPipeline.EXPECT().Exec()
 
@@ -2224,7 +2227,7 @@ game: game-name
 
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				// mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HLen(models.GetPodMapRedisKey(scheduler1.Name)).Return(redis.NewIntResult(0, nil))
 				mockPipeline.EXPECT().Exec()
 
@@ -2458,7 +2461,7 @@ game: game-name
 				err = json.Unmarshal(recorder.Body.Bytes(), &body)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(body["code"]).To(Equal("MAE-004"))
-				Expect(body["description"]).To(Equal("Image: non zero value required;"))
+				Expect(body["description"]).To(Equal("image: non zero value required"))
 				Expect(body["error"]).To(Equal("ValidationFailedError"))
 				Expect(body["success"]).To(BeFalse())
 			})
@@ -2600,7 +2603,7 @@ game: game-name
 
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HLen(models.GetPodMapRedisKey(scheduler1.Name)).Return(redis.NewIntResult(0, nil))
 				mockPipeline.EXPECT().Exec()
 
@@ -2724,7 +2727,7 @@ game: game-name
 
 				configLockKey := models.GetSchedulerConfigLockKey(config.GetString("watcher.lockKey"), scheduler1.Name)
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				// mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HLen(models.GetPodMapRedisKey(scheduler1.Name)).Return(redis.NewIntResult(0, nil))
 				mockPipeline.EXPECT().Exec()
 
@@ -2814,7 +2817,7 @@ game: game-name
 				}, nil)).AnyTimes()
 
 				operationFinished := false
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 					Expect(m).To(HaveKeyWithValue("status", http.StatusOK))
 					Expect(m).To(HaveKeyWithValue("operation", "UpdateSchedulerImage"))
@@ -2899,7 +2902,7 @@ game: game-name
 				opManager = models.NewOperationManager(configYaml.Name, mockRedisClient, logger)
 
 				MockGetCurrentOperationKey(opManager, mockRedisClient, nil)
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 					Expect(m).To(HaveKeyWithValue("operation", "UpdateSchedulerImage"))
 				})
@@ -2911,7 +2914,7 @@ game: game-name
 					"not": "empty",
 				}, nil)).AnyTimes()
 
-				mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
+				//mockRedisClient.EXPECT().TxPipeline().Return(mockPipeline)
 				mockPipeline.EXPECT().HMSet(gomock.Any(), gomock.Any()).Do(func(_ string, m map[string]interface{}) {
 					Expect(m).To(HaveKeyWithValue("status", http.StatusInternalServerError))
 					Expect(m).To(HaveKeyWithValue("operation", "UpdateSchedulerImage"))

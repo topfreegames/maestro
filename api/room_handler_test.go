@@ -208,7 +208,7 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-004"))
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("Timestamp: non zero value required"))
+				Expect(obj["description"]).To(ContainSubstring("timestamp: non zero value required"))
 				Expect(obj["success"]).To(Equal(false))
 			})
 
@@ -243,7 +243,7 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-004"))
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("Status: non zero value required"))
+				Expect(obj["description"]).To(ContainSubstring("status: non zero value required"))
 				Expect(obj["success"]).To(Equal(false))
 			})
 
@@ -261,7 +261,7 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-004"))
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("Status: not-valid does not validate as matches"))
+				Expect(obj["description"]).To(ContainSubstring("status: not-valid does not validate as matches"))
 				Expect(obj["success"]).To(Equal(false))
 			})
 		})
@@ -508,7 +508,7 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-004"))
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("Timestamp: non zero value required"))
+				Expect(obj["description"]).To(ContainSubstring("timestamp: non zero value required"))
 				Expect(obj["success"]).To(Equal(false))
 			})
 
@@ -543,7 +543,7 @@ forwarders:
 				Expect(err).NotTo(HaveOccurred())
 				Expect(obj["code"]).To(Equal("MAE-004"))
 				Expect(obj["error"]).To(Equal("ValidationFailedError"))
-				Expect(obj["description"]).To(ContainSubstring("Status: non zero value required"))
+				Expect(obj["description"]).To(ContainSubstring("status: non zero value required"))
 				Expect(obj["success"]).To(Equal(false))
 			})
 

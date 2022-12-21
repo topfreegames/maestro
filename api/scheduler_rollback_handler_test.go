@@ -45,7 +45,7 @@ autoscaling:
 		mockDb.EXPECT().Query(gomock.Any(), `SELECT access_token, refresh_token, expiry, token_type
 						FROM users
 						WHERE key_access_token = ?`, gomock.Any()).
-			Do(func(destToken *login.DestinationToken, query string, modifier string) {
+			Do(func(destToken *login.DestinationToken, query string, _ ...interface{}) {
 				destToken.RefreshToken = "refresh-token"
 			}).AnyTimes()
 		mockLogin.EXPECT().
@@ -126,7 +126,7 @@ autoscaling:
 				Query(gomock.Any(),
 					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?",
 					"scheduler-name", version).
-				Do(func(scheduler *models.Scheduler, query, name, version string) {
+				Do(func(scheduler *models.Scheduler, query string, _ ...interface{}) {
 					*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, "")
 				})
 
@@ -148,7 +148,7 @@ autoscaling:
 				Query(gomock.Any(),
 					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?",
 					"scheduler-name", version).
-				Do(func(scheduler *models.Scheduler, query, name, version string) {
+				Do(func(scheduler *models.Scheduler, query string, _ ...interface{}) {
 					*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, "  invalid{ yaml!.")
 				})
 

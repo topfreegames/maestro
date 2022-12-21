@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
-	"github.com/topfreegames/extensions/pg/mocks"
+	"github.com/topfreegames/extensions/v9/pg/mocks"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/william"
@@ -49,8 +49,8 @@ var (
 
 func mockSchedulers(mockDb *mocks.MockDB, schedulers []models.Scheduler) *gomock.Call {
 	return mockDb.EXPECT().
-		Query(gomock.Any(), "SELECT * FROM schedulers").
-		Do(func(scheds *[]models.Scheduler, _ string) {
+		Query(gomock.Any(), "SELECT * FROM schedulers", gomock.Any()).
+		Do(func(scheds *[]models.Scheduler, _ string, _ ...interface{}) {
 			*scheds = schedulers
 		})
 }

@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	clockmocks "github.com/topfreegames/extensions/clock/mocks"
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
-	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	clockmocks "github.com/topfreegames/extensions/v9/clock/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/v9/redis/mocks"
 	storagemock "github.com/topfreegames/maestro/storage/mock"
 	mtesting "github.com/topfreegames/maestro/testing"
 
@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/extensions/v9/redis"
 	"github.com/topfreegames/maestro/mocks"
 	"github.com/topfreegames/maestro/models"
 	metricsFake "k8s.io/metrics/pkg/client/clientset/versioned/fake"

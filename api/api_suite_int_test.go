@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"

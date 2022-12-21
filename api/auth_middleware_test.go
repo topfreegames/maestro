@@ -21,7 +21,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/topfreegames/extensions/middleware"
+	"github.com/topfreegames/extensions/v9/middleware"
 	. "github.com/topfreegames/maestro/api"
 	. "github.com/topfreegames/maestro/testing"
 )

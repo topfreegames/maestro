@@ -14,7 +14,7 @@ import (
 
 	"testing"
 
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
 	mtesting "github.com/topfreegames/maestro/testing"
 
 	"github.com/golang/mock/gomock"

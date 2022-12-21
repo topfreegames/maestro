@@ -11,7 +11,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
 	"github.com/topfreegames/maestro/login/mocks"
 	"golang.org/x/oauth2"
 

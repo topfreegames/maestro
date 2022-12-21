@@ -21,8 +21,8 @@ import (
 
 	mt "github.com/topfreegames/maestro/testing"
 
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
-	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/v9/redis/mocks"
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	reportermock "github.com/topfreegames/maestro/reporters/mocks"
 	mtesting "github.com/topfreegames/maestro/testing"

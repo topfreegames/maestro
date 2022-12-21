@@ -13,7 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/topfreegames/extensions/pg"
+	"github.com/topfreegames/extensions/v9/pg"
 	. "github.com/topfreegames/maestro/api/auth"
 	"github.com/topfreegames/maestro/errors"
 	"github.com/topfreegames/maestro/login"

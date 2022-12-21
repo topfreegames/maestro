@@ -14,15 +14,15 @@ import (
 
 	"testing"
 
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
-	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/v9/redis/mocks"
 	mtesting "github.com/topfreegames/maestro/testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
-	"github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/extensions/v9/redis"
 	"github.com/topfreegames/maestro/models"
 	"k8s.io/client-go/kubernetes"
 )

@@ -17,7 +17,7 @@ import (
 	goredis "github.com/go-redis/redis"
 
 	"github.com/golang/mock/gomock"
-	"github.com/topfreegames/extensions/pg"
+	"github.com/topfreegames/extensions/v9/pg"
 	"github.com/topfreegames/maestro/eventforwarder"
 	"github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/testing"
@@ -92,8 +92,8 @@ cmd:
 
 		It("should run and list scheduler names", func() {
 			// ListSchedulersNames
-			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Do(
-				func(schedulers *[]models.Scheduler, query string) {
+			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers", gomock.Any()).Do(
+				func(schedulers *[]models.Scheduler, query string, _ ...interface{}) {
 					w.Run = false
 				},
 			)
@@ -107,7 +107,7 @@ cmd:
 		It("should log error and not panic if failed to list scheduler names", func() {
 			// ListSchedulersNames
 			mockDb.EXPECT().Query(gomock.Any(), "SELECT name FROM schedulers").Do(
-				func(schedulers *[]models.Scheduler, query string) {
+				func(schedulers *[]models.Scheduler, query string, _ ...interface{}) {
 					w.Run = false
 				},
 			).Return(pg.NewTestResult(errors.New("some error in pg"), 0), errors.New("some error in pg"))

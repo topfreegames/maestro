@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/topfreegames/extensions/pg"
+	"github.com/topfreegames/extensions/v9/pg"
 	. "github.com/topfreegames/maestro/models"
 	"github.com/topfreegames/maestro/testing"
 

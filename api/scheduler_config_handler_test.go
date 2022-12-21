@@ -132,7 +132,7 @@ var _ = Describe("SchedulerConfigHandler", func() {
 				Query(gomock.Any(),
 					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?",
 					"scheduler-name", version).
-				Do(func(scheduler *models.Scheduler, query, name, version string) {
+				Do(func(scheduler *models.Scheduler, query string, _ ...interface{}) {
 					*scheduler = *models.NewScheduler(configYaml.Name, configYaml.Game, "")
 				})
 

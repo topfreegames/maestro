@@ -19,7 +19,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/topfreegames/extensions/redis"
+	"github.com/topfreegames/extensions/v9/redis"
 
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -29,11 +29,11 @@ import (
 )
 
 var (
-	schedulerName   string
-	redisClient *redis.Client
-	logger      *logrus.Logger
-	hook        *test.Hook
-	eventStorage *RedisSchedulerEventStorage
+	schedulerName string
+	redisClient   *redis.Client
+	logger        *logrus.Logger
+	hook          *test.Hook
+	eventStorage  *RedisSchedulerEventStorage
 )
 
 func TestIntStorage(t *testing.T) {
@@ -99,10 +99,10 @@ var _ = Describe("Scheduler events", func() {
 			now := time.Now()
 			for i := 1; i <= 100; i++ {
 				event := NewSchedulerEvent(
-					fmt.Sprintf("UPDATE_STARTED_%d", i), 
-					schedulerName, 
+					fmt.Sprintf("UPDATE_STARTED_%d", i),
+					schedulerName,
 					make(map[string]interface{}),
-					)
+				)
 
 				event.CreatedAt = now.Add(time.Hour * time.Duration(i))
 				eventStorage.PersistSchedulerEvent(event)

@@ -18,7 +18,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
-	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	redismocks "github.com/topfreegames/extensions/v9/redis/mocks"
 	"github.com/topfreegames/maestro/models"
 	. "github.com/topfreegames/maestro/models"
 

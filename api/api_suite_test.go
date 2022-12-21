@@ -15,9 +15,9 @@ import (
 
 	"testing"
 
-	clockmocks "github.com/topfreegames/extensions/clock/mocks"
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
-	redismocks "github.com/topfreegames/extensions/redis/mocks"
+	clockmocks "github.com/topfreegames/extensions/v9/clock/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
+	redismocks "github.com/topfreegames/extensions/v9/redis/mocks"
 	eventforwardermock "github.com/topfreegames/maestro/eventforwarder/mock"
 	mtesting "github.com/topfreegames/maestro/testing"
 

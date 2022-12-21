@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	pgmocks "github.com/topfreegames/extensions/pg/mocks"
+	pgmocks "github.com/topfreegames/extensions/v9/pg/mocks"
 )
 
 var (

@@ -119,7 +119,7 @@ image: image2`
 				Query(
 					gomock.Any(),
 					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", name, "v1.0").
-				Do(func(scheduler *models.Scheduler, query, name, version string) {
+				Do(func(scheduler *models.Scheduler, query string, _ ...interface{}) {
 					*scheduler = *models.NewScheduler(name, "", "")
 				})
 
@@ -144,7 +144,7 @@ image: image2`
 				Query(
 					gomock.Any(),
 					"SELECT yaml FROM scheduler_versions WHERE name = ? AND version = ?", name, "v2.0").
-				Do(func(scheduler *models.Scheduler, query, name, version string) {
+				Do(func(scheduler *models.Scheduler, query string, _ ...interface{}) {
 					*scheduler = *models.NewScheduler(name, "", "")
 				})
 
