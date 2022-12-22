@@ -8,7 +8,6 @@
 package reporters
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 
@@ -52,15 +51,11 @@ func copyOpts(src map[string]interface{}) map[string]interface{} {
 
 // Report is Reporters' implementation of the Reporter interface
 func (r *Reporters) Report(event string, opts map[string]interface{}) error {
-	var aggregatedErrors []error
 	for _, reporter := range r.reporters {
-		if err := reporter.Report(event, copyOpts(opts)); err != nil {
-			aggregatedErrors = append(aggregatedErrors, err)
-		}
-	}
-
-	if len(aggregatedErrors) > 0 {
-		return fmt.Errorf("failed to report '%s' event: %v", event, aggregatedErrors)
+		// We ignore the reporter errors explicitly here for the following reason:
+		// if we return these errors, it could bring issues in the ping mechanism,
+		// and we would not be able to find any room.
+		_ = reporter.Report(event, copyOpts(opts))
 	}
 	return nil
 }
