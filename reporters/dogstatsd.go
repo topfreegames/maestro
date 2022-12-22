@@ -23,7 +23,7 @@ import (
 // DogStatsD reports metrics to a dogstatsd.Client
 type DogStatsD struct {
 	client       dogstatsd.Client
-	logger       *logrus.Logger
+	logger       logrus.FieldLogger
 	statsdClient *statsd.Client
 	mutex        sync.RWMutex
 	ticker       *time.Ticker
@@ -48,21 +48,21 @@ func (d *DogStatsD) Report(event string, opts map[string]interface{}) error {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	handlerI, prs := handlers.Find(event)
-	if prs == false {
-		return fmt.Errorf("DogStatsD: reportHandler for %s doesn't exist", event)
+	if !prs {
+		return fmt.Errorf("reportHandler for %s doesn't exist", event)
 	}
 	opts[constants.TagRegion] = d.region
 	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
 	err := handler(d.client, event, toMapStringString(opts))
 	if err != nil {
-		return fmt.Errorf("DogStatsD: failed to report event '%s': %w", event, err)
+		return fmt.Errorf("failed to report event '%s': %w", event, err)
 	}
 	return nil
 }
 
 // MakeDogStatsD adds a DogStatsD struct to the Reporters' singleton
-func MakeDogStatsD(config *viper.Viper, logger *logrus.Logger, r *Reporters) {
-	dogstatsdR, err := NewDogStatsD(config, logger)
+func MakeDogStatsD(config *viper.Viper, logger logrus.FieldLogger, r *Reporters) {
+	dogstatsdR, err := NewDogStatsD(config, logger.WithField("reporter", "dogstatsd"))
 
 	if err == nil {
 		r.SetReporter("dogstatsd", dogstatsdR)
@@ -73,11 +73,11 @@ func loadDefaultDogStatsDConfigs(c *viper.Viper) {
 	c.SetDefault("reporters.dogstatsd.host", "localhost:8125")
 	c.SetDefault("reporters.dogstatsd.prefix", "test.")
 	c.SetDefault("reporters.dogstatsd.region", "test")
-	c.SetDefault("reporters.dogstatsd.restartTimeout", time.Duration(0))
+	c.SetDefault("reporters.dogstatsd.restartTimeout", "0s")
 }
 
 // NewDogStatsD creates a DogStatsD struct using host and prefix from config
-func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error) {
+func NewDogStatsD(config *viper.Viper, logger logrus.FieldLogger) (*DogStatsD, error) {
 	loadDefaultDogStatsDConfigs(config)
 	host := config.GetString("reporters.dogstatsd.host")
 	prefix := config.GetString("reporters.dogstatsd.prefix")
@@ -99,6 +99,7 @@ func NewDogStatsD(config *viper.Viper, logger *logrus.Logger) (*DogStatsD, error
 	}
 
 	if restartTimeout.Nanoseconds() > 0 {
+		logger.Info("Starting DogStatsD restart ticker routine")
 		dogstatsdR.ticker = time.NewTicker(restartTimeout)
 		go dogstatsdR.restartTicker()
 	}
@@ -114,17 +115,16 @@ func NewDogStatsDFromClient(c dogstatsd.Client, r string) *DogStatsD {
 
 func (d *DogStatsD) restartTicker() {
 	for range d.ticker.C {
+		d.logger.Info("Trying to restart the dogstatsd client")
 		d.mutex.Lock()
 		if err := d.restartDogStatsdClient(); err != nil {
-			d.logger.WithError(err).Errorf("DogStatsD: failed to close statsd connection during restart")
+			d.logger.WithError(err).Errorf("failed to close statsd connection during restart")
 		}
 		d.mutex.Unlock()
 	}
 }
 
 func (d *DogStatsD) restartDogStatsdClient() error {
-	d.logger.Info("Trying to restart the dogstatsd client")
-
 	err := d.statsdClient.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close statsd connection: %w", err)
