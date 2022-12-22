@@ -286,9 +286,11 @@ func (w *Watcher) reportRoomsStatusesRoutine() {
 		case <-podStateCountTicker.C:
 			w.PodStatesCount()
 		case <-roomStatusTicker.C:
+			w.Logger.Info("Start to report rooms status")
 			if err := w.ReportRoomsStatuses(); err != nil {
 				w.Logger.WithError(err).Error("failed to report room status")
 			}
+			w.Logger.Info("Finished to report rooms status")
 		}
 	}
 }

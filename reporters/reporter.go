@@ -25,6 +25,12 @@ type Reporter interface {
 // Reporters hold a map of structs that implement the Reporter interface
 type Reporters struct {
 	reporters map[string]Reporter
+	logger    logrus.FieldLogger
+}
+
+// setLogger sets logger to the Reporters singleton
+func (r *Reporters) setLogger(logger logrus.FieldLogger) {
+	r.logger = logger
 }
 
 // SetReporter sets a Reporter in Reporters' map
@@ -55,7 +61,13 @@ func (r *Reporters) Report(event string, opts map[string]interface{}) error {
 		// We ignore the reporter errors explicitly here for the following reason:
 		// if we return these errors, it could bring issues in the ping mechanism,
 		// and we would not be able to find any room.
-		_ = reporter.Report(event, copyOpts(opts))
+		if err := reporter.Report(event, copyOpts(opts)); err != nil {
+			if r.logger != nil {
+				r.logger.
+					WithError(err).
+					Errorf("failed to report event '%s'", event)
+			}
+		}
 	}
 	return nil
 }
@@ -72,6 +84,8 @@ func Report(event string, opts map[string]interface{}) error {
 
 // MakeReporters creates Reporters' singleton from config/{}.yaml
 func MakeReporters(config *viper.Viper, logger logrus.FieldLogger) {
+	GetInstance().setLogger(logger)
+
 	if config.IsSet("reporters.dogstatsd") {
 		MakeDogStatsD(config, logger, GetInstance())
 	}
