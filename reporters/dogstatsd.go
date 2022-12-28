@@ -49,13 +49,13 @@ func (d *DogStatsD) Report(event string, opts map[string]interface{}) error {
 	defer d.mutex.RUnlock()
 	handlerI, prs := handlers.Find(event)
 	if !prs {
-		return fmt.Errorf("reportHandler for %s doesn't exist", event)
+		return constants.ErrReportHandlerNotFound
 	}
 	opts[constants.TagRegion] = d.region
 	handler := handlerI.(func(dogstatsd.Client, string, map[string]string) error)
 	err := handler(d.client, event, toMapStringString(opts))
 	if err != nil {
-		return fmt.Errorf("failed to report event '%s': %w", event, err)
+		return fmt.Errorf("failed to call report handler with event '%s': %w", event, err)
 	}
 	return nil
 }

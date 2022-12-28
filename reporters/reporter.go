@@ -8,8 +8,11 @@
 package reporters
 
 import (
+	"errors"
 	"strings"
 	"sync"
+
+	"github.com/topfreegames/maestro/reporters/constants"
 
 	"github.com/getlantern/deepcopy"
 	"github.com/sirupsen/logrus"
@@ -57,15 +60,21 @@ func copyOpts(src map[string]interface{}) map[string]interface{} {
 
 // Report is Reporters' implementation of the Reporter interface
 func (r *Reporters) Report(event string, opts map[string]interface{}) error {
-	for _, reporter := range r.reporters {
+	for reporterName, reporter := range r.reporters {
 		// We ignore the reporter errors explicitly here for the following reason:
 		// if we return these errors, it could bring issues in the ping mechanism,
 		// and we would not be able to find any room.
 		if err := reporter.Report(event, copyOpts(opts)); err != nil {
 			if r.logger != nil {
-				r.logger.
+				log := r.logger.
 					WithError(err).
-					Errorf("failed to report event '%s'", event)
+					WithField("reporter", reporterName)
+
+				if errors.Is(err, constants.ErrReportHandlerNotFound) {
+					log.Debugf("report handler for event '%s' does not exist", event)
+					} else {
+					log.Errorf("failed to report event '%s'", event)
+				}
 			}
 		}
 	}
