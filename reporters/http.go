@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/topfreegames/maestro/reporters/constants"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	httpExtensions "github.com/topfreegames/extensions/http"
@@ -77,7 +79,7 @@ func (c *HTTPClient) Send(opts map[string]interface{}) error {
 func (h *HTTP) Report(event string, opts map[string]interface{}) error {
 	handlerI, prs := handlers.Find(event)
 	if !prs {
-		return fmt.Errorf("reportHandler for %s doesn't exist", event)
+		return constants.ErrReportHandlerNotFound
 	}
 	tags := []string{"maestro", event, h.region}
 	if game, ok := opts["game"].(string); ok {
@@ -94,7 +96,7 @@ func (h *HTTP) Report(event string, opts map[string]interface{}) error {
 	handler := handlerI.(func(handlers.Client, map[string]interface{}) error)
 	err := handler(h.client, opts)
 	if err != nil {
-		return fmt.Errorf("failed to report %s: %w", event, err)
+		return fmt.Errorf("failed call report handler with event '%s': %w", event, err)
 	}
 	return nil
 }

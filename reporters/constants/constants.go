@@ -1,5 +1,9 @@
 package constants
 
+import (
+	"errors"
+)
+
 // Constants for event metrics possible of being reported
 const (
 	EventGruNew         = "gru.new"
@@ -67,4 +71,8 @@ const (
 	ValueGauge     = "gauge"
 	ValueHistogram = "histogram"
 	ValueName      = "name"
+)
+
+var (
+	ErrReportHandlerNotFound = errors.New("report handler not found")
 )

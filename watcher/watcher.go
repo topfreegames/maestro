@@ -465,10 +465,6 @@ func (w *Watcher) ReportRoomsStatuses() error {
 	}
 
 	for _, r := range roomDataSlice {
-		w.Logger.
-			WithField("gauge", r.Gauge).
-			Infof("Start reporting %s", r.Status)
-
 		err := reporters.Report(reportersConstants.EventGruStatus, map[string]interface{}{
 			reportersConstants.TagGame:      w.GameName,
 			reportersConstants.TagScheduler: w.SchedulerName,
@@ -480,7 +476,7 @@ func (w *Watcher) ReportRoomsStatuses() error {
 				WithError(err).
 				Errorf("Finished to report status %s with error", r.Status)
 		} else {
-			w.Logger.Infof("Finished to report status %s", r.Status)
+			w.Logger.WithField("gauge", r.Gauge).Debugf("Finished to report status %s", r.Status)
 		}
 	}
 
