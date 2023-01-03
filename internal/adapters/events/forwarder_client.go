@@ -54,7 +54,7 @@ type ForwarderClient struct {
 
 // NewForwarderClient instantiate a new grpc forwarder client.
 func NewForwarderClient() *ForwarderClient {
-	cache := cache.New(24*time.Hour, 25*time.Hour)
+	cache := cache.New(24*time.Hour, 0)
 	cache.OnEvicted(func(_key string, clientFromCache interface{}) {
 		ForwarderClient := clientFromCache.(*grpc.ClientConn)
 		ForwarderClient.Close()
@@ -150,6 +150,7 @@ func (f *ForwarderClient) getGrpcClient(address Address) (pb.GRPCForwarderClient
 		if err != nil {
 			return nil, err
 		}
+		f.c.DeleteExpired()
 		f.c.Set(string(address), client, cache.DefaultExpiration)
 		return pb.NewGRPCForwarderClient(client), nil
 	}

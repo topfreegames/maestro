@@ -33,7 +33,6 @@ import (
 
 	"testing"
 
-	"github.com/patrickmn/go-cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -131,9 +130,6 @@ func TestSendRoomReSync(t *testing.T) {
 }
 
 func TestForwarderClient_SendRoomStatus(t *testing.T) {
-	type fields struct {
-		c *cache.Cache
-	}
 	type args struct {
 		ctx       context.Context
 		forwarder forwarder.Forwarder
@@ -142,7 +138,6 @@ func TestForwarderClient_SendRoomStatus(t *testing.T) {
 	tests := []struct {
 		name            string
 		requestStubFile string
-		fields          fields
 		args            args
 		want            *pb.Response
 		wantErr         assert.ErrorAssertionFunc
@@ -150,9 +145,6 @@ func TestForwarderClient_SendRoomStatus(t *testing.T) {
 		{
 			name:            "return response with code 200 when request succeeds",
 			requestStubFile: "../../../test/data/events_mock/events-forwarder-grpc-send-room-status-success.json",
-			fields: fields{
-				c: cache.New(time.Minute, time.Minute),
-			},
 			args: args{
 				ctx:       context.Background(),
 				forwarder: newForwarder(grpcMockAddress),
@@ -167,9 +159,6 @@ func TestForwarderClient_SendRoomStatus(t *testing.T) {
 		{
 			name:            "return response with code 500 when request fails",
 			requestStubFile: "../../../test/data/events_mock/events-forwarder-grpc-send-room-status-failure.json",
-			fields: fields{
-				c: cache.New(time.Minute, time.Minute),
-			},
 			args: args{
 				ctx:       context.Background(),
 				forwarder: newForwarder(grpcMockAddress),
@@ -184,9 +173,6 @@ func TestForwarderClient_SendRoomStatus(t *testing.T) {
 		{
 			name:            "return error when connection establishment fails",
 			requestStubFile: "",
-			fields: fields{
-				c: cache.New(time.Minute, time.Minute),
-			},
 			args: args{
 				ctx:       context.Background(),
 				forwarder: newForwarder(""),
@@ -204,9 +190,7 @@ func TestForwarderClient_SendRoomStatus(t *testing.T) {
 				)
 				require.NoError(t, err)
 			}
-			f := &ForwarderClient{
-				c: tt.fields.c,
-			}
+			f := NewForwarderClient()
 			got, err := f.SendRoomStatus(tt.args.ctx, tt.args.forwarder, &tt.args.in)
 			if !tt.wantErr(t, err, fmt.Sprintf("SendRoomStatus(%v, %v, %v)", tt.args.ctx, tt.args.forwarder, tt.args.in)) {
 				return
