@@ -235,6 +235,59 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		}
 	})
 
+	t.Run("should succeed when event is RoomEvent of type status and capital ping type", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
+		event := &events.Event{
+			Name:        events.RoomEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "status",
+				"pingType":  "Ready",
+			},
+		}
+		room := &game_room.GameRoom{
+			ID:               event.RoomID,
+			SchedulerID:      event.SchedulerID,
+			IsValidationRoom: false,
+		}
+		roomStatusReady := events.RoomStatusReady
+
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil)
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
+		eventsForwarder.EXPECT().ForwardRoomEvent(context.Background(), events.RoomEventAttributes{
+			Game:           "game",
+			RoomId:         "room",
+			Host:           "host",
+			Port:           8080,
+			EventType:      "status",
+			RoomStatusType: &roomStatusReady,
+			Other: map[string]interface{}{
+				"eventType": "status",
+				"pingType":  "Ready",
+				"ports":     `[{"name":"clientPort","port":8080,"protocol":"TCP"},{"name":"notClientPort","port":8081,"protocol":"TCP"}]`,
+			},
+		}, gomock.Any()).Return(nil)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.NoError(t, err)
+		require.NotEmpty(t, event.Attributes["ports"])
+
+		portsUnmarshalled := make([]map[string]interface{}, 0)
+		err = json.Unmarshal([]byte(event.Attributes["ports"].(string)), &portsUnmarshalled)
+		require.NoError(t, err)
+
+		for _, _port := range portsUnmarshalled {
+			require.NotNil(t, _port["name"])
+			require.NotNil(t, _port["protocol"])
+			require.NotNil(t, _port["port"])
+		}
+	})
+
 	t.Run("should succeed when event is RoomEvent and game room status is unreliable", func(t *testing.T) {
 		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
 
