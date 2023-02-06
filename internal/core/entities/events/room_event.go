@@ -22,7 +22,10 @@
 
 package events
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type RoomEventAttributes struct {
 	Game           string
@@ -78,6 +81,8 @@ func FromRoomEventTypeToString(eventType RoomEventType) string {
 }
 
 func ConvertToRoomPingEventType(value string) (RoomStatusType, error) {
+	value = strings.ToLower(value)
+
 	switch value {
 	case "ready":
 		return RoomStatusReady, nil

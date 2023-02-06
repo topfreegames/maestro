@@ -57,12 +57,20 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 		return errors.NewErrInvalidArgument("invalid or missing eventAttributes.Other['roomEvent'] field")
 
 	case events.Ping:
-		event := f.buildRoomStatusMessage(eventAttributes, forwarder)
+		event, err := f.buildRoomStatusMessage(eventAttributes, forwarder)
+		if err != nil {
+			return errors.NewErrInvalidArgument("failed to build room status message: %s", err)
+		}
+
 		eventResponse, err := f.forwarderClient.SendRoomReSync(ctx, forwarder, &event)
 
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	case events.Status:
-		event := f.buildRoomStatusMessage(eventAttributes, forwarder)
+		event, err := f.buildRoomStatusMessage(eventAttributes, forwarder)
+		if err != nil {
+			return errors.NewErrInvalidArgument("failed to build room status message: %s", err)
+		}
+
 		eventResponse, err := f.forwarderClient.SendRoomStatus(ctx, forwarder, &event)
 
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
@@ -114,7 +122,12 @@ func (*eventsForwarder) mergePlayerInfos(eventMetadata, fwdMetadata map[string]i
 	return m
 }
 
-func (f *eventsForwarder) buildRoomStatusMessage(eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) pb.RoomStatus {
+func (f *eventsForwarder) buildRoomStatusMessage(eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) (pb.RoomStatus, error) {
+	statusType, err := fromStatusToRoomStatusType(*eventAttributes.RoomStatusType)
+	if err != nil {
+		return pb.RoomStatus{}, fmt.Errorf("failed to convert status type: %w", err)
+	}
+
 	event := pb.RoomStatus{
 		Room: &pb.Room{
 			Game:     eventAttributes.Game,
@@ -123,12 +136,12 @@ func (f *eventsForwarder) buildRoomStatusMessage(eventAttributes events.RoomEven
 			Port:     eventAttributes.Port,
 			Metadata: f.mergeInfos(forwarder.Options.Metadata, eventAttributes.Other),
 		},
-		StatusType: fromStatusToRoomStatusType(*eventAttributes.RoomStatusType),
+		StatusType: statusType,
 	}
 	if roomType, ok := forwarder.Options.Metadata["roomType"].(string); ok {
 		event.Room.RoomType = roomType
 	}
-	return event
+	return event, nil
 }
 
 func (f *eventsForwarder) buildRoomEventMessage(eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder, roomEvent string) pb.RoomEvent {
@@ -169,18 +182,26 @@ func fromMapInterfaceToMapString(mapInterface map[string]interface{}) *map[strin
 	return &mapString
 }
 
-func fromStatusToRoomStatusType(eventType events.RoomStatusType) pb.RoomStatus_RoomStatusType {
+func fromStatusToRoomStatusType(eventType events.RoomStatusType) (pb.RoomStatus_RoomStatusType, error) {
 	switch eventType {
 	case events.RoomStatusReady:
-		return pb.RoomStatus_ready
+		return pb.RoomStatus_ready, nil
 	case events.RoomStatusOccupied:
-		return pb.RoomStatus_occupied
+		return pb.RoomStatus_occupied, nil
 	case events.RoomStatusTerminating:
-		return pb.RoomStatus_terminating
+		return pb.RoomStatus_terminating, nil
 	case events.RoomStatusTerminated:
-		return pb.RoomStatus_terminated
+		return pb.RoomStatus_terminated, nil
 	default:
-		return pb.RoomStatus_terminated
+		return 0, errors.NewErrInvalidArgument(
+			"invalid event type %q, expected one of %v",
+			eventType,
+			[]events.RoomStatusType{
+				events.RoomStatusReady,
+				events.RoomStatusOccupied,
+				events.RoomStatusTerminated,
+				events.RoomStatusTerminating,
+			})
 	}
 }
 

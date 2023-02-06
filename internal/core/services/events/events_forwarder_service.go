@@ -161,9 +161,9 @@ func (es *EventsForwarderService) forwardRoomEvent(
 	}
 
 	var pingType events.RoomStatusType
-	if roomEvent == events.Ping {
+	if roomEvent == events.Ping || roomEvent == events.Status {
 		if _, ok := event.Attributes["pingType"]; !ok {
-			return errors.New("roomEvent of type ping must contain key \"pingType\" in eventAttributes")
+			return errors.New("roomEvent of type ping or status must contain key \"pingType\" in eventAttributes")
 		}
 		pingType, err = events.ConvertToRoomPingEventType(event.Attributes["pingType"].(string))
 		if err != nil {
