@@ -604,7 +604,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		require.Empty(t, rooms)
 	})
 
-	t.Run("when retrieving rooms with terminating status it returns an empty list", func(t *testing.T) {
+	t.Run("when retrieving rooms with terminating status it returns them", func(t *testing.T) {
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		ignoredVersion := "v1.2.3"
@@ -621,9 +621,30 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 
 		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
 		require.NoError(t, err)
-		require.Empty(t, rooms)
+		require.Equal(t, availableRooms, rooms)
 	})
 
+	t.Run("when retrieving rooms with terminating status always includes them", func(t *testing.T) {
+		ctx := context.Background()
+		schedulerName := "test-scheduler"
+		ignoredVersion := "v1.2.3"
+		availableRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: "v1.1.1"},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+			{ID: "third-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+		}
+
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{}, nil).AnyTimes()
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID, availableRooms[2].ID}, nil)
+
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
+		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[2].ID).Return(availableRooms[2], nil)
+
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
+		require.NoError(t, err)
+		require.Equal(t, availableRooms, rooms)
+	})
 }
 
 func TestRoomManager_UpdateRoomInstance(t *testing.T) {
