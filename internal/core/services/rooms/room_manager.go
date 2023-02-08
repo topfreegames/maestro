@@ -92,7 +92,11 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
 		if errors.Is(err, porterrors.ErrNotFound) {
-			_ = m.RoomStorage.DeleteRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			errDeleteRoom := m.RoomStorage.DeleteRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			if errDeleteRoom != nil {
+				m.Logger.With(zap.Error(errDeleteRoom)).Error("failed to delete room in storage")
+			}
+
 			return nil
 		}
 		return fmt.Errorf("unable to fetch game room instance from storage: %w", err)
@@ -101,8 +105,18 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 	err = m.Runtime.DeleteGameRoomInstance(ctx, instance)
 	if err != nil {
 		if errors.Is(err, porterrors.ErrNotFound) {
-			_ = m.RoomStorage.DeleteRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
-			_ = m.InstanceStorage.DeleteInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			m.Logger.With(zap.String("instance", instance.ID)).Warn("instance does not exist in runtime")
+
+			errDeleteRoom := m.RoomStorage.DeleteRoom(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			if errDeleteRoom != nil {
+				m.Logger.With(zap.Error(errDeleteRoom)).Error("failed to delete room in storage")
+			}
+
+			errDeleteInstance := m.InstanceStorage.DeleteInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
+			if errDeleteInstance != nil {
+				m.Logger.With(zap.Error(errDeleteInstance)).Error("failed to delete instance in storage")
+			}
+
 			return nil
 		}
 		return fmt.Errorf("failed to delete instance on the runtime: %w", err)
