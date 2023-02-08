@@ -231,7 +231,8 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 	schedulerRoomsIDs = append(schedulerRoomsIDs, occupiedRoomIDs...)
 	schedulerRoomsIDs = removeDuplicateValues(schedulerRoomsIDs)
 
-	var result []*game_room.GameRoom
+	var toDeleteRooms []*game_room.GameRoom
+	var terminatingRooms []*game_room.GameRoom
 	for _, roomID := range schedulerRoomsIDs {
 		room, err := m.RoomStorage.GetRoom(ctx, schedulerName, roomID)
 		if err != nil {
@@ -248,15 +249,23 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 			continue
 		}
 
-		if room.Status == game_room.GameStatusTerminating || (ignoredVersion != "" && ignoredVersion == room.Version) {
+		// Select Terminating rooms to be re-deleted. This is useful for fixing any desync state.
+		if room.Status == game_room.GameStatusTerminating {
+			terminatingRooms = append(terminatingRooms, room)
 			continue
 		}
 
-		result = append(result, room)
-		if len(result) == amount {
+		if ignoredVersion != "" && ignoredVersion == room.Version {
+			continue
+		}
+
+		toDeleteRooms = append(toDeleteRooms, room)
+		if len(toDeleteRooms) == amount {
 			break
 		}
 	}
+
+	result := append(toDeleteRooms, terminatingRooms...)
 
 	return result, nil
 }
