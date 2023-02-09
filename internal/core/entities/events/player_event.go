@@ -28,6 +28,7 @@ type PlayerEventAttributes struct {
 	RoomId    string
 	PlayerId  string
 	EventType PlayerEventType
+	Game      string
 	Other     map[string]interface{}
 }
 

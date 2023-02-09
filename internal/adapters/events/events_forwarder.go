@@ -162,6 +162,7 @@ func (f *eventsForwarder) buildPlayerEventMessage(eventAttributes events.PlayerE
 	event := pb.PlayerEvent{
 		PlayerId: eventAttributes.PlayerId,
 		Room: &pb.Room{
+			Game:   eventAttributes.Game,
 			RoomId: eventAttributes.RoomId,
 		},
 		EventType: fromPlayerEventTypeToGrpcPlayerEventType(eventAttributes.EventType),
