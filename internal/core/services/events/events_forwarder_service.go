@@ -212,6 +212,7 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 		RoomId:    event.RoomID,
 		PlayerId:  playerId,
 		EventType: playerEvent,
+		Game:      scheduler.Game,
 		Other:     event.Attributes,
 	}
 
