@@ -67,17 +67,18 @@ func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.Scheduler
 }
 
 // Execute the process of switching a scheduler active version consists of the following:
-// 1. Creates "replace" goroutines (same number as MaxSurge);
-// 2. Each goroutine will listen to a channel and create a new room using the
-//    new configuration. After the room is ready, it will then delete the room
-//    being replaced;
-// 3. List all game rooms that need to be replaced and produce them into the
-//    replace goroutines channel;
-// 4. Switch the active version
+//  1. Creates "replace" goroutines (same number as MaxSurge);
+//  2. Each goroutine will listen to a channel and create a new room using the
+//     new configuration. After the room is ready, it will then delete the room
+//     being replaced;
+//  3. List all game rooms that need to be replaced and produce them into the
+//     replace goroutines channel;
+//  4. Switch the active version
 func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	logger.Info("start switching scheduler active version")
@@ -89,34 +90,45 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 
 	scheduler, err := ex.schedulerManager.GetSchedulerByVersion(ctx, op.SchedulerName, updateDefinition.NewActiveVersion)
 	if err != nil {
-		logger.Error("error fetching scheduler to be switched to", zap.Error(err))
-		return err
+		logger.Error("error fetching scheduler version to be switched to", zap.Error(err))
+		getSchedulerErr := fmt.Errorf("error fetching scheduler version to be switched to: %w", err)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, getSchedulerErr.Error())
+		return getSchedulerErr
 	}
 
 	replacePods, err := ex.shouldReplacePods(ctx, scheduler)
 	if err != nil {
 		logger.Error("error deciding if should replace pods", zap.Error(err))
-		return err
+		shouldReplacePodsErr := fmt.Errorf("error deciding if should replace pods: %w", err)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, shouldReplacePodsErr.Error())
+		return shouldReplacePodsErr
 	}
 
 	if replacePods {
 		maxSurgeNum, err := ex.roomManager.SchedulerMaxSurge(ctx, scheduler)
 		if err != nil {
-			return fmt.Errorf("error fetching scheduler max surge: %w", err)
+			logger.Error("error fetching scheduler max surge", zap.Error(err))
+			maxSurgeErr := fmt.Errorf("error fetching scheduler max surge: %w", err)
+			ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, maxSurgeErr.Error())
+			return maxSurgeErr
 		}
 
 		err = ex.startReplaceRoomsLoop(ctx, logger, maxSurgeNum, *scheduler, op)
 		if err != nil {
-			logger.Sugar().Errorf("replace rooms failed for scheduler \"%v\" with error \"%v\"", scheduler.Name, zap.Error(err))
-			return err
+			logger.Error("error replacing rooms", zap.Error(err))
+			replaceRoomsErr := fmt.Errorf("error replacing rooms: %w", err)
+			ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, replaceRoomsErr.Error())
+			return replaceRoomsErr
 		}
 	}
 
 	logger.Sugar().Debugf("switching version to %v", scheduler.Spec.Version)
 	err = ex.schedulerManager.UpdateScheduler(ctx, scheduler)
 	if err != nil {
-		logger.Error("Error switching active scheduler version on scheduler manager")
-		return err
+		logger.Error("error updating scheduler with new active version")
+		updateSchedulerErr := fmt.Errorf("error updating scheduler with new active version: %w", err)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, updateSchedulerErr.Error())
+		return updateSchedulerErr
 	}
 
 	ex.clearNewCreatedRooms(op.SchedulerName)
@@ -128,6 +140,7 @@ func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, defin
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationPhase, "Rollback"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	logger.Info("starting Rollback routine")
@@ -135,6 +148,9 @@ func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, defin
 	err := ex.deleteNewCreatedRooms(ctx, logger, op.SchedulerName)
 	ex.clearNewCreatedRooms(op.SchedulerName)
 	if err != nil {
+		logger.Error("error deleting newly created rooms", zap.Error(err))
+		deleteCreatedRoomsErr := fmt.Errorf("error rolling back created rooms: %w", err)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, deleteCreatedRoomsErr.Error())
 		return err
 	}
 
