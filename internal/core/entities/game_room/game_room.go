@@ -164,6 +164,8 @@ var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{
 	},
 	GameStatusTerminating: {
 		GameStatusError: struct{}{},
+		GameStatusUnready:     struct{}{},
+		GameStatusReady:       struct{}{},
 	},
 }
 
