@@ -628,6 +628,10 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
 		ignoredVersion := "v1.2.3"
+		expectedRooms := []*game_room.GameRoom{
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: "v1.1.1"},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+		}
 		availableRooms := []*game_room.GameRoom{
 			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: "v1.1.1"},
 			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
@@ -639,11 +643,11 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[2].ID).Return(availableRooms[2], nil)
 
 		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
 		require.NoError(t, err)
-		require.Equal(t, availableRooms, rooms)
+		require.Equal(t, expectedRooms, rooms)
+		require.Len(t, rooms, 2)
 	})
 }
 
