@@ -37,14 +37,16 @@ import (
 type Executor struct {
 	runtime          ports.Runtime
 	schedulerManager ports.SchedulerManager
+	operationManager ports.OperationManager
 }
 
 var _ operations.Executor = (*Executor)(nil)
 
-func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager) *Executor {
+func NewExecutor(runtime ports.Runtime, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager) *Executor {
 	return &Executor{
 		runtime:          runtime,
 		schedulerManager: schedulerManager,
+		operationManager: operationManager,
 	}
 }
 
@@ -58,11 +60,13 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to create scheduler %s in runtime", op.SchedulerName), zap.Error(err))
-		return err
+		logger.Error("error creating scheduler in runtime", zap.Error(err))
+		createSchedulerErr := fmt.Errorf("error creating scheduler in runtime: %w", err)
+		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, createSchedulerErr.Error())
+		return createSchedulerErr
 	}
 
-	logger.Info(fmt.Sprintf("%s operation succeded, %s scheduler was created", definition.Name(), op.SchedulerName))
+	logger.Info("operation succeeded, scheduler was created")
 	return nil
 }
 
@@ -76,8 +80,10 @@ func (e *Executor) Rollback(ctx context.Context, op *operation.Operation, defini
 
 	err := e.schedulerManager.DeleteScheduler(ctx, op.SchedulerName)
 	if err != nil {
-		logger.Error(fmt.Sprintf("error deleting scheduler %s", op.SchedulerName), zap.Error(err))
-		return fmt.Errorf("error in Rollback function execution: %w", err)
+		logger.Error("error deleting newly created scheduler", zap.Error(err))
+		deleteSchedulerErr := fmt.Errorf("error deleting newly created scheduler: %w", err)
+		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, deleteSchedulerErr.Error())
+		return deleteSchedulerErr
 	}
 	return nil
 }

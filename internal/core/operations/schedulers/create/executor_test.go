@@ -47,6 +47,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationManager := mockports.NewMockOperationManager(mockCtrl)
 
 		definition := Definition{}
 		op := operation.Operation{
@@ -58,7 +59,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(nil)
 
-		err := NewExecutor(runtime, schedulerManager).Execute(context.Background(), &op, &definition)
+		err := NewExecutor(runtime, schedulerManager, operationManager).Execute(context.Background(), &op, &definition)
 		require.Nil(t, err)
 	})
 
@@ -68,6 +69,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationManager := mockports.NewMockOperationManager(mockCtrl)
 
 		definition := Definition{}
 		op := operation.Operation{
@@ -77,18 +79,25 @@ func TestExecutor_Execute(t *testing.T) {
 			DefinitionName: "zooba_blue:1.0.0",
 		}
 
-		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(errors.ErrUnexpected)
+		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(errors.NewErrUnexpected("err"))
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "error creating scheduler in runtime: err")
 
-		err := NewExecutor(runtime, schedulerManager).Execute(context.Background(), &op, &definition)
-		require.NotNil(t, err)
+		err := NewExecutor(runtime, schedulerManager, operationManager).Execute(context.Background(), &op, &definition)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error creating scheduler in runtime: err")
 	})
 }
 
 func TestExecutor_Rollback(t *testing.T) {
 	t.Run("it returns nil when delete scheduler on execution error", func(t *testing.T) {
+
 		mockCtrl := gomock.NewController(t)
+
 		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationManager := mockports.NewMockOperationManager(mockCtrl)
+
 		definition := &Definition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
@@ -98,15 +107,19 @@ func TestExecutor_Rollback(t *testing.T) {
 		}
 		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(nil)
 
-		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, schedulerManager, operationManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
 
 		assert.NoError(t, err)
 	})
 
 	t.Run("it returns error when couldn't delete scheduler on execution error", func(t *testing.T) {
+
 		mockCtrl := gomock.NewController(t)
+
 		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationManager := mockports.NewMockOperationManager(mockCtrl)
+
 		definition := &Definition{}
 		op := operation.Operation{
 			ID:             "some-op-id",
@@ -115,11 +128,11 @@ func TestExecutor_Rollback(t *testing.T) {
 			DefinitionName: "zooba_blue:1.0.0",
 		}
 		schedulerManager.EXPECT().DeleteScheduler(gomock.Any(), op.SchedulerName).Return(errors.NewErrUnexpected("err"))
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "error deleting newly created scheduler: err")
 
-		err := NewExecutor(runtime, schedulerManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
+		err := NewExecutor(runtime, schedulerManager, operationManager).Rollback(context.Background(), &op, definition, errors.ErrUnexpected)
 
 		assert.Error(t, err)
-		assert.ErrorIs(t, err, errors.ErrUnexpected)
-		assert.Contains(t, err.Error(), "error in Rollback function execution")
+		assert.Contains(t, err.Error(), "error deleting newly created scheduler: err")
 	})
 }
