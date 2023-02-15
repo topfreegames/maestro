@@ -35,7 +35,7 @@ const (
 		the GRU image is stable on its logs.`
 
 	validationPodInErrorMessageTemplate = `%dº Attempt: The room created for validation with ID %s is entering in error state. You can check if
-		the GRU image is stable on its logs using the provided room id. Last event in the game room: %s.`
+		the GRU image is stable on its logs using the provided room id. Last event in the game room: %q`
 
-	validationUnexpectedErrorMessageTemplate = `%dº Attempt: Unexpected Error: %s - Contact the Maestro's responsible team for helping.`
+	validationUnexpectedErrorMessageTemplate = `%dº Attempt: Unexpected Error, contact the Maestro's responsible team for helping: %q`
 )
