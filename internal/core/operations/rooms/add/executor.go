@@ -40,32 +40,35 @@ import (
 )
 
 type Executor struct {
-	roomManager ports.RoomManager
-	storage     ports.SchedulerStorage
-	logger      *zap.Logger
+	roomManager      ports.RoomManager
+	storage          ports.SchedulerStorage
+	operationManager ports.OperationManager
 }
 
 var _ operations.Executor = (*Executor)(nil)
 
-func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage) *Executor {
+func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage, operationManager ports.OperationManager) *Executor {
 	return &Executor{
-		roomManager: roomManager,
-		storage:     storage,
-		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, "worker")),
+		roomManager:      roomManager,
+		storage:          storage,
+		operationManager: operationManager,
 	}
 }
 
 func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, definition operations.Definition) error {
-	executionLogger := ex.logger.With(
+	executionLogger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	amount := definition.(*Definition).Amount
 	scheduler, err := ex.storage.GetScheduler(ctx, op.SchedulerName)
 	if err != nil {
-		executionLogger.Error(fmt.Sprintf("Could not find scheduler with name %s, can not create rooms", op.SchedulerName), zap.Error(err))
-		return err
+		executionLogger.Error("error fetching scheduler from storage, can not create rooms", zap.Error(err))
+		getSchedulerStorageErr := fmt.Errorf("error fetching scheduler from storage: %w", err)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, getSchedulerStorageErr.Error())
+		return getSchedulerStorageErr
 	}
 
 	errGroup, errContext := errgroup.WithContext(ctx)
@@ -79,6 +82,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 
 	if executionErr := errGroup.Wait(); executionErr != nil {
 		executionLogger.Error("Error creating rooms", zap.Error(executionErr))
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, executionErr.Error())
 		return executionErr
 	}
 
