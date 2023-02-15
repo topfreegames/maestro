@@ -146,8 +146,8 @@ func TestExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Unexpected Error: some error - Contact the Maestro's responsible team for helping.")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "2º Attempt: Unexpected Error: some error - Contact the Maestro's responsible team for helping.")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Unexpected Error, contact the Maestro's responsible team for helping: \"some error\"")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "2º Attempt: Unexpected Error, contact the Maestro's responsible team for helping: \"some error\"")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "3º Attempt: Game room validation success!")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
 
@@ -400,7 +400,7 @@ func TestExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
 
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Unexpected Error: error creating test game room - Contact the Maestro's responsible team for helping.")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Unexpected Error, contact the Maestro's responsible team for helping: \"error creating test game room\"")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "All validation attempts have failed, operation aborted!")
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(nil, nil, fmt.Errorf("error creating test game room"))
@@ -489,7 +489,7 @@ func TestExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetActiveScheduler(ctx, newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(ctx, newScheduler.Name).Return(schedulerVersions, nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "Major version detected, starting game room validation process...")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "1º Attempt: Unexpected Error: some error - Contact the Maestro's responsible team for helping.")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "1º Attempt: Unexpected Error, contact the Maestro's responsible team for helping: \"some error\"")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "All validation attempts have failed, operation aborted!")
 
 		result := executor.Execute(ctx, op, operationDef)
@@ -579,7 +579,7 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
 		roomManager.EXPECT().GetRoomInstance(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(roomInstance, nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: The room created for validation with ID id-1 is entering in error state. You can check if\n\t\tthe GRU image is stable on its logs using the provided room id. Last event in the game room: pod in Crashloop.")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: The room created for validation with ID id-1 is entering in error state. You can check if\n\t\tthe GRU image is stable on its logs using the provided room id. Last event in the game room: \"pod in Crashloop\"")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "All validation attempts have failed, operation aborted!")
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
@@ -623,7 +623,7 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
 		roomManager.EXPECT().GetRoomInstance(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(nil, errors.NewErrUnexpected("some error"))
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: The room created for validation with ID id-1 is entering in error state. You can check if\n\t\tthe GRU image is stable on its logs using the provided room id. Last event in the game room: unknown.")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: The room created for validation with ID id-1 is entering in error state. You can check if\n\t\tthe GRU image is stable on its logs using the provided room id. Last event in the game room: \"unknown\"")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "All validation attempts have failed, operation aborted!")
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
