@@ -89,7 +89,7 @@ func ProvideExecutors(
 ) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
-	executors[createscheduler.OperationName] = createscheduler.NewExecutor(runtime, schedulerManager)
+	executors[createscheduler.OperationName] = createscheduler.NewExecutor(runtime, schedulerManager, operationManager)
 	executors[addrooms.OperationName] = addrooms.NewExecutor(roomManager, schedulerStorage, operationManager)
 	executors[removerooms.OperationName] = removerooms.NewExecutor(roomManager, roomStorage, operationManager)
 	executors[test.OperationName] = test.NewExecutor()
