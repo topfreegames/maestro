@@ -23,10 +23,11 @@ require (
 	github.com/google/wire v0.5.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
+	github.com/m-lab/go v0.1.53
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/orlangure/gnomock v0.14.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/slok/go-http-metrics v0.9.0
 	github.com/spf13/cobra v1.2.1
@@ -168,7 +169,6 @@ require (
 	github.com/ldez/tagliatelle v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.1 // indirect
-	github.com/m-lab/go v0.1.53 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/maratori/testpackage v1.0.1 // indirect
 	github.com/matoous/godox v0.0.0-20210227103229-6504466cf951 // indirect
