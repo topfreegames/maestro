@@ -251,7 +251,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 	t.Run("returns error", func(t *testing.T) {
 		t.Run("when it fails to load the scheduler from storage the first time", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, _, _, _, _ := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, _, _, operationManager, _ := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &Definition{}
@@ -259,14 +259,15 @@ func TestExecutor_Execute(t *testing.T) {
 
 			schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.New("some error on cache"))
 			schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.New("some error on storage"))
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "error fetching scheduler for deletion: some error on storage")
 
 			err := executor.Execute(ctx, op, definition)
 
-			require.EqualError(t, err, "some error on storage")
+			require.EqualError(t, err, "error fetching scheduler for deletion: some error on storage")
 		})
 
 		t.Run("when it fails to delete scheduler in storage", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, _, _, _, _ := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, _, _, operationManager, _ := prepareMocks(t)
 			ctx := context.Background()
 
 			definition := &Definition{}
@@ -279,13 +280,14 @@ func TestExecutor_Execute(t *testing.T) {
 				})
 			schedulerStorage.EXPECT().DeleteScheduler(ctx, ports.TransactionID("transactionID"), scheduler).
 				Return(errors.New("some error on storage"))
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "error deleting scheduler: some error on storage")
 
 			err := executor.Execute(ctx, op, definition)
-			require.EqualError(t, err, "some error on storage")
+			require.EqualError(t, err, "error deleting scheduler: some error on storage")
 		})
 
 		t.Run("when it fails to delete scheduler in runtime", func(t *testing.T) {
-			executor, schedulerStorage, schedulerCache, _, _, _, runtime := prepareMocks(t)
+			executor, schedulerStorage, schedulerCache, _, _, operationManager, runtime := prepareMocks(t)
 
 			ctx := context.Background()
 
@@ -299,9 +301,10 @@ func TestExecutor_Execute(t *testing.T) {
 				})
 			schedulerStorage.EXPECT().DeleteScheduler(ctx, ports.TransactionID("transactionID"), scheduler)
 			runtime.EXPECT().DeleteScheduler(ctx, scheduler).Return(errors.New("some error on runtime"))
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(ctx, op, "error deleting scheduler: some error on runtime")
 
 			err := executor.Execute(ctx, op, definition)
-			require.EqualError(t, err, "some error on runtime")
+			require.EqualError(t, err, "error deleting scheduler: some error on runtime")
 		})
 	})
 }
