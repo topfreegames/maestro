@@ -131,7 +131,7 @@ func (mr *MockRoomManagerMockRecorder) SchedulerMaxSurge(ctx, scheduler interfac
 // UpdateGameRoomStatus mocks base method.
 func (m *MockRoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateGameRoomStatus", ctx, schedulerId, gameRoomId)
+	ret := m.ctrl.Call(m, "updateGameRoomStatus", ctx, schedulerId, gameRoomId)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -139,7 +139,7 @@ func (m *MockRoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId,
 // UpdateGameRoomStatus indicates an expected call of UpdateGameRoomStatus.
 func (mr *MockRoomManagerMockRecorder) UpdateGameRoomStatus(ctx, schedulerId, gameRoomId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateGameRoomStatus", reflect.TypeOf((*MockRoomManager)(nil).UpdateGameRoomStatus), ctx, schedulerId, gameRoomId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "updateGameRoomStatus", reflect.TypeOf((*MockRoomManager)(nil).UpdateGameRoomStatus), ctx, schedulerId, gameRoomId)
 }
 
 // UpdateRoom mocks base method.
