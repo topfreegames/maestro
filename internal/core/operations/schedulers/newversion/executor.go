@@ -118,6 +118,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		}
 	}
 
+	newScheduler.State = entities.StateCreating
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
 		return err

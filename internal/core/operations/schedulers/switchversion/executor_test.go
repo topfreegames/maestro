@@ -605,7 +605,7 @@ func newValidSchedulerV2() *entities.Scheduler {
 	return &entities.Scheduler{
 		Name:            "scheduler",
 		Game:            "game",
-		State:           entities.StateCreating,
+		State:           entities.StateInSync,
 		MaxSurge:        "5",
 		RollbackVersion: "",
 		Spec: game_room.Spec{

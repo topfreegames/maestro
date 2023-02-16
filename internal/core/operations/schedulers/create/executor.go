@@ -58,12 +58,28 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
+	opDef, ok := definition.(*Definition)
+	if !ok {
+		return fmt.Errorf("invalid operation definition for %s operation", e.Name())
+	}
+
 	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
 		logger.Error("error creating scheduler in runtime", zap.Error(err))
 		createSchedulerErr := fmt.Errorf("error creating scheduler in runtime: %w", err)
 		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, createSchedulerErr.Error())
 		return createSchedulerErr
+	}
+
+	newScheduler := opDef.NewScheduler
+	newScheduler.State = entities.StateInSync
+
+	err = e.schedulerManager.UpdateScheduler(ctx, newScheduler)
+	if err != nil {
+		logger.Error("error updating scheduler state", zap.Error(err))
+		updateSchedulerErr := fmt.Errorf("error updating scheduler state: %w", err)
+		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, updateSchedulerErr.Error())
+		return updateSchedulerErr
 	}
 
 	logger.Info("operation succeeded, scheduler was created")
