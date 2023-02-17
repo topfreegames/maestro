@@ -214,7 +214,6 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		assert.Nil(t, room)
 		assert.Nil(t, instance)
 	})
-
 }
 
 func TestRoomManager_DeleteRoom(t *testing.T) {
@@ -350,17 +349,19 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady, PingStatus: game_room.GameRoomPingStatusOccupied, LastPingAt: clock.Now(), Metadata: map[string]interface{}{}}
 
 	t.Run("when the current game room exists then it execute without returning error", func(t *testing.T) {
-		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
-		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any())
+		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
 		require.NoError(t, err)
 	})
 
 	t.Run("when update fails then it returns proper error", func(t *testing.T) {
+		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
+		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
+		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any())
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(porterrors.ErrUnexpected)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
@@ -368,6 +369,9 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	})
 
 	t.Run("when there is some error while updating the room then it returns proper error", func(t *testing.T) {
+		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
+		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
+		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any())
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(porterrors.ErrUnexpected)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
@@ -376,18 +380,14 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 
 	t.Run("when the game room state transition is invalid then it returns proper error", func(t *testing.T) {
 		newGameRoomInvalidState := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating, PingStatus: game_room.GameRoomPingStatusReady}
-		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoomInvalidState).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(currentInstance, nil)
-		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(newGameRoomInvalidState, nil)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoomInvalidState)
 		require.Error(t, err)
 	})
 
 	t.Run("when update status fails then it returns error", func(t *testing.T) {
-		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
-		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(porterrors.ErrUnexpected)
 
 		err := roomManager.UpdateRoom(context.Background(), newGameRoom)
@@ -397,7 +397,6 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	t.Run("when some error occurs on events forwarding then it does not return with error", func(t *testing.T) {
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
-		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any())
 
@@ -851,7 +850,6 @@ func TestSchedulerMaxSurge(t *testing.T) {
 }
 
 func TestRoomManager_WaitRoomStatus(t *testing.T) {
-
 	t.Run("return one of the desired states and no error when the desired status is reached after some time", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
@@ -1129,7 +1127,6 @@ func TestRoomManager_GetRoomInstance(t *testing.T) {
 		_, err := roomManager.GetRoomInstance(context.Background(), schedulerName, roomId)
 		require.EqualError(t, err, "error getting instance: some error")
 	})
-
 }
 
 func testSetup(t *testing.T) (
