@@ -30,9 +30,6 @@ import (
 
 	clock_mock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
 
-	"github.com/topfreegames/maestro/internal/core/logs"
-	"go.uber.org/zap"
-
 	"context"
 	"testing"
 
@@ -46,10 +43,7 @@ import (
 )
 
 func TestExecutor_Execute(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
 	clockMock := clock_mock.NewFakeClock(time.Now())
-	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 	definition := Definition{Amount: 10}
 
@@ -97,19 +91,19 @@ func TestExecutor_Execute(t *testing.T) {
 	}
 
 	t.Run("should succeed - all room creations succeed => return nil, no error", func(t *testing.T) {
-		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(10)
 
-		executor := NewExecutor(roomsManager, schedulerStorage)
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager)
 		err := executor.Execute(context.Background(), &op, &definition)
 
 		require.Nil(t, err)
 	})
 
 	t.Run("should fail - some room creation fail, others succeed => returns unexpected error", func(t *testing.T) {
-		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t)
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
 
@@ -118,8 +112,9 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "error while creating room: error")
 
-		executor := NewExecutor(roomsManager, schedulerStorage)
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager)
 		err := executor.Execute(context.Background(), &op, &definition)
 
 		require.NotNil(t, err)
@@ -127,20 +122,18 @@ func TestExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("should fail - no scheduler found => returns error", func(t *testing.T) {
-		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(nil, porterrors.NewErrNotFound("scheduler not found"))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "error fetching scheduler from storage: scheduler not found")
 
-		err := NewExecutor(roomsManager, schedulerStorage).Execute(context.Background(), &op, &definition)
+		err := NewExecutor(roomsManager, schedulerStorage, operationsManager).Execute(context.Background(), &op, &definition)
 		require.NotNil(t, err)
-		require.ErrorContains(t, err, "scheduler not found")
+		require.ErrorContains(t, err, "error fetching scheduler from storage: scheduler not found")
 	})
 }
 
 func TestExecutor_Rollback(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-
-	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 	definition := Definition{Amount: 10}
 
@@ -152,16 +145,20 @@ func TestExecutor_Rollback(t *testing.T) {
 	}
 
 	t.Run("does nothing and return nil", func(t *testing.T) {
-		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t)
 
-		executor := &Executor{
-			roomManager: roomsManager,
-			storage:     schedulerStorage,
-			logger:      zap.L().With(zap.String(logs.LogFieldServiceName, "worker")),
-		}
-
-		rollbackErr := executor.Rollback(context.Background(), &op, &definition, nil)
+		rollbackErr := NewExecutor(roomsManager, schedulerStorage, operationsManager).Rollback(context.Background(), &op, &definition, nil)
 		require.NoError(t, rollbackErr)
 	})
 
+}
+
+func testSetup(t *testing.T) (*Executor, *mockports.MockRoomManager, *mockports.MockSchedulerStorage, *mockports.MockOperationManager) {
+	mockCtrl := gomock.NewController(t)
+
+	roomsManager := mockports.NewMockRoomManager(mockCtrl)
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+	operationsManager := mockports.NewMockOperationManager(mockCtrl)
+	executor := NewExecutor(roomsManager, schedulerStorage, operationsManager)
+	return executor, roomsManager, schedulerStorage, operationsManager
 }

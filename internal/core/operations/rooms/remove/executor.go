@@ -58,6 +58,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 	logger := zap.L().With(
 		zap.String(logs.LogFieldSchedulerName, op.SchedulerName),
 		zap.String(logs.LogFieldOperationDefinition, definition.Name()),
+		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 
@@ -68,9 +69,9 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 		err := e.removeRoomsByIDs(ctx, op.SchedulerName, removeDefinition.RoomsIDs, op)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
-			logger.Warn("failed to remove rooms", zap.Error(err))
+			logger.Warn("error removing rooms", zap.Error(err))
 
-			return fmt.Errorf("failed to remove room by ids: %w", err)
+			return fmt.Errorf("error removing rooms by ids: %w", err)
 		}
 	}
 
@@ -79,9 +80,9 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 		err := e.removeRoomsByAmount(ctx, op.SchedulerName, removeDefinition.Amount, op)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
-			logger.Warn("failed to remove rooms", zap.Error(err))
+			logger.Warn("error removing rooms", zap.Error(err))
 
-			return fmt.Errorf("failed to remove room by amount: %w", err)
+			return fmt.Errorf("error removing rooms by amount: %w", err)
 		}
 	}
 

@@ -80,8 +80,10 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 	scheduler, err := e.getScheduler(ctx, schedulerName)
 
 	if err != nil {
-		logger.Error("failed to get scheduler", zap.Error(err))
-		return err
+		logger.Error("error fetching scheduler for deletion", zap.Error(err))
+		getSchedulerErr := fmt.Errorf("error fetching scheduler for deletion: %w", err)
+		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, getSchedulerErr.Error())
+		return getSchedulerErr
 	}
 
 	err = e.schedulerStorage.RunWithTransaction(ctx, func(transactionId ports.TransactionID) error {
@@ -115,8 +117,10 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 	})
 
 	if err != nil {
-		logger.Error("error deleting scheduler", zap.Error(err))
-		return err
+		logger.Error("error deleting scheduler in transaction", zap.Error(err))
+		transactionErr := fmt.Errorf("error deleting scheduler: %w", err)
+		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, transactionErr.Error())
+		return transactionErr
 	}
 
 	return nil
