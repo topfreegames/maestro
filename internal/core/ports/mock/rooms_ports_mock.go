@@ -128,20 +128,6 @@ func (mr *MockRoomManagerMockRecorder) SchedulerMaxSurge(ctx, scheduler interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SchedulerMaxSurge", reflect.TypeOf((*MockRoomManager)(nil).SchedulerMaxSurge), ctx, scheduler)
 }
 
-// UpdateGameRoomStatus mocks base method.
-func (m *MockRoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "updateGameRoomStatus", ctx, schedulerId, gameRoomId)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateGameRoomStatus indicates an expected call of UpdateGameRoomStatus.
-func (mr *MockRoomManagerMockRecorder) UpdateGameRoomStatus(ctx, schedulerId, gameRoomId interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "updateGameRoomStatus", reflect.TypeOf((*MockRoomManager)(nil).UpdateGameRoomStatus), ctx, schedulerId, gameRoomId)
-}
-
 // UpdateRoom mocks base method.
 func (m *MockRoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
 	m.ctrl.T.Helper()
