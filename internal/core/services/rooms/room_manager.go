@@ -133,13 +133,8 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 }
 
 func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
-	gameRoom.LastPingAt = m.Clock.Now()
-	err := m.RoomStorage.UpdateRoom(ctx, gameRoom)
-	if err != nil {
-		return fmt.Errorf("failed when updating game room in storage with incoming ping data: %w", err)
-	}
 
-	err = m.UpdateGameRoomStatus(ctx, gameRoom.SchedulerID, gameRoom.ID)
+	err := m.updateGameRoomStatus(ctx, *gameRoom)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
@@ -153,6 +148,11 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 		reportPingForwardingFailed(gameRoom.SchedulerID)
 	}
 
+	gameRoom.LastPingAt = m.Clock.Now()
+	err = m.RoomStorage.UpdateRoom(ctx, gameRoom)
+	if err != nil {
+		return fmt.Errorf("failed when updating game room in storage with incoming ping data: %w", err)
+	}
 	return nil
 }
 
@@ -166,7 +166,12 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 		return fmt.Errorf("failed when updating the game room instance on storage: %w", err)
 	}
 
-	err = m.UpdateGameRoomStatus(ctx, gameRoomInstance.SchedulerID, gameRoomInstance.ID)
+	gameRoom, err := m.RoomStorage.GetRoom(ctx, gameRoomInstance.SchedulerID, gameRoomInstance.ID)
+	if err != nil {
+		return fmt.Errorf("failed when fetching the game room on storage: %w", err)
+	}
+
+	err = m.updateGameRoomStatus(ctx, *gameRoom)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
@@ -299,13 +304,9 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 	return int(math.Max(minSchedulerMaxSurge, absoluteNum)), nil
 }
 
-func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error {
-	gameRoom, err := m.RoomStorage.GetRoom(ctx, schedulerId, gameRoomId)
-	if err != nil {
-		return fmt.Errorf("failed to get game room: %w", err)
-	}
+func (m *RoomManager) updateGameRoomStatus(ctx context.Context, gameRoom game_room.GameRoom) error {
 
-	instance, err := m.InstanceStorage.GetInstance(ctx, schedulerId, gameRoomId)
+	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get game room instance: %w", err)
 	}
@@ -324,15 +325,15 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 		return fmt.Errorf("state transition is invalid: %w", err)
 	}
 
-	err = m.RoomStorage.UpdateRoomStatus(ctx, schedulerId, gameRoomId, newStatus)
+	err = m.RoomStorage.UpdateRoomStatus(ctx, gameRoom.SchedulerID, gameRoom.ID, newStatus)
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 
 	if instance.Status.Type == game_room.InstanceTerminating {
 		m.forwardStatusTerminatingEvent(ctx, &game_room.GameRoom{
-			ID:          gameRoomId,
-			SchedulerID: schedulerId,
+			ID:          gameRoom.ID,
+			SchedulerID: gameRoom.SchedulerID,
 		})
 	}
 
