@@ -83,6 +83,6 @@ func TestValidateRoomStatusTransition_InvalidTransition(t *testing.T) {
 		SchedulerID: "S",
 		Status:      GameStatusTerminating,
 	}
-	err := gameRoom.ValidateRoomStatusTransition(GameStatusReady)
+	err := gameRoom.ValidateRoomStatusTransition(GameStatusPending)
 	require.Error(t, err)
 }
