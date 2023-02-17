@@ -70,6 +70,8 @@ type RoomManager interface {
 	CreateRoom(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error)
 	// GetRoomInstance returns the game room instance.
 	GetRoomInstance(ctx context.Context, scheduler, roomID string) (*game_room.Instance, error)
+	// UpdateGameRoomStatus updates the game based on the ping and runtime status.
+	UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error
 	// WaitRoomStatus blocks the caller until the context is canceled, an error
 	// happens in the process or the game room has the desired status.
 	WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status []game_room.GameRoomStatus) (game_room.GameRoomStatus, error)
