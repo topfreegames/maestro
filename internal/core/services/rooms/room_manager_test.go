@@ -376,6 +376,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 
 	t.Run("when the game room state transition is invalid then it returns proper error", func(t *testing.T) {
 		newGameRoomInvalidState := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating, PingStatus: game_room.GameRoomPingStatusReady}
+		currentInstance := &game_room.Instance{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.InstanceStatus{Type: game_room.InstancePending}}
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoomInvalidState).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(newGameRoomInvalidState, nil)
@@ -1177,7 +1178,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusTerminating}
 		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
 
-		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstancePending}}
 		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
 
 		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
