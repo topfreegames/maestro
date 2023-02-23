@@ -123,6 +123,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	}
 
 	logger.Sugar().Debugf("switching version to %v", scheduler.Spec.Version)
+	scheduler.State = entities.StateInSync
 	err = ex.schedulerManager.UpdateScheduler(ctx, scheduler)
 	if err != nil {
 		logger.Error("error updating scheduler with new active version")

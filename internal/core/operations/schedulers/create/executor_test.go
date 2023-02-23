@@ -49,7 +49,11 @@ func TestExecutor_Execute(t *testing.T) {
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationManager := mockports.NewMockOperationManager(mockCtrl)
 
-		definition := Definition{}
+		newScheduler := &entities.Scheduler{State: entities.StateCreating}
+		updatedScheduler := &entities.Scheduler{State: entities.StateInSync}
+		definition := Definition{
+			NewScheduler: newScheduler,
+		}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
@@ -58,6 +62,7 @@ func TestExecutor_Execute(t *testing.T) {
 		}
 
 		runtime.EXPECT().CreateScheduler(context.Background(), &entities.Scheduler{Name: op.SchedulerName}).Return(nil)
+		schedulerManager.EXPECT().UpdateScheduler(context.Background(), updatedScheduler)
 
 		err := NewExecutor(runtime, schedulerManager, operationManager).Execute(context.Background(), &op, &definition)
 		require.Nil(t, err)
@@ -71,7 +76,10 @@ func TestExecutor_Execute(t *testing.T) {
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationManager := mockports.NewMockOperationManager(mockCtrl)
 
-		definition := Definition{}
+		newScheduler := &entities.Scheduler{State: entities.StateCreating}
+		definition := Definition{
+			NewScheduler: newScheduler,
+		}
 		op := operation.Operation{
 			ID:             "some-op-id",
 			SchedulerName:  "zooba_blue:1.0.0",
