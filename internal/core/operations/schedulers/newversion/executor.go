@@ -96,6 +96,13 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		return fmt.Errorf("error getting active scheduler: %w", err)
 	}
 
+	currentActiveScheduler.State = entities.StateCreating
+	err = ex.schedulerManager.UpdateScheduler(ctx, currentActiveScheduler)
+	if err != nil {
+		logger.Error("error updating active scheduler state", zap.Error(err))
+		return fmt.Errorf("error updating active scheduler state: %w", err)
+	}
+
 	isSchedulerMajorVersion := currentActiveScheduler.IsMajorVersion(newScheduler)
 
 	err = ex.populateSchedulerNewVersion(ctx, newScheduler, currentActiveScheduler.Spec.Version, isSchedulerMajorVersion)
@@ -118,7 +125,6 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		}
 	}
 
-	newScheduler.State = entities.StateCreating
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
 		return err
@@ -146,6 +152,25 @@ func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, defin
 		}
 		ex.RemoveValidationRoomID(op.SchedulerName)
 	}
+
+	opDef, ok := definition.(*Definition)
+	if !ok {
+		return fmt.Errorf("invalid operation definition for %s operation", ex.Name())
+	}
+
+	currentActiveScheduler, err := ex.schedulerManager.GetActiveScheduler(ctx, opDef.NewScheduler.Name)
+	if err != nil {
+		logger.Error("error getting active scheduler", zap.Error(err))
+		return fmt.Errorf("error getting active scheduler: %w", err)
+	}
+
+	currentActiveScheduler.State = entities.StateInSync
+	err = ex.schedulerManager.UpdateScheduler(ctx, currentActiveScheduler)
+	if err != nil {
+		logger.Error("error updating active scheduler state", zap.Error(err))
+		return fmt.Errorf("error updating active scheduler state: %w", err)
+	}
+
 	return nil
 }
 
