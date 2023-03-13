@@ -36,8 +36,8 @@ import (
 )
 
 const (
-	// OccupiedRoomsKey is the key to occupied rooms in the CurrentState map.
-	OccupiedRoomsKey = "RoomsOccupancyOccupiedRooms"
+	// ReadyRoomsKey is the key to ready rooms in the CurrentState map.
+	ReadyRoomsKey = "RoomsOccupancyReadyRooms"
 )
 
 // Policy holds the requirements to build the current state of
@@ -57,13 +57,13 @@ func NewPolicy(roomStorage ports.RoomStorage) *Policy {
 
 // CurrentStateBuilder fill the fields that should be considered during the autoscaling policy.
 func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Scheduler) (policies.CurrentState, error) {
-	occupiedRoomsAmount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied)
+	readyRoomsAmount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
+		return nil, fmt.Errorf("error fetching ready game rooms amount: %w", err)
 	}
 
 	currentState := policies.CurrentState{
-		OccupiedRoomsKey: occupiedRoomsAmount,
+		ReadyRoomsKey: readyRoomsAmount,
 	}
 
 	return currentState, nil
@@ -80,12 +80,12 @@ func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.Poli
 		return -1, errors.New("Ready target must be between 0 and 1")
 	}
 
-	if _, ok := currentState[OccupiedRoomsKey].(int); !ok {
-		return -1, errors.New("There are no occupiedRooms in the currentState")
+	readyRooms, ok := currentState[ReadyRoomsKey].(int)
+	if !ok {
+		return -1, errors.New("There are no readyRooms in the currentState")
 	}
 
-	occupiedRooms := currentState[OccupiedRoomsKey].(int)
-	desiredNumberOfRoom := int(math.Ceil(float64(occupiedRooms) / (float64(1) - readyTarget)))
+	desiredNumberOfRoom := int(math.Ceil(float64(readyRooms) / (float64(1) - readyTarget)))
 
 	return desiredNumberOfRoom, nil
 }
