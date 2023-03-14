@@ -1148,6 +1148,49 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 				},
 			},
 		},
+		{
+			title:      "game room status terminating, considered valid, and without ready rooms, add room operation enqueued",
+			definition: &healthcontroller.Definition{},
+			executionPlan: executionPlan{
+				tookAction: true,
+				planMocks: func(
+					roomStorage *mockports.MockRoomStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
+					schedulerStorage *mockports.MockSchedulerStorage,
+					operationManager *mockports.MockOperationManager,
+					autoscaler *mockports.MockAutoscaler,
+				) {
+					gameRoomIDs := []string{"existent-terminating-2"}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-terminating-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceTerminating,
+							},
+						},
+					}
+					// load
+					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
+					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerAutoscalingEnabled, nil)
+					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), genericSchedulerAutoscalingEnabled).Return(genericSchedulerAutoscalingEnabled.Autoscaling.Min, nil)
+
+					expiredCreatedAt := time.Now().Add(5 * -time.Minute)
+					gameRoomTerminating := &game_room.GameRoom{
+						ID:          gameRoomIDs[0],
+						SchedulerID: genericSchedulerAutoscalingEnabled.Name,
+						Status:      game_room.GameStatusTerminating,
+						LastPingAt:  time.Now(),
+						CreatedAt:   expiredCreatedAt,
+					}
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoomTerminating, nil)
+
+					op := operation.New(genericSchedulerAutoscalingEnabled.Name, definition.Name(), nil)
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, &add.Definition{Amount: 1}).Return(op, nil)
+				},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
