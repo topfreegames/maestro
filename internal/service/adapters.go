@@ -24,6 +24,8 @@ package service
 
 import (
 	"fmt"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"strings"
 	"time"
 
 	schedulerredis "github.com/topfreegames/maestro/internal/adapters/cache/redis/scheduler"
@@ -42,7 +44,8 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v10"
+	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
@@ -222,7 +225,16 @@ func createRedisClient(c config.Config, url string) (*redis.Client, error) {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
 	opts.PoolSize = c.GetInt(redisPoolSizePath)
-	return redis.NewClient(opts), nil
+
+	hostPort := strings.Split(opts.Addr, ":")
+
+	client := redis.NewClient(opts)
+	client.AddHook(redisotel.NewTracingHook(redisotel.WithAttributes(
+		semconv.NetPeerNameKey.String(hostPort[0]),
+		semconv.NetPeerPortKey.String(hostPort[1])),
+	))
+
+	return client, nil
 }
 
 // NewPolicyMap instantiates a new policy to be used by autoscaler expecting a room storage as parameter.

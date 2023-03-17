@@ -34,6 +34,11 @@ import (
 	"github.com/topfreegames/maestro/internal/config/viper"
 	"github.com/topfreegames/maestro/internal/service"
 	"github.com/topfreegames/maestro/internal/validations"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 	"go.uber.org/zap"
 )
 
@@ -78,4 +83,67 @@ func MatchPath(path, pattern string) bool {
 		return false
 	}
 	return match
+}
+
+func ConfigureTracer(ctx context.Context, serviceName string) (func() error, error) {
+	tracerUrl := os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT")
+	switch {
+	case tracerUrl != "":
+		return configureJaeger(ctx, serviceName)
+	default:
+		return configureStdout(ctx, serviceName)
+	}
+}
+
+func configureJaeger(ctx context.Context, serviceName string) (func() error, error) {
+	res := buildResource(serviceName)
+	provider := trace.NewTracerProvider(trace.WithResource(res))
+
+	exp, err := jaeger.New(jaeger.WithCollectorEndpoint())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create jager collector: %w", err)
+	}
+
+	bsp := trace.NewBatchSpanProcessor(exp)
+	provider.RegisterSpanProcessor(bsp)
+
+	otel.SetTracerProvider(provider)
+
+	return func() error {
+		if err := provider.Shutdown(ctx); err != nil {
+			return err
+		}
+
+		return nil
+	}, nil
+}
+
+func configureStdout(ctx context.Context, serviceName string) (func() error, error) {
+	res := buildResource(serviceName)
+	provider := trace.NewTracerProvider(trace.WithResource(res))
+	otel.SetTracerProvider(provider)
+
+	//exp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//bsp := trace.NewBatchSpanProcessor(exp)
+	//provider.RegisterSpanProcessor(bsp)
+
+	return func() error {
+		if err := provider.Shutdown(ctx); err != nil {
+			return err
+		}
+
+		return nil
+	}, nil
+}
+
+func buildResource(serviceName string) *resource.Resource {
+	return resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceNamespaceKey.String("maestro-next"),
+		semconv.ServiceNameKey.String(serviceName),
+	)
 }

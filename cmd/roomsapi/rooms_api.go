@@ -27,22 +27,22 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/topfreegames/maestro/cmd/commom"
-
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/prometheus/client_golang/prometheus"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/spf13/cobra"
+	"github.com/topfreegames/maestro/cmd/commom"
 	"github.com/topfreegames/maestro/internal/config"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
 )
 
 var (
-	logConfig  string
-	configPath string
+	logConfig   string
+	configPath  string
+	serviceName string = "rooms-api"
 )
 
 var RoomsAPICmd = &cobra.Command{
@@ -64,6 +64,11 @@ func init() {
 func runRoomsAPI() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
+	closeTracer, err := commom.ConfigureTracer(ctx, serviceName)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("failed to configure tracer")
+	}
+
 	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
@@ -76,6 +81,11 @@ func runRoomsAPI() {
 	shutdownRoomsServerFn := runRoomsServer(config, mux)
 
 	<-ctx.Done()
+
+	err = closeTracer()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("failed to shutdown tracing server")
+	}
 
 	err = shutdownInternalServerFn()
 	if err != nil {
@@ -93,17 +103,18 @@ func runRoomsAPI() {
 func runRoomsServer(configs config.Config, mux *runtime.ServeMux) func() error {
 	// Prometheus go-http-metrics middleware
 	mdlw := middleware.New(middleware.Config{
-		Service: "rooms-api",
+		Service: serviceName,
 		Recorder: metrics.NewRecorder(metrics.Config{
 			DurationBuckets: prometheus.DefBuckets,
 		}),
 	})
 
 	muxHandlerWithMetricsMdlw := buildMuxWithMetricsMdlw(mdlw, mux)
+	muxHandlerWithTracingMdlw := buildMuxWithTracing(muxHandlerWithMetricsMdlw)
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%s", configs.GetString("api.port")),
-		Handler: muxHandlerWithMetricsMdlw,
+		Handler: muxHandlerWithTracingMdlw,
 	}
 
 	go func() {
@@ -151,4 +162,33 @@ func buildMuxWithMetricsMdlw(mdlw middleware.Middleware, mux *runtime.ServeMux) 
 	}),
 	)
 	return muxHandlerWithMetricsMdlw
+}
+
+func buildMuxWithTracing(hndl http.Handler) http.Handler {
+	muxHandlerWithTracing := http.NewServeMux()
+	muxHandlerWithTracing.Handle("/", http.HandlerFunc(func(respWriter http.ResponseWriter, request *http.Request) {
+		path := request.URL.Path
+
+		var handler http.Handler
+		anyWordRegex := "[^/]+?"
+
+		switch {
+		// Rooms handler
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/ping$", anyWordRegex, anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/scheduler/:schedulerName/rooms/:roomID/ping")
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/roomevent", anyWordRegex, anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/scheduler/:schedulerName/rooms/:roomID/roomevent")
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/playerevent", anyWordRegex, anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/scheduler/:schedulerName/rooms/:roomID/playerevent")
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/status", anyWordRegex, anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/scheduler/:schedulerName/rooms/:roomID/status")
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/address", anyWordRegex, anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/scheduler/:schedulerName/rooms/:roomID/address")
+		default:
+			handler = otelhttp.NewHandler(hndl, "")
+		}
+		handler.ServeHTTP(respWriter, request)
+	}),
+	)
+	return muxHandlerWithTracing
 }

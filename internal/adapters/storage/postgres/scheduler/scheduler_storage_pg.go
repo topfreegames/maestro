@@ -30,7 +30,8 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/extra/pgotel/v10"
+	"github.com/go-pg/pg/v10"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -48,8 +49,10 @@ type schedulerStorage struct {
 }
 
 func NewSchedulerStorage(opts *pg.Options) *schedulerStorage {
+	db := pg.Connect(opts)
+	db.AddQueryHook(pgotel.NewTracingHook())
 	return &schedulerStorage{
-		db:              pg.Connect(opts),
+		db:              db,
 		transactionsMap: map[ports.TransactionID]*pg.Tx{},
 	}
 }

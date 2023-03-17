@@ -25,27 +25,24 @@ package managementapi
 import (
 	"context"
 	"fmt"
-
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/topfreegames/maestro/cmd/commom"
-
-	"github.com/spf13/cobra"
-
 	"net/http"
 
-	"go.uber.org/zap"
-
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/prometheus/client_golang/prometheus"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
+	"github.com/spf13/cobra"
+	"github.com/topfreegames/maestro/cmd/commom"
 	"github.com/topfreegames/maestro/internal/config"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.uber.org/zap"
 )
 
 var (
-	logConfig  string
-	configPath string
+	logConfig   string
+	configPath  string
+	serviceName string = "management-api"
 )
 
 var ManagementApiCmd = &cobra.Command{
@@ -67,6 +64,11 @@ func init() {
 func runManagementApi() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
+	closeTracer, err := commom.ConfigureTracer(ctx, serviceName)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("failed to configure tracer")
+	}
+
 	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
@@ -79,6 +81,11 @@ func runManagementApi() {
 	shutdownManagementServerFn := runManagementServer(ctx, config, mux)
 
 	<-ctx.Done()
+
+	err = closeTracer()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("failed to shutdown tracing server")
+	}
 
 	err = shutdownInternalServerFn()
 	if err != nil {
@@ -96,17 +103,18 @@ func runManagementApi() {
 func runManagementServer(ctx context.Context, configs config.Config, mux *runtime.ServeMux) func() error {
 	// Prometheus go-http-metrics middleware
 	mdlw := middleware.New(middleware.Config{
-		Service: "management-api",
+		Service: serviceName,
 		Recorder: metrics.NewRecorder(metrics.Config{
 			DurationBuckets: prometheus.DefBuckets,
 		}),
 	})
 
 	muxHandlerWithMetricsMdlw := buildMuxWithMetricsMdlw(mdlw, mux)
+	muxHandlerWithTracingMdlw := buildMuxWithTracing(muxHandlerWithMetricsMdlw)
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%s", configs.GetString("api.port")),
-		Handler: muxHandlerWithMetricsMdlw,
+		Handler: muxHandlerWithTracingMdlw,
 	}
 
 	go func() {
@@ -160,4 +168,38 @@ func buildMuxWithMetricsMdlw(mdlw middleware.Middleware, mux *runtime.ServeMux) 
 	}),
 	)
 	return muxHandlerWithMetricsMdlw
+}
+
+func buildMuxWithTracing(hndl http.Handler) http.Handler {
+	muxHandleWithTracing := http.NewServeMux()
+	muxHandleWithTracing.Handle("/", http.HandlerFunc(func(respWriter http.ResponseWriter, request *http.Request) {
+		path := request.URL.Path
+
+		var handler http.Handler
+		anyWordRegex := "[^/]+?"
+
+		switch {
+		case commom.MatchPath(path, "^/schedulers$"):
+			handler = otelhttp.NewHandler(hndl, "/schedulers")
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s$", anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/schedulers/:schedulerName")
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/versions$", anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/schedulers/:schedulerName/versions")
+		case commom.MatchPath(path, "^/schedulers/info$"):
+			handler = otelhttp.NewHandler(hndl, "/schedulers/info")
+
+		// Operations handler
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/operations$", anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/schedulers/:schedulerName/operations")
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/operations/%s", anyWordRegex, anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/schedulers/:schedulerName/operations/:operationID")
+		case commom.MatchPath(path, fmt.Sprintf("^/schedulers/%s/operations/%s/cancel$", anyWordRegex, anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/schedulers/:schedulerName/operations/:operationID/cancel")
+		default:
+			handler = otelhttp.NewHandler(hndl, "")
+		}
+		handler.ServeHTTP(respWriter, request)
+	}))
+
+	return muxHandleWithTracing
 }
