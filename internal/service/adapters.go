@@ -24,7 +24,6 @@ package service
 
 import (
 	"fmt"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"strings"
 	"time"
 
@@ -35,6 +34,7 @@ import (
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/instance"
 	redis2 "github.com/topfreegames/maestro/internal/adapters/storage/redis/operation"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/room"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	operationservice "github.com/topfreegames/maestro/internal/core/services/operations"
 	"github.com/topfreegames/maestro/internal/core/services/rooms"

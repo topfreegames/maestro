@@ -36,6 +36,7 @@ import (
 	"github.com/topfreegames/maestro/internal/validations"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
@@ -123,13 +124,13 @@ func configureStdout(ctx context.Context, serviceName string) (func() error, err
 	provider := trace.NewTracerProvider(trace.WithResource(res))
 	otel.SetTracerProvider(provider)
 
-	//exp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//bsp := trace.NewBatchSpanProcessor(exp)
-	//provider.RegisterSpanProcessor(bsp)
+	exp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
+	if err != nil {
+		return nil, err
+	}
+
+	bsp := trace.NewBatchSpanProcessor(exp)
+	provider.RegisterSpanProcessor(bsp)
 
 	return func() error {
 		if err := provider.Shutdown(ctx); err != nil {

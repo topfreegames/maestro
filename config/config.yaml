@@ -3,6 +3,8 @@ api:
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true
+  tracing:
+    enabled: true
 
 internalApi:
   port: 8081

@@ -40,10 +40,11 @@ import (
 )
 
 var (
-	logConfig   string
-	configPath  string
-	serviceName string = "rooms-api"
+	logConfig  string
+	configPath string
 )
+
+const serviceName string = "rooms-api"
 
 var RoomsAPICmd = &cobra.Command{
 	Use:   "rooms-api",

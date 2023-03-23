@@ -40,10 +40,11 @@ import (
 )
 
 var (
-	logConfig   string
-	configPath  string
-	serviceName string = "management-api"
+	logConfig  string
+	configPath string
 )
+
+const serviceName string = "management-api"
 
 var ManagementApiCmd = &cobra.Command{
 	Use:     "management-api",
@@ -64,14 +65,14 @@ func init() {
 func runManagementApi() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	closeTracer, err := commom.ConfigureTracer(ctx, serviceName)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("failed to configure tracer")
-	}
-
 	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
+	}
+
+	closeTracer, err := commom.ConfigureTracer(ctx, serviceName)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("failed to configure tracer")
 	}
 
 	mux, err := initializeManagementMux(ctx, config)
@@ -109,12 +110,15 @@ func runManagementServer(ctx context.Context, configs config.Config, mux *runtim
 		}),
 	})
 
-	muxHandlerWithMetricsMdlw := buildMuxWithMetricsMdlw(mdlw, mux)
-	muxHandlerWithTracingMdlw := buildMuxWithTracing(muxHandlerWithMetricsMdlw)
+	muxHandler := buildMuxWithMetricsMdlw(mdlw, mux)
+
+	if configs.GetBool("api.tracing.enabled") {
+		muxHandler = buildMuxWithTracing(muxHandler)
+	}
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%s", configs.GetString("api.port")),
-		Handler: muxHandlerWithTracingMdlw,
+		Handler: muxHandler,
 	}
 
 	go func() {
