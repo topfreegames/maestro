@@ -90,6 +90,9 @@ const (
 
 	// operation TTL
 	operationsTTLPath = "workers.redis.operationsTtl"
+
+	// storage tracing
+	tracingEnabledPath = "api.tracing.jaeger.enabled"
 )
 
 // NewSchedulerManager instantiates a new scheduler manager.
@@ -211,7 +214,13 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
 
-	return scheduler.NewSchedulerStorage(opts), nil
+	pgStorage := scheduler.NewSchedulerStorage(opts)
+
+	if c.GetBool("api.tracing.jaeger.enabled") {
+		pgStorage.EnableTracing()
+	}
+
+	return pgStorage, nil
 }
 
 // GetSchedulerStoragePostgresURL get scheduler storage postgres URL.
@@ -229,10 +238,13 @@ func createRedisClient(c config.Config, url string) (*redis.Client, error) {
 	hostPort := strings.Split(opts.Addr, ":")
 
 	client := redis.NewClient(opts)
-	client.AddHook(redisotel.NewTracingHook(redisotel.WithAttributes(
-		semconv.NetPeerNameKey.String(hostPort[0]),
-		semconv.NetPeerPortKey.String(hostPort[1])),
-	))
+
+	if c.GetBool("api.tracing.jaeger.enabled") {
+		client.AddHook(redisotel.NewTracingHook(redisotel.WithAttributes(
+			semconv.NetPeerNameKey.String(hostPort[0]),
+			semconv.NetPeerPortKey.String(hostPort[1])),
+		))
+	}
 
 	return client, nil
 }

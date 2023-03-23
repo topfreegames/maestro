@@ -65,14 +65,14 @@ func init() {
 func runRoomsAPI() {
 	ctx, cancelFn := context.WithCancel(context.Background())
 
-	closeTracer, err := commom.ConfigureTracer(ctx, serviceName)
-	if err != nil {
-		zap.L().With(zap.Error(err)).Fatal("failed to configure tracer")
-	}
-
 	err, config, shutdownInternalServerFn := commom.ServiceSetup(ctx, cancelFn, logConfig, configPath)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
+	}
+
+	closeTracer, err := commom.ConfigureTracer(serviceName, config)
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("failed to configure tracer")
 	}
 
 	mux, err := initializeRoomsMux(ctx, config)
@@ -110,12 +110,15 @@ func runRoomsServer(configs config.Config, mux *runtime.ServeMux) func() error {
 		}),
 	})
 
-	muxHandlerWithMetricsMdlw := buildMuxWithMetricsMdlw(mdlw, mux)
-	muxHandlerWithTracingMdlw := buildMuxWithTracing(muxHandlerWithMetricsMdlw)
+	muxHandler := buildMuxWithMetricsMdlw(mdlw, mux)
+
+	if configs.GetBool("api.tracing.jaeger.enabled") {
+		muxHandler = buildMuxWithTracing(muxHandler)
+	}
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%s", configs.GetString("api.port")),
-		Handler: muxHandlerWithTracingMdlw,
+		Handler: muxHandler,
 	}
 
 	go func() {

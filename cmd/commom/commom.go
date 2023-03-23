@@ -36,7 +36,6 @@ import (
 	"github.com/topfreegames/maestro/internal/validations"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
@@ -86,17 +85,16 @@ func MatchPath(path, pattern string) bool {
 	return match
 }
 
-func ConfigureTracer(ctx context.Context, serviceName string) (func() error, error) {
-	tracerUrl := os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT")
-	switch {
-	case tracerUrl != "":
-		return configureJaeger(ctx, serviceName)
-	default:
-		return configureStdout(ctx, serviceName)
+func ConfigureTracer(serviceName string, configs config.Config) (func() error, error) {
+	tracerUrl := configs.GetString("api.tracing.jaeger.url")
+	if tracerUrl != "" {
+		return configureJaeger(serviceName, configs)
 	}
+
+	return func() error { return nil }, nil
 }
 
-func configureJaeger(ctx context.Context, serviceName string) (func() error, error) {
+func configureJaeger(serviceName string, configs config.Config) (func() error, error) {
 	res := buildResource(serviceName)
 	provider := trace.NewTracerProvider(trace.WithResource(res))
 
@@ -111,29 +109,10 @@ func configureJaeger(ctx context.Context, serviceName string) (func() error, err
 	otel.SetTracerProvider(provider)
 
 	return func() error {
-		if err := provider.Shutdown(ctx); err != nil {
-			return err
-		}
+		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("api.gracefulShutdownTimeout"))
+		defer cancelShutdownFn()
 
-		return nil
-	}, nil
-}
-
-func configureStdout(ctx context.Context, serviceName string) (func() error, error) {
-	res := buildResource(serviceName)
-	provider := trace.NewTracerProvider(trace.WithResource(res))
-	otel.SetTracerProvider(provider)
-
-	exp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	if err != nil {
-		return nil, err
-	}
-
-	bsp := trace.NewBatchSpanProcessor(exp)
-	provider.RegisterSpanProcessor(bsp)
-
-	return func() error {
-		if err := provider.Shutdown(ctx); err != nil {
+		if err := provider.Shutdown(shutdownCtx); err != nil {
 			return err
 		}
 

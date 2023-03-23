@@ -4,7 +4,9 @@ api:
   metrics:
     enabled: true
   tracing:
-    enabled: true
+    jaeger:
+      enabled: true
+      url: "http://localhost:14268/api/traces"
 
 internalApi:
   port: 8081

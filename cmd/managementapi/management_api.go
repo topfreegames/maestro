@@ -70,7 +70,7 @@ func runManagementApi() {
 		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
 
-	closeTracer, err := commom.ConfigureTracer(ctx, serviceName)
+	closeTracer, err := commom.ConfigureTracer(serviceName, config)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("failed to configure tracer")
 	}
@@ -112,7 +112,7 @@ func runManagementServer(ctx context.Context, configs config.Config, mux *runtim
 
 	muxHandler := buildMuxWithMetricsMdlw(mdlw, mux)
 
-	if configs.GetBool("api.tracing.enabled") {
+	if configs.GetBool("api.tracing.jaeger.enabled") {
 		muxHandler = buildMuxWithTracing(muxHandler)
 	}
 
