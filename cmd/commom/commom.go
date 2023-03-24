@@ -42,6 +42,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	shutdownTimeoutPath = "api.gracefulShutdownTimeout"
+	tracingUrlPath      = "api.tracing.jaeger.url"
+)
+
 func ServiceSetup(ctx context.Context, cancelFn context.CancelFunc, logConfig, configPath string) (error, config.Config, func() error) {
 	err := service.ConfigureLogging(logConfig)
 	if err != nil {
@@ -86,7 +91,7 @@ func MatchPath(path, pattern string) bool {
 }
 
 func ConfigureTracer(serviceName string, configs config.Config) (func() error, error) {
-	tracerUrl := configs.GetString("api.tracing.jaeger.url")
+	tracerUrl := configs.GetString(tracingUrlPath)
 	if tracerUrl != "" {
 		return configureJaeger(serviceName, configs)
 	}
@@ -98,7 +103,7 @@ func configureJaeger(serviceName string, configs config.Config) (func() error, e
 	res := buildResource(serviceName)
 	provider := trace.NewTracerProvider(trace.WithResource(res))
 
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint())
+	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(configs.GetString(tracingUrlPath))))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jager collector: %w", err)
 	}
@@ -109,7 +114,7 @@ func configureJaeger(serviceName string, configs config.Config) (func() error, e
 	otel.SetTracerProvider(provider)
 
 	return func() error {
-		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration("api.gracefulShutdownTimeout"))
+		shutdownCtx, cancelShutdownFn := context.WithTimeout(context.Background(), configs.GetDuration(shutdownTimeoutPath))
 		defer cancelShutdownFn()
 
 		if err := provider.Shutdown(shutdownCtx); err != nil {
