@@ -45,7 +45,9 @@ message Container {
 }
 // Annotation should add a annotation to scheduler
 message Annotation{
+  // name of the annotation
   string name = 1;
+  // required annotation value or option
   string value = 2;
 }
 

@@ -63,7 +63,7 @@ type Scheduler struct {
 	CreatedAt       time.Time
 	MaxSurge        string                 `validate:"required,max_surge"`
 	Forwarders      []*forwarder.Forwarder `validate:"dive"`
-	Annotations     []*Annotations         `validate:"optional"`
+	Annotations     []*Annotations
 }
 
 type Annotations struct {

@@ -893,10 +893,12 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "title": "name of the annotation"
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "title": "required annotation value or option"
         }
       },
       "title": "Annotation should add a annotation to scheduler"

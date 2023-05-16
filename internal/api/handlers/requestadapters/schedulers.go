@@ -158,6 +158,9 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 
 func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
 	forwarders, err := fromEntityForwardersToResponse(entity.Forwarders)
+	if err != nil {
+		return nil, err
+	}
 	annotations, err := fromEntityAnnotationsToResponse(entity.Annotations)
 	if err != nil {
 		return nil, err

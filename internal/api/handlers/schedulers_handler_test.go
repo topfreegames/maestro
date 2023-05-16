@@ -271,6 +271,7 @@ func TestGetScheduler(t *testing.T) {
 					},
 				},
 			},
+			Annotations: []*entities.Annotations{},
 		}
 
 		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(scheduler, nil)
@@ -539,6 +540,7 @@ func TestCreateScheduler(t *testing.T) {
 					},
 				},
 			},
+			Annotations: []*entities.Annotations{entities.NewAnnotations("annotation", "option")},
 		}
 
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Do(
@@ -555,6 +557,10 @@ func TestCreateScheduler(t *testing.T) {
 					assert.Equal(t, scheduler.Forwarders[i].Enabled, forwarder.Enabled)
 					assert.Equal(t, scheduler.Forwarders[i].Address, forwarder.Address)
 					assert.Equal(t, scheduler.Forwarders[i].Options.Timeout, forwarder.Options.Timeout)
+				}
+				for i, annotation := range arg.Annotations {
+					assert.Equal(t, scheduler.Annotations[i].Name, annotation.Name)
+					assert.Equal(t, scheduler.Annotations[i].Opt, annotation.Opt)
 				}
 			},
 		).Return(nil)
@@ -1235,6 +1241,7 @@ func newValidScheduler() *entities.Scheduler {
 		},
 	}
 	forwarders := []*forwarder.Forwarder{fwd}
+	annotations := []*entities.Annotations{entities.NewAnnotations("imageregistry", "https://hub.docker.com/")}
 
 	return &entities.Scheduler{
 		Name:            "scheduler-name-1",
@@ -1272,6 +1279,7 @@ func newValidScheduler() *entities.Scheduler {
 			Start: 40000,
 			End:   60000,
 		},
-		Forwarders: forwarders,
+		Forwarders:  forwarders,
+		Annotations: annotations,
 	}
 }
