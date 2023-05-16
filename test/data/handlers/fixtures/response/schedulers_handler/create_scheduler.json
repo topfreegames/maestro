@@ -76,6 +76,10 @@
           "metadata": {}
         }
       }
-    ]
+    ],
+    "annotations": [{
+      "name": "annotation",
+      "value": "option"
+    }]
   }
 }
