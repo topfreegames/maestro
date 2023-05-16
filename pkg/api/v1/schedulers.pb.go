@@ -436,7 +436,8 @@ type NewSchedulerVersionRequest struct {
 	// The autoscaling defines the autoscaling and its policy to be followed
 	Autoscaling *Autoscaling `protobuf:"bytes,7,opt,name=autoscaling,proto3,oneof" json:"autoscaling,omitempty"`
 	// List of Scheduler forwarders
-	Forwarders  []*Forwarder  `protobuf:"bytes,8,rep,name=forwarders,proto3" json:"forwarders,omitempty"`
+	Forwarders []*Forwarder `protobuf:"bytes,8,rep,name=forwarders,proto3" json:"forwarders,omitempty"`
+	// New annotations for scheduler
 	Annotations []*Annotation `protobuf:"bytes,9,rep,name=annotations,proto3" json:"annotations,omitempty"`
 }
 

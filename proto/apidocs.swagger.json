@@ -509,7 +509,8 @@
                   "items": {
                     "type": "object",
                     "$ref": "#/definitions/apiv1Annotation"
-                  }
+                  },
+                  "title": "New annotations for scheduler"
                 }
               },
               "description": "Scheduler is the struct that defines a maestro scheduler."

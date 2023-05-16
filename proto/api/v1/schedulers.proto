@@ -159,6 +159,7 @@ message NewSchedulerVersionRequest {
   optional Autoscaling autoscaling = 7;
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 8;
+  // New annotations for scheduler
   repeated Annotation annotations = 9;
 }
 
