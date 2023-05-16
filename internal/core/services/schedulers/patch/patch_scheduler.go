@@ -122,13 +122,13 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 		scheduler.Spec = *spec
 	}
 
-	if _, ok := patchMap[LabelAnnotations]; ok {
-		var patchAnnotationsMap map[string]interface{}
-		if patchAnnotationsMap, ok = patchMap[LabelAnnotations].(map[string]interface{}); !ok {
+	if _, ok := patchMap[LabelAutoscaling]; ok {
+		var patchAutoscalingMap map[string]interface{}
+		if patchAutoscalingMap, ok = patchMap[LabelAutoscaling].(map[string]interface{}); !ok {
 			return nil, fmt.Errorf("error parsing scheduler: autoscaling malformed")
 		}
 
-		err := patchAutoscaling(&scheduler, patchAnnotationsMap)
+		err := patchAutoscaling(&scheduler, patchAutoscalingMap)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing scheduler: %w", err)
 		}
