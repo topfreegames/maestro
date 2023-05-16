@@ -116,6 +116,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
+		fromApiToAnnotation(request.GetAnnotations()),
 	)
 }
 
@@ -151,11 +152,13 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
+		fromApiToAnnotation(request.GetAnnotations()),
 	)
 }
 
 func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
 	forwarders, err := fromEntityForwardersToResponse(entity.Forwarders)
+	annotations, err := fromEntityAnnotationsToResponse(entity.Annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -170,6 +173,7 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 		Spec:          getSpec(entity.Spec),
 		Autoscaling:   getAutoscaling(entity.Autoscaling),
 		Forwarders:    forwarders,
+		Annotations:   annotations,
 	}, nil
 }
 
@@ -300,7 +304,19 @@ func fromEntityForwardersToResponse(entities []*forwarder.Forwarder) ([]*api.For
 	}
 	return forwarders, nil
 }
+func fromEntityAnnotationsToResponse(entities []*entities.Annotations) ([]*api.Annotation, error) {
+	annotations := make([]*api.Annotation, len(entities))
 
+	for i, entity := range entities {
+
+		annotations[i] = &api.Annotation{
+			Name:  entity.Name,
+			Value: entity.Opt,
+		}
+
+	}
+	return annotations, nil
+}
 func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderOptions, error) {
 	if entity == nil {
 		return nil, nil
@@ -434,6 +450,17 @@ func fromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) [
 	}
 
 	return environments
+}
+func fromApiToAnnotation(apiAnnotations []*api.Annotation) []*entities.Annotations {
+	annotations := make([]*entities.Annotations, len(apiAnnotations))
+	for i, apiAnnotation := range apiAnnotations {
+		annotation := entities.NewAnnotations(apiAnnotation.Name, apiAnnotation.Value)
+		annotations[i] = &entities.Annotations{
+			Name: annotation.Name,
+			Opt:  annotation.Opt,
+		}
+	}
+	return annotations
 }
 
 func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
