@@ -3,9 +3,8 @@
 
 version: '3'
 services:
-  rancher/k3s:v1.27.1-k3s1
   k3s_server:
-    image: "rancher/k3s:v1.27.1-k3s1"
+    image: "rancher/k3s:v1.19.11-k3s1"
     command: server --node-name control-plane
     tmpfs:
     - /run

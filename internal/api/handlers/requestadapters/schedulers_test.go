@@ -549,6 +549,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*api.Annotation{},
 				},
 			},
 			Output: Output{
@@ -647,6 +648,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*entities.Annotations{},
 				},
 			},
 		},
@@ -732,6 +734,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*api.Annotation{},
 				},
 			},
 			Output: Output{
@@ -817,6 +820,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*entities.Annotations{},
 				},
 			},
 		},
@@ -1041,6 +1045,7 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*entities.Annotations{},
 				},
 			},
 			Output: Output{
@@ -1193,6 +1198,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*api.Annotation{},
 				},
 			},
 			Output: Output{
@@ -1291,6 +1297,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*entities.Annotations{},
 				},
 			},
 		},
@@ -1421,6 +1428,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*entities.Annotations{},
 				},
 			},
 			Output: Output{
@@ -1518,6 +1526,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*api.Annotation{},
 				},
 			},
 		},
@@ -1597,6 +1606,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*entities.Annotations{},
 				},
 			},
 			Output: Output{
@@ -1681,6 +1691,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 							},
 						},
 					},
+					Annotations: []*api.Annotation{},
 				},
 			},
 		},
