@@ -62,7 +62,7 @@ type schedulerInfo struct {
 	RoomsReplicas          int
 	Forwarders             []*forwarder.Forwarder
 	Autoscaling            *autoscaling.Autoscaling
-	Annotations            []*entities.Annotations
+	Annotations            []*map[string]string
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -76,7 +76,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		RoomsReplicas:          scheduler.RoomsReplicas,
 		Forwarders:             scheduler.Forwarders,
 		Autoscaling:            scheduler.Autoscaling,
-		Annotations:            scheduler.Annotations,
+		Annotations:            parseFromAnnotationEntityToMap(scheduler.Annotations),
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -99,7 +99,7 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		Name:        s.Name,
 		Game:        s.Game,
 		State:       s.State,
-		Annotations: info.Annotations,
+		Annotations: parseFromMapToAnnotationEntity(info.Annotations),
 		Spec: game_room.Spec{
 			Version:                s.Version,
 			TerminationGracePeriod: info.TerminationGracePeriod,
@@ -115,4 +115,35 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		Forwarders:      info.Forwarders,
 		Autoscaling:     info.Autoscaling,
 	}, nil
+}
+
+func parseFromAnnotationEntityToMap(entities []*entities.Annotations) []*map[string]string {
+	annotations := make([]*map[string]string, len(entities))
+
+	if annotations == nil {
+		return nil
+	}
+	for i, annotation := range entities {
+		annotations[i] = &map[string]string{
+			annotation.Name: annotation.Opt,
+		}
+	}
+
+	return annotations
+}
+
+func parseFromMapToAnnotationEntity(annotationMap []*map[string]string) []*entities.Annotations {
+	annotations := make([]*entities.Annotations, len(annotationMap))
+
+	if annotations == nil {
+		return nil
+	}
+	for i, annotation := range annotationMap {
+		for name, opt := range *annotation {
+			annotation := entities.NewAnnotations(name, opt)
+			annotations[i] = annotation
+		}
+	}
+
+	return annotations
 }
