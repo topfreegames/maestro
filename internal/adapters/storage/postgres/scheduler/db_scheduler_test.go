@@ -202,6 +202,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 						},
 					},
 				},
+				Annotations: []*entities.Annotations{entities.NewAnnotations("imageregistry", "pathToDocker")},
 			},
 		}
 

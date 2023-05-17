@@ -118,11 +118,11 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 }
 
 func parseFromAnnotationEntityToMap(entities []*entities.Annotations) []*map[string]string {
-	annotations := make([]*map[string]string, len(entities))
-
-	if annotations == nil {
+	if len(entities) == 0 {
 		return nil
 	}
+	annotations := make([]*map[string]string, len(entities))
+
 	for i, annotation := range entities {
 		annotations[i] = &map[string]string{
 			annotation.Name: annotation.Opt,
@@ -133,11 +133,12 @@ func parseFromAnnotationEntityToMap(entities []*entities.Annotations) []*map[str
 }
 
 func parseFromMapToAnnotationEntity(annotationMap []*map[string]string) []*entities.Annotations {
-	annotations := make([]*entities.Annotations, len(annotationMap))
-
-	if annotations == nil {
+	if len(annotationMap) == 0 {
 		return nil
 	}
+
+	annotations := make([]*entities.Annotations, len(annotationMap))
+
 	for i, annotation := range annotationMap {
 		for name, opt := range *annotation {
 			annotation := entities.NewAnnotations(name, opt)
