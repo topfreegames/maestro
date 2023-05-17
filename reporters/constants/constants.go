@@ -33,6 +33,8 @@ const (
 	EventResponseTime = "response.time"
 
 	EventNodeIpv6Status = "nodeIpv6.status"
+
+	EventWatcherAutoScale = "watcher.auto_scale"
 )
 
 //Reason{...} represents reasons for a pod/gru being deleted
