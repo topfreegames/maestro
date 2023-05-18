@@ -63,16 +63,16 @@ type Scheduler struct {
 	CreatedAt       time.Time
 	MaxSurge        string                 `validate:"required,max_surge"`
 	Forwarders      []*forwarder.Forwarder `validate:"dive"`
-	Annotations     []*Annotations
+	Annotations     []*Annotation
 }
 
-type Annotations struct {
+type Annotation struct {
 	Name string
 	Opt  string
 }
 
-func NewAnnotations(name string, opt string) *Annotations {
-	return &Annotations{
+func NewAnnotation(name string, opt string) *Annotation {
+	return &Annotation{
 		Name: name,
 		Opt:  opt,
 	}
@@ -89,7 +89,7 @@ func NewScheduler(
 	roomsReplicas int,
 	autoscaling *autoscaling.Autoscaling,
 	forwarders []*forwarder.Forwarder,
-	annotations []*Annotations,
+	annotations []*Annotation,
 ) (*Scheduler, error) {
 	scheduler := &Scheduler{
 		Name:          name,

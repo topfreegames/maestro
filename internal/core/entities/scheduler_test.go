@@ -90,7 +90,7 @@ func TestNewScheduler(t *testing.T) {
 		},
 	}
 	forwarders := []*forwarder.Forwarder{fwd}
-	annotations := []*entities.Annotations{entities.NewAnnotations("imageregistry", "https://hub.docker.com/")}
+	annotations := []*entities.Annotation{entities.NewAnnotation("imageregistry", "https://hub.docker.com/")}
 
 	t.Run("with success when create valid scheduler", func(t *testing.T) {
 		scheduler, err := entities.NewScheduler(

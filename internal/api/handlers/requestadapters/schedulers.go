@@ -157,14 +157,12 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 }
 
 func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
+	annotations := fromEntityAnnotationsToResponse(entity.Annotations)
 	forwarders, err := fromEntityForwardersToResponse(entity.Forwarders)
 	if err != nil {
 		return nil, err
 	}
-	annotations, err := fromEntityAnnotationsToResponse(entity.Annotations)
-	if err != nil {
-		return nil, err
-	}
+
 	return &api.Scheduler{
 		Name:          entity.Name,
 		Game:          entity.Game,
@@ -307,7 +305,7 @@ func fromEntityForwardersToResponse(entities []*forwarder.Forwarder) ([]*api.For
 	}
 	return forwarders, nil
 }
-func fromEntityAnnotationsToResponse(entities []*entities.Annotations) ([]*api.Annotation, error) {
+func fromEntityAnnotationsToResponse(entities []*entities.Annotation) []*api.Annotation {
 	annotations := make([]*api.Annotation, len(entities))
 
 	for i, entity := range entities {
@@ -318,7 +316,7 @@ func fromEntityAnnotationsToResponse(entities []*entities.Annotations) ([]*api.A
 		}
 
 	}
-	return annotations, nil
+	return annotations
 }
 func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderOptions, error) {
 	if entity == nil {
@@ -454,11 +452,11 @@ func fromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) [
 
 	return environments
 }
-func fromApiToAnnotation(apiAnnotations []*api.Annotation) []*entities.Annotations {
-	annotations := make([]*entities.Annotations, len(apiAnnotations))
+func fromApiToAnnotation(apiAnnotations []*api.Annotation) []*entities.Annotation {
+	annotations := make([]*entities.Annotation, len(apiAnnotations))
 	for i, apiAnnotation := range apiAnnotations {
-		annotation := entities.NewAnnotations(apiAnnotation.Name, apiAnnotation.Value)
-		annotations[i] = &entities.Annotations{
+		annotation := entities.NewAnnotation(apiAnnotation.Name, apiAnnotation.Value)
+		annotations[i] = &entities.Annotation{
 			Name: annotation.Name,
 			Opt:  annotation.Opt,
 		}
