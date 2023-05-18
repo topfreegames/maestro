@@ -858,7 +858,7 @@ func (w *Watcher) AutoScale() error {
 		 reporters.Report(reportersConstants.EventWatcherAutoScale, map[string]interface{}{
 			 reportersConstants.TagGame:      w.GameName,
 			 reportersConstants.TagScheduler: w.SchedulerName,
-			 reportersConstants.ValueGauge:   1,
+			 reportersConstants.ValueGauge:  "1.00",
 		 })
 	 }
 
