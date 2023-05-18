@@ -28,6 +28,7 @@ var handlers = map[string]interface{}{
 	constants.EventPodStatus:        GaugeHandler,
 	constants.EventResponseTime:     TimingHandler,
 	constants.EventGruMetricUsage:   GaugeHandler,
+	constants.EventWatcherAutoScale: GaugeHandler,
 }
 
 // Find looks for a matching handler to a given event
