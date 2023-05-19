@@ -13,7 +13,7 @@ require (
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis v6.12.0+incompatible
 	github.com/golang/mock v1.0.0
-	github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.6.1
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/lib/pq v0.0.0-20170324204654-2704adc878c2
@@ -34,7 +34,7 @@ require (
 	github.com/topfreegames/go-extensions-k8s-client-go v1.1.1-0.20190906200922-71e4464e67cb
 	github.com/topfreegames/protos v1.8.0
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
-	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
+	golang.org/x/oauth2 v0.6.0
 	google.golang.org/grpc v1.55.0
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.0.0-20190805182141-5e2f71e44c7f
@@ -44,7 +44,8 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.34.0 // indirect
+	cloud.google.com/go/compute v1.18.0 // indirect
+	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/certifi/gocertifi v0.0.0-20170417193930-a9c833d2837d // indirect
@@ -54,9 +55,8 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.4.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/btree v1.0.0 // indirect
-	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/google/gofuzz v1.0.0 // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gorilla/context v0.0.0-20160226214623-1ea25387ff6f // indirect
@@ -86,14 +86,13 @@ require (
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect
-	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
-	golang.org/x/text v0.3.3 // indirect
+	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/appengine v1.4.0 // indirect
-	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8 // indirect
-	google.golang.org/protobuf v1.23.0 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
