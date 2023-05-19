@@ -35,7 +35,7 @@ require (
 	github.com/topfreegames/protos v1.8.0
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	golang.org/x/oauth2 v0.6.0
-	google.golang.org/grpc v1.55.0
+	google.golang.org/grpc v1.53.0
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.0.0-20190805182141-5e2f71e44c7f
 	k8s.io/apimachinery v0.0.0-20190629003722-e20a3a656cff
