@@ -15,6 +15,7 @@ require (
 	github.com/golang/mock v1.0.0
 	github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c
 	github.com/gorilla/mux v1.6.1
+	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/lib/pq v0.0.0-20170324204654-2704adc878c2
 	github.com/mitchellh/go-homedir v0.0.0-20161203194507-b8bc1bf76747
 	github.com/mmcloughlin/professor v0.0.0-20170922221822-6b97112ab8b3
@@ -43,6 +44,7 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.34.0 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/certifi/gocertifi v0.0.0-20170417193930-a9c833d2837d // indirect
@@ -88,6 +90,7 @@ require (
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8 // indirect
 	google.golang.org/protobuf v1.23.0 // indirect
