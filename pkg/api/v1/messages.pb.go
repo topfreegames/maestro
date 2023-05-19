@@ -925,7 +925,7 @@ type Scheduler struct {
 	// List of Scheduler forwarders
 	Forwarders []*Forwarder `protobuf:"bytes,10,rep,name=forwarders,proto3" json:"forwarders,omitempty"`
 	// List with annotations
-	Annotations []*Annotation `protobuf:"bytes,11,rep,name=annotations,proto3" json:"annotations,omitempty"`
+	Annotations map[string]string `protobuf:"bytes,11,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *Scheduler) Reset() {
@@ -1030,7 +1030,7 @@ func (x *Scheduler) GetForwarders() []*Forwarder {
 	return nil
 }
 
-func (x *Scheduler) GetAnnotations() []*Annotation {
+func (x *Scheduler) GetAnnotations() map[string]string {
 	if x != nil {
 		return x.Annotations
 	}
@@ -2322,7 +2322,7 @@ var file_api_v1_messages_proto_rawDesc = []byte{
 	0x72, 0x6d, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x67, 0x72, 0x61, 0x63, 0x65, 0x5f,
 	0x70, 0x65, 0x72, 0x69, 0x6f, 0x64, 0x42, 0x0d, 0x0a, 0x0b, 0x5f, 0x74, 0x6f, 0x6c, 0x65, 0x72,
 	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x0b, 0x0a, 0x09, 0x5f, 0x61, 0x66, 0x66, 0x69, 0x6e, 0x69,
-	0x74, 0x79, 0x22, 0xd1, 0x03, 0x0a, 0x09, 0x53, 0x63, 0x68, 0x65, 0x64, 0x75, 0x6c, 0x65, 0x72,
+	0x74, 0x79, 0x22, 0xa1, 0x04, 0x0a, 0x09, 0x53, 0x63, 0x68, 0x65, 0x64, 0x75, 0x6c, 0x65, 0x72,
 	0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04,
 	0x6e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x67, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x04, 0x67, 0x61, 0x6d, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x73, 0x74, 0x61, 0x74,
@@ -2347,10 +2347,15 @@ var file_api_v1_messages_proto_rawDesc = []byte{
 	0x0a, 0x66, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x65, 0x72, 0x73, 0x18, 0x0a, 0x20, 0x03, 0x28,
 	0x0b, 0x32, 0x11, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x76, 0x31, 0x2e, 0x46, 0x6f, 0x72, 0x77, 0x61,
 	0x72, 0x64, 0x65, 0x72, 0x52, 0x0a, 0x66, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x65, 0x72, 0x73,
-	0x12, 0x34, 0x0a, 0x0b, 0x61, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18,
-	0x0b, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x76, 0x31, 0x2e, 0x41,
-	0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0b, 0x61, 0x6e, 0x6e, 0x6f, 0x74,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0x0e, 0x0a, 0x0c, 0x5f, 0x61, 0x75, 0x74, 0x6f, 0x73,
+	0x12, 0x44, 0x0a, 0x0b, 0x61, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18,
+	0x0b, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x76, 0x31, 0x2e, 0x53,
+	0x63, 0x68, 0x65, 0x64, 0x75, 0x6c, 0x65, 0x72, 0x2e, 0x41, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x0b, 0x61, 0x6e, 0x6e, 0x6f, 0x74,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x1a, 0x3e, 0x0a, 0x10, 0x41, 0x6e, 0x6e, 0x6f, 0x74, 0x61,
+	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65,
+	0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x42, 0x0e, 0x0a, 0x0c, 0x5f, 0x61, 0x75, 0x74, 0x6f, 0x73,
 	0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67, 0x22, 0x9f, 0x02, 0x0a, 0x14, 0x53, 0x63, 0x68, 0x65, 0x64,
 	0x75, 0x6c, 0x65, 0x72, 0x57, 0x69, 0x74, 0x68, 0x6f, 0x75, 0x74, 0x53, 0x70, 0x65, 0x63, 0x12,
 	0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e,
@@ -2527,7 +2532,7 @@ func file_api_v1_messages_proto_rawDescGZIP() []byte {
 	return file_api_v1_messages_proto_rawDescData
 }
 
-var file_api_v1_messages_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_api_v1_messages_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_api_v1_messages_proto_goTypes = []interface{}{
 	(*Container)(nil),                                 // 0: api.v1.Container
 	(*Annotation)(nil),                                // 1: api.v1.Annotation
@@ -2557,9 +2562,10 @@ var file_api_v1_messages_proto_goTypes = []interface{}{
 	(*ForwarderOptions)(nil),                          // 25: api.v1.ForwarderOptions
 	(*AutoscalingInfo)(nil),                           // 26: api.v1.AutoscalingInfo
 	(*SchedulerInfo)(nil),                             // 27: api.v1.SchedulerInfo
-	(*duration.Duration)(nil),                         // 28: google.protobuf.Duration
-	(*timestamp.Timestamp)(nil),                       // 29: google.protobuf.Timestamp
-	(*_struct.Struct)(nil),                            // 30: google.protobuf.Struct
+	nil,                                               // 28: api.v1.Scheduler.AnnotationsEntry
+	(*duration.Duration)(nil),                         // 29: google.protobuf.Duration
+	(*timestamp.Timestamp)(nil),                       // 30: google.protobuf.Timestamp
+	(*_struct.Struct)(nil),                            // 31: google.protobuf.Struct
 }
 var file_api_v1_messages_proto_depIdxs = []int32{
 	3,  // 0: api.v1.Container.environment:type_name -> api.v1.ContainerEnvironment
@@ -2573,32 +2579,32 @@ var file_api_v1_messages_proto_depIdxs = []int32{
 	4,  // 8: api.v1.ContainerEnvironment.value_from:type_name -> api.v1.ContainerEnvironmentValueFrom
 	5,  // 9: api.v1.ContainerEnvironmentValueFrom.field_ref:type_name -> api.v1.ContainerEnvironmentValueFromFieldRef
 	6,  // 10: api.v1.ContainerEnvironmentValueFrom.secret_key_ref:type_name -> api.v1.ContainerEnvironmentValueFromSecretKeyRef
-	28, // 11: api.v1.Spec.termination_grace_period:type_name -> google.protobuf.Duration
+	29, // 11: api.v1.Spec.termination_grace_period:type_name -> google.protobuf.Duration
 	0,  // 12: api.v1.Spec.containers:type_name -> api.v1.Container
-	28, // 13: api.v1.OptionalSpec.termination_grace_period:type_name -> google.protobuf.Duration
+	29, // 13: api.v1.OptionalSpec.termination_grace_period:type_name -> google.protobuf.Duration
 	2,  // 14: api.v1.OptionalSpec.containers:type_name -> api.v1.OptionalContainer
 	9,  // 15: api.v1.Scheduler.port_range:type_name -> api.v1.PortRange
-	29, // 16: api.v1.Scheduler.created_at:type_name -> google.protobuf.Timestamp
+	30, // 16: api.v1.Scheduler.created_at:type_name -> google.protobuf.Timestamp
 	10, // 17: api.v1.Scheduler.spec:type_name -> api.v1.Spec
 	17, // 18: api.v1.Scheduler.autoscaling:type_name -> api.v1.Autoscaling
 	24, // 19: api.v1.Scheduler.forwarders:type_name -> api.v1.Forwarder
-	1,  // 20: api.v1.Scheduler.annotations:type_name -> api.v1.Annotation
+	28, // 20: api.v1.Scheduler.annotations:type_name -> api.v1.Scheduler.AnnotationsEntry
 	9,  // 21: api.v1.SchedulerWithoutSpec.port_range:type_name -> api.v1.PortRange
-	29, // 22: api.v1.SchedulerWithoutSpec.created_at:type_name -> google.protobuf.Timestamp
+	30, // 22: api.v1.SchedulerWithoutSpec.created_at:type_name -> google.protobuf.Timestamp
 	21, // 23: api.v1.ListOperationItem.lease:type_name -> api.v1.Lease
-	29, // 24: api.v1.ListOperationItem.created_at:type_name -> google.protobuf.Timestamp
+	30, // 24: api.v1.ListOperationItem.created_at:type_name -> google.protobuf.Timestamp
 	21, // 25: api.v1.Operation.lease:type_name -> api.v1.Lease
-	29, // 26: api.v1.Operation.created_at:type_name -> google.protobuf.Timestamp
-	30, // 27: api.v1.Operation.input:type_name -> google.protobuf.Struct
+	30, // 26: api.v1.Operation.created_at:type_name -> google.protobuf.Timestamp
+	31, // 27: api.v1.Operation.input:type_name -> google.protobuf.Struct
 	22, // 28: api.v1.Operation.execution_history:type_name -> api.v1.OperationEvent
 	18, // 29: api.v1.OptionalAutoscaling.policy:type_name -> api.v1.AutoscalingPolicy
 	18, // 30: api.v1.Autoscaling.policy:type_name -> api.v1.AutoscalingPolicy
 	19, // 31: api.v1.AutoscalingPolicy.parameters:type_name -> api.v1.PolicyParameters
 	20, // 32: api.v1.PolicyParameters.room_occupancy:type_name -> api.v1.RoomOccupancy
-	29, // 33: api.v1.OperationEvent.created_at:type_name -> google.protobuf.Timestamp
-	29, // 34: api.v1.SchedulerVersion.created_at:type_name -> google.protobuf.Timestamp
+	30, // 33: api.v1.OperationEvent.created_at:type_name -> google.protobuf.Timestamp
+	30, // 34: api.v1.SchedulerVersion.created_at:type_name -> google.protobuf.Timestamp
 	25, // 35: api.v1.Forwarder.options:type_name -> api.v1.ForwarderOptions
-	30, // 36: api.v1.ForwarderOptions.metadata:type_name -> google.protobuf.Struct
+	31, // 36: api.v1.ForwarderOptions.metadata:type_name -> google.protobuf.Struct
 	26, // 37: api.v1.SchedulerInfo.autoscaling:type_name -> api.v1.AutoscalingInfo
 	38, // [38:38] is the sub-list for method output_type
 	38, // [38:38] is the sub-list for method input_type
@@ -2966,7 +2972,7 @@ func file_api_v1_messages_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_v1_messages_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   28,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

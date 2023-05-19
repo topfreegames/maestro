@@ -185,7 +185,7 @@ message Scheduler {
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 10;
   // List with annotations
-  repeated Annotation annotations = 11;
+  map<string, string> annotations = 11;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented

@@ -62,7 +62,7 @@ type schedulerInfo struct {
 	RoomsReplicas          int
 	Forwarders             []*forwarder.Forwarder
 	Autoscaling            *autoscaling.Autoscaling
-	Annotations            []*map[string]string
+	Annotations            *map[string]string
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -117,33 +117,29 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 	}, nil
 }
 
-func parseFromAnnotationEntityToMap(entities []*entities.Annotation) []*map[string]string {
+func parseFromAnnotationEntityToMap(entities []*entities.Annotation) *map[string]string {
 	if len(entities) == 0 {
 		return nil
 	}
-	annotations := make([]*map[string]string, len(entities))
+	annotations := make(map[string]string, len(entities))
 
-	for i, annotation := range entities {
-		annotations[i] = &map[string]string{
-			annotation.Name: annotation.Opt,
-		}
+	for _, annotation := range entities {
+		annotations[annotation.Name] = annotation.Opt
 	}
 
-	return annotations
+	return &annotations
 }
 
-func parseFromMapToAnnotationEntity(annotationMap []*map[string]string) []*entities.Annotation {
-	if len(annotationMap) == 0 {
+func parseFromMapToAnnotationEntity(annotationMap *map[string]string) []*entities.Annotation {
+	if len(*annotationMap) == 0 {
 		return nil
 	}
 
-	annotations := make([]*entities.Annotation, len(annotationMap))
+	annotations := make([]*entities.Annotation, 0, len(*annotationMap))
 
-	for i, annotation := range annotationMap {
-		for name, opt := range *annotation {
-			annotation := entities.NewAnnotation(name, opt)
-			annotations[i] = annotation
-		}
+	for name, opt := range *annotationMap {
+		annotation := entities.NewAnnotation(name, opt)
+		annotations = append(annotations, annotation)
 	}
 
 	return annotations

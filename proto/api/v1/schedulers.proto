@@ -124,7 +124,7 @@ message CreateSchedulerRequest {
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 8;
   // Add annotations for scheduler
-  repeated Annotation annotations = 9;
+  map<string, string> annotations = 9;
 }
 
 // Get Scheduler operation request
@@ -160,7 +160,7 @@ message NewSchedulerVersionRequest {
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 8;
   // New annotations for scheduler
-  repeated Annotation annotations = 9;
+  map<string, string> annotations = 9;
 }
 
 // Update schedule operation response payload.

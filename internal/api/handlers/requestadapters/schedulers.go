@@ -305,17 +305,14 @@ func fromEntityForwardersToResponse(entities []*forwarder.Forwarder) ([]*api.For
 	}
 	return forwarders, nil
 }
-func fromEntityAnnotationsToResponse(entities []*entities.Annotation) []*api.Annotation {
-	annotations := make([]*api.Annotation, len(entities))
 
-	for i, entity := range entities {
+func fromEntityAnnotationsToResponse(entities []*entities.Annotation) map[string]string {
+	annotations := make(map[string]string, len(entities))
 
-		annotations[i] = &api.Annotation{
-			Name:  entity.Name,
-			Value: entity.Opt,
-		}
-
+	for _, entity := range entities {
+		annotations[entity.Name] = entity.Opt
 	}
+
 	return annotations
 }
 func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderOptions, error) {
@@ -452,15 +449,15 @@ func fromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) [
 
 	return environments
 }
-func fromApiToAnnotation(apiAnnotations []*api.Annotation) []*entities.Annotation {
-	annotations := make([]*entities.Annotation, len(apiAnnotations))
-	for i, apiAnnotation := range apiAnnotations {
-		annotation := entities.NewAnnotation(apiAnnotation.Name, apiAnnotation.Value)
-		annotations[i] = &entities.Annotation{
-			Name: annotation.Name,
-			Opt:  annotation.Opt,
-		}
+
+func fromApiToAnnotation(apiAnnotations map[string]string) []*entities.Annotation {
+	annotations := make([]*entities.Annotation, 0, len(apiAnnotations))
+
+	for name, value := range apiAnnotations {
+		annotation := entities.NewAnnotation(name, value)
+		annotations = append(annotations, annotation)
 	}
+
 	return annotations
 }
 

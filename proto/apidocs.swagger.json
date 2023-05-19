@@ -505,10 +505,9 @@
                   "title": "List of Scheduler forwarders"
                 },
                 "annotations": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "$ref": "#/definitions/apiv1Annotation"
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
                   },
                   "title": "New annotations for scheduler"
                 }
@@ -890,20 +889,6 @@
     }
   },
   "definitions": {
-    "apiv1Annotation": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "title": "name of the annotation"
-        },
-        "value": {
-          "type": "string",
-          "title": "required annotation value or option"
-        }
-      },
-      "title": "Annotation should add a annotation to scheduler"
-    },
     "apiv1Operation": {
       "type": "object",
       "properties": {
@@ -1229,10 +1214,9 @@
           "title": "List of Scheduler forwarders"
         },
         "annotations": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/apiv1Annotation"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
           },
           "title": "Add annotations for scheduler"
         }
@@ -1722,10 +1706,9 @@
           "title": "List of Scheduler forwarders"
         },
         "annotations": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/apiv1Annotation"
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
           },
           "title": "List with annotations"
         }
