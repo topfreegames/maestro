@@ -1,5 +1,7 @@
 // maestro
+//go:build int
 // +build int
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:

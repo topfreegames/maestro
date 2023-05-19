@@ -1,5 +1,7 @@
 // maestro
+//go:build integration
 // +build integration
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:

@@ -34,7 +34,6 @@ import (
 	pginterfaces "github.com/topfreegames/extensions/pg/interfaces"
 	"github.com/topfreegames/extensions/redis"
 	redisinterfaces "github.com/topfreegames/extensions/redis/interfaces"
-
 )
 
 type gracefulShutdown struct {
@@ -131,7 +130,6 @@ func (w *Worker) configure(dbOrNil pginterfaces.DB, redisClientOrNil redisinterf
 	if err != nil {
 		return err
 	}
-
 
 	return nil
 }

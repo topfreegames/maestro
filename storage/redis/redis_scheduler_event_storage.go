@@ -26,7 +26,7 @@ type RedisSchedulerEventStorage struct {
 }
 
 func NewRedisSchedulerEventStorage(redisClient interfaces.RedisClient) *RedisSchedulerEventStorage {
-	return &RedisSchedulerEventStorage {
+	return &RedisSchedulerEventStorage{
 		redisClient: redisClient,
 	}
 }
@@ -41,7 +41,7 @@ func (es *RedisSchedulerEventStorage) PersistSchedulerEvent(event *models.Schedu
 	}
 
 	redisPipeline := es.redisClient.TxPipeline()
-	score := float64(event.CreatedAt.UnixNano()	/ int64(time.Millisecond))
+	score := float64(event.CreatedAt.UnixNano() / int64(time.Millisecond))
 	redisPipeline.ZAdd(getSchedulerEventKey(event.SchedulerName), redis.Z{
 		Score:  score,
 		Member: string(member),

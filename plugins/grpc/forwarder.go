@@ -385,4 +385,4 @@ func NewForwarder(config *viper.Viper, logger log.FieldLogger) (eventforwarder.E
 	return g, nil
 }
 
-func main(){}
+func main() {}

@@ -1,5 +1,7 @@
 // maestro
+//go:build unit
 // +build unit
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -27,7 +29,7 @@ import (
 
 var _ = Describe("Scheduler Event Handler", func() {
 	var (
-		recorder   *httptest.ResponseRecorder
+		recorder *httptest.ResponseRecorder
 	)
 
 	BeforeEach(func() {
@@ -58,9 +60,9 @@ var _ = Describe("Scheduler Event Handler", func() {
 				createdAt, err := time.Parse(time.RFC3339Nano, createdAtString)
 				mockSchedulerEventStorage.EXPECT().LoadSchedulerEvents(schedulerName, page).Return([]*models.SchedulerEvent{
 					{
-						Name: "UPDATE_STARTED",
+						Name:          "UPDATE_STARTED",
 						SchedulerName: schedulerName,
-						CreatedAt: createdAt,
+						CreatedAt:     createdAt,
 						Metadata: map[string]interface{}{
 							"reason": "update",
 						},

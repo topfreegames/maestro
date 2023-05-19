@@ -27,9 +27,9 @@ func (g *SchedulerEventHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	l := middleware.GetLogger(r.Context())
 	logger := l.WithFields(logrus.Fields{
-		"source":       "SchedulerEventHandler",
-		"operation":    "get scheduler events",
-		"scheduler":    schedulerName,
+		"source":    "SchedulerEventHandler",
+		"operation": "get scheduler events",
+		"scheduler": schedulerName,
 	})
 
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))

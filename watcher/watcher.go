@@ -854,13 +854,13 @@ func (w *Watcher) AutoScale() error {
 	})
 	logger.Info("starting auto scale")
 
-	 if reporters.HasReporters() {
-		 reporters.Report(reportersConstants.EventWatcherAutoScale, map[string]interface{}{
-			 reportersConstants.TagGame:      w.GameName,
-			 reportersConstants.TagScheduler: w.SchedulerName,
-			 reportersConstants.ValueGauge:  "1.00",
-		 })
-	 }
+	if reporters.HasReporters() {
+		reporters.Report(reportersConstants.EventWatcherAutoScale, map[string]interface{}{
+			reportersConstants.TagGame:      w.GameName,
+			reportersConstants.TagScheduler: w.SchedulerName,
+			reportersConstants.ValueGauge:   "1.00",
+		})
+	}
 
 	scheduler, autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
 		logger,

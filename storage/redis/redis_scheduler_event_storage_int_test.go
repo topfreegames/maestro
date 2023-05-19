@@ -1,5 +1,7 @@
 // maestro
+//go:build integration
 // +build integration
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -10,8 +12,8 @@ package redis
 
 import (
 	"fmt"
-	"time"
 	"testing"
+	"time"
 
 	uuid "github.com/satori/go.uuid"
 	. "github.com/topfreegames/maestro/models"
@@ -29,11 +31,11 @@ import (
 )
 
 var (
-	schedulerName   string
-	redisClient *redis.Client
-	logger      *logrus.Logger
-	hook        *test.Hook
-	eventStorage *RedisSchedulerEventStorage
+	schedulerName string
+	redisClient   *redis.Client
+	logger        *logrus.Logger
+	hook          *test.Hook
+	eventStorage  *RedisSchedulerEventStorage
 )
 
 func TestIntStorage(t *testing.T) {
@@ -99,10 +101,10 @@ var _ = Describe("Scheduler events", func() {
 			now := time.Now()
 			for i := 1; i <= 100; i++ {
 				event := NewSchedulerEvent(
-					fmt.Sprintf("UPDATE_STARTED_%d", i), 
-					schedulerName, 
+					fmt.Sprintf("UPDATE_STARTED_%d", i),
+					schedulerName,
 					make(map[string]interface{}),
-					)
+				)
 
 				event.CreatedAt = now.Add(time.Hour * time.Duration(i))
 				eventStorage.PersistSchedulerEvent(event)

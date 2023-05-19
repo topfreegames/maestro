@@ -72,7 +72,7 @@ func (r *Reporters) Report(event string, opts map[string]interface{}) error {
 
 				if errors.Is(err, constants.ErrReportHandlerNotFound) {
 					log.Debugf("report handler for event '%s' does not exist", event)
-					} else {
+				} else {
 					log.Errorf("failed to report event '%s'", event)
 				}
 			}

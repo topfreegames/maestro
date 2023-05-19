@@ -1,5 +1,7 @@
 // maestro
+//go:build unit
 // +build unit
+
 // https://github.com/topfreegames/maestro
 //
 // Licensed under the MIT license:
@@ -3685,7 +3687,6 @@ var _ = Describe("Watcher", func() {
 					configYaml.AutoScaling.Max,
 				)
 				simulateMetricsAutoscaling(simSpec, configYaml, yamlActive, models.StateInSync)
-
 
 				// Mem
 				testing.MockScaleSchedulerEvents(eventsStorage, "up", 1, nil)

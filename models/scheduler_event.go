@@ -75,7 +75,7 @@ func NewSchedulerEvent(eventName, schedulerName string, metadata map[string]inte
 	}
 }
 
-func stringfyMetadataError (metadata map[string]interface{}) map[string]interface{} {
+func stringfyMetadataError(metadata map[string]interface{}) map[string]interface{} {
 	if metadataErr, existsError := metadata[ErrorMetadataName]; existsError {
 		if err, isError := metadataErr.(error); isError {
 			metadata[ErrorMetadataName] = err.Error()
