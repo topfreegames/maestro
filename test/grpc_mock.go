@@ -46,18 +46,20 @@ func WithGrpcMockContainer(exec func(grpcMockAddress, httpInputMockAddress strin
 			"grpc": gnomock.TCP(4770),
 			"http": gnomock.TCP(4771),
 		},
-		gnomock.WithCommand("/events.proto"),
-		gnomock.WithHostMounts(path+"/../../../test/data/events.proto", "/events.proto"),
+		gnomock.WithCommand("/protos/events.proto"),
+		gnomock.WithHostMounts(path+"/../../../test/data", "/protos"),
+		gnomock.WithDebugMode(),
+		gnomock.WithLogWriter(os.Stdout),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("error creating gripmock grpc docker instance: %s\n", err))
 	}
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	exec(grpcMockContainer.Address("grpc"), grpcMockContainer.Address("http"))
 
-	// _ = gnomock.Stop(grpcMockContainer)
+	_ = gnomock.Stop(grpcMockContainer)
 }
 
 // AddStubRequestToMockedGrpcServer add a mock to GRPC server.
