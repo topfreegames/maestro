@@ -540,7 +540,7 @@ func TestCreateScheduler(t *testing.T) {
 					},
 				},
 			},
-			Annotations: []*entities.Annotation{entities.NewAnnotation("annotation", "option")},
+			Annotations: []*entities.Annotation{entities.NewAnnotation("imageregistry", "https://docker.hub.com/")},
 		}
 
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Do(
@@ -558,7 +558,7 @@ func TestCreateScheduler(t *testing.T) {
 					assert.Equal(t, scheduler.Forwarders[i].Address, forwarder.Address)
 					assert.Equal(t, scheduler.Forwarders[i].Options.Timeout, forwarder.Options.Timeout)
 				}
-				for i, annotation := range arg.Annotations {
+				for i, annotation := range scheduler.Annotations {
 					assert.Equal(t, scheduler.Annotations[i].Name, annotation.Name)
 					assert.Equal(t, scheduler.Annotations[i].Opt, annotation.Opt)
 				}

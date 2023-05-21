@@ -65,8 +65,7 @@
 	  }
     }
   ],
-  "annotations": [{
-    "name": "annotation",
-    "value": "option"
-  }]
+  "annotations": {
+    "imageregistry": "https://docker.hub.com/"
+  }
 }

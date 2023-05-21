@@ -78,7 +78,7 @@
       }
     ],
     "annotations": {
-      "imageregistry": "http://docker.hub.com/"
+      "imageregistry": "https://docker.hub.com/"
     }
   }
 }
