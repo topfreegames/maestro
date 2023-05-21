@@ -118,7 +118,7 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 }
 
 func parseFromAnnotationEntityToMap(entities []*entities.Annotation) *map[string]string {
-	if len(entities) == 0 {
+	if entities == nil {
 		return nil
 	}
 	annotations := make(map[string]string, len(entities))
@@ -131,7 +131,7 @@ func parseFromAnnotationEntityToMap(entities []*entities.Annotation) *map[string
 }
 
 func parseFromMapToAnnotationEntity(annotationMap *map[string]string) []*entities.Annotation {
-	if len(*annotationMap) == 0 {
+	if annotationMap == nil {
 		return nil
 	}
 

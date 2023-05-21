@@ -77,9 +77,8 @@
         }
       }
     ],
-    "annotations": [{
-      "name": "annotation",
-      "value": "option"
-    }]
+    "annotations": {
+      "imageregistry": "http://docker.hub.com/"
+    }
   }
 }
