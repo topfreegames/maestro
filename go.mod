@@ -19,9 +19,8 @@ require (
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis v6.12.0+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/mock v1.0.0
-	github.com/golang/protobuf v1.4.2 // indirect
-	github.com/google/uuid v0.0.0-20161128191214-064e2069ce9c
+	github.com/golang/mock v1.6.0
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/context v0.0.0-20160226214623-1ea25387ff6f // indirect
 	github.com/gorilla/mux v1.6.1
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
@@ -41,13 +40,11 @@ require (
 	github.com/onsi/gomega v1.4.1
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pelletier/go-toml v1.2.0 // indirect
-	github.com/pkg/errors v0.8.0 // indirect
 	github.com/pmylund/go-cache v2.0.0+incompatible
 	github.com/rs/cors v0.0.0-20170727213201-7af7a1e09ba3
 	github.com/satori/go.uuid v1.1.0
 	github.com/sergi/go-diff v1.0.0
 	github.com/sirupsen/logrus v1.4.2
-	github.com/spf13/afero v0.0.0-20170217164146-9be650865eab // indirect
 	github.com/spf13/cast v1.0.0 // indirect
 	github.com/spf13/cobra v0.0.0-20170408144537-5deb57bbca49
 	github.com/spf13/jwalterweatherman v0.0.0-20170109133355-fa7ca7e836cf // indirect
@@ -60,11 +57,8 @@ require (
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	go.uber.org/atomic v1.7.0 // indirect
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect
-	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
-	google.golang.org/genproto v0.0.0-20180817151627-c66870c02cf8 // indirect
-	google.golang.org/grpc v1.14.0
+	golang.org/x/oauth2 v0.6.0
+	google.golang.org/grpc v1.55.0
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/yaml.v1 v1.0.0-20140924161607-9f9df34309c0 // indirect
 	gopkg.in/yaml.v2 v2.3.0
