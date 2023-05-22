@@ -87,6 +87,7 @@ require (
 	github.com/spf13/afero v1.9.2 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/topfreegames/go-extensions-http v1.0.0 // indirect
+	github.com/wadey/gocovmerge v0.0.0-20160331181800-b5bfa59ec0ad // indirect
 	golang.org/x/crypto v0.0.0-20211108221036-ceb1ce70b4fa // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
