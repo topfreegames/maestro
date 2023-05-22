@@ -4142,7 +4142,7 @@ portRange:
 				mockPipeline.EXPECT().Exec()
 
 				// check other scheduler ports
-				//mt.MockSelectSchedulerNames(mockDb, []string{}, nil)
+				mt.MockSelectSchedulerNames(mockDb, []string{}, nil)
 				mt.MockSelectConfigYamls(mockDb, []models.Scheduler{}, nil)
 				mockRedisClient.EXPECT().Get(models.GlobalPortsPoolKey).
 					Return(goredis.NewStringResult(workerPortRange, nil))
