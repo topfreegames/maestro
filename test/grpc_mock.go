@@ -48,8 +48,6 @@ func WithGrpcMockContainer(exec func(grpcMockAddress, httpInputMockAddress strin
 		},
 		gnomock.WithCommand("/protos/events.proto"),
 		gnomock.WithHostMounts(path+"/../../../test/data", "/protos"),
-		gnomock.WithDebugMode(),
-		gnomock.WithLogWriter(os.Stdout),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("error creating gripmock grpc docker instance: %s\n", err))
