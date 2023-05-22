@@ -4,15 +4,12 @@ go 1.17
 
 require (
 	cloud.google.com/go v0.110.0
-	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/DataDog/datadog-go v0.0.0-20170427165718-0ddda6bee211
 	github.com/GuiaBolso/darwin v0.0.0-20170210191649-86919dfcf808
-	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20161001163130-7b3beb6df3c4
 	github.com/bsm/redis-lock v6.0.0+incompatible
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a
 	github.com/certifi/gocertifi v0.0.0-20170417193930-a9c833d2837d
-	github.com/client9/misspell v0.3.4 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9
@@ -20,7 +17,6 @@ require (
 	github.com/getsentry/raven-go v0.0.0-20170310193735-b68337dbf03e
 	github.com/go-pg/pg v6.13.2+incompatible
 	github.com/go-redis/redis v6.12.0+incompatible
-	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.3
@@ -35,23 +31,19 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hashicorp/hcl v0.0.0-20170217164738-630949a3c5fa
-	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/imdario/mergo v0.0.0-20160216103600-3e95a51e0639
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/jinzhu/inflection v0.0.0-20170102125226-1c35d901db3d
 	github.com/json-iterator/go v1.1.6
-	github.com/jteeuwen/go-bindata v3.0.7+incompatible // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2
 	github.com/lib/pq v0.0.0-20170324204654-2704adc878c2
 	github.com/magiconair/properties v1.7.2
-	github.com/mattn/goveralls v0.0.8 // indirect
 	github.com/mitchellh/go-homedir v0.0.0-20161203194507-b8bc1bf76747
 	github.com/mitchellh/mapstructure v0.0.0-20170307201123-53818660ed49
 	github.com/mmcloughlin/professor v0.0.0-20170922221822-6b97112ab8b3
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/newrelic/go-agent v1.9.0
-	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.3.2-0.20170409210154-f40a49d81e5c
 	github.com/onsi/gomega v1.4.1
 	github.com/opentracing/opentracing-go v1.2.0
@@ -76,7 +68,6 @@ require (
 	github.com/topfreegames/protos v1.8.0
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible
-	github.com/wadey/gocovmerge v0.0.0-20160331181800-b5bfa59ec0ad // indirect
 	go.uber.org/atomic v1.7.0
 	golang.org/x/crypto v0.0.0-20211108221036-ceb1ce70b4fa
 	golang.org/x/net v0.8.0
@@ -87,7 +78,6 @@ require (
 	google.golang.org/appengine v1.6.7
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
 	google.golang.org/grpc v1.55.0
-	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/inf.v0 v0.9.1
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.0.0-20190805182141-5e2f71e44c7f
@@ -97,4 +87,18 @@ require (
 	k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c
 	k8s.io/metrics v0.0.0-20190805184908-cf97d17242fb
 	sigs.k8s.io/yaml v1.1.1-0.20190704183835-4cd0c284b15f
+)
+
+require (
+	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
+	github.com/client9/misspell v0.3.4 // indirect
+	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
+	github.com/hpcloud/tail v1.0.0 // indirect
+	github.com/jteeuwen/go-bindata v3.0.7+incompatible // indirect
+	github.com/mattn/goveralls v0.0.8 // indirect
+	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/wadey/gocovmerge v0.0.0-20160331181800-b5bfa59ec0ad // indirect
+	golang.org/x/tools v0.6.0 // indirect
+	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 )
