@@ -116,7 +116,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
-		fromApiToAnnotation(request.GetAnnotations()),
+		request.GetAnnotations(),
 	)
 }
 
@@ -152,12 +152,12 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
-		fromApiToAnnotation(request.GetAnnotations()),
+		request.GetAnnotations(),
 	)
 }
 
 func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
-	annotations := fromEntityAnnotationsToResponse(entity.Annotations)
+
 	forwarders, err := fromEntityForwardersToResponse(entity.Forwarders)
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 		Spec:          getSpec(entity.Spec),
 		Autoscaling:   getAutoscaling(entity.Autoscaling),
 		Forwarders:    forwarders,
-		Annotations:   annotations,
+		Annotations:   entity.Annotations,
 	}, nil
 }
 
@@ -306,15 +306,6 @@ func fromEntityForwardersToResponse(entities []*forwarder.Forwarder) ([]*api.For
 	return forwarders, nil
 }
 
-func fromEntityAnnotationsToResponse(entities []*entities.Annotation) map[string]string {
-	annotations := make(map[string]string, len(entities))
-
-	for _, entity := range entities {
-		annotations[entity.Name] = entity.Opt
-	}
-
-	return annotations
-}
 func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderOptions, error) {
 	if entity == nil {
 		return nil, nil
@@ -448,17 +439,6 @@ func fromApiContainerEnvironments(apiEnvironments []*api.ContainerEnvironment) [
 	}
 
 	return environments
-}
-
-func fromApiToAnnotation(apiAnnotations map[string]string) []*entities.Annotation {
-	annotations := make([]*entities.Annotation, 0, len(apiAnnotations))
-
-	for name, value := range apiAnnotations {
-		annotation := entities.NewAnnotation(name, value)
-		annotations = append(annotations, annotation)
-	}
-
-	return annotations
 }
 
 func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {

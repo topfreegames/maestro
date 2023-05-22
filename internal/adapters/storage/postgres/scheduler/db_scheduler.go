@@ -62,7 +62,7 @@ type schedulerInfo struct {
 	RoomsReplicas          int
 	Forwarders             []*forwarder.Forwarder
 	Autoscaling            *autoscaling.Autoscaling
-	Annotations            *map[string]string
+	Annotations            map[string]string
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -76,7 +76,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		RoomsReplicas:          scheduler.RoomsReplicas,
 		Forwarders:             scheduler.Forwarders,
 		Autoscaling:            scheduler.Autoscaling,
-		Annotations:            parseFromAnnotationEntityToMap(scheduler.Annotations),
+		Annotations:            scheduler.Annotations,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -99,7 +99,7 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		Name:        s.Name,
 		Game:        s.Game,
 		State:       s.State,
-		Annotations: parseFromMapToAnnotationEntity(info.Annotations),
+		Annotations: info.Annotations,
 		Spec: game_room.Spec{
 			Version:                s.Version,
 			TerminationGracePeriod: info.TerminationGracePeriod,
@@ -115,32 +115,4 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		Forwarders:      info.Forwarders,
 		Autoscaling:     info.Autoscaling,
 	}, nil
-}
-
-func parseFromAnnotationEntityToMap(entities []*entities.Annotation) *map[string]string {
-	if entities == nil {
-		return nil
-	}
-	annotations := make(map[string]string, len(entities))
-
-	for _, annotation := range entities {
-		annotations[annotation.Name] = annotation.Opt
-	}
-
-	return &annotations
-}
-
-func parseFromMapToAnnotationEntity(annotationMap *map[string]string) []*entities.Annotation {
-	if annotationMap == nil {
-		return nil
-	}
-
-	annotations := make([]*entities.Annotation, 0, len(*annotationMap))
-
-	for name, opt := range *annotationMap {
-		annotation := entities.NewAnnotation(name, opt)
-		annotations = append(annotations, annotation)
-	}
-
-	return annotations
 }
