@@ -19,7 +19,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-FROM golang:1.17.13-buster AS build-env
+FROM golang:1.18.10-buster AS build-env
 
 MAINTAINER TFG Co <backend@tfgco.com>
 
