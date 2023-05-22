@@ -4,6 +4,7 @@ version: '2'
 services:
   postgres:
     image: postgres:9.5
+    container_name: maestro_test_postgres_1
     ports:
       - "8765:5432"
     environment:
@@ -12,5 +13,6 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
   redis:
     image: redis:3.2-alpine
+    container_name: maestro_test_redis_1
     ports:
       - "6363:6379"
