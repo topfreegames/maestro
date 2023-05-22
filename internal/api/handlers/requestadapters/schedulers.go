@@ -116,6 +116,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
+		request.GetAnnotations(),
 	)
 }
 
@@ -151,14 +152,17 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
+		request.GetAnnotations(),
 	)
 }
 
 func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, error) {
+
 	forwarders, err := fromEntityForwardersToResponse(entity.Forwarders)
 	if err != nil {
 		return nil, err
 	}
+
 	return &api.Scheduler{
 		Name:          entity.Name,
 		Game:          entity.Game,
@@ -170,6 +174,7 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 		Spec:          getSpec(entity.Spec),
 		Autoscaling:   getAutoscaling(entity.Autoscaling),
 		Forwarders:    forwarders,
+		Annotations:   entity.Annotations,
 	}, nil
 }
 

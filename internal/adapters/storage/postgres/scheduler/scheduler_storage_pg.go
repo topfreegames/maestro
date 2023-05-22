@@ -398,7 +398,7 @@ func (s schedulerStorage) RunWithTransaction(ctx context.Context, transactionFun
 	s.transactionsMap[transactionID] = transaction
 
 	defer func() {
-		if err := recover(); err != nil {
+		if err := recover(); err != any(nil) {
 			s.rollbackTransaction(transaction, transactionID)
 			panic(err)
 		}

@@ -24,6 +24,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 
 // Container is the struct that defines a game room container configuration.
 message Container {
+
   // Name of the container.
   string name = 1;
   // Image address .
@@ -40,6 +41,14 @@ message Container {
   ContainerResources limits = 7;
   // Container exposed ports definitions.
   repeated ContainerPort ports = 8;
+
+}
+// Annotation should add a annotation to scheduler
+message Annotation{
+  // name of the annotation
+  string name = 1;
+  // required annotation value or option
+  string value = 2;
 }
 
 // OptionalContainer is the struct that defines a game room container configuration.
@@ -175,6 +184,8 @@ message Scheduler {
   optional Autoscaling autoscaling = 9;
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 10;
+  // List with annotations
+  map<string, string> annotations = 11;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented

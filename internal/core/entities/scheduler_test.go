@@ -90,6 +90,7 @@ func TestNewScheduler(t *testing.T) {
 		},
 	}
 	forwarders := []*forwarder.Forwarder{fwd}
+	annotations := map[string]string{"imageregistry": "https://hub.docker.com/"}
 
 	t.Run("with success when create valid scheduler", func(t *testing.T) {
 		scheduler, err := entities.NewScheduler(
@@ -101,7 +102,8 @@ func TestNewScheduler(t *testing.T) {
 			portRange,
 			roomsReplicas,
 			nil,
-			forwarders)
+			forwarders,
+			annotations)
 
 		expectedScheduler := &entities.Scheduler{
 			Name:          name,
@@ -113,6 +115,7 @@ func TestNewScheduler(t *testing.T) {
 			RoomsReplicas: roomsReplicas,
 			Autoscaling:   nil,
 			Forwarders:    forwarders,
+			Annotations:   annotations,
 		}
 
 		require.NoError(t, err)
@@ -129,7 +132,7 @@ func TestNewScheduler(t *testing.T) {
 			portRange,
 			roomsReplicas,
 			nil,
-			forwarders)
+			forwarders, annotations)
 
 		require.Error(t, err)
 	})
@@ -153,7 +156,7 @@ func TestNewScheduler(t *testing.T) {
 			),
 			0,
 			nil,
-			forwarders)
+			forwarders, annotations)
 
 		require.Error(t, err)
 	})
@@ -177,7 +180,7 @@ func TestNewScheduler(t *testing.T) {
 			),
 			-1,
 			nil,
-			forwarders)
+			forwarders, annotations)
 
 		require.Error(t, err)
 	})

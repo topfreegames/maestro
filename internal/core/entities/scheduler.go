@@ -63,6 +63,7 @@ type Scheduler struct {
 	CreatedAt       time.Time
 	MaxSurge        string                 `validate:"required,max_surge"`
 	Forwarders      []*forwarder.Forwarder `validate:"dive"`
+	Annotations     map[string]string
 }
 
 // NewScheduler instantiate a new scheduler struct.
@@ -76,6 +77,7 @@ func NewScheduler(
 	roomsReplicas int,
 	autoscaling *autoscaling.Autoscaling,
 	forwarders []*forwarder.Forwarder,
+	annotations map[string]string,
 ) (*Scheduler, error) {
 	scheduler := &Scheduler{
 		Name:          name,
@@ -87,6 +89,7 @@ func NewScheduler(
 		RoomsReplicas: roomsReplicas,
 		Autoscaling:   autoscaling,
 		Forwarders:    forwarders,
+		Annotations:   annotations,
 	}
 	return scheduler, scheduler.Validate()
 }

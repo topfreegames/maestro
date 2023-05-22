@@ -64,5 +64,8 @@
         "metadata": {}
 	  }
     }
-  ]
+  ],
+  "annotations": {
+    "imageregistry": "https://docker.hub.com/"
+  }
 }

@@ -50,14 +50,16 @@
             "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "roomName",
             "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           }
         ],
         "tags": [
@@ -89,14 +91,16 @@
             "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "roomName",
             "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "body",
@@ -152,14 +156,16 @@
             "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "roomName",
             "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "body",
@@ -215,14 +221,16 @@
             "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "roomName",
             "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "body",
@@ -278,14 +286,16 @@
             "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "roomName",
             "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "body",
@@ -382,6 +392,7 @@
         "parameters": [
           {
             "name": "body",
+            "description": "Scheduler is the struct that defines a maestro scheduler.",
             "in": "body",
             "required": true,
             "schema": {
@@ -415,7 +426,7 @@
         "parameters": [
           {
             "name": "game",
-            "description": "Game name to filter schedulers.",
+            "description": "Game name to filter schedulers\n\nMapped to URL query parameter `game`.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -426,7 +437,7 @@
         ]
       }
     },
-    "/schedulers/{name=*}": {
+    "/schedulers/{name}": {
       "post": {
         "summary": "Creates new scheduler version and switch it to active version.",
         "operationId": "SchedulersService_NewSchedulerVersion",
@@ -450,7 +461,8 @@
             "description": "Unique identifier for the scheduler.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "body",
@@ -487,9 +499,17 @@
                 "forwarders": {
                   "type": "array",
                   "items": {
+                    "type": "object",
                     "$ref": "#/definitions/v1Forwarder"
                   },
                   "title": "List of Scheduler forwarders"
+                },
+                "annotations": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "New annotations for scheduler"
                 }
               },
               "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -523,7 +543,8 @@
             "description": "Unique identifier for the scheduler.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "body",
@@ -556,6 +577,7 @@
                 "forwarders": {
                   "type": "array",
                   "items": {
+                    "type": "object",
                     "$ref": "#/definitions/v1Forwarder"
                   },
                   "title": "List of Scheduler forwarders"
@@ -594,11 +616,12 @@
             "description": "Scheduler name where the rooms will be added.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "version",
-            "description": "Scheduler version to be queried (query param).",
+            "description": "Scheduler version to be queried (query param)",
             "in": "query",
             "required": false,
             "type": "string"
@@ -631,7 +654,8 @@
             "description": "Scheduler name to be deleted\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           }
         ],
         "tags": [
@@ -661,7 +685,8 @@
             "description": "Scheduler Name",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "body",
@@ -708,7 +733,8 @@
             "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "orderBy",
@@ -770,14 +796,16 @@
             "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "operationId",
             "description": "ID of the requested operation.\nNOTE: On http protocol, this operates as a path param.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           }
         ],
         "tags": [
@@ -809,14 +837,16 @@
             "description": "Scheduler name where the operation relies on.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           },
           {
             "name": "operationId",
             "description": "Operation identifier to be canceled.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           }
         ],
         "tags": [
@@ -848,7 +878,8 @@
             "description": "Scheduler name whose versions the client wants to fetch",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": "[^/]+"
           }
         ],
         "tags": [
@@ -893,6 +924,7 @@
         "executionHistory": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1OperationEvent"
           },
           "description": "ExecutionHistory is the execution details filled by Maestro."
@@ -903,14 +935,11 @@
     "protobufAny": {
       "type": "object",
       "properties": {
-        "typeUrl": {
+        "@type": {
           "type": "string"
-        },
-        "value": {
-          "type": "string",
-          "format": "byte"
         }
-      }
+      },
+      "additionalProperties": {}
     },
     "protobufNullValue": {
       "type": "string",
@@ -933,6 +962,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
@@ -1025,6 +1055,7 @@
         "environment": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ContainerEnvironment"
           },
           "description": "Container environment variables."
@@ -1040,6 +1071,7 @@
         "ports": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ContainerPort"
           },
           "description": "Container exposed ports definitions."
@@ -1176,9 +1208,17 @@
         "forwarders": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Forwarder"
           },
           "title": "List of Scheduler forwarders"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Add annotations for scheduler"
         }
       },
       "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -1288,6 +1328,7 @@
         "ports": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Port"
           },
           "description": "List of game room ports."
@@ -1319,6 +1360,7 @@
         "versions": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1SchedulerVersion"
           },
           "title": "List of versions for an scheduler"
@@ -1332,6 +1374,7 @@
         "schedulers": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1SchedulerInfo"
           },
           "description": "List of schedulers fetched."
@@ -1401,6 +1444,7 @@
         "operations": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ListOperationItem"
           },
           "description": "List of the scheduler finished (with error or not) operations."
@@ -1414,6 +1458,7 @@
         "schedulers": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1SchedulerWithoutSpec"
           },
           "description": "List of schedulers fetched."
@@ -1495,6 +1540,7 @@
         "environment": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ContainerEnvironment"
           },
           "description": "Container environment variables."
@@ -1510,6 +1556,7 @@
         "ports": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ContainerPort"
           },
           "description": "Container exposed ports definitions."
@@ -1527,6 +1574,7 @@
         "containers": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1OptionalContainer"
           },
           "description": "The container object array defines all the game room container configurations."
@@ -1652,9 +1700,17 @@
         "forwarders": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Forwarder"
           },
           "title": "List of Scheduler forwarders"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "List with annotations"
         }
       },
       "description": "Scheduler definition."
@@ -1779,6 +1835,7 @@
         "containers": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Container"
           },
           "description": "The container object array defines all the game room container configurations."
