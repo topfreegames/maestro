@@ -25,6 +25,7 @@ package kubernetes
 import (
 	"errors"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"net"
 	"strings"
 
@@ -62,17 +63,17 @@ var invalidPodWaitingStates = []string{
 	"RunContainerError",
 }
 
-func convertGameRoomSpec(schedulerID, gameRoomName string, gameRoomSpec game_room.Spec, annotations map[string]string) (*v1.Pod, error) {
+func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gameRoomName,
-			Namespace: schedulerID,
+			Namespace: scheduler.Name,
 			Labels: map[string]string{
 				maestroLabelKey:   maestroLabelValue,
-				schedulerLabelKey: schedulerID,
+				schedulerLabelKey: scheduler.Name,
 				versionLabelKey:   gameRoomSpec.Version,
 			},
-			Annotations: annotations,
+			Annotations: scheduler.Annotations,
 		},
 		Spec: v1.PodSpec{
 			TerminationGracePeriodSeconds: convertTerminationGracePeriod(gameRoomSpec),
@@ -82,7 +83,7 @@ func convertGameRoomSpec(schedulerID, gameRoomName string, gameRoomSpec game_roo
 		},
 	}
 	for _, container := range gameRoomSpec.Containers {
-		podContainer, err := convertContainer(container, schedulerID, pod.Name)
+		podContainer, err := convertContainer(container, scheduler.Name, pod.Name)
 		if err != nil {
 			return nil, fmt.Errorf("error with container \"%s\": %w", container.Name, err)
 		}

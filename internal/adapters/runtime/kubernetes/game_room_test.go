@@ -61,7 +61,7 @@ func TestGameRoomCreation(t *testing.T) {
 				},
 			},
 		}
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec, scheduler.Annotations)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, *scheduler, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
 		pods, err := client.CoreV1().Pods(scheduler.Name).List(ctx, metav1.ListOptions{})
@@ -83,7 +83,7 @@ func TestGameRoomCreation(t *testing.T) {
 		// no containers, meaning it will fail (because it can be a pod
 		// without containers).
 		gameRoomSpec := game_room.Spec{}
-		_, err = kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec, scheduler.Annotations)
+		_, err = kubernetesRuntime.CreateGameRoomInstance(ctx, *scheduler, gameRoomName, gameRoomSpec)
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrInvalidArgument)
 
@@ -115,7 +115,7 @@ func TestGameRoomDeletion(t *testing.T) {
 				},
 			},
 		}
-		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler.Name, gameRoomName, gameRoomSpec, scheduler.Annotations)
+		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, *scheduler, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
 		pods, err := client.CoreV1().Pods(scheduler.Name).List(ctx, metav1.ListOptions{})

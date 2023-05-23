@@ -26,6 +26,7 @@
 package kubernetes
 
 import (
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"testing"
 	"time"
 
@@ -521,7 +522,12 @@ func TestConvertGameSpec(t *testing.T) {
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			res, err := convertGameRoomSpec(test.schedulerID, test.roomName, test.gameSpec, test.expectedPod.ObjectMeta.Annotations)
+
+			scheduler := entities.Scheduler{
+				Name:        test.schedulerID,
+				Annotations: test.expectedPod.ObjectMeta.Annotations,
+			}
+			res, err := convertGameRoomSpec(scheduler, test.roomName, test.gameSpec)
 			if test.withError {
 				require.Error(t, err)
 				return

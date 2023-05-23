@@ -99,7 +99,8 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		Spec: game_room.Spec{
 			Containers: []game_room.Container{container1, container2},
 		},
-		PortRange: nil,
+		PortRange:   nil,
+		Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
 	}
 
 	gameRoomName := "game-1"
@@ -121,8 +122,8 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, gameRoomName, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}}, gomock.Any(),
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler, gameRoomName, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(&gameRoomInstance, nil)
 
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
@@ -169,8 +170,8 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, gameRoomName, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}}, gomock.Any(),
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler, gameRoomName, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
 		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, gameRoom.ID)
 
@@ -185,8 +186,8 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, gameRoomName, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}}, gomock.Any(),
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler, gameRoomName, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
 
 		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, gameRoom.ID).Return(fmt.Errorf("error deleting room"))
@@ -202,8 +203,8 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler.Name, gameRoomName, game_room.Spec{
-			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}}, gomock.Any(),
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler, gameRoomName, game_room.Spec{
+			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(&gameRoomInstance, nil)
 
 		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(errors.New("error creating instance"))
