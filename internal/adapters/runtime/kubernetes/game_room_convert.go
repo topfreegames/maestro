@@ -62,7 +62,7 @@ var invalidPodWaitingStates = []string{
 	"RunContainerError",
 }
 
-func convertGameRoomSpec(schedulerID, gameRoomName string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
+func convertGameRoomSpec(schedulerID, gameRoomName string, gameRoomSpec game_room.Spec, annotations map[string]string) (*v1.Pod, error) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gameRoomName,
@@ -72,6 +72,7 @@ func convertGameRoomSpec(schedulerID, gameRoomName string, gameRoomSpec game_roo
 				schedulerLabelKey: schedulerID,
 				versionLabelKey:   gameRoomSpec.Version,
 			},
+			Annotations: annotations,
 		},
 		Spec: v1.PodSpec{
 			TerminationGracePeriodSeconds: convertTerminationGracePeriod(gameRoomSpec),

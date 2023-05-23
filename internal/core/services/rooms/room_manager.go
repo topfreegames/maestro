@@ -406,7 +406,7 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 		return nil, nil, err
 	}
 
-	instance, err := m.Runtime.CreateGameRoomInstance(ctx, scheduler.Name, roomName, *spec)
+	instance, err := m.Runtime.CreateGameRoomInstance(ctx, scheduler.Name, roomName, *spec, scheduler.Annotations)
 	if err != nil {
 		deleteRoomErr := m.RoomStorage.DeleteRoom(ctx, scheduler.Name, room.ID)
 		if deleteRoomErr != nil {

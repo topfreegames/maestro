@@ -373,6 +373,7 @@ func TestConvertGameSpec(t *testing.T) {
 	cases := map[string]struct {
 		schedulerID string
 		roomName    string
+		Annotations map[string]string
 		gameSpec    game_room.Spec
 		expectedPod v1.Pod
 		withError   bool
@@ -469,6 +470,31 @@ func TestConvertGameSpec(t *testing.T) {
 				},
 			},
 		},
+		"with annotations": {
+			schedulerID: "sample",
+			roomName:    "roomName",
+			gameSpec: game_room.Spec{
+				Version:  "version",
+				Affinity: "sample-affinity",
+			},
+			expectedPod: v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "roomName",
+					Namespace: "sample",
+					Labels: map[string]string{
+						maestroLabelKey:   maestroLabelValue,
+						schedulerLabelKey: "sample",
+						versionLabelKey:   "version",
+					},
+					Annotations: map[string]string{
+						"imageregistry": "https://hub.docker.com/",
+					},
+				},
+				Spec: v1.PodSpec{
+					Affinity: &v1.Affinity{},
+				},
+			},
+		},
 		"with termination grace period": {
 			schedulerID: "sample",
 			roomName:    "roomName",
@@ -495,7 +521,7 @@ func TestConvertGameSpec(t *testing.T) {
 
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
-			res, err := convertGameRoomSpec(test.schedulerID, test.roomName, test.gameSpec)
+			res, err := convertGameRoomSpec(test.schedulerID, test.roomName, test.gameSpec, test.expectedPod.ObjectMeta.Annotations)
 			if test.withError {
 				require.Error(t, err)
 				return
@@ -505,6 +531,7 @@ func TestConvertGameSpec(t *testing.T) {
 			require.Equal(t, test.expectedPod.ObjectMeta.Labels, res.ObjectMeta.Labels)
 			require.Equal(t, test.expectedPod.ObjectMeta.Name, res.ObjectMeta.Name)
 			require.Equal(t, test.expectedPod.ObjectMeta.Namespace, res.ObjectMeta.Namespace)
+			require.Equal(t, test.expectedPod.ObjectMeta.Annotations, res.ObjectMeta.Annotations)
 			require.Equal(t, len(test.expectedPod.Spec.Containers), len(res.Spec.Containers))
 			require.Equal(t, len(test.expectedPod.Spec.Tolerations), len(res.Spec.Tolerations))
 
