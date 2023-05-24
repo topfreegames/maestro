@@ -25,10 +25,10 @@ package kubernetes
 import (
 	"errors"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/entities"
 	"net"
 	"strings"
 
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

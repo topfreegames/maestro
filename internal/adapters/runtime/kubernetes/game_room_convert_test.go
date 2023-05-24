@@ -26,11 +26,11 @@
 package kubernetes
 
 import (
-	"github.com/topfreegames/maestro/internal/core/entities"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
