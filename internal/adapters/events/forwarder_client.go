@@ -167,6 +167,7 @@ func (f *ForwarderClient) createGRPCConnection(address string) (*grpc.ClientConn
 	tracer := opentracing.GlobalTracer()
 	conn, err := grpc.Dial(
 		address,
+		//nolint keep use deprecated method
 		grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 	)
