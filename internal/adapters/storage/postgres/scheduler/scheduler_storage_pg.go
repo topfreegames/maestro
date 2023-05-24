@@ -397,7 +397,6 @@ func (s schedulerStorage) RunWithTransaction(ctx context.Context, transactionFun
 	transactionID := ports.TransactionID(uuid.New().String())
 	s.transactionsMap[transactionID] = transaction
 
-	//nolint use any(nil)
 	defer func() {
 		if err := recover(); err != any(nil) {
 			s.rollbackTransaction(transaction, transactionID)

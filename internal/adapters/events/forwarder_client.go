@@ -165,10 +165,10 @@ func (f *ForwarderClient) createGRPCConnection(address string) (*grpc.ClientConn
 	zap.L().Info(fmt.Sprintf("connecting to grpc server at: %s", address))
 
 	tracer := opentracing.GlobalTracer()
+	dialOption := grpc.WithInsecure() //nolint:staticcheck // I want to use deprecated method.
 	conn, err := grpc.Dial(
 		address,
-		//nolint keep use deprecated method
-		grpc.WithInsecure(),
+		dialOption,
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 	)
 	if err != nil {
