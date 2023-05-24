@@ -34,8 +34,8 @@ import (
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
-func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
-	pod, err := convertGameRoomSpec(scheduler, gameRoomName, gameRoomSpec)
+func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
+	pod, err := convertGameRoomSpec(*scheduler, gameRoomName, gameRoomSpec)
 	if err != nil {
 		return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
 	}

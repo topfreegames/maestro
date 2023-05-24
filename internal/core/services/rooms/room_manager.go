@@ -77,7 +77,7 @@ func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports
 }
 
 func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
-	return m.createRoomOnStorageAndRuntime(ctx, scheduler, isValidationRoom)
+	return m.createRoomOnStorageAndRuntime(ctx, &scheduler, isValidationRoom)
 }
 
 func (m *RoomManager) GetRoomInstance(ctx context.Context, scheduler, roomID string) (*game_room.Instance, error) {
@@ -382,8 +382,8 @@ watchLoop:
 	return resultStatus, nil
 }
 
-func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, scheduler entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
-	roomName, err := m.Runtime.CreateGameRoomName(ctx, scheduler)
+func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, scheduler *entities.Scheduler, isValidationRoom bool) (*game_room.GameRoom, *game_room.Instance, error) {
+	roomName, err := m.Runtime.CreateGameRoomName(ctx, *scheduler)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -401,7 +401,7 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 		return nil, nil, err
 	}
 
-	spec, err := m.populateSpecWithHostPort(scheduler)
+	spec, err := m.populateSpecWithHostPort(*scheduler)
 	if err != nil {
 		return nil, nil, err
 	}

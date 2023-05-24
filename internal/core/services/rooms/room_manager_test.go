@@ -122,7 +122,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler, gameRoomName, game_room.Spec{
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &scheduler, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(&gameRoomInstance, nil)
 
@@ -170,7 +170,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
 
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler, gameRoomName, game_room.Spec{
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &scheduler, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
 		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, gameRoom.ID)
@@ -186,7 +186,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler, gameRoomName, game_room.Spec{
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &scheduler, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
 
@@ -203,7 +203,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
 		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
-		runtime.EXPECT().CreateGameRoomInstance(context.Background(), scheduler, gameRoomName, game_room.Spec{
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &scheduler, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(&gameRoomInstance, nil)
 

@@ -374,7 +374,7 @@ func TestConvertGameSpec(t *testing.T) {
 	cases := map[string]struct {
 		schedulerID string
 		roomName    string
-		Annotations map[string]string
+		annotations map[string]string
 		gameSpec    game_room.Spec
 		expectedPod v1.Pod
 		withError   bool

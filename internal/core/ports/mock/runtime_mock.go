@@ -38,7 +38,7 @@ func (m *MockRuntime) EXPECT() *MockRuntimeMockRecorder {
 }
 
 // CreateGameRoomInstance mocks base method.
-func (m *MockRuntime) CreateGameRoomInstance(ctx context.Context, scheduler entities.Scheduler, gameRoomName string, spec game_room.Spec) (*game_room.Instance, error) {
+func (m *MockRuntime) CreateGameRoomInstance(ctx context.Context, scheduler *entities.Scheduler, gameRoomName string, spec game_room.Spec) (*game_room.Instance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateGameRoomInstance", ctx, scheduler, gameRoomName, spec)
 	ret0, _ := ret[0].(*game_room.Instance)
