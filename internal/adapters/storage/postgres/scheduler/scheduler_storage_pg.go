@@ -398,7 +398,6 @@ func (s schedulerStorage) RunWithTransaction(ctx context.Context, transactionFun
 	s.transactionsMap[transactionID] = transaction
 
 	defer func() {
-		//nolint:typecheck // ignore warning from use any(nil), the cast is mandatory because the type of return value from recover()
 		if err := recover(); err != any(nil) {
 			s.rollbackTransaction(transaction, transactionID)
 			panic(err)
