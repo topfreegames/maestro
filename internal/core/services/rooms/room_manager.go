@@ -351,10 +351,17 @@ func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.Ga
 	if err != nil {
 		return resultStatus, fmt.Errorf("error while retrieving current game room status: %w", err)
 	}
+	m.Logger.Info(fmt.Sprintf("Get GameRoomId: %s with Status: %s and pingStatus: %s with last ping: %s in RoomStorage",
+		fromStorage.ID, fromStorage.Status.String(), fromStorage.PingStatus, fromStorage.LastPingAt.String()))
 
 	// the room has the desired state already
 	if contains(status, fromStorage.Status) {
 		return fromStorage.Status, nil
+	} else {
+		for _, statusUnit := range status {
+			m.Logger.Info(fmt.Sprintf("Not found valid status %s for GameRoomId: %s that has Status: %s",
+				statusUnit.String(), fromStorage.ID, fromStorage.Status.String()))
+		}
 	}
 
 watchLoop:
