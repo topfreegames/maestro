@@ -314,6 +314,8 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 	if err != nil {
 		return fmt.Errorf("failed to generate new game room status: %w", err)
 	}
+	m.Logger.Info(fmt.Sprintf("UpdateGameRoomStatus Game Room Status: %s, Game Room Ping Status: %s, newStatus: %s",
+		gameRoom.Status, gameRoom.PingStatus.String(), newStatus.String()))
 
 	// nothing changed
 	if newStatus == gameRoom.Status {
