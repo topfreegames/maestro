@@ -25,9 +25,10 @@ package suites
 import (
 	"context"
 	"fmt"
-	"github.com/golang/protobuf/ptypes/duration"
 	"testing"
 	"time"
+
+	"github.com/golang/protobuf/ptypes/duration"
 
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/protobuf/types/known/structpb"

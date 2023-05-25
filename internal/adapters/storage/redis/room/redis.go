@@ -28,12 +28,13 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
-	"github.com/topfreegames/maestro/internal/core/logs"
-	"go.uber.org/zap"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/topfreegames/maestro/internal/core/logs"
+	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/adapters/metrics"
 
