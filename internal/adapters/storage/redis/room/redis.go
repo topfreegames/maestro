@@ -28,6 +28,8 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"github.com/topfreegames/maestro/internal/core/logs"
+	"go.uber.org/zap"
 	"strconv"
 	"strings"
 	"sync"
@@ -54,6 +56,7 @@ const (
 
 type redisStateStorage struct {
 	client *redis.Client
+	logger *zap.Logger
 }
 
 var _ ports.RoomStorage = (*redisStateStorage)(nil)
@@ -61,7 +64,10 @@ var _ ports.RoomStorage = (*redisStateStorage)(nil)
 const roomStorageMetricLabel = "room-storage"
 
 func NewRedisStateStorage(client *redis.Client) *redisStateStorage {
-	return &redisStateStorage{client: client}
+	return &redisStateStorage{
+		client: client,
+		logger: zap.L().With(zap.String(logs.LogFieldComponent, "adapter"), zap.String(logs.LogFieldServiceName, "storage_redis")),
+	}
 }
 
 func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string) (room *game_room.GameRoom, err error) {
@@ -341,6 +347,11 @@ func (r *redisStateStorage) WatchRoomStatus(ctx context.Context, room *game_room
 			}
 		}
 	}()
+
+	for statusEvent := range watcher.resultChan {
+		r.logger.Debug(fmt.Sprintf("Watched GameRoomId: %s from Scheduler: %s with Status: %s",
+			statusEvent.RoomID, statusEvent.SchedulerName, statusEvent.Status.String()))
+	}
 
 	return watcher, nil
 }

@@ -95,6 +95,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		logger.Error("error getting active scheduler", zap.Error(err))
 		return fmt.Errorf("error getting active scheduler: %w", err)
 	}
+	logger.Debug(fmt.Sprintf("Received get active scheduler: %s", currentActiveScheduler.Name))
 
 	currentActiveScheduler.State = entities.StateCreating
 	err = ex.schedulerManager.UpdateScheduler(ctx, currentActiveScheduler)
@@ -102,6 +103,8 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		logger.Error("error updating active scheduler state", zap.Error(err))
 		return fmt.Errorf("error updating active scheduler state: %w", err)
 	}
+	logger.Debug(fmt.Sprintf("Updated active scheduler: %s with status: %s",
+		currentActiveScheduler.Name, currentActiveScheduler.State))
 
 	isSchedulerMajorVersion := currentActiveScheduler.IsMajorVersion(newScheduler)
 
@@ -109,6 +112,8 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	if err != nil {
 		return err
 	}
+	logger.Debug(fmt.Sprintf("Populated new version: %s and rollback version: %s from scheduler: %s",
+		newScheduler.Spec.Version, newScheduler.RollbackVersion, newScheduler.Name))
 
 	if isSchedulerMajorVersion {
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, startingValidationMessageTemplate)
@@ -123,6 +128,8 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 			ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, allAttemptsFailedMessageTemplate)
 			return retryError
 		}
+	} else {
+		logger.Debug(fmt.Sprintf("Not started operation to new version from scheduler: %s", currentActiveScheduler.Name))
 	}
 
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
@@ -188,6 +195,8 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 		return err
 	}
 	ex.AddValidationRoomID(scheduler.Name, gameRoom)
+	logger.Debug(fmt.Sprintf("Created GameRoom: %s with status %s and pingStatus %s for validation",
+		gameRoom.ID, gameRoom.Status, gameRoom.PingStatus))
 
 	defer func() {
 		err = ex.roomManager.DeleteRoom(ctx, gameRoom)
@@ -196,6 +205,8 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 		}
 		ex.RemoveValidationRoomID(scheduler.Name)
 	}()
+	logger.Debug(fmt.Sprintf("Deleted GameRoom: %s with status %s and pingStatus %s for validation",
+		gameRoom.ID, gameRoom.Status, gameRoom.PingStatus))
 
 	duration := ex.config.RoomInitializationTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)

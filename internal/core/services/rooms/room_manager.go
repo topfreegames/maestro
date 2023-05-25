@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -344,6 +345,10 @@ func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.Ga
 	if err != nil {
 		return resultStatus, fmt.Errorf("failed to start room status watcher: %w", err)
 	}
+	for gameRoomChannel := range watcher.ResultChan() {
+		m.Logger.Debug(fmt.Sprintf("Watched GameRoomId: %s with Status: %s for this Scheduler: %s in RoomStorage",
+			gameRoomChannel.RoomID, gameRoomChannel.Status.String(), gameRoomChannel.SchedulerName))
+	}
 
 	defer watcher.Stop()
 
@@ -351,10 +356,17 @@ func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.Ga
 	if err != nil {
 		return resultStatus, fmt.Errorf("error while retrieving current game room status: %w", err)
 	}
+	m.Logger.Debug(fmt.Sprintf("Get GameRoomId: %s with Status: %s and pingStatus: %s with last ping: %s in RoomStorage",
+		fromStorage.ID, fromStorage.Status.String(), fromStorage.PingStatus, fromStorage.LastPingAt.String()))
 
 	// the room has the desired state already
 	if contains(status, fromStorage.Status) {
 		return fromStorage.Status, nil
+	} else {
+		for _, statusUnit := range status {
+			m.Logger.Debug(fmt.Sprintf("Not found valid status %s for GameRoomId: %s that has Status: %s",
+				statusUnit.String(), fromStorage.ID, fromStorage.Status.String()))
+		}
 	}
 
 watchLoop:
