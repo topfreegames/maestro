@@ -185,6 +185,8 @@ message PatchSchedulerRequest {
   optional OptionalAutoscaling autoscaling = 6;
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 7;
+  // Annotations declaration for the scheduler
+  map<string, string> annotations = 8;
 }
 
 // PatchSchedulerResponse have the operation response id that represents the operation creted to this change.

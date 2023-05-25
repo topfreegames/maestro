@@ -578,6 +578,13 @@
                     "$ref": "#/definitions/v1Forwarder"
                   },
                   "title": "List of Scheduler forwarders"
+                },
+                "annotations": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Annotations declaration for the scheduler"
                 }
               },
               "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
