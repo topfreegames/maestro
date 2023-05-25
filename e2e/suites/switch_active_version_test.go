@@ -25,6 +25,7 @@ package suites
 import (
 	"context"
 	"fmt"
+	"github.com/golang/protobuf/ptypes/duration"
 	"testing"
 	"time"
 
@@ -61,7 +62,9 @@ func TestSwitchActiveVersion(t *testing.T) {
 				Game:     "test",
 				MaxSurge: "10%",
 				Spec: &maestroApiV1.Spec{
-					TerminationGracePeriod: 15,
+					TerminationGracePeriod: &duration.Duration{
+						Seconds: 15,
+					},
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example",
@@ -227,7 +230,9 @@ func TestSwitchActiveVersion(t *testing.T) {
 				MaxSurge:      "10%",
 				RoomsReplicas: 2,
 				Spec: &maestroApiV1.Spec{
-					TerminationGracePeriod: 15,
+					TerminationGracePeriod: &duration.Duration{
+						Seconds: 15,
+					},
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example-update",
@@ -369,7 +374,9 @@ func TestSwitchActiveVersion(t *testing.T) {
 				Game:     "test",
 				MaxSurge: "10%",
 				Spec: &maestroApiV1.Spec{
-					TerminationGracePeriod: 15,
+					TerminationGracePeriod: &duration.Duration{
+						Seconds: 15,
+					},
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example-update",
@@ -522,7 +529,9 @@ func TestSwitchActiveVersion(t *testing.T) {
 				Game:     "test",
 				MaxSurge: "10%",
 				Spec: &maestroApiV1.Spec{
-					TerminationGracePeriod: 15,
+					TerminationGracePeriod: &duration.Duration{
+						Seconds: 15,
+					},
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example",
