@@ -51,7 +51,7 @@ var (
 )
 
 func BeforeTest(t *testing.T) {
-	core, observer := observer.New(zap.InfoLevel)
+	core, observer := observer.New(zap.DebugLevel)
 	zl := zap.New(core)
 	zap.ReplaceGlobals(zl)
 	recorded = observer

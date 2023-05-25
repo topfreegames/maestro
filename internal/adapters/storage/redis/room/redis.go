@@ -350,7 +350,7 @@ func (r *redisStateStorage) WatchRoomStatus(ctx context.Context, room *game_room
 	}()
 
 	for statusEvent := range watcher.resultChan {
-		r.logger.Debug(fmt.Sprintf("Watched GameRoomId: %s from Scheduler: %s with Status: %s",
+		r.logger.Info(fmt.Sprintf("Watched GameRoomId: %s from Scheduler: %s with Status: %s",
 			statusEvent.RoomID, statusEvent.SchedulerName, statusEvent.Status.String()))
 	}
 
