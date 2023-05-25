@@ -204,9 +204,9 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 			logger.Error("error deleting new game room created for validation", zap.Error(err))
 		}
 		ex.RemoveValidationRoomID(scheduler.Name)
+		logger.Info(fmt.Sprintf("Deleted GameRoom: %s with status %s and pingStatus %s for validation",
+			gameRoom.ID, gameRoom.Status, gameRoom.PingStatus))
 	}()
-	logger.Info(fmt.Sprintf("Deleted GameRoom: %s with status %s and pingStatus %s for validation",
-		gameRoom.ID, gameRoom.Status, gameRoom.PingStatus))
 
 	duration := ex.config.RoomInitializationTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
