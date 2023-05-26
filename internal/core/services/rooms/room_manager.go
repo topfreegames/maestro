@@ -436,8 +436,10 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 	}
 
 	var numberPorts []string
-	for _, ports := range instance.Address.Ports {
-		numberPorts = append(numberPorts, strconv.Itoa(int(ports.Port)))
+	if instance.Address != nil {
+		for _, ports := range instance.Address.Ports {
+			numberPorts = append(numberPorts, strconv.Itoa(int(ports.Port)))
+		}
 	}
 	m.Logger.Info(fmt.Sprintf("CreateGameRoomOnRuntime - Scheduler %s Instance %s Status: %s Host: %s Ports: %s",
 		instance.SchedulerID, instance.ID, instance.Status, instance.Address.Host, strings.Join(numberPorts, ", ")))
