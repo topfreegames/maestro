@@ -71,6 +71,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
 
+	if request.Annotations != nil {
+		patchMap[patch.LabelAnnotations] = request.GetAnnotations()
+	}
+
 	return patchMap
 }
 

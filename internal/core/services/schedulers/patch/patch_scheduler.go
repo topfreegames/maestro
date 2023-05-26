@@ -134,6 +134,12 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 		}
 	}
 
+	if _, ok := patchMap[LabelAnnotations]; ok {
+		if scheduler.Annotations, ok = patchMap[LabelAnnotations].(map[string]string); !ok {
+			return nil, fmt.Errorf("error parsing scheduler: annotations malformed")
+		}
+	}
+
 	return &scheduler, nil
 }
 

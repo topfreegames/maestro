@@ -85,6 +85,24 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 		{
+			Title: "Have annotation return scheduler with changed annotations",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch.LabelAnnotations: map[string]string{"imageregistry": "https://hub.docker.com/", "imageregistry2": "https://hub.docker.com.br/"},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					scheduler.Annotations = map[string]string{"imageregistry": "https://hub.docker.com/", "imageregistry2": "https://hub.docker.com.br/"}
+
+					return scheduler
+				},
+				Error: nil,
+			},
+		},
+		{
 			Title: "Have rooms replicas return scheduler with changed RoomsReplicas",
 			Input: Input{
 				Scheduler: basicSchedulerToPatchSchedulerTests(),
@@ -899,6 +917,7 @@ func TestPatchScheduler(t *testing.T) {
 			assert.Equal(t, expectedScheduler.RoomsReplicas, scheduler.RoomsReplicas)
 			assert.EqualValues(t, expectedScheduler.PortRange, scheduler.PortRange)
 			assert.EqualValues(t, expectedScheduler.Autoscaling, scheduler.Autoscaling)
+			assert.EqualValues(t, expectedScheduler.Annotations, scheduler.Annotations)
 			forwarders := expectedScheduler.Forwarders
 			for i, expectedForwarder := range expectedScheduler.Forwarders {
 				assert.EqualValues(t, expectedForwarder, forwarders[i])
@@ -957,6 +976,7 @@ func basicSchedulerToPatchSchedulerTests() *entities.Scheduler {
 				},
 			},
 		},
+		Annotations:     map[string]string{"imageregistry": "https://hub.docker.com"},
 		RollbackVersion: "v1.0.0",
 		Spec: game_room.Spec{
 			Version:                "v1.1.0",
