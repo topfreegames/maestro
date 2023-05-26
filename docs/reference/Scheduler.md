@@ -252,7 +252,8 @@ annotation: Map
 - **autoscaling**: Optional autoscaling policy configuration. More info [here](../tutorials/Autoscaling.md);
 - **spec**: Specifications about the game rooms managed by the scheduler, such as containers and environment variables
   used by them, limits and images. More info [here](#spec).
-- **annotations**: Allows annotations for the scheduler's game room
+- **annotations**: Allows annotations for the scheduler's game room. Know more about annotations on
+  Kubernetes [here](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations)
 
 ### PortRange
 The **PortRange** is used to select a random port for a GRU between **start** and **end**.
