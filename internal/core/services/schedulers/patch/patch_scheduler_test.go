@@ -89,13 +89,13 @@ func TestPatchScheduler(t *testing.T) {
 			Input: Input{
 				Scheduler: basicSchedulerToPatchSchedulerTests(),
 				PatchMap: map[string]interface{}{
-					patch.LabelAnnotations: map[string]string{"newannotation": "valueforannotation"},
+					patch.LabelAnnotations: map[string]string{"imageregistry": "https://hub.docker.com/", "imageregistry2": "https://hub.docker.com.br/"},
 				},
 			},
 			Output: Output{
 				ChangeSchedulerFunc: func() *entities.Scheduler {
 					scheduler := basicSchedulerToPatchSchedulerTests()
-					scheduler.Annotations = map[string]string{"newannotation": "valueforannotation"}
+					scheduler.Annotations = map[string]string{"imageregistry": "https://hub.docker.com/", "imageregistry2": "https://hub.docker.com.br/"}
 
 					return scheduler
 				},
