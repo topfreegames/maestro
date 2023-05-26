@@ -25,6 +25,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -178,6 +179,28 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		instance = tempInstance
 
 		kw.instanceCacheMap[pod.Name] = instance
+
+		var containerStatuses []string
+		var conditions []string
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if containerStatus.State.Waiting != nil {
+				containerStatuses = append(containerStatuses, "Waiting")
+			} else if containerStatus.State.Terminated != nil {
+				containerStatuses = append(containerStatuses, "Terminating")
+			} else if containerStatus.State.Running != nil {
+				containerStatuses = append(containerStatuses, "Running")
+			}
+		}
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == v1.PodReady && condition.Status == v1.ConditionTrue {
+				conditions = append(conditions, "Ready")
+			} else {
+				conditions = append(conditions, "Pending")
+			}
+		}
+
+		kw.logger.Info(fmt.Sprintf("[wps-3544] ProcessEvent - Name: %s, Statuses: %s, Conditions: %s, Phase: %s",
+			pod.Name, strings.Join(containerStatuses, ", "), strings.Join(conditions, ", "), pod.Status.Phase))
 	}
 
 	if eventType == game_room.InstanceEventTypeDeleted {
@@ -243,6 +266,7 @@ func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *enti
 			options.LabelSelector = fmt.Sprintf("%s=%s", maestroLabelKey, maestroLabelValue)
 		}),
 	).Core().V1().Pods().Informer()
+	watcher.logger.Info(fmt.Sprintf("[wps-3544] WatchGameRoomInstances - Scheduler: %s", scheduler.Name))
 
 	podsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    watcher.addFunc,
