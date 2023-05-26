@@ -73,6 +73,12 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 
 			return fmt.Errorf("error removing rooms by ids: %w", err)
 		}
+		var deadRoomsIDs []string
+		for _, id := range removeDefinition.RoomsIDs {
+			deadRoomsIDs = append(deadRoomsIDs, id)
+		}
+		logger.Info(fmt.Sprintf("[wps-3544] RemoveDeadRoom - Scheduler %s, GameRooms: %s",
+			op.SchedulerName, deadRoomsIDs))
 	}
 
 	if removeDefinition.Amount > 0 {

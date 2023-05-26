@@ -170,7 +170,7 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 	if err != nil {
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
-	m.Logger.Info(fmt.Sprintf("[wps-3544] UpdateRoomInstance - Scheduler %s Game Room %s Status: %s",
+	m.Logger.Info(fmt.Sprintf("[wps-3544] UpdateRoomInstance - Scheduler %s, GameRoom %s, Status: %s",
 		gameRoomInstance.SchedulerID, gameRoomInstance.ID, gameRoomInstance.Status))
 
 	m.Logger.Info("Updating room success")
@@ -306,21 +306,21 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 	if err != nil {
 		return fmt.Errorf("failed to get game room: %w", err)
 	}
-	m.Logger.Info(fmt.Sprintf("[wps-3544] UpdateGameRoomStatus - Scheduler %s Game Room %s StatusRecoveryOnRoomStorage: %s",
+	m.Logger.Info(fmt.Sprintf("[wps-3544] UpdateGameRoomStatus - Scheduler %s, GameRoom %s, StatusRecoveryOnRoomStorage: %s",
 		gameRoom.SchedulerID, gameRoom.ID, gameRoom.PingStatus))
 
 	instance, err := m.InstanceStorage.GetInstance(ctx, schedulerId, gameRoomId)
 	if err != nil {
 		return fmt.Errorf("failed to get game room instance: %w", err)
 	}
-	m.Logger.Info(fmt.Sprintf("[wps-3544] UpdateGameRoomStatus - Scheduler %s Instance %s StatusRecoveryOnInstanceStorage: %s",
+	m.Logger.Info(fmt.Sprintf("[wps-3544] UpdateGameRoomStatus - Scheduler %s, Instance %s, StatusRecoveryOnInstanceStorage: %s",
 		gameRoom.SchedulerID, instance.ID, instance.Status))
 
 	newStatus, err := gameRoom.RoomComposedStatus(instance.Status.Type)
 	if err != nil {
 		return fmt.Errorf("failed to generate new game room status: %w", err)
 	}
-	m.Logger.Info(fmt.Sprintf("[wps-3544] UpdateGameRoomStatus - Scheduler %s Game Room %s Instance: %s, newStatus: %s",
+	m.Logger.Info(fmt.Sprintf("[wps-3544] UpdateGameRoomStatus - Scheduler %s, GameRoom %s, Instance: %s, newStatus: %s",
 		gameRoom.SchedulerID, gameRoom.ID, instance.ID, newStatus.String()))
 
 	// nothing changed
@@ -364,8 +364,8 @@ func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.Ga
 	if contains(status, fromStorage.Status) {
 		return fromStorage.Status, nil
 	} else {
-		m.Logger.Info(fmt.Sprintf("[wps-3544] Not found valid status for GameRoomId: %s that has Status: %s",
-			fromStorage.ID, fromStorage.Status.String()))
+		m.Logger.Info(fmt.Sprintf("[wps-3544] WaitRoomStatus - Not found valid status [%s, %s] for GameRoomId: %s, CurrentStatus: %s",
+			game_room.GameStatusReady.String(), game_room.GameStatusError.String(), fromStorage.ID, fromStorage.Status.String()))
 	}
 
 watchLoop:
@@ -441,8 +441,8 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 		}
 		host = instance.Address.Host
 	}
-	m.Logger.Info(fmt.Sprintf("[wps-3544] CreateGameRoomOnRuntime - Scheduler %s Instance %s Status: %s Host: %s Ports: %s",
-		instance.SchedulerID, instance.ID, instance.Status, host, strings.Join(numberPorts, ", ")))
+	m.Logger.Info(fmt.Sprintf("[wps-3544] CreateGameRoomOnRuntime - Scheduler %s, Instance %s, Status: %s, Affinity: %s, Toleration: %s, Version: %s, Host: %s, Ports: %s",
+		instance.SchedulerID, instance.ID, instance.Status, spec.Affinity, spec.Toleration, spec.Version, host, strings.Join(numberPorts, ", ")))
 
 	return room, instance, err
 }

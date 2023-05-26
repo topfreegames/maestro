@@ -167,6 +167,8 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		// Caching before ready consists in lack of information about the instance.
 		if instance.Status.Type == game_room.InstanceReady {
 			kw.instanceCacheMap[pod.Name] = instance
+			kw.logger.Info(fmt.Sprintf("[wps-3544] ProcessEvent - addInstanceCacheMap Name: %s, Status: %s",
+				pod.Name, instance.Status.Type.String()))
 		}
 	} else {
 		tempInstance := &game_room.Instance{
@@ -179,6 +181,8 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		instance = tempInstance
 
 		kw.instanceCacheMap[pod.Name] = instance
+		kw.logger.Info(fmt.Sprintf("[wps-3544] ProcessEvent - addInstanceCacheMap Name: %s, Status: %s",
+			pod.Name, instance.Status.Type.String()))
 
 		var containerStatuses []string
 		var conditions []string
