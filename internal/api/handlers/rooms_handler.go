@@ -109,6 +109,7 @@ func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.Update
 	eventMetadata := message.Metadata.AsMap()
 	eventMetadata["eventType"] = events.FromRoomEventTypeToString(events.Status)
 	eventMetadata["pingType"] = message.Status
+	handlerLogger.Info("handling game room status request", zap.Any("message", message))
 
 	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
