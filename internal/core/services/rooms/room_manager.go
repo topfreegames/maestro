@@ -304,16 +304,22 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 	if err != nil {
 		return fmt.Errorf("failed to get game room: %w", err)
 	}
+	m.Logger.Info(fmt.Sprintf("UpdateGameRoomStatus - Scheduler %s Game Room %s StatusRecoveryOnRoomStorage: %s",
+		gameRoom.SchedulerID, gameRoom.ID, gameRoom.Status))
 
 	instance, err := m.InstanceStorage.GetInstance(ctx, schedulerId, gameRoomId)
 	if err != nil {
 		return fmt.Errorf("failed to get game room instance: %w", err)
 	}
+	m.Logger.Info(fmt.Sprintf("UpdateGameRoomStatus - Scheduler %s Instance %s StatusRecoveryOnInstanceStorage: %s",
+		gameRoom.SchedulerID, instance.ID, instance.Status))
 
 	newStatus, err := gameRoom.RoomComposedStatus(instance.Status.Type)
 	if err != nil {
 		return fmt.Errorf("failed to generate new game room status: %w", err)
 	}
+	m.Logger.Info(fmt.Sprintf("UpdateGameRoomStatus - Scheduler %s Game Room %s Instance: %s, newStatus: %s",
+		gameRoom.SchedulerID, gameRoom.ID, instance.ID, newStatus.String()))
 
 	// nothing changed
 	if newStatus == gameRoom.Status {
@@ -355,6 +361,9 @@ func (m *RoomManager) WaitRoomStatus(ctx context.Context, gameRoom *game_room.Ga
 	// the room has the desired state already
 	if contains(status, fromStorage.Status) {
 		return fromStorage.Status, nil
+	} else {
+		m.Logger.Info(fmt.Sprintf("Not found valid status for GameRoomId: %s that has Status: %s",
+			fromStorage.ID, fromStorage.Status.String()))
 	}
 
 watchLoop:
@@ -400,6 +409,8 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 	if err != nil {
 		return nil, nil, err
 	}
+	m.Logger.Info(fmt.Sprintf("CreateGameRoomOnStorage - Scheduler %s Game Room %s Status: %s isValidationRoom: %t",
+		room.SchedulerID, room.ID, room.Status, room.IsValidationRoom))
 
 	spec, err := m.populateSpecWithHostPort(*scheduler)
 	if err != nil {
@@ -419,6 +430,17 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 	if err != nil {
 		return nil, nil, err
 	}
+
+	var numberPorts []string
+	var host string
+	if instance.Address != nil {
+		for _, ports := range instance.Address.Ports {
+			numberPorts = append(numberPorts, strconv.Itoa(int(ports.Port)))
+		}
+		host = instance.Address.Host
+	}
+	m.Logger.Info(fmt.Sprintf("CreateGameRoomOnRuntime - Scheduler %s Instance %s Status: %s Host: %s Ports: %s",
+		instance.SchedulerID, instance.ID, instance.Status, host, strings.Join(numberPorts, ", ")))
 
 	return room, instance, err
 }
