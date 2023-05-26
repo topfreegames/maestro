@@ -133,6 +133,9 @@ autoscaling:
         "start": 40000,
         "end": 60000
     },
+    "annotations":{
+      "imageregistry":"https://dockerhub.com/"    
+    },
     "maxSurge": "30%",
     "spec": {
         "terminationGracePeriod": '100',
@@ -230,21 +233,26 @@ portRange: PortRange
 forwarders: Forwarders
 autoscaling: Autoscaling
 spec: Spec
+annotation: Map
 ```
 
-- **Name**: Scheduler name. This name is unique and will be the same name used for the kubernetes namespace.
-  It's offered by the user in the creation and cannot be changed in the future. It's used as an ID for the scheduler;
-- **game**: Name of the game which will use the scheduler. The game is important since it's common to use multiple schedulers
-  for a specific game. So you probably will want to fetch all the schedulers from a game;
+- **Name**: Scheduler name. This name is unique and will be the same name used for the kubernetes namespace. It's
+  offered by the user in the creation and cannot be changed in the future. It's used as an ID for the scheduler;
+- **game**: Name of the game which will use the scheduler. The game is important since it's common to use multiple
+  schedulers for a specific game. So you probably will want to fetch all the schedulers from a game;
 - **createdAt**: Info about the scheduler creation time. Cannot be altered by the user;
-- **maxSurge**: Value represented in percentage (%) or Integer. Offered by the user on the scheduler creation. Can be altered anytime.
-  Used by Maestro to replace pods. Ex: If maxSurge = 3, the [Switch Active Version](Operations.md#switch-active-version) (Major change) operation will replace pods from 3 to 3;
-- **portRange**: Range of ports that can be used by Maestro to create GRUs for the specified scheduler. Can be altered by the user anytime. More info [here](#portrange);
-- **forwarders**: Maestro can pass ahead info sent by the game rooms, such as Ping (Ready, Occupied, Terminating...), player and rooms events.
-  The receivers can be configured here. More info [here](#forwarders);
+- **maxSurge**: Value represented in percentage (%) or Integer. Offered by the user on the scheduler creation. Can be
+  altered anytime. Used by Maestro to replace pods. Ex: If maxSurge = 3,
+  the [Switch Active Version](Operations.md#switch-active-version) (Major change) operation will replace pods from 3 to
+  3;
+- **portRange**: Range of ports that can be used by Maestro to create GRUs for the specified scheduler. Can be altered
+  by the user anytime. More info [here](#portrange);
+- **forwarders**: Maestro can pass ahead info sent by the game rooms, such as Ping (Ready, Occupied, Terminating...),
+  player and rooms events. The receivers can be configured here. More info [here](#forwarders);
 - **autoscaling**: Optional autoscaling policy configuration. More info [here](../tutorials/Autoscaling.md);
-- **spec**: Specifications about the game rooms managed by the scheduler, such as containers and environment variables used by them, limits and images. More info [here](#spec).
-
+- **spec**: Specifications about the game rooms managed by the scheduler, such as containers and environment variables
+  used by them, limits and images. More info [here](#spec).
+- **annotations**: Allows annotations for the scheduler's game room
 
 ### PortRange
 The **PortRange** is used to select a random port for a GRU between **start** and **end**.
