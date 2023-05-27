@@ -411,7 +411,7 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 	if err != nil {
 		return nil, nil, err
 	}
-	m.Logger.Info(fmt.Sprintf("[wps-3544] CreateGameRoomOnStorage - Scheduler %s Game Room %s Status: %s isValidationRoom: %t",
+	m.Logger.Info(fmt.Sprintf("[wps-3544] CreateGameRoomOnStorage - Scheduler: %s GameRoom: %s Status: %s isValidationRoom: %t",
 		room.SchedulerID, room.ID, room.Status, room.IsValidationRoom))
 
 	spec, err := m.populateSpecWithHostPort(*scheduler)
@@ -441,7 +441,7 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 		}
 		host = instance.Address.Host
 	}
-	m.Logger.Info(fmt.Sprintf("[wps-3544] CreateGameRoomOnRuntime - Scheduler %s, Instance %s, Status: %s, Affinity: %s, Toleration: %s, Version: %s, Host: %s, Ports: %s",
+	m.Logger.Info(fmt.Sprintf("[wps-3544] CreateGameRoomOnRuntime - Scheduler: %s, Instance: %s, Status: %s, Affinity: %s, Toleration: %s, Version: %s, Host: %s, Ports: %s",
 		instance.SchedulerID, instance.ID, instance.Status, spec.Affinity, spec.Toleration, spec.Version, host, strings.Join(numberPorts, ", ")))
 
 	return room, instance, err

@@ -152,6 +152,8 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 func (w *WorkersManager) startWorker(ctx context.Context, name string, wkr worker.Worker) {
 	w.workersWaitGroup.Add(1)
 	w.CurrentWorkers[name] = wkr
+	w.logger.Info(fmt.Sprintf("[wps-3544] startWorker for Component: %s, Scheduler: %s",
+		w.builder.ComponentName, name))
 	go func() {
 		err := wkr.Start(ctx)
 		if err != nil {
