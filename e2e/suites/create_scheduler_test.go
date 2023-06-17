@@ -34,6 +34,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/go-redis/redis/v8"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -58,7 +59,7 @@ func TestCreateScheduler(t *testing.T) {
 				MaxSurge:      "10%",
 				RoomsReplicas: 1,
 				Spec: &maestrov1.Spec{
-					TerminationGracePeriod: 15,
+					TerminationGracePeriod: durationpb.New(time.Duration(15)),
 					Containers: []*maestrov1.Container{
 						{
 							Name:            "example",
@@ -149,7 +150,7 @@ func TestCreateScheduler(t *testing.T) {
 				MaxSurge:      "10%",
 				RoomsReplicas: 1,
 				Spec: &maestrov1.Spec{
-					TerminationGracePeriod: 15,
+					TerminationGracePeriod: durationpb.New(time.Duration(15)),
 					Containers: []*maestrov1.Container{
 						{
 							Name:            "example",

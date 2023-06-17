@@ -35,6 +35,8 @@ import (
 
 	"testing"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	maestrov1 "github.com/topfreegames/maestro/pkg/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -110,7 +112,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 				MaxSurge:      "10%",
 				RoomsReplicas: 2,
 				Spec: &maestrov1.Spec{
-					TerminationGracePeriod: 15,
+					TerminationGracePeriod: durationpb.New(time.Duration(15)),
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:            "example-update",
@@ -256,7 +258,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 		MaxSurge:      "10%",
 		RoomsReplicas: 2,
 		Spec: &maestrov1.Spec{
-			TerminationGracePeriod: 15,
+			TerminationGracePeriod: durationpb.New(time.Duration(15)),
 			Containers: []*maestroApiV1.Container{
 				{
 					Name:  "example-update",
@@ -448,7 +450,7 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 		Game:     "test",
 		MaxSurge: "10%",
 		Spec: &maestrov1.Spec{
-			TerminationGracePeriod: 15,
+			TerminationGracePeriod: durationpb.New(time.Duration(15)),
 			Containers: []*maestroApiV1.Container{
 				{
 					Name:  "example",
