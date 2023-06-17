@@ -154,13 +154,13 @@ services:
       retries: 5
 
   grpc-mock:
-    image: tkpd/gripmock
-    command: /events.proto
+    image: tkpd/gripmock:v1.12.1
+    command: /proto/events.proto
     ports: 
     - "4770:4770"
     - "4771:4771"
     volumes:
-     - ../../../test/data/events.proto:/events.proto
+     - ../../../test/data/:/proto
 
 volumes:
   kubeconfig: {}
