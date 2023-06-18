@@ -150,7 +150,7 @@ func TestPatchScheduler(t *testing.T) {
 			assert.Equal(t, *newSpec.Containers[0].Requests, *getSchedulerResponse.Scheduler.Spec.Containers[0].Requests)
 			assert.Equal(t, *newSpec.Containers[0].Limits, *getSchedulerResponse.Scheduler.Spec.Containers[0].Limits)
 			assert.Equal(t, newSpec.Containers[0].Ports, getSchedulerResponse.Scheduler.Spec.Containers[0].Ports)
-			assert.Equal(t, *newSpec.TerminationGracePeriod, getSchedulerResponse.Scheduler.Spec.TerminationGracePeriod)
+			assert.Equal(t, *newSpec.TerminationGracePeriod, *getSchedulerResponse.Scheduler.Spec.TerminationGracePeriod)
 
 		})
 
