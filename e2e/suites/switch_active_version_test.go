@@ -31,6 +31,7 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 
 	_struct "github.com/golang/protobuf/ptypes/struct"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
@@ -63,9 +64,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				Game:     "test",
 				MaxSurge: "10%",
 				Spec: &maestroApiV1.Spec{
-					TerminationGracePeriod: &duration.Duration{
-						Seconds: 15,
-					},
+					TerminationGracePeriod: durationpb.New(time.Duration(15)),
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example",
@@ -129,11 +128,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 
 				err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)
 				require.NoError(t, err)
-				if getSchedulerResponse.Scheduler.Spec.Version != "v1.2.0" {
-					return false
-				}
-
-				return true
+				return getSchedulerResponse.Scheduler.Spec.Version == "v1.2.0"
 			}, 1*time.Minute, 10*time.Millisecond, "failed wait for minor version updated")
 
 			require.Eventually(t, func() bool {
@@ -231,9 +226,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				MaxSurge:      "10%",
 				RoomsReplicas: 2,
 				Spec: &maestroApiV1.Spec{
-					TerminationGracePeriod: &duration.Duration{
-						Seconds: 15,
-					},
+					TerminationGracePeriod: durationpb.New(time.Duration(15)),
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example-update",
@@ -375,9 +368,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				Game:     "test",
 				MaxSurge: "10%",
 				Spec: &maestroApiV1.Spec{
-					TerminationGracePeriod: &duration.Duration{
-						Seconds: 15,
-					},
+					TerminationGracePeriod: durationpb.New(time.Duration(15)),
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example-update",
@@ -530,9 +521,7 @@ func TestSwitchActiveVersion(t *testing.T) {
 				Game:     "test",
 				MaxSurge: "10%",
 				Spec: &maestroApiV1.Spec{
-					TerminationGracePeriod: &duration.Duration{
-						Seconds: 15,
-					},
+					TerminationGracePeriod: durationpb.New(time.Duration(15)),
 					Containers: []*maestroApiV1.Container{
 						{
 							Name:  "example",
