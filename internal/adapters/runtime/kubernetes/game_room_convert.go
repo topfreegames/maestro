@@ -49,6 +49,10 @@ const (
 	maestroLabelValue = "maestro"
 	schedulerLabelKey = "maestro-scheduler"
 	versionLabelKey   = "version"
+
+	// Pod annotations
+	safeToEvictAnnotation = "cluster-autoscaler.kubernetes.io/safe-to-evict"
+	safeToEvictValue      = "true"
 )
 
 // invalidPodWaitingStates are all the states that are not accepted in a waiting pod.
@@ -71,6 +75,9 @@ func convertGameRoomSpec(schedulerID, gameRoomName string, gameRoomSpec game_roo
 				maestroLabelKey:   maestroLabelValue,
 				schedulerLabelKey: schedulerID,
 				versionLabelKey:   gameRoomSpec.Version,
+			},
+			Annotations: map[string]string{
+				safeToEvictAnnotation: safeToEvictValue,
 			},
 		},
 		Spec: v1.PodSpec{
