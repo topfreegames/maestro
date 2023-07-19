@@ -30,7 +30,8 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/extra/pgotel/v10"
+	"github.com/go-pg/pg/v10"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
@@ -48,8 +49,9 @@ type schedulerStorage struct {
 }
 
 func NewSchedulerStorage(opts *pg.Options) *schedulerStorage {
+	db := pg.Connect(opts)
 	return &schedulerStorage{
-		db:              pg.Connect(opts),
+		db:              db,
 		transactionsMap: map[ports.TransactionID]*pg.Tx{},
 	}
 }
@@ -88,12 +90,16 @@ INSERT INTO scheduler_versions (name, version, yaml, rollback_version)
 	VALUES (?, ?, ?, ?)
 	ON CONFLICT DO NOTHING`
 	queryGetSchedulerVersions = `
-SELECT v.version, v.version = s.version as is_active, v.created_at 
-	FROM scheduler_versions v 
-	INNER JOIN schedulers s 
-	ON v.name = s.name 
+SELECT v.version, v.version = s.version as is_active, v.created_at
+	FROM scheduler_versions v
+	INNER JOIN schedulers s
+	ON v.name = s.name
 	WHERE v.name = ? ORDER BY created_at DESC`
 )
+
+func (s schedulerStorage) EnableTracing() {
+	s.db.AddQueryHook(pgotel.NewTracingHook())
+}
 
 func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entities.Scheduler, error) {
 	client := s.db.WithContext(ctx)

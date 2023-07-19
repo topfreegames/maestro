@@ -24,6 +24,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	schedulerredis "github.com/topfreegames/maestro/internal/adapters/cache/redis/scheduler"
@@ -33,6 +34,7 @@ import (
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/instance"
 	redis2 "github.com/topfreegames/maestro/internal/adapters/storage/redis/operation"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/room"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	operationservice "github.com/topfreegames/maestro/internal/core/services/operations"
 	"github.com/topfreegames/maestro/internal/core/services/rooms"
@@ -42,7 +44,8 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v10"
+	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
 	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
@@ -87,6 +90,9 @@ const (
 
 	// operation TTL
 	operationsTTLPath = "workers.redis.operationsTtl"
+
+	// storage tracing
+	tracingEnabledPath = "api.tracing.jaeger.enabled"
 )
 
 // NewSchedulerManager instantiates a new scheduler manager.
@@ -208,7 +214,13 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
 
-	return scheduler.NewSchedulerStorage(opts), nil
+	pgStorage := scheduler.NewSchedulerStorage(opts)
+
+	if c.GetBool("api.tracing.jaeger.enabled") {
+		pgStorage.EnableTracing()
+	}
+
+	return pgStorage, nil
 }
 
 // GetSchedulerStoragePostgresURL get scheduler storage postgres URL.
@@ -222,7 +234,19 @@ func createRedisClient(c config.Config, url string) (*redis.Client, error) {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
 	opts.PoolSize = c.GetInt(redisPoolSizePath)
-	return redis.NewClient(opts), nil
+
+	hostPort := strings.Split(opts.Addr, ":")
+
+	client := redis.NewClient(opts)
+
+	if c.GetBool("api.tracing.jaeger.enabled") {
+		client.AddHook(redisotel.NewTracingHook(redisotel.WithAttributes(
+			semconv.NetPeerNameKey.String(hostPort[0]),
+			semconv.NetPeerPortKey.String(hostPort[1])),
+		))
+	}
+
+	return client, nil
 }
 
 // NewPolicyMap instantiates a new policy to be used by autoscaler expecting a room storage as parameter.
