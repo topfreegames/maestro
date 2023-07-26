@@ -47,15 +47,16 @@ func (p *PortRange) Total() int32 {
 
 // ParsePortRange parses the provided string into a PortRange. The string must
 // follow the format:
-//   * Two positive numbers (start and end) separated by an "-" (hyphen);
-//   * End must equal or higher than the start, if it is lower the function will
+//   - Two positive numbers (start and end) separated by an "-" (hyphen);
+//   - End must equal or higher than the start, if it is lower the function will
 //     return an error;
+//
 // Some examples are:
-//   * "1000-2000": {Start: 1000, End: 2000};
-//   * "1000-1000": {Start: 1000, End: 1000};
-//   * "1000-999": Returns an error;
-//   * "1000": Returns an error;
-//   * "abc": Returns an error;
+//   - "1000-2000": {Start: 1000, End: 2000};
+//   - "1000-1000": {Start: 1000, End: 1000};
+//   - "1000-999": Returns an error;
+//   - "1000": Returns an error;
+//   - "abc": Returns an error;
 func ParsePortRange(rangeStr string) (*PortRange, error) {
 	split := strings.Split(rangeStr, "-")
 	if len(split) != 2 {

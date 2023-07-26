@@ -42,6 +42,7 @@ import (
 	"github.com/topfreegames/maestro/e2e/framework"
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
+	"google.golang.org/protobuf/types/known/durationpb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -61,7 +62,7 @@ func createSchedulerAndWaitForIt(
 		MaxSurge:      "10%",
 		RoomsReplicas: 0,
 		Spec: &maestroApiV1.Spec{
-			TerminationGracePeriod: 15,
+			TerminationGracePeriod: durationpb.New(time.Duration(15)),
 			Containers: []*maestroApiV1.Container{
 				{
 					Name:            "example",
@@ -177,7 +178,7 @@ func createSchedulerWithForwardersAndWaitForIt(
 		Name: schedulerName,
 		Game: "test",
 		Spec: &maestroApiV1.Spec{
-			TerminationGracePeriod: 15,
+			TerminationGracePeriod: durationpb.New(time.Duration(15)),
 			Containers: []*maestroApiV1.Container{
 				{
 					Name:            "example",

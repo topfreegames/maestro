@@ -62,6 +62,7 @@ type schedulerInfo struct {
 	RoomsReplicas          int
 	Forwarders             []*forwarder.Forwarder
 	Autoscaling            *autoscaling.Autoscaling
+	Annotations            map[string]string
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -75,6 +76,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		RoomsReplicas:          scheduler.RoomsReplicas,
 		Forwarders:             scheduler.Forwarders,
 		Autoscaling:            scheduler.Autoscaling,
+		Annotations:            scheduler.Annotations,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -94,9 +96,10 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		return nil, err
 	}
 	return &entities.Scheduler{
-		Name:  s.Name,
-		Game:  s.Game,
-		State: s.State,
+		Name:        s.Name,
+		Game:        s.Game,
+		State:       s.State,
+		Annotations: info.Annotations,
 		Spec: game_room.Spec{
 			Version:                s.Version,
 			TerminationGracePeriod: info.TerminationGracePeriod,

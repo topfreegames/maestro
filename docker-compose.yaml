@@ -3,7 +3,6 @@
 
 version: '3'
 services:
-
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"
     command: server --node-name control-plane

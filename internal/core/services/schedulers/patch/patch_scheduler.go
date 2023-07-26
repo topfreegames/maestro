@@ -83,6 +83,8 @@ const (
 	LabelAutoscalingMax = "max"
 	// LabelAutoscalingPolicy is the autoscaling policy key in the patch map.
 	LabelAutoscalingPolicy = "policy"
+	// LabelAnnotations is the annotations key in the patch map
+	LabelAnnotations = "annotations"
 )
 
 // PatchScheduler function applies the patchMap in the scheduler, returning the patched Scheduler.
@@ -129,6 +131,12 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 		err := patchAutoscaling(&scheduler, patchAutoscalingMap)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing scheduler: %w", err)
+		}
+	}
+
+	if _, ok := patchMap[LabelAnnotations]; ok {
+		if scheduler.Annotations, ok = patchMap[LabelAnnotations].(map[string]string); !ok {
+			return nil, fmt.Errorf("error parsing scheduler: annotations malformed")
 		}
 	}
 
@@ -212,6 +220,7 @@ func patchContainers(containers []game_room.Container, patchSlice []map[string]i
 				return nil, fmt.Errorf("error parsing containers: ports malformed")
 			}
 		}
+
 	}
 
 	return containers, nil

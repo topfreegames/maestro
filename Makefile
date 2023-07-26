@@ -73,7 +73,7 @@ build: build-linux-x86_64 ## Build the project and generates a binary.
 .PHONY: build-linux-x86_64
 build-linux-x86_64: ## Build the project and generates a binary for x86_64 architecture.
 	@rm -f ./bin/maestro-linux-x86_64 || true
-	@env GOOS=linux GOARCH=amd64 go build -o ./bin/maestro-linux-x86_64 ./
+	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o ./bin/maestro-linux-x86_64 ./
 
 
 .PHONY: run/worker
