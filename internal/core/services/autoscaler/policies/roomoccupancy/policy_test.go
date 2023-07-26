@@ -44,34 +44,34 @@ func TestCurrentStateBuilder(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	readyRoomsAmount := 1
+	occupiedRoomsAmount := 1
 
 	scheduler := &entities.Scheduler{
 		Name: "some-name",
 	}
 
-	t.Run("Success cases - when no error occurs it builds the state with ready rooms amount", func(t *testing.T) {
+	t.Run("Success cases - when no error occurs it builds the state with occupied rooms amount", func(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(ctrl)
 
-		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(readyRoomsAmount, nil)
+		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(occupiedRoomsAmount, nil)
 
 		policy := roomoccupancy.NewPolicy(roomStorageMock)
 
 		currentState, err := policy.CurrentStateBuilder(context.Background(), scheduler)
 		assert.NoError(t, err)
 
-		assert.Equal(t, readyRoomsAmount, currentState[roomoccupancy.ReadyRoomsKey])
+		assert.Equal(t, occupiedRoomsAmount, currentState[roomoccupancy.OccupiedRoomsKey])
 	})
 
 	t.Run("Error case - When some error occurs in GetRoomCountByStatus it returns error", func(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(ctrl)
 
-		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(-1, errors.New("Error getting amount of ready rooms"))
+		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(-1, errors.New("Error getting amount of occupied rooms"))
 
 		policy := roomoccupancy.NewPolicy(roomStorageMock)
 
 		_, err := policy.CurrentStateBuilder(context.Background(), scheduler)
-		assert.ErrorContains(t, err, "error fetching ready game rooms amount:")
+		assert.ErrorContains(t, err, "error fetching occupied game rooms amount:")
 	})
 }
 
@@ -83,10 +83,10 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 		t.Run("First case", func(t *testing.T) {
 			readyTarget := float64(0.5)
-			readyRooms := 80
+			occupiedRooms := 80
 
 			schedulerState := policies.CurrentState{
-				roomoccupancy.ReadyRoomsKey: readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
 			}
 
 			policyParams := autoscaling.PolicyParameters{
@@ -102,10 +102,10 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 		t.Run("Second case", func(t *testing.T) {
 			readyTarget := float64(0.1)
-			readyRooms := 5
+			occupiedRooms := 5
 
 			schedulerState := policies.CurrentState{
-				roomoccupancy.ReadyRoomsKey: readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
 			}
 
 			policyParams := autoscaling.PolicyParameters{
@@ -121,10 +121,10 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 		t.Run("Third case", func(t *testing.T) {
 			readyTarget := float64(0.3)
-			readyRooms := 0
+			occupiedRooms := 0
 
 			schedulerState := policies.CurrentState{
-				roomoccupancy.ReadyRoomsKey: readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
 			}
 
 			policyParams := autoscaling.PolicyParameters{
@@ -148,7 +148,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		assert.EqualError(t, err, "RoomOccupancy parameters is empty")
 	})
 
-	t.Run("Fail case - when there is no ReadyRooms", func(t *testing.T) {
+	t.Run("Fail case - when there is no OccupiedRooms", func(t *testing.T) {
 		schedulerState := policies.CurrentState{}
 
 		readyTarget := float64(0.3)
@@ -159,7 +159,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		}
 
 		_, err := policy.CalculateDesiredNumberOfRooms(policyParams, schedulerState)
-		assert.EqualError(t, err, "There are no readyRooms in the currentState")
+		assert.EqualError(t, err, "There are no occupiedRooms in the currentState")
 	})
 
 	t.Run("Fail case - when ready target is out of 0, 1 range", func(t *testing.T) {
@@ -167,10 +167,10 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 		t.Run("when ready target is 1", func(t *testing.T) {
 			readyTarget := float64(1.0)
-			readyRooms := 10
+			occupiedRooms := 10
 
 			schedulerState := policies.CurrentState{
-				roomoccupancy.ReadyRoomsKey: readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
 			}
 
 			policyParams := autoscaling.PolicyParameters{
@@ -184,10 +184,10 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		})
 		t.Run("when ready target is greater than 1", func(t *testing.T) {
 			readyTarget := float64(1.1)
-			readyRooms := 10
+			occupiedRooms := 10
 
 			schedulerState := policies.CurrentState{
-				roomoccupancy.ReadyRoomsKey: readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
 			}
 
 			policyParams := autoscaling.PolicyParameters{
@@ -201,10 +201,10 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		})
 		t.Run("when ready target is 0", func(t *testing.T) {
 			readyTarget := float64(0.0)
-			readyRooms := 10
+			occupiedRooms := 10
 
 			schedulerState := policies.CurrentState{
-				roomoccupancy.ReadyRoomsKey: readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
 			}
 
 			policyParams := autoscaling.PolicyParameters{
@@ -218,10 +218,10 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 		})
 		t.Run("when ready target is lower than 0", func(t *testing.T) {
 			readyTarget := float64(-0.1)
-			readyRooms := 10
+			occupiedRooms := 10
 
 			schedulerState := policies.CurrentState{
-				roomoccupancy.ReadyRoomsKey: readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
 			}
 
 			policyParams := autoscaling.PolicyParameters{
