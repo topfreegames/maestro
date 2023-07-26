@@ -5,8 +5,7 @@ api:
     enabled: true
   tracing:
     jaeger:
-      enabled: true
-      url: "http://localhost:14268/api/traces"
+      enabled: false
 
 internalApi:
   port: 8081
