@@ -500,7 +500,8 @@ func TestConvertGameSpec(t *testing.T) {
 						versionLabelKey:   "version",
 					},
 					Annotations: map[string]string{
-						"imageregistry": "https://hub.docker.com/",
+						safeToEvictAnnotation: safeToEvictValue,
+						"imageregistry":       "https://hub.docker.com/",
 					},
 				},
 				Spec: v1.PodSpec{
