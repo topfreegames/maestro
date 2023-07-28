@@ -46,6 +46,8 @@ const (
 	GameStatusTerminating
 	// GameStatusError room has errors (e.g. CrashLoopBackoff in kubernetes)
 	GameStatusError
+	// GameStatusTerminated room has terminated.
+	GameStatusTerminated
 )
 
 func (status GameRoomStatus) String() string {
@@ -62,6 +64,8 @@ func (status GameRoomStatus) String() string {
 		return "terminating"
 	case GameStatusError:
 		return "error"
+	case GameStatusTerminated:
+		return "terminated"
 	default:
 		panic(fmt.Sprintf("invalid value for GameRoomStatus: %d", int(status)))
 	}
@@ -163,9 +167,10 @@ var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{
 		GameStatusReady:       struct{}{},
 	},
 	GameStatusTerminating: {
-		GameStatusError:   struct{}{},
-		GameStatusUnready: struct{}{},
-		GameStatusReady:   struct{}{},
+		GameStatusError:      struct{}{},
+		GameStatusUnready:    struct{}{},
+		GameStatusReady:      struct{}{},
+		GameStatusTerminated: struct{}{},
 	},
 }
 
@@ -202,10 +207,6 @@ var roomStatusComposition = []struct {
 	{GameRoomPingStatusTerminating, InstanceReady, GameStatusTerminating},
 	{GameRoomPingStatusTerminating, InstanceTerminating, GameStatusTerminating},
 	{GameRoomPingStatusTerminating, InstanceUnknown, GameStatusTerminating},
-	{GameRoomPingStatusTerminated, InstancePending, GameStatusTerminating},
-	{GameRoomPingStatusTerminated, InstanceReady, GameStatusTerminating},
-	{GameRoomPingStatusTerminated, InstanceTerminating, GameStatusTerminating},
-	{GameRoomPingStatusTerminated, InstanceUnknown, GameStatusTerminating},
 
 	// Error
 	{GameRoomPingStatusUnknown, InstanceError, GameStatusError},
@@ -213,6 +214,12 @@ var roomStatusComposition = []struct {
 	{GameRoomPingStatusOccupied, InstanceError, GameStatusError},
 	{GameRoomPingStatusTerminating, InstanceError, GameStatusError},
 	{GameRoomPingStatusTerminated, InstanceError, GameStatusError},
+
+	// Terminated
+	{GameRoomPingStatusTerminated, InstancePending, GameStatusTerminated},
+	{GameRoomPingStatusTerminated, InstanceReady, GameStatusTerminated},
+	{GameRoomPingStatusTerminated, InstanceTerminating, GameStatusTerminated},
+	{GameRoomPingStatusTerminated, InstanceUnknown, GameStatusTerminated},
 }
 
 // RoomComposedStatus returns a game room status formed by a game room ping status and an instance status

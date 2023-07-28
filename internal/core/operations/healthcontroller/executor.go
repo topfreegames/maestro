@@ -220,6 +220,8 @@ func (ex *Executor) findAvailableAndExpiredRooms(ctx context.Context, op *operat
 			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
 		case ex.isRoomTerminatingExpired(room):
 			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
+		case ex.isRoomStatus(room, game_room.GameStatusTerminated):
+			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
 		case ex.isRoomStatus(room, game_room.GameStatusTerminating):
 			continue
 		case ex.isRoomStatus(room, game_room.GameStatusError):
