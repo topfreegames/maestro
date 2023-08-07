@@ -42,8 +42,6 @@ jobs:
         git config user.email ${{ secrets.GITLAB_EMAIL }}
         git remote set-url origin ${{ secrets.GITLAB_DOC_URL }}
         git checkout -b $GL_BRANCH_NAME
-        git cherry-pick -n $LATEST_TAG
-        git reset $(git merge-base $CURRENT_GH_BRANCH $GL_BRANCH_NAME)
         git add \*.md docs/
         git commit --allow-empty -m "Created by $GITHUB_ACTOR"
         git push --set-upstream origin $GL_BRANCH_NAME
