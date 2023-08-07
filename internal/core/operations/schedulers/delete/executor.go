@@ -24,9 +24,11 @@ package delete
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -89,28 +91,35 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 	err = e.schedulerStorage.RunWithTransaction(ctx, func(transactionId ports.TransactionID) error {
 		err = e.schedulerStorage.DeleteScheduler(ctx, transactionId, scheduler)
 		if err != nil {
-			logger.Error("failed to delete scheduler from storage", zap.Error(err))
-			return err
+			if !errors.Is(err, portsErrors.ErrNotFound) {
+				logger.Error("failed to delete scheduler from storage", zap.Error(err))
+				return err
+			}
+			logger.Warn("scheduler not found on storage, will try to complete operation anyway", zap.Error(err))
 		}
+
 		err = e.runtime.DeleteScheduler(ctx, scheduler)
 		if err != nil {
-			logger.Error("failed to delete scheduler from runtime", zap.Error(err))
-			return err
+			if !errors.Is(err, portsErrors.ErrNotFound) {
+				logger.Error("failed to delete scheduler from runtime", zap.Error(err))
+				return err
+			}
+			logger.Warn("scheduler not found on runtime, will try to complete operation anyway", zap.Error(err))
 		}
 
 		err = e.waitForAllInstancesToBeDeleted(ctx, op, scheduler, logger)
 		if err != nil {
-			logger.Error("failed to wait for instances to be deleted", zap.Error(err))
+			logger.Warn("failed to wait for instances to be deleted", zap.Error(err))
 		}
 
 		err = e.schedulerCache.DeleteScheduler(ctx, schedulerName)
 		if err != nil {
-			logger.Error("failed to delete scheduler from cache", zap.Error(err))
+			logger.Warn("failed to delete scheduler from cache", zap.Error(err))
 		}
 
 		err = e.operationStorage.CleanOperationsHistory(ctx, schedulerName)
 		if err != nil {
-			logger.Error("failed to clean operations history", zap.Error(err))
+			logger.Warn("failed to clean operations history", zap.Error(err))
 		}
 
 		return nil
