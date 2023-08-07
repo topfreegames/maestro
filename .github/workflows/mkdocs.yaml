@@ -46,4 +46,4 @@ jobs:
         git reset $(git merge-base $CURRENT_GH_BRANCH $GL_BRANCH_NAME)
         git add \*.md docs/
         git commit --allow-empty -m "Created by $GITHUB_ACTOR"
-        git push origin $BRANCH_NAME
+        git push --set-upstream origin $GL_BRANCH_NAME
