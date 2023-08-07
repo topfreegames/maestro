@@ -9,4 +9,3 @@ The following tutorials are available for this module:
 * [Configuring Events Forwarding](./tutorials/EventsForwarding.md)
 
 * [Development](./tutorials/Development.md)
-
