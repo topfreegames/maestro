@@ -40,9 +40,7 @@ jobs:
         BRANCH_NAME="documentation-ref_$LATEST_TAG"
         git config user.name ${{ secrets.GITLAB_USER }}
         git config user.email ${{ secrets.GITLAB_EMAIL }}
-        REMOTE_EXISTS=$(git remote add origin ${{ secrets.GITLAB_DOC_URL }})
-        echo "remote_exists=$REMOTE_EXISTS" >> $GITHUB_OUTPUT
-        if [[ ${{ steps.git_setup.outputs.remote_exists }} == 3 ]]; then exit 0; else exit 1; fi
+        if [[ $(git remote add origin $GITLAB_DOCS_URL) == 3 ]];; then exit 0; else exit 1; fi
     - name: Update Gitlab Documentation
       run: |
         git checkout -b $BRANCH_NAME
