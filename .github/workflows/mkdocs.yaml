@@ -34,13 +34,12 @@ jobs:
       with:
         fetch-depth: 0
     - name: Git Setup
-      id: git_setup
       run: |
         LATEST_TAG=$(git describe --tags --always --abbrev=0)
         BRANCH_NAME="documentation-ref_$LATEST_TAG"
         git config user.name ${{ secrets.GITLAB_USER }}
         git config user.email ${{ secrets.GITLAB_EMAIL }}
-        if [[ $(git remote add origin $GITLAB_DOC_URL) == 3 ]];; then exit 0; else exit 1; fi
+        if [[ $(git remote add origin $GITLAB_DOC_URL) == 3 ]]; then exit 0; else exit 1; fi
     - name: Update Gitlab Documentation
       run: |
         git checkout -b $BRANCH_NAME
