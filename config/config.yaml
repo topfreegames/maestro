@@ -3,6 +3,9 @@ api:
   gracefulShutdownTimeout: 10s
   metrics:
     enabled: true
+  tracing:
+    jaeger:
+      enabled: false
 
 internalApi:
   port: 8081
@@ -53,7 +56,8 @@ workers:
     operationsTTL: 24h
   healthControllerInterval: 1m
   storageClenupInterval: 3h
-metricsReporter:
+reporter:
+  metrics:
     intervalMillis: 10000
 
 services:

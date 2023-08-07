@@ -33,7 +33,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v10"
 	golangMigrate "github.com/golang-migrate/migrate/v4"
 	"github.com/orlangure/gnomock"
 	ppg "github.com/orlangure/gnomock/preset/postgres"

@@ -52,7 +52,7 @@ func IsAutoscalingMinMaxValid(min int, max int) bool {
 	return true
 }
 
-//IsMaxSurgeValid check if MaxSurge is valid. A MaxSurge valid is a number greater than zero or a number greater than zero with suffix '%'
+// IsMaxSurgeValid check if MaxSurge is valid. A MaxSurge valid is a number greater than zero or a number greater than zero with suffix '%'
 func IsMaxSurgeValid(maxSurge string) bool {
 	if maxSurge == "" {
 		return false

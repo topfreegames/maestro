@@ -394,6 +394,9 @@ func TestConvertGameSpec(t *testing.T) {
 						schedulerLabelKey: "sample",
 						versionLabelKey:   "version",
 					},
+					Annotations: map[string]string{
+						safeToEvictAnnotation: safeToEvictValue,
+					},
 				},
 			},
 		},
@@ -415,6 +418,9 @@ func TestConvertGameSpec(t *testing.T) {
 						maestroLabelKey:   maestroLabelValue,
 						schedulerLabelKey: "sample",
 						versionLabelKey:   "version",
+					},
+					Annotations: map[string]string{
+						safeToEvictAnnotation: safeToEvictValue,
 					},
 				},
 				Spec: v1.PodSpec{
@@ -441,6 +447,9 @@ func TestConvertGameSpec(t *testing.T) {
 						schedulerLabelKey: "sample",
 						versionLabelKey:   "version",
 					},
+					Annotations: map[string]string{
+						safeToEvictAnnotation: safeToEvictValue,
+					},
 				},
 				Spec: v1.PodSpec{
 					Tolerations: []v1.Toleration{
@@ -465,6 +474,9 @@ func TestConvertGameSpec(t *testing.T) {
 						schedulerLabelKey: "sample",
 						versionLabelKey:   "version",
 					},
+					Annotations: map[string]string{
+						safeToEvictAnnotation: safeToEvictValue,
+					},
 				},
 				Spec: v1.PodSpec{
 					Affinity: &v1.Affinity{},
@@ -488,7 +500,8 @@ func TestConvertGameSpec(t *testing.T) {
 						versionLabelKey:   "version",
 					},
 					Annotations: map[string]string{
-						"imageregistry": "https://hub.docker.com/",
+						safeToEvictAnnotation: safeToEvictValue,
+						"imageregistry":       "https://hub.docker.com/",
 					},
 				},
 				Spec: v1.PodSpec{
@@ -511,6 +524,9 @@ func TestConvertGameSpec(t *testing.T) {
 						maestroLabelKey:   maestroLabelValue,
 						schedulerLabelKey: "sample",
 						versionLabelKey:   "version",
+					},
+					Annotations: map[string]string{
+						safeToEvictAnnotation: safeToEvictValue,
 					},
 				},
 				Spec: v1.PodSpec{

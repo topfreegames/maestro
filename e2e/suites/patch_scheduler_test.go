@@ -25,10 +25,12 @@ package suites
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
 
@@ -78,7 +80,7 @@ func TestPatchScheduler(t *testing.T) {
 				Start: 1000,
 				End:   2000,
 			}
-			newTerminationGracePeriod := int64(99)
+			newTerminationGracePeriod := durationpb.New(time.Duration(99))
 			newContainerImage := "alpine:3.14"
 			newImagePullPolicy := "IfNotPresent"
 			newContainers := []*maestrov1.OptionalContainer{
@@ -103,7 +105,7 @@ func TestPatchScheduler(t *testing.T) {
 				},
 			}
 			newSpec := maestrov1.OptionalSpec{
-				TerminationGracePeriod: &newTerminationGracePeriod,
+				TerminationGracePeriod: newTerminationGracePeriod,
 				Containers:             newContainers,
 			}
 			newForwarders := []*maestrov1.Forwarder{
@@ -148,7 +150,7 @@ func TestPatchScheduler(t *testing.T) {
 			assert.Equal(t, *newSpec.Containers[0].Requests, *getSchedulerResponse.Scheduler.Spec.Containers[0].Requests)
 			assert.Equal(t, *newSpec.Containers[0].Limits, *getSchedulerResponse.Scheduler.Spec.Containers[0].Limits)
 			assert.Equal(t, newSpec.Containers[0].Ports, getSchedulerResponse.Scheduler.Spec.Containers[0].Ports)
-			assert.Equal(t, *newSpec.TerminationGracePeriod, getSchedulerResponse.Scheduler.Spec.TerminationGracePeriod)
+			assert.Equal(t, *newSpec.TerminationGracePeriod, *getSchedulerResponse.Scheduler.Spec.TerminationGracePeriod)
 
 		})
 

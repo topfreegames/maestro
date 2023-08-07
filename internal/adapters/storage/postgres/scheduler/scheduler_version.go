@@ -23,7 +23,7 @@
 package scheduler
 
 import (
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v10"
 	"github.com/topfreegames/maestro/internal/core/entities"
 )
 

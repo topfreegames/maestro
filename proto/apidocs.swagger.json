@@ -392,6 +392,7 @@
         "parameters": [
           {
             "name": "body",
+            "description": "Scheduler is the struct that defines a maestro scheduler.",
             "in": "body",
             "required": true,
             "schema": {

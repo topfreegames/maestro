@@ -75,7 +75,7 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 	cmd, err := exec.ExecSysCmd(
 		maestroPath,
 		"docker",
-		"inspect", "-f", "'{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}'", "e2e-test_rooms-api_1",
+		"inspect", "-f", "'{{range .IPAM.Config}}{{.Gateway}}{{end}}'", "e2e-test_default",
 	)
 
 	if err != nil {

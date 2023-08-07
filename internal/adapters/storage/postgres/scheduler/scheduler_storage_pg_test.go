@@ -45,7 +45,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v10"
 )
 
 type dbSchedulerVersion struct {
