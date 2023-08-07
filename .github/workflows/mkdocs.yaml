@@ -33,13 +33,17 @@ jobs:
     - uses: actions/checkout@v2
       with: 
         fetch-depth: 0
-      env: 
+        ref: ${{github.event.pull_request.head.ref}}
+        repository: ${{github.event.pull_request.head.repo.full_name}}
         token: ${{ secrets.GITLAB_DOCS_TOKEN }}
 
     - name: Update Gitlab Documentation
       run: |
-        echo Starting to push documentation changes to gitlab
+        LATEST_TAG=$(git describe --tags --always --abbrev=0)
+        BRANCH_NAME="update-maestro-documentation_$LATEST_TAG"
+        echo Starting to push documentation changes to gitlab...
         git config user.name ${{ secrets.GITLAB_USER }}
         git config user.email ${{ secrets.GITLAB_EMAIL }}
         git remote set-url origin ${{ secrets.GITLAB_DOC_URL }}
+        git cherry-pick $LATEST_TAG && git commit -m "Created by ${{github.event.pull_request.assignee.email}}"
         git push origin main
