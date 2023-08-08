@@ -39,8 +39,8 @@ jobs:
         GL_BRANCH_NAME="documentation-ref_$CURRENT_GH_BRANCH"
         git config user.name ${{ secrets.GITLAB_USER }}
         git config user.email ${{ secrets.GITLAB_EMAIL }}
-        git checkout -b $GL_BRANCH_NAME
-        git merge --squash $CURRRENT_GH_BRANCH
+        git checkout $CURRRENT_GH_BRANCH
+        git merge --squash $GL_BRANCH_NAME
         git add \*.md
         git commit --allow-empty -m "Created by $GITHUB_ACTOR"
         git remote set-url origin ${{ secrets.GITLAB_DOC_URL }}
