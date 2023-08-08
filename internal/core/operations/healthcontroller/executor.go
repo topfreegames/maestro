@@ -93,6 +93,8 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	}
 
 	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, existentGameRoomsInstancesMap)
+	reportCurrentNumberOfRooms(scheduler.Game, scheduler.Name, len(availableRooms))
+
 	if len(expiredRooms) > 0 {
 		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
 		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
@@ -107,6 +109,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		logger.Error("error getting the desired number of rooms", zap.Error(err))
 		return err
 	}
+	reportDesiredNumberOfRooms(scheduler.Game, scheduler.Name, desiredNumberOfRooms)
 
 	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, logger, len(availableRooms), desiredNumberOfRooms)
 	if err != nil {
