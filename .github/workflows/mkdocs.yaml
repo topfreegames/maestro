@@ -42,7 +42,7 @@ jobs:
         git checkout -b $GL_BRANCH_NAME
         git cherry-pick $GITHUB_SHA
         git cherry-pick --continue
-        git restore --staged !\*.md
+        git restore --staged !\*.md !\*.yaml
         git commit --allow-empty -m "Created by $GITHUB_ACTOR"
         git remote set-url origin ${{ secrets.GITLAB_DOC_URL }}
         git push --set-upstream origin $GL_BRANCH_NAME
