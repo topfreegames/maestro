@@ -36,12 +36,12 @@ jobs:
     - name: Update Gitlab Documentation
       run: |
         CURRENT_GH_BRANCH=$(git branch --show-current)
-        LATEST_TAG=$(git rev-parse $CURRENT_GH_BRANCH)
         GL_BRANCH_NAME="documentation-ref_$CURRENT_GH_BRANCH"
         git config user.name ${{ secrets.GITLAB_USER }}
         git config user.email ${{ secrets.GITLAB_EMAIL }}
-        git remote set-url origin ${{ secrets.GITLAB_DOC_URL }}
         git checkout -b $GL_BRANCH_NAME
-        git add \*.md docs/
+        git cherry-pick -n $GITHUB_SHA
+        git add \*.md
         git commit --allow-empty -m "Created by $GITHUB_ACTOR"
+        git remote set-url origin ${{ secrets.GITLAB_DOC_URL }}
         git push --set-upstream origin $GL_BRANCH_NAME
