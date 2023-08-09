@@ -36,9 +36,8 @@ jobs:
     - name: Update Gitlab Documentation
       run: |
         cd ..
-        git clone $GL_BRANCH_NAME
-        CURRENT_GH_BRANCH=$(git branch --show-current)
-        GL_BRANCH_NAME="documentation-ref_$CURRENT_GH_BRANCH"
+        git clone ${{ secrets.GITLAB_DOC_URL }}
+        GL_BRANCH_NAME="documentation-ref_$GITHUB_SHA"
         git config user.name ${{ secrets.GITLAB_USER }}
         git config user.email ${{ secrets.GITLAB_EMAIL }}
         cp  ../**/*.md .
