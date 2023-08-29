@@ -5,7 +5,7 @@ api:
     enabled: true
   tracing:
     jaeger:
-      enabled: false
+      disabled: true
 
 internalApi:
   port: 8081

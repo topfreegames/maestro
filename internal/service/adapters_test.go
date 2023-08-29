@@ -69,7 +69,6 @@ func TestOperationStorageRedis(t *testing.T) {
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
 		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(4)
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		opStorage, err := NewOperationStorageRedis(clock, definitionsProviders, config)
 		require.NoError(t, err)
 
@@ -87,7 +86,6 @@ func TestOperationStorageRedis(t *testing.T) {
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(4)
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		opStorage, err := NewOperationStorageRedis(clock, definitionsProviders, config)
 		require.NoError(t, err)
 
@@ -119,7 +117,6 @@ func TestRoomStorageRedis(t *testing.T) {
 
 		config.EXPECT().GetString(roomStorageRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		roomStorage, err := NewRoomStorageRedis(config)
 		require.NoError(t, err)
 
@@ -135,7 +132,6 @@ func TestRoomStorageRedis(t *testing.T) {
 
 		config.EXPECT().GetString(roomStorageRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		roomStorage, err := NewRoomStorageRedis(config)
 		require.NoError(t, err)
 
@@ -167,7 +163,6 @@ func TestInstanceStorageRedis(t *testing.T) {
 		config.EXPECT().GetString(instanceStorageRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(instanceStorageRedisScanSizePath).Return(10)
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		instanceStorage, err := NewGameRoomInstanceStorageRedis(config)
 		require.NoError(t, err)
 
@@ -184,7 +179,6 @@ func TestInstanceStorageRedis(t *testing.T) {
 		config.EXPECT().GetString(instanceStorageRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetInt(instanceStorageRedisScanSizePath).Return(10)
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		instanceStorage, err := NewGameRoomInstanceStorageRedis(config)
 		require.NoError(t, err)
 
@@ -244,7 +238,6 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(schedulerStoragePostgresURLPath).Return("postgres://somewhere:5432/db")
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		_, err := NewSchedulerStoragePg(config)
 		require.NoError(t, err)
 	})
@@ -272,7 +265,6 @@ func TestOperationFlowRedis(t *testing.T) {
 
 		config.EXPECT().GetString(operationFlowRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		operationFlow, err := NewOperationFlowRedis(config)
 		require.NoError(t, err)
 
@@ -288,7 +280,6 @@ func TestOperationFlowRedis(t *testing.T) {
 
 		config.EXPECT().GetString(operationFlowRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
-		config.EXPECT().GetBool(tracingEnabledPath).Return(false)
 		operationFlow, err := NewOperationFlowRedis(config)
 		require.NoError(t, err)
 
