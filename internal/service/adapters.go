@@ -27,38 +27,36 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-pg/pg/v10"
+	"github.com/go-redis/redis/extra/redisotel/v8"
+	"github.com/go-redis/redis/v8"
 	schedulerredis "github.com/topfreegames/maestro/internal/adapters/cache/redis/scheduler"
+	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
+	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
 	"github.com/topfreegames/maestro/internal/adapters/flow/redis/operation"
 	operation2 "github.com/topfreegames/maestro/internal/adapters/lease/redis/operation"
+	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/portallocator/random"
+	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
 	"github.com/topfreegames/maestro/internal/adapters/storage/postgres/scheduler"
 	instanceStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/instance"
 	redis2 "github.com/topfreegames/maestro/internal/adapters/storage/redis/operation"
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/room"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
-
-	operationservice "github.com/topfreegames/maestro/internal/core/services/operations"
-	"github.com/topfreegames/maestro/internal/core/services/rooms"
-	"github.com/topfreegames/maestro/internal/core/services/schedulers"
-
-	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
-	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
-	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
-
-	"github.com/go-pg/pg/v10"
-	"github.com/go-redis/redis/extra/redisotel/v8"
-	"github.com/go-redis/redis/v8"
-	clockTime "github.com/topfreegames/maestro/internal/adapters/clock/time"
-	eventsadapters "github.com/topfreegames/maestro/internal/adapters/events"
-	portAllocatorRandom "github.com/topfreegames/maestro/internal/adapters/portallocator/random"
-	kubernetesRuntime "github.com/topfreegames/maestro/internal/adapters/runtime/kubernetes"
+	"github.com/topfreegames/maestro/internal/adapters/tracing"
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
+	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
+	operationservice "github.com/topfreegames/maestro/internal/core/services/operations"
+	"github.com/topfreegames/maestro/internal/core/services/rooms"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -90,9 +88,6 @@ const (
 
 	// operation TTL
 	operationsTTLPath = "workers.redis.operationsTtl"
-
-	// storage tracing
-	tracingEnabledPath = "api.tracing.jaeger.enabled"
 )
 
 // NewSchedulerManager instantiates a new scheduler manager.
@@ -216,7 +211,7 @@ func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 
 	pgStorage := scheduler.NewSchedulerStorage(opts)
 
-	if c.GetBool("api.tracing.jaeger.enabled") {
+	if tracing.IsTracingEnabled(c) {
 		pgStorage.EnableTracing()
 	}
 
@@ -239,7 +234,7 @@ func createRedisClient(c config.Config, url string) (*redis.Client, error) {
 
 	client := redis.NewClient(opts)
 
-	if c.GetBool("api.tracing.jaeger.enabled") {
+	if tracing.IsTracingEnabled(c) {
 		client.AddHook(redisotel.NewTracingHook(redisotel.WithAttributes(
 			semconv.NetPeerNameKey.String(hostPort[0]),
 			semconv.NetPeerPortKey.String(hostPort[1])),

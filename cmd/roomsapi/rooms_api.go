@@ -34,6 +34,7 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/spf13/cobra"
 	"github.com/topfreegames/maestro/cmd/commom"
+	"github.com/topfreegames/maestro/internal/adapters/tracing"
 	"github.com/topfreegames/maestro/internal/config"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
@@ -70,7 +71,7 @@ func runRoomsAPI() {
 		zap.L().With(zap.Error(err)).Fatal("unable to setup service")
 	}
 
-	closeTracer, err := commom.ConfigureTracer(serviceName, config)
+	closeTracer, err := tracing.ConfigureTracing(serviceName, config)
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("failed to configure tracer")
 	}
