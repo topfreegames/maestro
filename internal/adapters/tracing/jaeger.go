@@ -39,6 +39,10 @@ const (
 	tracingAgentHostPath = "api.tracing.jaeger.agent_host"
 	tracingAgentPortPath = "api.tracing.jaeger.agent_port"
 	tracingSamplerPath   = "api.tracing.jaeger.sampler"
+
+	defaultAgentHost = "localhost"
+	defaultAgentPort = "6831"
+	defaultSampler   = 0.1
 )
 
 func ConfigureTracing(serviceName string, cfg config.Config) (func() error, error) {
@@ -54,15 +58,31 @@ func IsTracingEnabled(cfg config.Config) bool {
 }
 
 func configureJaeger(serviceName string, configs config.Config) (func() error, error) {
+	sampler := defaultSampler
+	agentHost := defaultAgentHost
+	agentPort := defaultAgentPort
+
+	if samplerParam := configs.GetFloat64(tracingSamplerPath); samplerParam != 0 {
+		sampler = samplerParam
+	}
+
+	if agentHostParam := configs.GetString(tracingAgentHostPath); agentHostParam != "" {
+		agentHost = agentHostParam
+	}
+
+	if agentPortParam := configs.GetString(tracingAgentPortPath); agentPortParam != "" {
+		agentPort = agentPortParam
+	}
+
 	res := buildResource(serviceName)
 	provider := trace.NewTracerProvider(
 		trace.WithResource(res),
-		trace.WithSampler(trace.TraceIDRatioBased(configs.GetFloat64(tracingSamplerPath))),
+		trace.WithSampler(trace.TraceIDRatioBased(sampler)),
 	)
 
 	endpointOptions := jaeger.WithAgentEndpoint(
-		jaeger.WithAgentHost(configs.GetString(tracingAgentHostPath)),
-		jaeger.WithAgentPort(configs.GetString(tracingAgentPortPath)),
+		jaeger.WithAgentHost(agentHost),
+		jaeger.WithAgentPort(agentPort),
 	)
 
 	exp, err := jaeger.New(endpointOptions)

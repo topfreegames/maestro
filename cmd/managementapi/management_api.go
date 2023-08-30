@@ -113,7 +113,8 @@ func runManagementServer(ctx context.Context, configs config.Config, mux *runtim
 
 	muxHandler := buildMuxWithMetricsMdlw(mdlw, mux)
 
-	if configs.GetBool("api.tracing.jaeger.enabled") {
+	if tracing.IsTracingEnabled(configs) {
+		zap.L().Info("adding tracing handler for the API")
 		muxHandler = buildMuxWithTracing(muxHandler)
 	}
 
