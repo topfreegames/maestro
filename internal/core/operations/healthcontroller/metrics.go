@@ -20,23 +20,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package scheduler
+package healthcontroller
 
-import (
-	"github.com/go-pg/pg/v10"
-	"github.com/topfreegames/maestro/internal/core/entities"
+import "github.com/topfreegames/maestro/internal/core/monitoring"
+
+var (
+	desiredNumberOfRoomsMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "desired_rooms",
+		Help:      "Desired number of rooms for a scheduler, based on the autoscaling policy",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
+
+	currentNumberOfRoomsMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "current_rooms",
+		Help:      "Current number of rooms for a scheduler",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
 )
 
-type SchedulerVersion struct {
-	Version   string      `db:"version"`
-	IsActive  bool        `db:"is_active"`
-	CreatedAt pg.NullTime `db:"created_at"`
+func reportDesiredNumberOfRooms(game, scheduler string, desired int) {
+	desiredNumberOfRoomsMetric.WithLabelValues(game, scheduler).Set(float64(desired))
 }
 
-func (s *SchedulerVersion) ToSchedulerVersion() *entities.SchedulerVersion {
-	return &entities.SchedulerVersion{
-		Version:   s.Version,
-		IsActive:  s.IsActive,
-		CreatedAt: s.CreatedAt.Time,
-	}
+func reportCurrentNumberOfRooms(game, scheduler string, current int) {
+	currentNumberOfRoomsMetric.WithLabelValues(game, scheduler).Set(float64(current))
 }
