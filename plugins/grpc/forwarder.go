@@ -23,6 +23,7 @@ import (
 	"github.com/topfreegames/maestro/eventforwarder"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 // GRPCForwarder struct
@@ -316,6 +317,7 @@ func (g *GRPCForwarder) configure() error {
 	conn, err := grpc.Dial(
 		g.serverAddress,
 		grpc.WithInsecure(),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{Time: 30 * time.Second, Timeout: 10 * time.Second, PermitWithoutStream: true}),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 	)
 	if err != nil {
