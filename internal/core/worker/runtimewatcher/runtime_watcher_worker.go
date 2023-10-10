@@ -212,7 +212,7 @@ func (w *runtimeWatcherWorker) processEvent(ctx context.Context, event game_room
 	eventLogger := w.logger.With(zap.String(logs.LogFieldInstanceID, event.Instance.ID))
 	switch event.Type {
 	case game_room.InstanceEventTypeAdded, game_room.InstanceEventTypeUpdated:
-		eventLogger.Info(fmt.Sprintf("processing %s event. Updating rooms instance", event.Type.String()))
+		eventLogger.Info(fmt.Sprintf("processing %s event. Updating rooms instance. Instance Status: %v", event.Type.String(), event.Instance.Status.Type))
 		if event.Instance == nil {
 			return fmt.Errorf("cannot process event since instance is nil")
 		}

@@ -37,7 +37,7 @@ import (
 type RoomManager interface {
 	// DeleteRoom receives a room to be deleted, and updates the status of the game room to terminating
 	// If the room cannot be terminated by any means, it will return an error specifying why
-	DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error
+	DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom, reason string) error
 	// SchedulerMaxSurge calculates the current scheduler max surge based on
 	// the number of rooms the scheduler has.
 	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)

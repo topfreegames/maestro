@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/switchversion"
 
 	"github.com/avast/retry-go/v4"
@@ -145,7 +146,7 @@ func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, defin
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	if gameRoom, ok := ex.validationRoomIdsMap[op.SchedulerName]; ok {
-		err := ex.roomManager.DeleteRoom(ctx, gameRoom)
+		err := ex.roomManager.DeleteRoom(ctx, gameRoom, remove.NewVersionRollback)
 		if err != nil {
 			logger.Error("error deleting new game room created for validation", zap.Error(err))
 			return fmt.Errorf("error in Rollback function execution: %w", err)
@@ -190,7 +191,7 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 	ex.AddValidationRoomID(scheduler.Name, gameRoom)
 
 	defer func() {
-		err = ex.roomManager.DeleteRoom(ctx, gameRoom)
+		err = ex.roomManager.DeleteRoom(ctx, gameRoom, remove.NewVersionValidationFinished)
 		if err != nil {
 			logger.Error("error deleting new game room created for validation", zap.Error(err))
 		}

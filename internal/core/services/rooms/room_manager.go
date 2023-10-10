@@ -88,7 +88,7 @@ func (m *RoomManager) GetRoomInstance(ctx context.Context, scheduler, roomID str
 	return instance, nil
 }
 
-func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
+func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom, reason string) error {
 	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoom.ID)
 	if err != nil {
 		if errors.Is(err, porterrors.ErrNotFound) {
@@ -102,7 +102,7 @@ func (m *RoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("unable to fetch game room instance from storage: %w", err)
 	}
 
-	err = m.Runtime.DeleteGameRoomInstance(ctx, instance)
+	err = m.Runtime.DeleteGameRoomInstance(ctx, instance, reason)
 	if err != nil {
 		if errors.Is(err, porterrors.ErrNotFound) {
 			m.Logger.With(zap.String("instance", instance.ID)).Warn("instance does not exist in runtime")
@@ -144,14 +144,7 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 
-	gameRoom.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Ping)
-	gameRoom.Metadata["pingType"] = gameRoom.PingStatus.String()
-
-	err = m.EventsService.ProduceEvent(ctx, events.NewRoomEvent(gameRoom.SchedulerID, gameRoom.ID, gameRoom.Metadata))
-	if err != nil {
-		m.Logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
-		reportPingForwardingFailed(gameRoom.SchedulerID)
-	}
+	m.Logger.Info("Updating room success")
 
 	return nil
 }
@@ -171,7 +164,8 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 
-	m.Logger.Info("Updating room success")
+	m.Logger.Info("Updating room instance success")
+
 	return nil
 }
 
@@ -336,6 +330,15 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 			ID:          gameRoomId,
 			SchedulerID: schedulerId,
 		})
+	} else {
+		gameRoom.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Ping)
+		gameRoom.Metadata["pingType"] = gameRoom.PingStatus.String()
+
+		err = m.EventsService.ProduceEvent(ctx, events.NewRoomEvent(gameRoom.SchedulerID, gameRoom.ID, gameRoom.Metadata))
+		if err != nil {
+			m.Logger.Error(fmt.Sprintf("Failed to forward ping event, error details: %s", err.Error()), zap.Error(err))
+			reportPingForwardingFailed(gameRoom.SchedulerID)
+		}
 	}
 
 	return nil

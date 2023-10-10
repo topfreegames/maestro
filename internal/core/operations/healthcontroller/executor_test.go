@@ -212,7 +212,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}, Reason: remove.Expired}).Return(op, nil)
 
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add.Definition{Amount: 1}).Return(op, nil)
@@ -273,7 +273,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}, Reason: remove.Expired}).Return(op, nil)
 
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add.Definition{Amount: 1}).Return(op, nil)
@@ -477,7 +477,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					genericSchedulerNoAutoscaling.RoomsReplicas = 1
 					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}, Reason: remove.Expired}).Return(op, nil)
 				},
 			},
 		},
@@ -562,7 +562,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(expiredGameRoom, nil)
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 2
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(nil, errors.New("error"))
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}, Reason: remove.Expired}).Return(nil, errors.New("error"))
 
 					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
@@ -713,7 +713,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					genericSchedulerNoAutoscaling.RoomsReplicas = 0
 					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{Amount: 1}).Return(op, nil)
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{Amount: 1, Reason: remove.ScaleDown}).Return(op, nil)
 				},
 			},
 		},
@@ -757,7 +757,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					genericSchedulerAutoscalingDisabled.RoomsReplicas = 0
 					op := operation.New(genericSchedulerAutoscalingDisabled.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingDisabled.Name, &remove.Definition{Amount: 1}).Return(op, nil)
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingDisabled.Name, &remove.Definition{Amount: 1, Reason: remove.ScaleDown}).Return(op, nil)
 				},
 			},
 		},
@@ -801,7 +801,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 					op := operation.New(genericSchedulerAutoscalingEnabled.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, &remove.Definition{Amount: 1}).Return(op, nil)
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, &remove.Definition{Amount: 1, Reason: remove.ScaleDown}).Return(op, nil)
 				},
 			},
 		},
@@ -883,7 +883,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 
 					genericSchedulerNoAutoscaling.RoomsReplicas = 0
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{Amount: 1}).Return(nil, errors.New("error"))
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{Amount: 1, Reason: remove.ScaleDown}).Return(nil, errors.New("error"))
 				},
 				shouldFail: true,
 			},
@@ -1191,7 +1191,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}}).Return(op, nil)
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}, Reason: remove.Expired}).Return(op, nil)
 
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &add.Definition{Amount: 1}).Return(op, nil)
