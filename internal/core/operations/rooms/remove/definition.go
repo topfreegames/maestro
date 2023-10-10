@@ -33,11 +33,11 @@ import (
 
 const (
 	ScaleDown                    string = "scale_down"
-	Expired                             = "expired_room"
-	NewVersionRollback                  = "new_version_rollback"
-	NewVersionValidationFinished        = "new_version_validation_finished"
-	SwitchVersionRollback               = "switch_version_rollback"
-	SwitchVersionReplace                = "switch_version_replace"
+	Expired                      string = "expired_room"
+	NewVersionRollback           string = "new_version_rollback"
+	NewVersionValidationFinished string = "new_version_validation_finished"
+	SwitchVersionRollback        string = "switch_version_rollback"
+	SwitchVersionReplace         string = "switch_version_replace"
 )
 
 const OperationName = "remove_rooms"
