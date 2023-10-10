@@ -1109,15 +1109,16 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		schedulerName := "schedulerName"
 		roomId := "room-id"
-		roomStorage, instanceStorage, roomManager, _ := setup(mockCtrl)
+		roomStorage, instanceStorage, roomManager, eventsService := setup(mockCtrl)
 
-		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending}
+		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending, Metadata: map[string]interface{}{}}
 		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
 
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
 		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
 
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), schedulerName, roomId, game_room.GameStatusReady)
+		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any()).Return(nil)
 
 		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
 		require.NoError(t, err)

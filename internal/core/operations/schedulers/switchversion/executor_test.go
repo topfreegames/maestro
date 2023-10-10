@@ -476,7 +476,7 @@ func TestExecutor_Rollback(t *testing.T) {
 		for i := range allRooms {
 			if i == len(allRooms)-1 {
 				mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error"))
-				mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionRollback).Return(errors.New("error"))
+				mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(errors.New("error"))
 				continue
 			}
 			gameRoom := &game_room.GameRoom{
@@ -487,7 +487,7 @@ func TestExecutor_Rollback(t *testing.T) {
 				LastPingAt:  time.Now(),
 			}
 			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
-			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionRollback).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(nil)
 		}
 
 		executor := switchversion.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
@@ -552,7 +552,7 @@ func TestExecutor_Rollback(t *testing.T) {
 				LastPingAt:  time.Now(),
 			}
 			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
-			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionRollback).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(nil)
 		}
 
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
@@ -610,7 +610,7 @@ func newValidSchedulerV2() *entities.Scheduler {
 		RollbackVersion: "",
 		Spec: game_room.Spec{
 			Version:                "v2",
-			TerminationGracePeriod: 60,
+			TerminationGracePeriod: 20,
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 			Containers: []game_room.Container{
