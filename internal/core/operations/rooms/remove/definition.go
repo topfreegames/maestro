@@ -31,11 +31,21 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	ScaleDown                    string = "scale_down"
+	Expired                             = "expired_room"
+	NewVersionRollback                  = "new_version_rollback"
+	NewVersionValidationFinished        = "new_version_validation_finished"
+	SwitchVersionRollback               = "switch_version_rollback"
+	SwitchVersionReplace                = "switch_version_replace"
+)
+
 const OperationName = "remove_rooms"
 
 type Definition struct {
 	Amount   int      `json:"amount"`
 	RoomsIDs []string `json:"rooms_ids"`
+	Reason   string   `json:"reason"`
 }
 
 func (d *Definition) ShouldExecute(_ context.Context, _ []*operation.Operation) bool {
