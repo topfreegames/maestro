@@ -122,7 +122,7 @@ func TestGameRoomDeletion(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, pods.Items, 1)
 
-		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance)
+		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance, "reason")
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -145,7 +145,7 @@ func TestGameRoomDeletion(t *testing.T) {
 			SchedulerID: scheduler.Name,
 		}
 
-		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, gameRoomInstance)
+		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, gameRoomInstance, "reason")
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrNotFound)
 	})
