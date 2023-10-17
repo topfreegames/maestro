@@ -82,17 +82,17 @@ func (mr *MockRuntimeMockRecorder) CreateScheduler(ctx, scheduler interface{}) *
 }
 
 // DeleteGameRoomInstance mocks base method.
-func (m *MockRuntime) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error {
+func (m *MockRuntime) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance, reason string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteGameRoomInstance", ctx, gameRoomInstance)
+	ret := m.ctrl.Call(m, "DeleteGameRoomInstance", ctx, gameRoomInstance, reason)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteGameRoomInstance indicates an expected call of DeleteGameRoomInstance.
-func (mr *MockRuntimeMockRecorder) DeleteGameRoomInstance(ctx, gameRoomInstance interface{}) *gomock.Call {
+func (mr *MockRuntimeMockRecorder) DeleteGameRoomInstance(ctx, gameRoomInstance, reason interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteGameRoomInstance", reflect.TypeOf((*MockRuntime)(nil).DeleteGameRoomInstance), ctx, gameRoomInstance)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteGameRoomInstance", reflect.TypeOf((*MockRuntime)(nil).DeleteGameRoomInstance), ctx, gameRoomInstance, reason)
 }
 
 // DeleteScheduler mocks base method.

@@ -70,17 +70,17 @@ func (mr *MockRoomManagerMockRecorder) CreateRoom(ctx, scheduler, isValidationRo
 }
 
 // DeleteRoom mocks base method.
-func (m *MockRoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom) error {
+func (m *MockRoomManager) DeleteRoom(ctx context.Context, gameRoom *game_room.GameRoom, reason string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRoom", ctx, gameRoom)
+	ret := m.ctrl.Call(m, "DeleteRoom", ctx, gameRoom, reason)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteRoom indicates an expected call of DeleteRoom.
-func (mr *MockRoomManagerMockRecorder) DeleteRoom(ctx, gameRoom interface{}) *gomock.Call {
+func (mr *MockRoomManagerMockRecorder) DeleteRoom(ctx, gameRoom, reason interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoom", reflect.TypeOf((*MockRoomManager)(nil).DeleteRoom), ctx, gameRoom)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoom", reflect.TypeOf((*MockRoomManager)(nil).DeleteRoom), ctx, gameRoom, reason)
 }
 
 // GetRoomInstance mocks base method.

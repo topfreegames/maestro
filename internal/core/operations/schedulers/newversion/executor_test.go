@@ -26,17 +26,16 @@
 package newversion_test
 
 import (
-	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
-	newversion "github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
-
 	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
-
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 	"github.com/topfreegames/maestro/internal/validations"
 
 	"github.com/golang/mock/gomock"
@@ -82,7 +81,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, nil)
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionValidationFinished).Return(nil)
 
 		schedulerManager.
 			EXPECT().
@@ -134,7 +133,7 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(nil, nil, errors.NewErrUnexpected("some error")).Times(2)
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil).Times(1)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, nil)
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionValidationFinished).Return(nil)
 
 		schedulerManager.
 			EXPECT().
@@ -187,7 +186,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, nil)
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionValidationFinished).Return(nil)
 
 		schedulerManager.
 			EXPECT().
@@ -238,7 +237,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, nil)
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionValidationFinished).Return(nil)
 
 		schedulerManager.
 			EXPECT().
@@ -289,7 +288,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, nil)
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some_error"))
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionValidationFinished).Return(errors.NewErrUnexpected("some_error"))
 
 		schedulerManager.
 			EXPECT().
@@ -448,7 +447,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil).Times(3)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error")).Times(3)
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil).Times(3)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom, remove.NewVersionValidationFinished).Return(nil).Times(3)
 
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Got timeout waiting for the GRU with ID: id-1 to be ready. You can check if\n\t\tthe GRU image is stable on its logs.")
@@ -537,7 +536,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusReady, serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom, remove.NewVersionValidationFinished).Return(nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Got timeout waiting for the GRU with ID: id-1 to be ready. You can check if\n\t\tthe GRU image is stable on its logs.")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "All validation attempts have failed, operation aborted!")
@@ -587,7 +586,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusError, nil)
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom, remove.NewVersionValidationFinished).Return(nil)
 		roomManager.EXPECT().GetRoomInstance(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(roomInstance, nil)
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: The room created for validation with ID id-1 is entering in error state. You can check if\n\t\tthe GRU image is stable on its logs using the provided room id. Last event in the game room: \"pod in Crashloop\"")
@@ -632,7 +631,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
 		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}).Return(game_room.GameStatusError, nil)
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom).Return(nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gameRoom, remove.NewVersionValidationFinished).Return(nil)
 		roomManager.EXPECT().GetRoomInstance(gomock.Any(), gameRoom.SchedulerID, gameRoom.ID).Return(nil, errors.NewErrUnexpected("some error"))
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: The room created for validation with ID id-1 is entering in error state. You can check if\n\t\tthe GRU image is stable on its logs using the provided room id. Last event in the game room: \"unknown\"")
@@ -1001,7 +1000,7 @@ func TestExecutor_Rollback(t *testing.T) {
 
 		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
 		executor.AddValidationRoomID(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionRollback).Return(nil)
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(&newScheduler, nil)
 		schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), &newScheduler).Return(nil)
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
@@ -1030,7 +1029,7 @@ func TestExecutor_Rollback(t *testing.T) {
 
 		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
 		executor.AddValidationRoomID(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
-		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(errors.NewErrUnexpected("some error"))
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionRollback).Return(errors.NewErrUnexpected("some error"))
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
 
 		require.EqualError(t, result, "error in Rollback function execution: some error")

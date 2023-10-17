@@ -28,6 +28,7 @@ import (
 	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/avast/retry-go/v4"
@@ -146,7 +147,7 @@ func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, defin
 	)
 	logger.Info("starting Rollback routine")
 
-	err := ex.deleteNewCreatedRooms(ctx, logger, op.SchedulerName)
+	err := ex.deleteNewCreatedRooms(ctx, logger, op.SchedulerName, remove.SwitchVersionRollback)
 	ex.clearNewCreatedRooms(op.SchedulerName)
 	if err != nil {
 		logger.Error("error deleting newly created rooms", zap.Error(err))
@@ -163,10 +164,10 @@ func (ex *Executor) Name() string {
 	return OperationName
 }
 
-func (ex *Executor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string) error {
+func (ex *Executor) deleteNewCreatedRooms(ctx context.Context, logger *zap.Logger, schedulerName string, reason string) error {
 	logger.Info("deleting created rooms since switching active version had error - start")
 	for _, room := range ex.newCreatedRooms[schedulerName] {
-		err := ex.roomManager.DeleteRoom(ctx, room)
+		err := ex.roomManager.DeleteRoom(ctx, room, reason)
 		if err != nil {
 			logger.Error("failed to deleted recent created room", zap.Error(err))
 			return err
@@ -256,7 +257,7 @@ func (ex *Executor) replaceRoom(logger *zap.Logger, roomsChan chan *game_room.Ga
 			logger.Error("error creating room", zap.Error(err))
 		}
 
-		err = roomManager.DeleteRoom(ctx, room)
+		err = roomManager.DeleteRoom(ctx, room, remove.SwitchVersionReplace)
 		if err != nil {
 			logger.Warn("failed to delete room", zap.Error(err))
 			ex.roomsBeingReplaced.Delete(room.ID)
