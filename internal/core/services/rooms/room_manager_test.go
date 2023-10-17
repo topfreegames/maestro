@@ -675,7 +675,6 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID).Return(newGameRoomInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID).Return(currentGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID, game_room.GameStatusError).Return(nil)
-		eventsService.EXPECT().ProduceEvent(context.Background(), events.NewRoomEvent(newGameRoomInstance.SchedulerID, newGameRoomInstance.ID, currentGameRoom.Metadata)).Return(nil)
 
 		err := roomManager.UpdateRoomInstance(context.Background(), newGameRoomInstance)
 		require.NoError(t, err)
@@ -1110,7 +1109,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		schedulerName := "schedulerName"
 		roomId := "room-id"
-		roomStorage, instanceStorage, roomManager, eventsService := setup(mockCtrl)
+		roomStorage, instanceStorage, roomManager, _ := setup(mockCtrl)
 
 		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending, Metadata: map[string]interface{}{}}
 		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
@@ -1119,7 +1118,6 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
 
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), schedulerName, roomId, game_room.GameStatusReady)
-		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any()).Return(nil)
 
 		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
 		require.NoError(t, err)
