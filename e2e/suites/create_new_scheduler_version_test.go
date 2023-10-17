@@ -26,27 +26,20 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"testing"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
-
-	_struct "github.com/golang/protobuf/ptypes/struct"
-	"google.golang.org/protobuf/types/known/structpb"
-
-	"testing"
-
-	"google.golang.org/protobuf/types/known/durationpb"
-
-	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
-	maestrov1 "github.com/topfreegames/maestro/pkg/api/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/go-redis/redis/v8"
-
-	"github.com/topfreegames/maestro/e2e/framework/maestro"
-
+	_struct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
+	"github.com/topfreegames/maestro/e2e/framework/maestro"
+	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
+	maestrov1 "github.com/topfreegames/maestro/pkg/api/v1"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/structpb"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 

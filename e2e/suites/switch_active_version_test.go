@@ -28,21 +28,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/duration"
-
-	_struct "github.com/golang/protobuf/ptypes/struct"
-	"google.golang.org/protobuf/types/known/durationpb"
-	"google.golang.org/protobuf/types/known/structpb"
-
-	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/go-redis/redis/v8"
-
-	"github.com/topfreegames/maestro/e2e/framework/maestro"
-
+	_struct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
+	"github.com/topfreegames/maestro/e2e/framework/maestro"
+	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/structpb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
