@@ -38,6 +38,8 @@ import (
 const (
 	// OccupiedRoomsKey is the key to occupied rooms in the CurrentState map.
 	OccupiedRoomsKey = "RoomsOccupancyOccupiedRooms"
+	// ReadyRoomsKey is the key to total rooms in the CurrentState map.
+	ReadyRoomsKey = "RoomsOccupancyTotalRooms"
 )
 
 // Policy holds the requirements to build the current state of
@@ -62,8 +64,14 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
 	}
 
+	readyRoomsAmount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching ready game rooms amount: %w", err)
+	}
+
 	currentState := policies.CurrentState{
 		OccupiedRoomsKey: occupiedRoomsAmount,
+		ReadyRoomsKey:    readyRoomsAmount,
 	}
 
 	return currentState, nil
@@ -88,4 +96,28 @@ func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.Poli
 	desiredNumberOfRoom := int(math.Ceil(float64(occupiedRooms) / (float64(1) - readyTarget)))
 
 	return desiredNumberOfRoom, nil
+}
+
+func (p *Policy) CanDownscale(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (bool, error) {
+	if policyParameters.RoomOccupancy == nil {
+		return false, errors.New("RoomOccupancy parameters is empty")
+	}
+
+	downThreshold := policyParameters.RoomOccupancy.DownThreshold
+	if downThreshold >= float64(1) || downThreshold <= 0 {
+		return false, errors.New("Downscale threshold must be between 0 and 1")
+	}
+
+	if _, ok := currentState[ReadyRoomsKey].(int); !ok {
+		return false, errors.New("There are no readyRooms in the currentState")
+	}
+
+	if _, ok := currentState[OccupiedRoomsKey].(int); !ok {
+		return false, errors.New("There are no occupiedRooms in the currentState")
+	}
+
+	readyRooms := currentState[ReadyRoomsKey].(int)
+	occupiedRooms := currentState[OccupiedRoomsKey].(int)
+
+	return float64(occupiedRooms)/float64(readyRooms+occupiedRooms) < downThreshold, nil
 }

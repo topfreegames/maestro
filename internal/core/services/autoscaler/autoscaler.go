@@ -41,6 +41,8 @@ type Autoscaler struct {
 	policyMap PolicyMap
 }
 
+var _ autoscalerPorts.Autoscaler = (*Autoscaler)(nil)
+
 // NewAutoscaler returns a new instance of autoscaler.
 func NewAutoscaler(policyMap PolicyMap) *Autoscaler {
 	autoscaler := &Autoscaler{
@@ -75,6 +77,30 @@ func (a *Autoscaler) CalculateDesiredNumberOfRooms(ctx context.Context, schedule
 	desiredNumberOfRooms = ensureDesiredNumberIsBetweenMinAndMax(scheduler.Autoscaling, desiredNumberOfRooms)
 
 	return desiredNumberOfRooms, nil
+}
+
+func (a *Autoscaler) CanDownscale(ctx context.Context, scheduler *entities.Scheduler) (bool, error) {
+	if scheduler.Autoscaling == nil {
+		return false, errors.New("scheduler does not have autoscaling struct")
+	}
+
+	if _, ok := a.policyMap[scheduler.Autoscaling.Policy.Type]; !ok {
+		return false, fmt.Errorf("error finding policy to scheduler %s", scheduler.Name)
+	}
+
+	policy := a.policyMap[scheduler.Autoscaling.Policy.Type]
+
+	currentState, err := policy.CurrentStateBuilder(ctx, scheduler)
+	if err != nil {
+		return false, fmt.Errorf("error fetching current state to scheduler %s: %w", scheduler.Name, err)
+	}
+
+	canDownscale, err := policy.CanDownscale(scheduler.Autoscaling.Policy.Parameters, currentState)
+	if err != nil {
+		return false, fmt.Errorf("error checking if scheduler %s can downscale: %w", scheduler.Name, err)
+	}
+
+	return canDownscale, nil
 }
 
 func ensureDesiredNumberIsBetweenMinAndMax(autoscaling *autoscaling.Autoscaling, desiredNumberOfRooms int) int {

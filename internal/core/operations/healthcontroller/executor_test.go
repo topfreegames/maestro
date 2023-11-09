@@ -64,9 +64,13 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		Parameters: autoscaling.PolicyParameters{},
 	}}
 
-	autoscalingEnabled := autoscaling.Autoscaling{Enabled: true, Min: 1, Max: 10, Policy: autoscaling.Policy{
-		Type:       autoscaling.RoomOccupancy,
-		Parameters: autoscaling.PolicyParameters{},
+	autoscalingEnabled := autoscaling.Autoscaling{Enabled: true, Min: 1, Max: 10, Cooldown: 60, Policy: autoscaling.Policy{
+		Type: autoscaling.RoomOccupancy,
+		Parameters: autoscaling.PolicyParameters{
+			RoomOccupancy: &autoscaling.RoomOccupancyParams{
+				DownThreshold: 0.99,
+			},
+		},
 	}}
 
 	definition := &healthcontroller.Definition{}
@@ -694,6 +698,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
+					schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(1)
+					autoscaler.EXPECT().CanDownscale(gomock.Any(), genericSchedulerNoAutoscaling).Return(true, nil)
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -736,6 +742,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerAutoscalingDisabled, nil)
+					schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(1)
+					autoscaler.EXPECT().CanDownscale(gomock.Any(), genericSchedulerAutoscalingDisabled).Return(true, nil)
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -778,7 +786,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerAutoscalingEnabled, nil)
+					schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(1)
 					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), genericSchedulerAutoscalingEnabled).Return(0, nil)
+					autoscaler.EXPECT().CanDownscale(gomock.Any(), genericSchedulerAutoscalingEnabled).Return(true, nil)
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -792,6 +802,49 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					op := operation.New(genericSchedulerAutoscalingEnabled.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, &remove.Definition{Amount: 1}).Return(op, nil)
+				},
+			},
+		},
+		{
+			title:      "autoscaling configured and enabled, have more available rooms than expected, occupation bellow threshold, do not enqueue remove rooms",
+			definition: &healthcontroller.Definition{},
+			executionPlan: executionPlan{
+				tookAction: true,
+				planMocks: func(
+					roomStorage *mockports.MockRoomStorage,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
+					schedulerStorage *mockports.MockSchedulerStorage,
+					operationManager *mockports.MockOperationManager,
+					autoscaler *mockports.MockAutoscaler,
+				) {
+					gameRoomIDs := []string{"existent-1"}
+					instances := []*game_room.Instance{
+						{
+							ID: "existent-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
+					// load
+					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
+					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerAutoscalingEnabled, nil)
+					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), genericSchedulerAutoscalingEnabled).Return(0, nil)
+					autoscaler.EXPECT().CanDownscale(gomock.Any(), genericSchedulerAutoscalingEnabled).Return(false, nil)
+
+					// Find game room
+					gameRoom := &game_room.GameRoom{
+						ID:          gameRoomIDs[0],
+						SchedulerID: genericSchedulerAutoscalingEnabled.Name,
+						Status:      game_room.GameStatusReady,
+						LastPingAt:  time.Now(),
+					}
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
+
+					//op := operation.New(genericSchedulerAutoscalingEnabled.Name, definition.Name(), nil)
+					//operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
+					//operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, &remove.Definition{Amount: 1}).Return(op, nil)
 				},
 			},
 		},
@@ -820,6 +873,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
+					schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(1)
+					autoscaler.EXPECT().CanDownscale(gomock.Any(), genericSchedulerNoAutoscaling).Return(true, nil)
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
