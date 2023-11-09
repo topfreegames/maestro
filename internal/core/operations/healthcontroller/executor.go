@@ -175,7 +175,7 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
 		if ex.canPerformDownscale(ctx, scheduler, logger) {
-			scheduler.LastDownscaleAt = time.Now()
+			scheduler.LastDownscaleAt = time.Now().UTC()
 			if err := ex.schedulerStorage.UpdateScheduler(ctx, scheduler); err != nil {
 				logger.Error("error updating scheduler", zap.Error(err))
 				return err
@@ -341,7 +341,7 @@ func (ex *Executor) canPerformDownscale(ctx context.Context, scheduler *entities
 		cooldown = scheduler.Autoscaling.Cooldown
 	}
 	cooldownDuration := time.Duration(cooldown) * time.Second
-	waitingCooldown := scheduler.LastDownscaleAt.Add(cooldownDuration).After(time.Now())
+	waitingCooldown := scheduler.LastDownscaleAt.Add(cooldownDuration).After(time.Now().UTC())
 
 	return can && !waitingCooldown
 }

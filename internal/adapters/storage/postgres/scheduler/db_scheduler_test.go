@@ -266,7 +266,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 				Game:            "game",
 				State:           entities.StateInSync,
 				RollbackVersion: "v1",
-				LastDownscaleAt: time.Now(),
+				LastDownscaleAt: time.Now().UTC(),
 				Spec: game_room.Spec{
 					Version:                "v2",
 					TerminationGracePeriod: 60,

@@ -809,7 +809,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			title:      "autoscaling configured and enabled, have more available rooms than expected, occupation bellow threshold, do not enqueue remove rooms",
 			definition: &healthcontroller.Definition{},
 			executionPlan: executionPlan{
-				tookAction: true,
+				tookAction: false,
 				planMocks: func(
 					roomStorage *mockports.MockRoomStorage,
 					instanceStorage *mockports.MockGameRoomInstanceStorage,
@@ -841,10 +841,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						LastPingAt:  time.Now(),
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
-
-					//op := operation.New(genericSchedulerAutoscalingEnabled.Name, definition.Name(), nil)
-					//operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-					//operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, &remove.Definition{Amount: 1}).Return(op, nil)
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 				},
 			},
 		},
