@@ -187,7 +187,7 @@ func TestCanDownscale(t *testing.T) {
 		t.Run("When the occupation is below the threshold", func(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
-			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(1, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(4, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(1, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
@@ -202,7 +202,7 @@ func TestCanDownscale(t *testing.T) {
 		t.Run("When the occupation is above the threshold", func(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
-			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(1, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(2, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(3, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)

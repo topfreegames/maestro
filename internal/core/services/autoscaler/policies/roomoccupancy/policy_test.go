@@ -260,9 +260,10 @@ func TestCanDownscale(t *testing.T) {
 		t.Parallel()
 
 		t.Run("it is expected to not allow downscale", func(t *testing.T) {
+			readyTarget := float64(0.5)
 			downThreshold := float64(0.6)
 			occupiedRooms := 80
-			readyRooms := 20
+			readyRooms := 120
 
 			schedulerState := policies.CurrentState{
 				roomoccupancy.ReadyRoomsKey:    readyRooms,
@@ -271,6 +272,7 @@ func TestCanDownscale(t *testing.T) {
 
 			policyParams := autoscaling.PolicyParameters{
 				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					ReadyTarget:   readyTarget,
 					DownThreshold: downThreshold,
 				},
 			}
@@ -281,13 +283,14 @@ func TestCanDownscale(t *testing.T) {
 		})
 	})
 
-	t.Run("Success case - when current usage is below threshold", func(t *testing.T) {
+	t.Run("Success case - when current usage is equal or below threshold", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("it is expected to allow downscale", func(t *testing.T) {
-			downThreshold := float64(0.6)
-			occupiedRooms := 59
-			readyRooms := 41
+		t.Run("it is expected to allow downscale when occupation is equal the threshold", func(t *testing.T) {
+			readyTarget := float64(0.5)
+			downThreshold := float64(0.7)
+			occupiedRooms := 70
+			readyRooms := 130
 
 			schedulerState := policies.CurrentState{
 				roomoccupancy.ReadyRoomsKey:    readyRooms,
@@ -296,6 +299,30 @@ func TestCanDownscale(t *testing.T) {
 
 			policyParams := autoscaling.PolicyParameters{
 				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					ReadyTarget:   readyTarget,
+					DownThreshold: downThreshold,
+				},
+			}
+
+			allow, err := policy.CanDownscale(policyParams, schedulerState)
+			assert.NoError(t, err)
+			assert.Truef(t, allow, "downscale should be allowed")
+		})
+
+		t.Run("it is expected to allow downscale when occupation is equal the threshold", func(t *testing.T) {
+			readyTarget := float64(0.5)
+			downThreshold := float64(0.6)
+			occupiedRooms := 60
+			readyRooms := 140
+
+			schedulerState := policies.CurrentState{
+				roomoccupancy.ReadyRoomsKey:    readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
+			}
+
+			policyParams := autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					ReadyTarget:   readyTarget,
 					DownThreshold: downThreshold,
 				},
 			}
@@ -320,9 +347,11 @@ func TestCanDownscale(t *testing.T) {
 			roomoccupancy.OccupiedRoomsKey: 10,
 		}
 
+		readyTarget := float64(0.3)
 		downThreshold := float64(0.3)
 		policyParams := autoscaling.PolicyParameters{
 			RoomOccupancy: &autoscaling.RoomOccupancyParams{
+				ReadyTarget:   readyTarget,
 				DownThreshold: downThreshold,
 			},
 		}
@@ -336,9 +365,11 @@ func TestCanDownscale(t *testing.T) {
 			roomoccupancy.ReadyRoomsKey: 10,
 		}
 
+		readyTarget := float64(0.3)
 		downThreshold := float64(0.3)
 		policyParams := autoscaling.PolicyParameters{
 			RoomOccupancy: &autoscaling.RoomOccupancyParams{
+				ReadyTarget:   readyTarget,
 				DownThreshold: downThreshold,
 			},
 		}

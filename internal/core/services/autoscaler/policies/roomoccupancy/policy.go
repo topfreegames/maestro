@@ -108,6 +108,11 @@ func (p *Policy) CanDownscale(policyParameters autoscaling.PolicyParameters, cur
 		return false, errors.New("Downscale threshold must be between 0 and 1")
 	}
 
+	readyTarget := policyParameters.RoomOccupancy.ReadyTarget
+	if readyTarget >= float64(1) || readyTarget <= 0 {
+		return false, errors.New("Ready target must be between 0 and 1")
+	}
+
 	if _, ok := currentState[ReadyRoomsKey].(int); !ok {
 		return false, errors.New("There are no readyRooms in the currentState")
 	}
@@ -119,5 +124,7 @@ func (p *Policy) CanDownscale(policyParameters autoscaling.PolicyParameters, cur
 	readyRooms := currentState[ReadyRoomsKey].(int)
 	occupiedRooms := currentState[OccupiedRoomsKey].(int)
 
-	return float64(occupiedRooms)/float64(readyRooms+occupiedRooms) < downThreshold, nil
+	occupationRate := float64(occupiedRooms) / float64(occupiedRooms+readyRooms)
+
+	return (occupationRate / readyTarget) <= downThreshold, nil
 }
