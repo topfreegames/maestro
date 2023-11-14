@@ -309,7 +309,7 @@ func TestCanDownscale(t *testing.T) {
 			assert.Truef(t, allow, "downscale should be allowed")
 		})
 
-		t.Run("it is expected to allow downscale when occupation is equal the threshold", func(t *testing.T) {
+		t.Run("it is expected to allow downscale when occupation below the threshold", func(t *testing.T) {
 			readyTarget := float64(0.5)
 			downThreshold := float64(0.6)
 			occupiedRooms := 60
@@ -419,7 +419,7 @@ func TestCanDownscale(t *testing.T) {
 			_, err := policy.CanDownscale(policyParams, schedulerState)
 			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
 		})
-		t.Run("when ready target is 0", func(t *testing.T) {
+		t.Run("when down threshold is 0", func(t *testing.T) {
 			downThreshold := float64(0.0)
 			occupiedRooms := 10
 			readyRooms := 10
@@ -438,7 +438,7 @@ func TestCanDownscale(t *testing.T) {
 			_, err := policy.CanDownscale(policyParams, schedulerState)
 			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
 		})
-		t.Run("when ready target is lower than 0", func(t *testing.T) {
+		t.Run("when down threshold is lower than 0", func(t *testing.T) {
 			downThreshold := float64(-0.1)
 			occupiedRooms := 10
 			readyRooms := 10

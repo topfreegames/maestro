@@ -174,7 +174,8 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
-		if ex.canPerformDownscale(ctx, scheduler, logger) {
+		can, msg := ex.canPerformDownscale(ctx, scheduler, logger)
+		if can {
 			scheduler.LastDownscaleAt = time.Now().UTC()
 			if err := ex.schedulerStorage.UpdateScheduler(ctx, scheduler); err != nil {
 				logger.Error("error updating scheduler", zap.Error(err))
@@ -191,7 +192,7 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 			msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
 		} else {
 			tookAction = false
-			msgToAppend = "cannot scale down because cool down period has not passed yet"
+			msgToAppend = msg
 		}
 	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
@@ -329,11 +330,11 @@ func (ex *Executor) setTookAction(def *Definition, tookAction bool) {
 	def.TookAction = &tookAction
 }
 
-func (ex *Executor) canPerformDownscale(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) bool {
+func (ex *Executor) canPerformDownscale(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) (bool, string) {
 	can, err := ex.autoscaler.CanDownscale(ctx, scheduler)
 	if err != nil {
 		logger.Error("error checking if scheduler can downscale", zap.Error(err))
-		return can
+		return can, err.Error()
 	}
 
 	cooldown := 0
@@ -343,5 +344,17 @@ func (ex *Executor) canPerformDownscale(ctx context.Context, scheduler *entities
 	cooldownDuration := time.Duration(cooldown) * time.Second
 	waitingCooldown := scheduler.LastDownscaleAt.Add(cooldownDuration).After(time.Now().UTC())
 
-	return can && !waitingCooldown
+	if !can {
+		message := fmt.Sprintf("scheduler %s can't downscale, occupation is above the threshold", scheduler.Name)
+		logger.Info(message)
+		return false, message
+	}
+
+	if can && waitingCooldown {
+		message := fmt.Sprintf("scheduler %s can downscale, but cooldown period has not passed yet", scheduler.Name)
+		logger.Info(message)
+		return false, message
+	}
+
+	return can && !waitingCooldown, "ok"
 }

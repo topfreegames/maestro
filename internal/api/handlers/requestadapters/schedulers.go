@@ -532,7 +532,8 @@ func getRoomOccupancy(roomOccupancyParameters *autoscaling.RoomOccupancyParams) 
 		return nil
 	}
 	return &api.RoomOccupancy{
-		ReadyTarget: float32(roomOccupancyParameters.ReadyTarget),
+		ReadyTarget:   float32(roomOccupancyParameters.ReadyTarget),
+		DownThreshold: float32(roomOccupancyParameters.DownThreshold),
 	}
 }
 
