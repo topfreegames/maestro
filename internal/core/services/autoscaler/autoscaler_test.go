@@ -28,18 +28,17 @@ package autoscaler_test
 import (
 	"context"
 	"errors"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
 	"testing"
-
-	"github.com/topfreegames/maestro/internal/core/ports/mock"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"
+	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
 )
 
 func TestCalculateDesiredNumberOfRooms(t *testing.T) {
