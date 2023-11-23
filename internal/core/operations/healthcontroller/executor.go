@@ -337,18 +337,18 @@ func (ex *Executor) canPerformDownscale(ctx context.Context, scheduler *entities
 		return can, err.Error()
 	}
 
+	if !can {
+		message := fmt.Sprintf("scheduler %s can't downscale, occupation is above the threshold", scheduler.Name)
+		logger.Info(message)
+		return false, message
+	}
+
 	cooldown := 0
 	if scheduler.Autoscaling != nil {
 		cooldown = scheduler.Autoscaling.Cooldown
 	}
 	cooldownDuration := time.Duration(cooldown) * time.Second
 	waitingCooldown := scheduler.LastDownscaleAt.Add(cooldownDuration).After(time.Now().UTC())
-
-	if !can {
-		message := fmt.Sprintf("scheduler %s can't downscale, occupation is above the threshold", scheduler.Name)
-		logger.Info(message)
-		return false, message
-	}
 
 	if can && waitingCooldown {
 		message := fmt.Sprintf("scheduler %s can downscale, but cooldown period has not passed yet", scheduler.Name)
