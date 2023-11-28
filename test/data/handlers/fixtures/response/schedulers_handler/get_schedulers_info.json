@@ -11,7 +11,8 @@
     "autoscaling": {
       "enabled": true,
       "min": 1,
-      "max": 5
+      "max": 5,
+      "cooldown": 0
     }
   }]
 }

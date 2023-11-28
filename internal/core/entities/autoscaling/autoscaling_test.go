@@ -44,54 +44,62 @@ func TestNewAutoscaling(t *testing.T) {
 	validRoomOccupancyPolicy := Policy{
 		Type: RoomOccupancy,
 		Parameters: PolicyParameters{
-			RoomOccupancy: &RoomOccupancyParams{ReadyTarget: 0.2},
+			RoomOccupancy: &RoomOccupancyParams{
+				ReadyTarget:   0.2,
+				DownThreshold: 0.1,
+			},
 		},
 	}
 
 	t.Run("invalid scenarios", func(t *testing.T) {
 		t.Run("fails when try to create autoscaling with invalid Min", func(t *testing.T) {
-			_, err := NewAutoscaling(true, -1, 10, validRoomOccupancyPolicy)
+			_, err := NewAutoscaling(true, -1, 10, 10, validRoomOccupancyPolicy)
 			assert.Error(t, err)
 			validationErrs := err.(validator.ValidationErrors)
 			assert.Equal(t, "Min must be 1 or greater", validationErrs[0].Translate(translator))
 
-			_, err = NewAutoscaling(true, 0, 10, validRoomOccupancyPolicy)
+			_, err = NewAutoscaling(true, 0, 10, 10, validRoomOccupancyPolicy)
 			assert.Error(t, err)
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Equal(t, "Min must be 1 or greater", validationErrs[0].Translate(translator))
 
-			_, err = NewAutoscaling(true, 11, 10, validRoomOccupancyPolicy)
+			_, err = NewAutoscaling(true, 11, 10, 10, validRoomOccupancyPolicy)
 			assert.Error(t, err)
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Equal(t, "Min must be a number lower than Max", validationErrs[0].Translate(translator))
 
 		})
 		t.Run("fails when try to create autoscaling with invalid Max", func(t *testing.T) {
-			_, err := NewAutoscaling(true, 1, -2, validRoomOccupancyPolicy)
+			_, err := NewAutoscaling(true, 1, -2, 10, validRoomOccupancyPolicy)
 			validationErrs := err.(validator.ValidationErrors)
 			assert.Equal(t, "Min must be a number lower than Max", validationErrs[0].Translate(translator))
 			assert.Equal(t, "Max must be -1 or greater", validationErrs[1].Translate(translator))
+		})
 
+		t.Run("fails when try to create autoscaling with invalid Cooldown", func(t *testing.T) {
+			_, err := NewAutoscaling(true, 1, 10, -1, validRoomOccupancyPolicy)
+			validationErrs := err.(validator.ValidationErrors)
+			assert.Equal(t, "Cooldown must be 0 or greater", validationErrs[0].Translate(translator))
 		})
 
 		t.Run("fails when try to create autoscaling with invalid roomOccupancy Policy", func(t *testing.T) {
-			_, err := NewAutoscaling(true, 1, 10, Policy{})
+			_, err := NewAutoscaling(true, 1, 10, 10, Policy{})
 			validationErrs := err.(validator.ValidationErrors)
 			assert.Contains(t, validationErrs[0].Translate(translator), "Type must be one of")
 
-			_, err = NewAutoscaling(true, 1, 10, Policy{Type: "invalid", Parameters: PolicyParameters{}})
+			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "invalid", Parameters: PolicyParameters{}})
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Contains(t, validationErrs[0].Translate(translator), "Type must be one of")
 
-			_, err = NewAutoscaling(true, 1, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{}})
+			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{}})
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Equal(t, "RoomOccupancy must not be nil for RoomOccupancy policy type", validationErrs[0].Translate(translator))
 
-			_, err = NewAutoscaling(true, 1, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{RoomOccupancy: &RoomOccupancyParams{ReadyTarget: 0.0}}})
+			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{RoomOccupancy: &RoomOccupancyParams{ReadyTarget: 0.0}}})
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Equal(t, "ReadyTarget must be greater than 0", validationErrs[0].Translate(translator))
 
-			_, err = NewAutoscaling(true, 1, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{RoomOccupancy: &RoomOccupancyParams{ReadyTarget: 0.91}}})
+			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "roomOccupancy", Parameters: PolicyParameters{RoomOccupancy: &RoomOccupancyParams{ReadyTarget: 0.91}}})
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Equal(t, "ReadyTarget must be 0.9 or less", validationErrs[0].Translate(translator))
 		})
@@ -99,13 +107,13 @@ func TestNewAutoscaling(t *testing.T) {
 
 	t.Run("valid scenarios", func(t *testing.T) {
 		t.Run("success when try to create valid autoscaling with roomOccupancy type", func(t *testing.T) {
-			_, err := NewAutoscaling(true, 10, -1, validRoomOccupancyPolicy)
+			_, err := NewAutoscaling(true, 10, -1, 0, validRoomOccupancyPolicy)
 			assert.NoError(t, err)
 
-			_, err = NewAutoscaling(false, 1, 1, validRoomOccupancyPolicy)
+			_, err = NewAutoscaling(false, 1, 1, 10, validRoomOccupancyPolicy)
 			assert.NoError(t, err)
 
-			_, err = NewAutoscaling(false, 50, 100, validRoomOccupancyPolicy)
+			_, err = NewAutoscaling(false, 50, 100, 100, validRoomOccupancyPolicy)
 			assert.NoError(t, err)
 		})
 	})

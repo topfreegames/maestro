@@ -174,9 +174,9 @@ message Scheduler {
   PortRange port_range = 4;
   // Time the scheduler was created.
   google.protobuf.Timestamp created_at = 5;
-  // Max surge of rooms 
+  // Max surge of rooms
   string max_surge = 6;
-  // Rooms Replicas is the desired number of rooms 
+  // Rooms Replicas is the desired number of rooms
   int32 rooms_replicas = 7;
   // GameRoom spec
   Spec spec = 8;
@@ -258,6 +258,8 @@ message OptionalAutoscaling {
   optional int32 max = 3;
   // Policy is the autoscaling policy that scheduler should follow
   optional AutoscalingPolicy policy = 4;
+  // Cooldown is the time in seconds that scheduler should wait before scale down
+  optional int32 cooldown = 5;
 }
 
 // Autoscaling struct representation
@@ -270,12 +272,14 @@ message Autoscaling {
   int32 max = 3;
   // Policy is the autoscaling policy that scheduler should follow
   AutoscalingPolicy policy = 4;
+  // Cooldown is the time in seconds that scheduler should wait before scale down
+  int32 cooldown = 5;
 }
 
 // AutoscalingPolicy object representation
 message AutoscalingPolicy {
   // Type is the policy type to the scheduler
-  string type = 1;  
+  string type = 1;
   // Parameters is the autoscaling arguments to guide the policy execution
   PolicyParameters parameters = 2;
 }
@@ -290,6 +294,8 @@ message PolicyParameters {
 message RoomOccupancy {
   // ReadyTarget represents the number of rooms ready rate that the scheduler should keep
   float ready_target = 1;
+  // DownThreshold represents the minimum occupation rate that should trigger a scale down
+  float down_threshold = 2;
 }
 
 // The operation lease object representation
@@ -347,6 +353,8 @@ message AutoscalingInfo {
   int32 min = 2;
   // Max is the maximum number of game rooms that a scheduler should have
   int32 max = 3;
+  // Cooldown is the time in seconds that scheduler should wait before scale down
+  int32 cooldown = 5;
 }
 
 // Scheduler Info

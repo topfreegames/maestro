@@ -52,6 +52,21 @@ func (mr *MockAutoscalerMockRecorder) CalculateDesiredNumberOfRooms(ctx, schedul
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalculateDesiredNumberOfRooms", reflect.TypeOf((*MockAutoscaler)(nil).CalculateDesiredNumberOfRooms), ctx, scheduler)
 }
 
+// CanDownscale mocks base method.
+func (m *MockAutoscaler) CanDownscale(ctx context.Context, scheduler *entities.Scheduler) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CanDownscale", ctx, scheduler)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CanDownscale indicates an expected call of CanDownscale.
+func (mr *MockAutoscalerMockRecorder) CanDownscale(ctx, scheduler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanDownscale", reflect.TypeOf((*MockAutoscaler)(nil).CanDownscale), ctx, scheduler)
+}
+
 // MockPolicy is a mock of Policy interface.
 type MockPolicy struct {
 	ctrl     *gomock.Controller
@@ -88,6 +103,21 @@ func (m *MockPolicy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.
 func (mr *MockPolicyMockRecorder) CalculateDesiredNumberOfRooms(policyParameters, currentState interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalculateDesiredNumberOfRooms", reflect.TypeOf((*MockPolicy)(nil).CalculateDesiredNumberOfRooms), policyParameters, currentState)
+}
+
+// CanDownscale mocks base method.
+func (m *MockPolicy) CanDownscale(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CanDownscale", policyParameters, currentState)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CanDownscale indicates an expected call of CanDownscale.
+func (mr *MockPolicyMockRecorder) CanDownscale(policyParameters, currentState interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanDownscale", reflect.TypeOf((*MockPolicy)(nil).CanDownscale), policyParameters, currentState)
 }
 
 // CurrentStateBuilder mocks base method.

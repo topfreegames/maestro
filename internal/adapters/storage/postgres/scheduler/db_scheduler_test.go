@@ -204,6 +204,91 @@ func TestScheduler_ToScheduler(t *testing.T) {
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
 			},
+			{
+				Name:            "scheduler-6",
+				Game:            "game",
+				State:           entities.StateInSync,
+				RollbackVersion: "v1",
+				Spec: game_room.Spec{
+					Version:                "v2",
+					TerminationGracePeriod: 60,
+					Toleration:             "toleration",
+					Affinity:               "affinity",
+				},
+				Forwarders: forwarders,
+				Autoscaling: &autoscaling.Autoscaling{
+					Enabled:  true,
+					Min:      1,
+					Max:      3,
+					Cooldown: 10,
+					Policy: autoscaling.Policy{
+						Type: autoscaling.RoomOccupancy,
+						Parameters: autoscaling.PolicyParameters{
+							RoomOccupancy: &autoscaling.RoomOccupancyParams{
+								ReadyTarget: 0.1,
+							},
+						},
+					},
+				},
+				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
+			},
+			{
+				Name:            "scheduler-7",
+				Game:            "game",
+				State:           entities.StateInSync,
+				RollbackVersion: "v1",
+				Spec: game_room.Spec{
+					Version:                "v2",
+					TerminationGracePeriod: 60,
+					Toleration:             "toleration",
+					Affinity:               "affinity",
+				},
+				Forwarders: forwarders,
+				Autoscaling: &autoscaling.Autoscaling{
+					Enabled:  true,
+					Min:      1,
+					Max:      3,
+					Cooldown: 10,
+					Policy: autoscaling.Policy{
+						Type: autoscaling.RoomOccupancy,
+						Parameters: autoscaling.PolicyParameters{
+							RoomOccupancy: &autoscaling.RoomOccupancyParams{
+								ReadyTarget:   0.1,
+								DownThreshold: 0.9,
+							},
+						},
+					},
+				},
+				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
+			},
+			{
+				Name:            "scheduler-8",
+				Game:            "game",
+				State:           entities.StateInSync,
+				RollbackVersion: "v1",
+				LastDownscaleAt: time.Now().UTC(),
+				Spec: game_room.Spec{
+					Version:                "v2",
+					TerminationGracePeriod: 60,
+					Toleration:             "toleration",
+					Affinity:               "affinity",
+				},
+				Forwarders: forwarders,
+				Autoscaling: &autoscaling.Autoscaling{
+					Enabled: true,
+					Min:     1,
+					Max:     3,
+					Policy: autoscaling.Policy{
+						Type: autoscaling.RoomOccupancy,
+						Parameters: autoscaling.PolicyParameters{
+							RoomOccupancy: &autoscaling.RoomOccupancyParams{
+								ReadyTarget: 0.1,
+							},
+						},
+					},
+				},
+				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
+			},
 		}
 
 		for _, expectedScheduler := range schedulers {

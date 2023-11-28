@@ -93,6 +93,10 @@ func fromApiOptionalAutoscalingToChangeMap(apiAutoscaling *api.OptionalAutoscali
 		changeMap[patch.LabelAutoscalingMax] = apiAutoscaling.GetMax()
 	}
 
+	if apiAutoscaling.Cooldown != nil {
+		changeMap[patch.LabelAutoscalingCooldown] = apiAutoscaling.GetCooldown()
+	}
+
 	if apiAutoscaling.Policy != nil {
 		autoscalingPolicy := fromApiAutoscalingPolicy(apiAutoscaling.GetPolicy())
 		changeMap[patch.LabelAutoscalingPolicy] = autoscalingPolicy
@@ -360,6 +364,9 @@ func fromApiRoomOccupancyPolicyToEntity(roomOccupancy *api.RoomOccupancy) *autos
 	readyTarget := roomOccupancy.GetReadyTarget()
 	roomOccupancyParam.ReadyTarget = float64(readyTarget)
 
+	downThreshold := roomOccupancy.GetDownThreshold()
+	roomOccupancyParam.DownThreshold = float64(downThreshold)
+
 	return roomOccupancyParam
 }
 
@@ -370,6 +377,7 @@ func fromApiAutoscaling(apiAutoscaling *api.Autoscaling) (*autoscaling.Autoscali
 			apiAutoscaling.GetEnabled(),
 			int(apiAutoscaling.GetMin()),
 			int(apiAutoscaling.GetMax()),
+			int(apiAutoscaling.GetCooldown()),
 			autoscalingPolicy,
 		)
 	}
@@ -524,7 +532,8 @@ func getRoomOccupancy(roomOccupancyParameters *autoscaling.RoomOccupancyParams) 
 		return nil
 	}
 	return &api.RoomOccupancy{
-		ReadyTarget: float32(roomOccupancyParameters.ReadyTarget),
+		ReadyTarget:   float32(roomOccupancyParameters.ReadyTarget),
+		DownThreshold: float32(roomOccupancyParameters.DownThreshold),
 	}
 }
 
