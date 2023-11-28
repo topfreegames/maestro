@@ -111,7 +111,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	}
 	reportDesiredNumberOfRooms(scheduler.Game, scheduler.Name, desiredNumberOfRooms)
 
-	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, logger, len(availableRooms), desiredNumberOfRooms)
+	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, scheduler, logger, len(availableRooms), desiredNumberOfRooms)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
 		return err
@@ -168,21 +168,32 @@ func (ex *Executor) tryEnsureCorrectRoomsOnStorage(ctx context.Context, op *oper
 	}
 }
 
-func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *Definition, logger *zap.Logger, actualAmount, desiredAmount int) error {
+func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *Definition, scheduler *entities.Scheduler, logger *zap.Logger, actualAmount, desiredAmount int) error {
 	var msgToAppend string
 	var tookAction bool
 
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
-		removeAmount := actualAmount - desiredAmount
-		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
-			Amount: removeAmount,
-		})
-		if err != nil {
-			return err
+		can, msg := ex.canPerformDownscale(ctx, scheduler, logger)
+		if can {
+			scheduler.LastDownscaleAt = time.Now().UTC()
+			if err := ex.schedulerStorage.UpdateScheduler(ctx, scheduler); err != nil {
+				logger.Error("error updating scheduler", zap.Error(err))
+				return err
+			}
+			removeAmount := actualAmount - desiredAmount
+			removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
+				Amount: removeAmount,
+			})
+			if err != nil {
+				return err
+			}
+			tookAction = true
+			msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
+		} else {
+			tookAction = false
+			msgToAppend = msg
 		}
-		tookAction = true
-		msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
 	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
 		addOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add.Definition{
@@ -317,4 +328,33 @@ func (ex *Executor) setTookAction(def *Definition, tookAction bool) {
 		return
 	}
 	def.TookAction = &tookAction
+}
+
+func (ex *Executor) canPerformDownscale(ctx context.Context, scheduler *entities.Scheduler, logger *zap.Logger) (bool, string) {
+	can, err := ex.autoscaler.CanDownscale(ctx, scheduler)
+	if err != nil {
+		logger.Error("error checking if scheduler can downscale", zap.Error(err))
+		return can, err.Error()
+	}
+
+	if !can {
+		message := fmt.Sprintf("scheduler %s can't downscale, occupation is above the threshold", scheduler.Name)
+		logger.Info(message)
+		return false, message
+	}
+
+	cooldown := 0
+	if scheduler.Autoscaling != nil {
+		cooldown = scheduler.Autoscaling.Cooldown
+	}
+	cooldownDuration := time.Duration(cooldown) * time.Second
+	waitingCooldown := scheduler.LastDownscaleAt.Add(cooldownDuration).After(time.Now().UTC())
+
+	if can && waitingCooldown {
+		message := fmt.Sprintf("scheduler %s can downscale, but cooldown period has not passed yet", scheduler.Name)
+		logger.Info(message)
+		return false, message
+	}
+
+	return can && !waitingCooldown, "ok"
 }

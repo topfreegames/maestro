@@ -45,6 +45,7 @@ func TestCurrentStateBuilder(t *testing.T) {
 	defer ctrl.Finish()
 
 	occupiedRoomsAmount := 1
+	readyRoomsAmount := 1
 
 	scheduler := &entities.Scheduler{
 		Name: "some-name",
@@ -54,6 +55,7 @@ func TestCurrentStateBuilder(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(ctrl)
 
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(occupiedRoomsAmount, nil)
+		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(readyRoomsAmount, nil)
 
 		policy := roomoccupancy.NewPolicy(roomStorageMock)
 
@@ -61,6 +63,7 @@ func TestCurrentStateBuilder(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, occupiedRoomsAmount, currentState[roomoccupancy.OccupiedRoomsKey])
+		assert.Equal(t, readyRoomsAmount, currentState[roomoccupancy.ReadyRoomsKey])
 	})
 
 	t.Run("Error case - When some error occurs in GetRoomCountByStatus it returns error", func(t *testing.T) {
@@ -72,6 +75,18 @@ func TestCurrentStateBuilder(t *testing.T) {
 
 		_, err := policy.CurrentStateBuilder(context.Background(), scheduler)
 		assert.ErrorContains(t, err, "error fetching occupied game rooms amount:")
+	})
+
+	t.Run("Error case - When some error occurs in GetRoomCountByStatus it returns error", func(t *testing.T) {
+		roomStorageMock := mock.NewMockRoomStorage(ctrl)
+
+		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(1, nil)
+		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(-1, errors.New("Error getting amount of ready rooms"))
+
+		policy := roomoccupancy.NewPolicy(roomStorageMock)
+
+		_, err := policy.CurrentStateBuilder(context.Background(), scheduler)
+		assert.ErrorContains(t, err, "error fetching ready game rooms amount:")
 	})
 }
 
@@ -232,6 +247,215 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 			_, err := policy.CalculateDesiredNumberOfRooms(policyParams, schedulerState)
 			assert.EqualError(t, err, "Ready target must be between 0 and 1")
+		})
+	})
+}
+
+func TestCanDownscale(t *testing.T) {
+	t.Parallel()
+
+	policy := &roomoccupancy.Policy{}
+
+	t.Run("Success case - when current usage is above threshold", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("it is expected to not allow downscale", func(t *testing.T) {
+			readyTarget := float64(0.5)
+			downThreshold := float64(0.6)
+			occupiedRooms := 80
+			readyRooms := 120
+
+			schedulerState := policies.CurrentState{
+				roomoccupancy.ReadyRoomsKey:    readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
+			}
+
+			policyParams := autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					ReadyTarget:   readyTarget,
+					DownThreshold: downThreshold,
+				},
+			}
+
+			allow, err := policy.CanDownscale(policyParams, schedulerState)
+			assert.NoError(t, err)
+			assert.Falsef(t, allow, "downscale should not be allowed")
+		})
+	})
+
+	t.Run("Success case - when current usage is equal or below threshold", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("it is expected to allow downscale when occupation is equal the threshold", func(t *testing.T) {
+			readyTarget := float64(0.5)
+			downThreshold := float64(0.7)
+			occupiedRooms := 70
+			readyRooms := 130
+
+			schedulerState := policies.CurrentState{
+				roomoccupancy.ReadyRoomsKey:    readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
+			}
+
+			policyParams := autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					ReadyTarget:   readyTarget,
+					DownThreshold: downThreshold,
+				},
+			}
+
+			allow, err := policy.CanDownscale(policyParams, schedulerState)
+			assert.NoError(t, err)
+			assert.Truef(t, allow, "downscale should be allowed")
+		})
+
+		t.Run("it is expected to allow downscale when occupation below the threshold", func(t *testing.T) {
+			readyTarget := float64(0.5)
+			downThreshold := float64(0.6)
+			occupiedRooms := 60
+			readyRooms := 140
+
+			schedulerState := policies.CurrentState{
+				roomoccupancy.ReadyRoomsKey:    readyRooms,
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
+			}
+
+			policyParams := autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					ReadyTarget:   readyTarget,
+					DownThreshold: downThreshold,
+				},
+			}
+
+			allow, err := policy.CanDownscale(policyParams, schedulerState)
+			assert.NoError(t, err)
+			assert.Truef(t, allow, "downscale should be allowed")
+		})
+	})
+
+	t.Run("Fail case - when there is no RoomOccupancy", func(t *testing.T) {
+		schedulerState := policies.CurrentState{}
+
+		policyParams := autoscaling.PolicyParameters{}
+
+		_, err := policy.CanDownscale(policyParams, schedulerState)
+		assert.EqualError(t, err, "RoomOccupancy parameters is empty")
+	})
+
+	t.Run("Fail case - when there is no ReadyRooms", func(t *testing.T) {
+		schedulerState := policies.CurrentState{
+			roomoccupancy.OccupiedRoomsKey: 10,
+		}
+
+		readyTarget := float64(0.3)
+		downThreshold := float64(0.3)
+		policyParams := autoscaling.PolicyParameters{
+			RoomOccupancy: &autoscaling.RoomOccupancyParams{
+				ReadyTarget:   readyTarget,
+				DownThreshold: downThreshold,
+			},
+		}
+
+		_, err := policy.CanDownscale(policyParams, schedulerState)
+		assert.EqualError(t, err, "There are no readyRooms in the currentState")
+	})
+
+	t.Run("Fail case - when there is no OccupiedRooms", func(t *testing.T) {
+		schedulerState := policies.CurrentState{
+			roomoccupancy.ReadyRoomsKey: 10,
+		}
+
+		readyTarget := float64(0.3)
+		downThreshold := float64(0.3)
+		policyParams := autoscaling.PolicyParameters{
+			RoomOccupancy: &autoscaling.RoomOccupancyParams{
+				ReadyTarget:   readyTarget,
+				DownThreshold: downThreshold,
+			},
+		}
+
+		_, err := policy.CanDownscale(policyParams, schedulerState)
+		assert.EqualError(t, err, "There are no occupiedRooms in the currentState")
+	})
+
+	t.Run("Fail case - when down threshold is out of 0, 1 range", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("when ready target is 1", func(t *testing.T) {
+			downThreshold := float64(1.0)
+			occupiedRooms := 10
+			readyRooms := 10
+
+			schedulerState := policies.CurrentState{
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
+				roomoccupancy.ReadyRoomsKey:    readyRooms,
+			}
+
+			policyParams := autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					DownThreshold: downThreshold,
+				},
+			}
+
+			_, err := policy.CanDownscale(policyParams, schedulerState)
+			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
+		})
+		t.Run("when ready target is greater than 1", func(t *testing.T) {
+			downThreshold := float64(1.1)
+			occupiedRooms := 10
+			readyRooms := 10
+
+			schedulerState := policies.CurrentState{
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
+				roomoccupancy.ReadyRoomsKey:    readyRooms,
+			}
+
+			policyParams := autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					DownThreshold: downThreshold,
+				},
+			}
+
+			_, err := policy.CanDownscale(policyParams, schedulerState)
+			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
+		})
+		t.Run("when down threshold is 0", func(t *testing.T) {
+			downThreshold := float64(0.0)
+			occupiedRooms := 10
+			readyRooms := 10
+
+			schedulerState := policies.CurrentState{
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
+				roomoccupancy.ReadyRoomsKey:    readyRooms,
+			}
+
+			policyParams := autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					DownThreshold: downThreshold,
+				},
+			}
+
+			_, err := policy.CanDownscale(policyParams, schedulerState)
+			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
+		})
+		t.Run("when down threshold is lower than 0", func(t *testing.T) {
+			downThreshold := float64(-0.1)
+			occupiedRooms := 10
+			readyRooms := 10
+
+			schedulerState := policies.CurrentState{
+				roomoccupancy.OccupiedRoomsKey: occupiedRooms,
+				roomoccupancy.ReadyRoomsKey:    readyRooms,
+			}
+
+			policyParams := autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					DownThreshold: downThreshold,
+				},
+			}
+
+			_, err := policy.CanDownscale(policyParams, schedulerState)
+			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
 		})
 	})
 }

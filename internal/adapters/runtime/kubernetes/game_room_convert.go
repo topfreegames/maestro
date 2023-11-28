@@ -103,11 +103,12 @@ func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, game
 
 func convertContainer(container game_room.Container, schedulerID, roomID string) (v1.Container, error) {
 	podContainer := v1.Container{
-		Name:    container.Name,
-		Image:   container.Image,
-		Command: container.Command,
-		Ports:   []v1.ContainerPort{},
-		Env:     []v1.EnvVar{},
+		Name:            container.Name,
+		Image:           container.Image,
+		ImagePullPolicy: v1.PullPolicy(container.ImagePullPolicy),
+		Command:         container.Command,
+		Ports:           []v1.ContainerPort{},
+		Env:             []v1.EnvVar{},
 	}
 
 	for _, port := range container.Ports {

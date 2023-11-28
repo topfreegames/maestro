@@ -43,6 +43,8 @@ type Autoscaling struct {
 	// Max indicates the maximum number of replicas,
 	// it must be greater than or equal zero, or -1 to have no limit.
 	Max int `validate:"min=-1"`
+	// Cooldown indicates the number of seconds to wait between downscaling events.
+	Cooldown int `validate:"min=0"`
 	// Policy indicates the autoscaling policy configuration.
 	Policy Policy
 }
@@ -53,12 +55,13 @@ func (a *Autoscaling) Validate() error {
 }
 
 // NewAutoscaling instantiates a new autoscaling struct based on its parameters.
-func NewAutoscaling(enabled bool, min, max int, policy Policy) (*Autoscaling, error) {
+func NewAutoscaling(enabled bool, min, max, cooldown int, policy Policy) (*Autoscaling, error) {
 	autoscaling := &Autoscaling{
-		Enabled: enabled,
-		Min:     min,
-		Max:     max,
-		Policy:  policy,
+		Enabled:  enabled,
+		Min:      min,
+		Max:      max,
+		Cooldown: cooldown,
+		Policy:   policy,
 	}
 	return autoscaling, autoscaling.Validate()
 }
@@ -83,4 +86,6 @@ type PolicyParameters struct {
 type RoomOccupancyParams struct {
 	// ReadyTarget indicates the target percentage of ready rooms a scheduler should maintain.
 	ReadyTarget float64 `validate:"gt=0,lte=0.9"`
+	// DownThreshold indicates the percentage of occupied rooms a scheduler should have to trigger a downscale event.
+	DownThreshold float64 `validate:"gte=0,lte=0.99"`
 }

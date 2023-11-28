@@ -81,6 +81,8 @@ const (
 	LabelAutoscalingMin = "min"
 	// LabelAutoscalingMax is the autoscaling max key in the patch map.
 	LabelAutoscalingMax = "max"
+	// LabelAutoscalingCooldown is the autoscaling cooldown key in the patch map.
+	LabelAutoscalingCooldown = "cooldown"
 	// LabelAutoscalingPolicy is the autoscaling policy key in the patch map.
 	LabelAutoscalingPolicy = "policy"
 	// LabelAnnotations is the annotations key in the patch map
@@ -259,6 +261,14 @@ func patchAutoscaling(scheduler *entities.Scheduler, patchMap map[string]interfa
 			return fmt.Errorf("error parsing autoscaling: max malformed")
 		}
 		scheduler.Autoscaling.Max = int(max)
+	}
+
+	if intrefaceCoolDown, ok := patchMap[LabelAutoscalingCooldown]; ok {
+		cooldown, ok := intrefaceCoolDown.(int32)
+		if !ok {
+			return fmt.Errorf("error parsing autoscaling: cooldown malformed")
+		}
+		scheduler.Autoscaling.Cooldown = int(cooldown)
 	}
 
 	if interfacePolicy, ok := patchMap[LabelAutoscalingPolicy]; ok {

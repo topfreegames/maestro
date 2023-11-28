@@ -30,14 +30,15 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/topfreegames/maestro/internal/core/ports/mock"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies"
+	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
 )
 
 func TestCalculateDesiredNumberOfRooms(t *testing.T) {
@@ -154,6 +155,122 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
 			assert.ErrorContains(t, err, "error calculating the desired number of rooms to scheduler")
+		})
+	})
+}
+
+func TestCanDownscale(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	policyType := autoscaling.PolicyType("some-policy-type")
+
+	scheduler := &entities.Scheduler{
+		Name: "some-name",
+		Autoscaling: &autoscaling.Autoscaling{
+			Min: 1,
+			Max: 5,
+			Policy: autoscaling.Policy{
+				Type: policyType,
+				Parameters: autoscaling.PolicyParameters{
+					RoomOccupancy: &autoscaling.RoomOccupancyParams{
+						ReadyTarget:   0.5,
+						DownThreshold: 0.7,
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("Success cases", func(t *testing.T) {
+		t.Run("When the occupation rate is below the threshold", func(t *testing.T) {
+			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
+
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(4, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(1, nil)
+
+			policy := roomoccupancy.NewPolicy(mockRoomStorage)
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: policy})
+
+			allow, err := autoscaler.CanDownscale(context.Background(), scheduler)
+			assert.NoError(t, err)
+
+			assert.True(t, allow)
+		})
+
+		t.Run("When the occupation rate is above the threshold", func(t *testing.T) {
+			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
+
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(2, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(3, nil)
+
+			policy := roomoccupancy.NewPolicy(mockRoomStorage)
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: policy})
+
+			allow, err := autoscaler.CanDownscale(context.Background(), scheduler)
+			assert.NoError(t, err)
+
+			assert.False(t, allow)
+		})
+
+		t.Run("When the occupation rate is equal the threshold", func(t *testing.T) {
+			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
+
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(26, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(14, nil)
+
+			policy := roomoccupancy.NewPolicy(mockRoomStorage)
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: policy})
+
+			allow, err := autoscaler.CanDownscale(context.Background(), scheduler)
+			assert.NoError(t, err)
+
+			assert.True(t, allow)
+		})
+	})
+
+	t.Run("Error cases", func(t *testing.T) {
+		t.Run("When scheduler does not have autoscaling struct", func(t *testing.T) {
+			autoscaler := autoscaler.Autoscaler{}
+
+			scheduler := &entities.Scheduler{
+				Name: "some-name",
+			}
+
+			_, err := autoscaler.CanDownscale(context.Background(), scheduler)
+			assert.ErrorContains(t, err, "scheduler does not have autoscaling struct")
+		})
+
+		t.Run("When policyMap does not have policy return in error", func(t *testing.T) {
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{})
+
+			_, err := autoscaler.CanDownscale(context.Background(), scheduler)
+			assert.ErrorContains(t, err, "error finding policy to scheduler")
+		})
+
+		t.Run("When CurrentStateBuilder returns error", func(t *testing.T) {
+			mockPolicy := mock.NewMockPolicy(ctrl)
+
+			mockPolicy.EXPECT().CurrentStateBuilder(gomock.Any(), scheduler).Return(nil, errors.New("Error getting current state"))
+
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: mockPolicy})
+
+			_, err := autoscaler.CanDownscale(context.Background(), scheduler)
+			assert.ErrorContains(t, err, "error fetching current state to scheduler")
+		})
+
+		t.Run("When policy CanDownscale returns error", func(t *testing.T) {
+			mockPolicy := mock.NewMockPolicy(ctrl)
+
+			currentState := policies.CurrentState{}
+
+			mockPolicy.EXPECT().CurrentStateBuilder(gomock.Any(), scheduler).Return(currentState, nil)
+			mockPolicy.EXPECT().CanDownscale(scheduler.Autoscaling.Policy.Parameters, currentState).Return(false, errors.New("error checking if can downscale"))
+
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: mockPolicy})
+
+			_, err := autoscaler.CanDownscale(context.Background(), scheduler)
+			assert.ErrorContains(t, err, "error checking if can downscale")
 		})
 	})
 }

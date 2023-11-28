@@ -1005,6 +1005,11 @@
         "policy": {
           "$ref": "#/definitions/v1AutoscalingPolicy",
           "title": "Policy is the autoscaling policy that scheduler should follow"
+        },
+        "cooldown": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Cooldown is the time in seconds that scheduler should wait before scale down"
         }
       },
       "title": "Autoscaling struct representation"
@@ -1025,6 +1030,11 @@
           "type": "integer",
           "format": "int32",
           "title": "Max is the maximum number of game rooms that a scheduler should have"
+        },
+        "cooldown": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Cooldown is the time in seconds that scheduler should wait before scale down"
         }
       },
       "title": "Autoscaling Info for schedulerInfo message"
@@ -1527,6 +1537,11 @@
         "policy": {
           "$ref": "#/definitions/v1AutoscalingPolicy",
           "title": "Policy is the autoscaling policy that scheduler should follow"
+        },
+        "cooldown": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Cooldown is the time in seconds that scheduler should wait before scale down"
         }
       },
       "title": "Autoscaling struct representation"
@@ -1665,6 +1680,11 @@
           "type": "number",
           "format": "float",
           "title": "ReadyTarget represents the number of rooms ready rate that the scheduler should keep"
+        },
+        "downThreshold": {
+          "type": "number",
+          "format": "float",
+          "title": "DownThreshold represents the minimum occupation rate that should trigger a scale down"
         }
       },
       "title": "RoomOccupancy optional policy parameter"

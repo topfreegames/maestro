@@ -64,6 +64,7 @@ type schedulerInfo struct {
 	Autoscaling            *autoscaling.Autoscaling
 	Annotations            map[string]string
 	Labels                 map[string]string
+	LastDownscaleAt        time.Time
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -79,6 +80,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		Autoscaling:            scheduler.Autoscaling,
 		Annotations:            scheduler.Annotations,
 		Labels:                 scheduler.Labels,
+		LastDownscaleAt:        scheduler.LastDownscaleAt,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -113,6 +115,7 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		PortRange:       info.PortRange,
 		RollbackVersion: s.RollbackVersion,
 		CreatedAt:       s.CreatedAt.Time,
+		LastDownscaleAt: info.LastDownscaleAt,
 		MaxSurge:        info.MaxSurge,
 		RoomsReplicas:   info.RoomsReplicas,
 		Forwarders:      info.Forwarders,

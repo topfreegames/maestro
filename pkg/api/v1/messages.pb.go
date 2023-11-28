@@ -1324,6 +1324,8 @@ type OptionalAutoscaling struct {
 	Max *int32 `protobuf:"varint,3,opt,name=max,proto3,oneof" json:"max,omitempty"`
 	// Policy is the autoscaling policy that scheduler should follow
 	Policy *AutoscalingPolicy `protobuf:"bytes,4,opt,name=policy,proto3,oneof" json:"policy,omitempty"`
+	// Cooldown is the time in seconds that scheduler should wait before scale down
+	Cooldown *int32 `protobuf:"varint,5,opt,name=cooldown,proto3,oneof" json:"cooldown,omitempty"`
 }
 
 func (x *OptionalAutoscaling) Reset() {
@@ -1386,6 +1388,13 @@ func (x *OptionalAutoscaling) GetPolicy() *AutoscalingPolicy {
 	return nil
 }
 
+func (x *OptionalAutoscaling) GetCooldown() int32 {
+	if x != nil && x.Cooldown != nil {
+		return *x.Cooldown
+	}
+	return 0
+}
+
 // Autoscaling struct representation
 type Autoscaling struct {
 	state         protoimpl.MessageState
@@ -1400,6 +1409,8 @@ type Autoscaling struct {
 	Max int32 `protobuf:"varint,3,opt,name=max,proto3" json:"max,omitempty"`
 	// Policy is the autoscaling policy that scheduler should follow
 	Policy *AutoscalingPolicy `protobuf:"bytes,4,opt,name=policy,proto3" json:"policy,omitempty"`
+	// Cooldown is the time in seconds that scheduler should wait before scale down
+	Cooldown int32 `protobuf:"varint,5,opt,name=cooldown,proto3" json:"cooldown,omitempty"`
 }
 
 func (x *Autoscaling) Reset() {
@@ -1460,6 +1471,13 @@ func (x *Autoscaling) GetPolicy() *AutoscalingPolicy {
 		return x.Policy
 	}
 	return nil
+}
+
+func (x *Autoscaling) GetCooldown() int32 {
+	if x != nil {
+		return x.Cooldown
+	}
+	return 0
 }
 
 // AutoscalingPolicy object representation
@@ -1577,6 +1595,8 @@ type RoomOccupancy struct {
 
 	// ReadyTarget represents the number of rooms ready rate that the scheduler should keep
 	ReadyTarget float32 `protobuf:"fixed32,1,opt,name=ready_target,json=readyTarget,proto3" json:"ready_target,omitempty"`
+	// DownThreshold represents the minimum occupation rate that should trigger a scale down
+	DownThreshold float32 `protobuf:"fixed32,2,opt,name=down_threshold,json=downThreshold,proto3" json:"down_threshold,omitempty"`
 }
 
 func (x *RoomOccupancy) Reset() {
@@ -1614,6 +1634,13 @@ func (*RoomOccupancy) Descriptor() ([]byte, []int) {
 func (x *RoomOccupancy) GetReadyTarget() float32 {
 	if x != nil {
 		return x.ReadyTarget
+	}
+	return 0
+}
+
+func (x *RoomOccupancy) GetDownThreshold() float32 {
+	if x != nil {
+		return x.DownThreshold
 	}
 	return 0
 }
@@ -1948,6 +1975,8 @@ type AutoscalingInfo struct {
 	Min int32 `protobuf:"varint,2,opt,name=min,proto3" json:"min,omitempty"`
 	// Max is the maximum number of game rooms that a scheduler should have
 	Max int32 `protobuf:"varint,3,opt,name=max,proto3" json:"max,omitempty"`
+	// Cooldown is the time in seconds that scheduler should wait before scale down
+	Cooldown int32 `protobuf:"varint,5,opt,name=cooldown,proto3" json:"cooldown,omitempty"`
 }
 
 func (x *AutoscalingInfo) Reset() {
@@ -1999,6 +2028,13 @@ func (x *AutoscalingInfo) GetMin() int32 {
 func (x *AutoscalingInfo) GetMax() int32 {
 	if x != nil {
 		return x.Max
+	}
+	return 0
+}
+
+func (x *AutoscalingInfo) GetCooldown() int32 {
+	if x != nil {
+		return x.Cooldown
 	}
 	return 0
 }

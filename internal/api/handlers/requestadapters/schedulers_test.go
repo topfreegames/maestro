@@ -334,14 +334,16 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			Input: Input{
 				PatchScheduler: &api.PatchSchedulerRequest{
 					Autoscaling: &api.OptionalAutoscaling{
-						Enabled: &pointerBool,
-						Min:     &pointerGenericInt32,
-						Max:     &pointerGenericInt32,
+						Enabled:  &pointerBool,
+						Min:      &pointerGenericInt32,
+						Max:      &pointerGenericInt32,
+						Cooldown: &pointerGenericInt32,
 						Policy: &api.AutoscalingPolicy{
 							Type: "roomOccupancy",
 							Parameters: &api.PolicyParameters{
 								RoomOccupancy: &api.RoomOccupancy{
-									ReadyTarget: genericFloat32,
+									ReadyTarget:   genericFloat32,
+									DownThreshold: genericFloat32,
 								},
 							},
 						},
@@ -351,14 +353,16 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
 					patch.LabelAutoscaling: map[string]interface{}{
-						patch.LabelAutoscalingEnabled: pointerBool,
-						patch.LabelAutoscalingMin:     pointerGenericInt32,
-						patch.LabelAutoscalingMax:     pointerGenericInt32,
+						patch.LabelAutoscalingEnabled:  pointerBool,
+						patch.LabelAutoscalingMin:      pointerGenericInt32,
+						patch.LabelAutoscalingMax:      pointerGenericInt32,
+						patch.LabelAutoscalingCooldown: pointerGenericInt32,
 						patch.LabelAutoscalingPolicy: autoscaling.Policy{
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(genericFloat32),
 								},
 							},
 						},
@@ -375,7 +379,8 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Type: "roomOccupancy",
 							Parameters: &api.PolicyParameters{
 								RoomOccupancy: &api.RoomOccupancy{
-									ReadyTarget: genericFloat32,
+									ReadyTarget:   genericFloat32,
+									DownThreshold: genericFloat32,
 								},
 							},
 						},
@@ -389,7 +394,8 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(genericFloat32),
 								},
 							},
 						},
@@ -412,6 +418,23 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 					patch.LabelAutoscaling: map[string]interface{}{
 						patch.LabelAutoscalingMin: pointerGenericInt32,
 						patch.LabelAutoscalingMax: pointerGenericInt32,
+					},
+				},
+			},
+		},
+		{
+			Title: "only autoscaling cooldown should convert api.PatchSchedulerRequest to change map",
+			Input: Input{
+				PatchScheduler: &api.PatchSchedulerRequest{
+					Autoscaling: &api.OptionalAutoscaling{
+						Cooldown: &pointerGenericInt32,
+					},
+				},
+			},
+			Output: Output{
+				PatchScheduler: map[string]interface{}{
+					patch.LabelAutoscaling: map[string]interface{}{
+						patch.LabelAutoscalingCooldown: pointerGenericInt32,
 					},
 				},
 			},

@@ -25,9 +25,10 @@ package entities
 import "github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 type AutoscalingInfo struct {
-	Enabled bool
-	Min     int
-	Max     int
+	Enabled  bool
+	Min      int
+	Max      int
+	Cooldown int
 }
 
 type SchedulerInfo struct {
@@ -101,9 +102,10 @@ func WithAutoscalingInfo(schedulerAutoscaling *autoscaling.Autoscaling) Schedule
 	return func(schedulerInfo *SchedulerInfo) {
 		if schedulerAutoscaling != nil {
 			autoscalingInfo := &AutoscalingInfo{
-				Enabled: schedulerAutoscaling.Enabled,
-				Min:     schedulerAutoscaling.Min,
-				Max:     schedulerAutoscaling.Max,
+				Enabled:  schedulerAutoscaling.Enabled,
+				Min:      schedulerAutoscaling.Min,
+				Max:      schedulerAutoscaling.Max,
+				Cooldown: schedulerAutoscaling.Cooldown,
 			}
 			schedulerInfo.Autoscaling = autoscalingInfo
 		}

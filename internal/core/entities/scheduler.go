@@ -61,6 +61,7 @@ type Scheduler struct {
 	PortRange       *PortRange
 	RoomsReplicas   int `validate:"min=0"`
 	CreatedAt       time.Time
+	LastDownscaleAt time.Time
 	MaxSurge        string                 `validate:"required,max_surge"`
 	Forwarders      []*forwarder.Forwarder `validate:"dive"`
 	Annotations     map[string]string
@@ -136,6 +137,7 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"State",
 			"RollbackVersion",
 			"CreatedAt",
+			"LastDownscaleAt",
 			"MaxSurge",
 			"RoomsReplicas",
 			"Autoscaling",

@@ -36,6 +36,8 @@ import (
 type Autoscaler interface {
 	// CalculateDesiredNumberOfRooms return the number of rooms that a Scheduler should have based on its policy or error if it can calculate.
 	CalculateDesiredNumberOfRooms(ctx context.Context, scheduler *entities.Scheduler) (int, error)
+	// CanDownscale returns true if the scheduler can downscale, false otherwise.
+	CanDownscale(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
 }
 
 // Secondary ports (output, driven ports)
@@ -48,4 +50,6 @@ type Policy interface {
 	CurrentStateBuilder(ctx context.Context, scheduler *entities.Scheduler) (policies.CurrentState, error)
 	// CalculateDesiredNumberOfRooms calculates the desired number of rooms based on the current state of the scheduler.
 	CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (desiredNumberOfRooms int, err error)
+	// CanDownscale returns true if the scheduler can downscale, false otherwise.
+	CanDownscale(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (bool, error)
 }
