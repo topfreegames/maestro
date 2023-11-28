@@ -125,6 +125,8 @@ message CreateSchedulerRequest {
   repeated Forwarder forwarders = 8;
   // Add annotations for scheduler
   map<string, string> annotations = 9;
+  // Add labels for scheduler
+  map<string, string> labels = 10;
 }
 
 // Get Scheduler operation request
@@ -161,6 +163,8 @@ message NewSchedulerVersionRequest {
   repeated Forwarder forwarders = 8;
   // New annotations for scheduler
   map<string, string> annotations = 9;
+  // New labels for scheduler
+  map<string, string> labels = 10;
 }
 
 // Update schedule operation response payload.
@@ -187,6 +191,8 @@ message PatchSchedulerRequest {
   repeated Forwarder forwarders = 7;
   // Annotations declaration for the scheduler
   map<string, string> annotations = 8;
+  // Labels declaration for the scheduler
+  map<string, string> labels = 9;
 }
 
 // PatchSchedulerResponse have the operation response id that represents the operation creted to this change.

@@ -28,8 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/duration"
-
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/structpb"

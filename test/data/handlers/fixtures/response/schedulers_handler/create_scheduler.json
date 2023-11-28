@@ -79,6 +79,9 @@
     ],
     "annotations": {
       "imageregistry": "https://docker.hub.com/"
+    },
+    "labels": {
+      "scheduler": "scheduler-name"
     }
   }
 }

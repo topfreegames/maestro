@@ -529,6 +529,8 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 				},
 			},
 		},
+		Annotations: scheduler.Annotations,
+		Labels:      scheduler.Labels,
 	}
 	updateResponse := &maestroApiV1.NewSchedulerVersionResponse{}
 
@@ -557,8 +559,10 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 	for _, pod := range podsAfterUpdate.Items {
 		podsNameAfterUpdate = append(podsNameAfterUpdate, pod.Name)
 	}
-
 	require.ElementsMatch(t, podsNameAfterUpdate, podsNameBeforeUpdate)
+
+	require.Contains(t, getSchedulerResponse.Scheduler.Annotations, updateRequest.Annotations)
+	require.Contains(t, getSchedulerResponse.Scheduler.Labels, updateRequest.Labels)
 
 	require.Equal(t, expectedNewVersion, getSchedulerResponse.Scheduler.Spec.Version)
 }

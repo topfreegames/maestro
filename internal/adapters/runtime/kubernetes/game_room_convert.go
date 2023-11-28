@@ -69,17 +69,18 @@ var invalidPodWaitingStates = []string{
 
 func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
 	defaultAnnotations := map[string]string{safeToEvictAnnotation: safeToEvictValue}
+	defaultLabels := map[string]string{
+		maestroLabelKey:   maestroLabelValue,
+		schedulerLabelKey: scheduler.Name,
+		versionLabelKey:   gameRoomSpec.Version,
+	}
 
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      gameRoomName,
-			Namespace: scheduler.Name,
-			Labels: map[string]string{
-				maestroLabelKey:   maestroLabelValue,
-				schedulerLabelKey: scheduler.Name,
-				versionLabelKey:   gameRoomSpec.Version,
-			},
-			Annotations: mergeAnnotations(defaultAnnotations, scheduler.Annotations),
+			Name:        gameRoomName,
+			Namespace:   scheduler.Name,
+			Labels:      mergeMaps(defaultLabels, scheduler.Labels),
+			Annotations: mergeMaps(defaultAnnotations, scheduler.Annotations),
 		},
 		Spec: v1.PodSpec{
 			TerminationGracePeriodSeconds: convertTerminationGracePeriod(gameRoomSpec),
@@ -379,7 +380,7 @@ func convertPod(pod *v1.Pod, nodeAddress string) (*game_room.Instance, error) {
 	}, nil
 }
 
-func mergeAnnotations(target map[string]string, source map[string]string) map[string]string {
+func mergeMaps(target map[string]string, source map[string]string) map[string]string {
 	if target == nil {
 		return source
 	}

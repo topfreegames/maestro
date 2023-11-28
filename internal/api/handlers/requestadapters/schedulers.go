@@ -75,6 +75,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch.LabelAnnotations] = request.GetAnnotations()
 	}
 
+	if request.Labels != nil {
+		patchMap[patch.LabelLabels] = request.GetLabels()
+	}
+
 	return patchMap
 }
 
@@ -121,6 +125,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
 		request.GetAnnotations(),
+		request.GetLabels(),
 	)
 }
 
@@ -157,6 +162,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
 		request.GetAnnotations(),
+		request.GetLabels(),
 	)
 }
 
@@ -179,6 +185,7 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 		Autoscaling:   getAutoscaling(entity.Autoscaling),
 		Forwarders:    forwarders,
 		Annotations:   entity.Annotations,
+		Labels:        entity.Labels,
 	}, nil
 }
 

@@ -550,6 +550,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 			Output: Output{
@@ -649,6 +650,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 		},
@@ -735,6 +737,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 			Output: Output{
@@ -821,6 +824,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 		},
@@ -1046,6 +1050,7 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 			Output: Output{
@@ -1199,6 +1204,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 			Output: Output{
@@ -1298,6 +1304,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 		},
@@ -1429,6 +1436,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 			Output: Output{
@@ -1527,6 +1535,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 		},
@@ -1607,6 +1616,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 			Output: Output{
@@ -1692,6 +1702,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						},
 					},
 					Annotations: map[string]string{},
+					Labels:      map[string]string{},
 				},
 			},
 		},

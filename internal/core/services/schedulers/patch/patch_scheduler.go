@@ -85,6 +85,8 @@ const (
 	LabelAutoscalingPolicy = "policy"
 	// LabelAnnotations is the annotations key in the patch map
 	LabelAnnotations = "annotations"
+	// LabelLabels is the labels key in the patch map
+	LabelLabels = "labels"
 )
 
 // PatchScheduler function applies the patchMap in the scheduler, returning the patched Scheduler.
@@ -137,6 +139,12 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 	if _, ok := patchMap[LabelAnnotations]; ok {
 		if scheduler.Annotations, ok = patchMap[LabelAnnotations].(map[string]string); !ok {
 			return nil, fmt.Errorf("error parsing scheduler: annotations malformed")
+		}
+	}
+
+	if _, ok := patchMap[LabelLabels]; ok {
+		if scheduler.Labels, ok = patchMap[LabelLabels].(map[string]string); !ok {
+			return nil, fmt.Errorf("error parsing scheduler: labels malformed")
 		}
 	}
 

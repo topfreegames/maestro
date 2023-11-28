@@ -106,6 +106,12 @@ func TestCreateScheduler(t *testing.T) {
 					Start: 40000,
 					End:   60000,
 				},
+				Annotations: map[string]string{
+					"annotation1": "value1",
+				},
+				Labels: map[string]string{
+					"label1": "value1",
+				},
 			}
 
 			createResponse := &maestrov1.CreateSchedulerResponse{}
