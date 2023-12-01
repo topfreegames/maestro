@@ -509,6 +509,13 @@
                     "type": "string"
                   },
                   "title": "New annotations for scheduler"
+                },
+                "labels": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "New labels for scheduler"
                 }
               },
               "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -586,6 +593,13 @@
                     "type": "string"
                   },
                   "title": "Annotations declaration for the scheduler"
+                },
+                "labels": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Labels declaration for the scheduler"
                 }
               },
               "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
@@ -1229,6 +1243,13 @@
             "type": "string"
           },
           "title": "Add annotations for scheduler"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Add labels for scheduler"
         }
       },
       "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -1722,6 +1743,13 @@
             "type": "string"
           },
           "title": "List with annotations"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "List with labels"
         }
       },
       "description": "Scheduler definition."

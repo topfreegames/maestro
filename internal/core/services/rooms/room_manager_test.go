@@ -101,6 +101,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		},
 		PortRange:   nil,
 		Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
+		Labels:      map[string]string{"scheduler": "scheduler-name"},
 	}
 
 	gameRoomName := "game-1"

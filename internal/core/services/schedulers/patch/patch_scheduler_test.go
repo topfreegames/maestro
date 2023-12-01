@@ -103,6 +103,24 @@ func TestPatchScheduler(t *testing.T) {
 			},
 		},
 		{
+			Title: "Have labels return scheduler with changed labels",
+			Input: Input{
+				Scheduler: basicSchedulerToPatchSchedulerTests(),
+				PatchMap: map[string]interface{}{
+					patch.LabelLabels: map[string]string{"scheduler": "scheduler-name", "other-label": "other-value"},
+				},
+			},
+			Output: Output{
+				ChangeSchedulerFunc: func() *entities.Scheduler {
+					scheduler := basicSchedulerToPatchSchedulerTests()
+					scheduler.Labels = map[string]string{"scheduler": "scheduler-name", "other-label": "other-value"}
+
+					return scheduler
+				},
+				Error: nil,
+			},
+		},
+		{
 			Title: "Have rooms replicas return scheduler with changed RoomsReplicas",
 			Input: Input{
 				Scheduler: basicSchedulerToPatchSchedulerTests(),
@@ -918,6 +936,7 @@ func TestPatchScheduler(t *testing.T) {
 			assert.EqualValues(t, expectedScheduler.PortRange, scheduler.PortRange)
 			assert.EqualValues(t, expectedScheduler.Autoscaling, scheduler.Autoscaling)
 			assert.EqualValues(t, expectedScheduler.Annotations, scheduler.Annotations)
+			assert.EqualValues(t, expectedScheduler.Labels, scheduler.Labels)
 			forwarders := expectedScheduler.Forwarders
 			for i, expectedForwarder := range expectedScheduler.Forwarders {
 				assert.EqualValues(t, expectedForwarder, forwarders[i])
@@ -977,6 +996,7 @@ func basicSchedulerToPatchSchedulerTests() *entities.Scheduler {
 			},
 		},
 		Annotations:     map[string]string{"imageregistry": "https://hub.docker.com"},
+		Labels:          map[string]string{"scheduler": "scheduler-name"},
 		RollbackVersion: "v1.0.0",
 		Spec: game_room.Spec{
 			Version:                "v1.1.0",

@@ -203,6 +203,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					},
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
+				Labels:      map[string]string{"scheduler": "scheduler-name"},
 			},
 			{
 				Name:            "scheduler-6",
