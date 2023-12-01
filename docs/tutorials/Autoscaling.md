@@ -57,6 +57,7 @@ autoscaling:
   enabled: true
   min: 1
   max: 10
+  cooldown: 60
   policy:
     type: roomOccupancy
     parameters:
@@ -80,6 +81,7 @@ autoscaling:
     "enabled": true,
     "min": 10,
     "max": 300,
+    "cooldown": 60,
     "policy": {
       "type": "roomOccupancy",
       "parameters": {
@@ -96,6 +98,8 @@ autoscaling:
 - **enabled** [boolean]: A value that can be true or false, indicating if the autoscaling feature is enabled/disabled for the given scheduler. Default: false.
 - **min** [integer]: Minimum number of rooms the scheduler should have, it must be greater than zero. For zero value, disable autoscaling and set "roomsReplicas" to 0.
 - **max** [integer]: Maximum number of rooms the scheduler can have. It must be greater than min, or can be -1 (to have no limit).
+- **cooldown** [integer]: The cooldown period (in seconds) between **downscaling** operations. This is useful to avoid scale down too fast, 
+  which can cause a lot of rooms to be deleted in a short period of time.
 - **policy** [struct] : This field holds information regarding the autoscaling policy that will be used if the autoscaling feature is enabled:
   - **type** [string]:  Define the policy type that will be used, must be one of the [policy types maestro provides](#policy-types).
   - **parameters** [struct]: This field will contain arbitrary fields that will vary according to the chosen [policy type](#policy-types).
@@ -118,6 +122,7 @@ actual room occupancy rate (number of rooms in **occupied** state).
 
 #### Room Occupancy Policy Parameters
 - **readyTarget** [float]: The percentage (in decimal value) of rooms that Maestro should try to keep in **ready** state, must be a value between 0.1 and 0.9.
+- **downThreshold** [float]: It adjusts how often maestro scale down Game Rooms, where 0.99 means that maestro will always scale down a Game Room when it is free (respecting the readyTarget), and 0 means that maestro will never scale down. Must be a value between 0 and 0.99.
 
 #### Example
 
