@@ -234,6 +234,12 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 	var toDeleteRooms []*game_room.GameRoom
 	var terminatingRooms []*game_room.GameRoom
 	for _, roomID := range schedulerRoomsIDs {
+
+		totalAmount := len(toDeleteRooms) + len(terminatingRooms)
+		if totalAmount == amount {
+			break
+		}
+
 		room, err := m.RoomStorage.GetRoom(ctx, schedulerName, roomID)
 		if err != nil {
 			if !errors.Is(err, porterrors.ErrNotFound) {
@@ -260,9 +266,6 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 		}
 
 		toDeleteRooms = append(toDeleteRooms, room)
-		if len(toDeleteRooms) == amount {
-			break
-		}
 	}
 
 	result := append(toDeleteRooms, terminatingRooms...)
