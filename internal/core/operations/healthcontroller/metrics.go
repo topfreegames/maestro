@@ -46,6 +46,28 @@ var (
 			monitoring.LabelScheduler,
 		},
 	})
+
+	roomsWithTerminationTimeout = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "rooms_with_termination_timeout",
+		Help:      "Number of rooms that extrapolate the graceful termination period",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
+
+	roomsProperlyTerminated = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "rooms_properly_terminated",
+		Help:      "Number of rooms that were properly terminated",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
 )
 
 func reportDesiredNumberOfRooms(game, scheduler string, desired int) {
@@ -54,4 +76,12 @@ func reportDesiredNumberOfRooms(game, scheduler string, desired int) {
 
 func reportCurrentNumberOfRooms(game, scheduler string, current int) {
 	currentNumberOfRoomsMetric.WithLabelValues(game, scheduler).Set(float64(current))
+}
+
+func reportRoomsWithTerminationTimeout(game, scheduler string, rooms int) {
+	roomsWithTerminationTimeout.WithLabelValues(game, scheduler).Set(float64(rooms))
+}
+
+func reportRoomsProperlyTerminated(game, scheduler string, rooms int) {
+	roomsProperlyTerminated.WithLabelValues(game, scheduler).Set(float64(rooms))
 }

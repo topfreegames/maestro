@@ -92,7 +92,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		ex.tryEnsureCorrectRoomsOnStorage(ctx, op, logger, nonexistentGameRoomsIDs)
 	}
 
-	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, op, existentGameRoomsInstancesMap)
+	availableRooms, expiredRooms := ex.findAvailableAndExpiredRooms(ctx, scheduler, op, existentGameRoomsInstancesMap)
 	reportCurrentNumberOfRooms(scheduler.Game, scheduler.Name, len(availableRooms))
 
 	if len(expiredRooms) > 0 {
@@ -215,7 +215,10 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 	return nil
 }
 
-func (ex *Executor) findAvailableAndExpiredRooms(ctx context.Context, op *operation.Operation, existentGameRoomsInstancesMap map[string]*game_room.Instance) (availableRoomsIDs, expiredRoomsIDs []string) {
+func (ex *Executor) findAvailableAndExpiredRooms(ctx context.Context, scheduler *entities.Scheduler, op *operation.Operation, existentGameRoomsInstancesMap map[string]*game_room.Instance) (availableRoomsIDs, expiredRoomsIDs []string) {
+	terminationTimedOutRooms := 0
+	terminatedRooms := 0
+
 	for gameRoomId, instance := range existentGameRoomsInstancesMap {
 		if instance.Status.Type == game_room.InstancePending {
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomId)
@@ -234,8 +237,10 @@ func (ex *Executor) findAvailableAndExpiredRooms(ctx context.Context, op *operat
 			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
 		case ex.isRoomTerminatingExpired(room):
 			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
+			terminationTimedOutRooms += 1
 		case ex.isRoomStatus(room, game_room.GameStatusTerminated):
 			expiredRoomsIDs = append(expiredRoomsIDs, gameRoomId)
+			terminatedRooms += 1
 		case ex.isRoomStatus(room, game_room.GameStatusTerminating):
 			continue
 		case ex.isRoomStatus(room, game_room.GameStatusError):
@@ -244,6 +249,9 @@ func (ex *Executor) findAvailableAndExpiredRooms(ctx context.Context, op *operat
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomId)
 		}
 	}
+
+	reportRoomsWithTerminationTimeout(scheduler.Game, scheduler.Name, terminationTimedOutRooms)
+	reportRoomsProperlyTerminated(scheduler.Game, scheduler.Name, terminatedRooms)
 
 	return availableRoomsIDs, expiredRoomsIDs
 }
