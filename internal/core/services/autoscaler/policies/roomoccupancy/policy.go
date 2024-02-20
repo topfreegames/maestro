@@ -123,7 +123,7 @@ func (p *Policy) CanDownscale(policyParameters autoscaling.PolicyParameters, cur
 		return false, fmt.Errorf("Error calculating the desired number of rooms: %w", err)
 	}
 
-	desiredNumberOfReadyRooms := int(math.Ceil(float64(desiredNumberOfRooms) * readyTarget))
+	desiredNumberOfReadyRooms := math.Ceil(float64(desiredNumberOfRooms) * readyTarget)
 
-	return (float64(desiredNumberOfReadyRooms) / float64(readyRooms)) <= downThreshold, nil
+	return (desiredNumberOfReadyRooms / float64(readyRooms)) <= downThreshold, nil
 }

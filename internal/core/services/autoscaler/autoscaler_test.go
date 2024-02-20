@@ -228,7 +228,7 @@ func TestCanDownscale(t *testing.T) {
 			assert.True(t, allow)
 		})
 
-		t.Run("When the ready target is low", func(t *testing.T) {
+		t.Run("When the ready target is low it should trigger downscale", func(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(500, nil)
