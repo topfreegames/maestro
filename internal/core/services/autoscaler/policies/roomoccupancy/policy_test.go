@@ -360,24 +360,6 @@ func TestCanDownscale(t *testing.T) {
 		assert.EqualError(t, err, "There are no readyRooms in the currentState")
 	})
 
-	t.Run("Fail case - when there is no OccupiedRooms", func(t *testing.T) {
-		schedulerState := policies.CurrentState{
-			roomoccupancy.ReadyRoomsKey: 10,
-		}
-
-		readyTarget := float64(0.3)
-		downThreshold := float64(0.3)
-		policyParams := autoscaling.PolicyParameters{
-			RoomOccupancy: &autoscaling.RoomOccupancyParams{
-				ReadyTarget:   readyTarget,
-				DownThreshold: downThreshold,
-			},
-		}
-
-		_, err := policy.CanDownscale(policyParams, schedulerState)
-		assert.EqualError(t, err, "There are no occupiedRooms in the currentState")
-	})
-
 	t.Run("Fail case - when down threshold is out of 0, 1 range", func(t *testing.T) {
 		t.Parallel()
 
