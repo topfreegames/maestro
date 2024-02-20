@@ -113,18 +113,18 @@ func (p *Policy) CanDownscale(policyParameters autoscaling.PolicyParameters, cur
 		return false, errors.New("Ready target must be between 0 and 1")
 	}
 
-	if _, ok := currentState[ReadyRoomsKey].(int); !ok {
+	readyRooms, ok := currentState[ReadyRoomsKey].(int)
+	if !ok {
 		return false, errors.New("There are no readyRooms in the currentState")
 	}
 
-	if _, ok := currentState[OccupiedRoomsKey].(int); !ok {
-		return false, errors.New("There are no occupiedRooms in the currentState")
+	desiredNumberOfRooms, err := p.CalculateDesiredNumberOfRooms(policyParameters, currentState)
+	if err != nil {
+		return false, fmt.Errorf("Error calculating the desired number of rooms: %w", err)
 	}
 
-	readyRooms := currentState[ReadyRoomsKey].(int)
-	occupiedRooms := currentState[OccupiedRoomsKey].(int)
+	readyRooms = currentState[ReadyRoomsKey].(int)
+	desiredNumberOfReadyRooms := int(math.Ceil(float64(desiredNumberOfRooms) * readyTarget))
 
-	occupationRate := float64(occupiedRooms) / float64(occupiedRooms+readyRooms)
-
-	return (occupationRate / readyTarget) <= downThreshold, nil
+	return (float64(desiredNumberOfReadyRooms) / float64(readyRooms)) <= downThreshold, nil
 }

@@ -227,6 +227,25 @@ func TestCanDownscale(t *testing.T) {
 
 			assert.True(t, allow)
 		})
+
+		t.Run("When the ready target is low", func(t *testing.T) {
+			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
+
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(500, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(330, nil)
+
+			policy := roomoccupancy.NewPolicy(mockRoomStorage)
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: policy})
+
+			cpy := *scheduler
+			cpy.Autoscaling.Policy.Parameters.RoomOccupancy.ReadyTarget = 0.35
+			cpy.Autoscaling.Policy.Parameters.RoomOccupancy.DownThreshold = 0.9
+
+			allow, err := autoscaler.CanDownscale(context.Background(), &cpy)
+			assert.NoError(t, err)
+
+			assert.True(t, allow)
+		})
 	})
 
 	t.Run("Error cases", func(t *testing.T) {
