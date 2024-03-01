@@ -130,10 +130,9 @@ func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 		kubeConfigPath = c.GetString(runtimeKubernetesKubeconfigPath)
 	}
 
-	clientSet, err := createKubernetesClient(masterURL, kubeConfigPath, func(conf *rest.Config) *rest.Config {
+	clientSet, err := createKubernetesClient(masterURL, kubeConfigPath, func(conf *rest.Config) {
 		conf.QPS = float32(qps)
 		conf.Burst = burst
-		return conf
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Kubernetes runtime: %w", err)
@@ -287,7 +286,7 @@ func connectToPostgres(url string) (*pg.Options, error) {
 	return opts, nil
 }
 
-func createKubernetesClient(masterURL, kubeconfigPath string, opts ...func(*rest.Config) *rest.Config) (kubernetes.Interface, error) {
+func createKubernetesClient(masterURL, kubeconfigPath string, opts ...func(*rest.Config)) (kubernetes.Interface, error) {
 	// NOTE: if neither masterURL or kubeconfigPath are not passed, this will
 	// fallback to in cluster config.
 	kubeconfig, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfigPath)
@@ -296,7 +295,7 @@ func createKubernetesClient(masterURL, kubeconfigPath string, opts ...func(*rest
 	}
 
 	for _, opt := range opts {
-		kubeconfig = opt(kubeconfig)
+		opt(kubeconfig)
 	}
 
 	client, err := kubernetes.NewForConfig(kubeconfig)
