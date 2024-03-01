@@ -58,6 +58,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/schedulers"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -67,6 +68,8 @@ const (
 	runtimeKubernetesMasterURLPath  = "adapters.runtime.kubernetes.masterUrl"
 	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
 	runtimeKubernetesInClusterPath  = "adapters.runtime.kubernetes.inCluster"
+	runtimeKubernetesQPS            = "adapters.runtime.kubernetes.qps"
+	runtimeKubernetesBurst          = "adapters.runtime.kubernetes.burst"
 	// Redis operation storage
 	operationStorageRedisURLPath      = "adapters.operationStorage.redis.url"
 	operationLeaseStorageRedisURLPath = "adapters.operationLeaseStorage.redis.url"
@@ -115,14 +118,22 @@ func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
 func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 	var masterURL string
 	var kubeConfigPath string
+	var qps int
+	var burst int
 
 	inCluster := c.GetBool(runtimeKubernetesInClusterPath)
-	if !inCluster {
+	if inCluster {
+		qps = c.GetInt(runtimeKubernetesQPS)
+		burst = c.GetInt(runtimeKubernetesBurst)
+	} else {
 		masterURL = c.GetString(runtimeKubernetesMasterURLPath)
 		kubeConfigPath = c.GetString(runtimeKubernetesKubeconfigPath)
 	}
 
-	clientSet, err := createKubernetesClient(masterURL, kubeConfigPath)
+	clientSet, err := createKubernetesClient(masterURL, kubeConfigPath, func(conf *rest.Config) {
+		conf.QPS = float32(qps)
+		conf.Burst = burst
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Kubernetes runtime: %w", err)
 	}
@@ -275,12 +286,16 @@ func connectToPostgres(url string) (*pg.Options, error) {
 	return opts, nil
 }
 
-func createKubernetesClient(masterURL, kubeconfigPath string) (kubernetes.Interface, error) {
+func createKubernetesClient(masterURL, kubeconfigPath string, opts ...func(*rest.Config)) (kubernetes.Interface, error) {
 	// NOTE: if neither masterURL or kubeconfigPath are not passed, this will
 	// fallback to in cluster config.
 	kubeconfig, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct kubernetes config: %w", err)
+	}
+
+	for _, opt := range opts {
+		opt(kubeconfig)
 	}
 
 	client, err := kubernetes.NewForConfig(kubeconfig)
