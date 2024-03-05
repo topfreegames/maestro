@@ -37,19 +37,26 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/worker"
+	"github.com/topfreegames/maestro/internal/core/worker/config"
 )
 
-func workerOptions(t *testing.T) (*gomock.Controller, *mockports.MockRuntime, *mockports.MockRoomManager, *worker.WorkerOptions) {
+func workerOptions(t *testing.T) (*gomock.Controller, *mockports.MockRuntime, *mockports.MockRoomManager, *mockports.MockRoomStorage, *worker.WorkerOptions) {
 	mockCtrl := gomock.NewController(t)
 
 	runtime := mockports.NewMockRuntime(mockCtrl)
 	roomManager := mockports.NewMockRoomManager(mockCtrl)
+	roomStorage := mock.NewMockRoomStorage(mockCtrl)
 
-	return mockCtrl, runtime, roomManager, &worker.WorkerOptions{
+	return mockCtrl, runtime, roomManager, roomStorage, &worker.WorkerOptions{
 		Runtime:     runtime,
 		RoomManager: roomManager,
+		RoomStorage: roomStorage,
+		RuntimeWatcherConfig: &config.RuntimeWatcherConfig{
+			DisruptionWorkerIntervalSeconds: 1,
+		},
 	}
 }
 
@@ -61,7 +68,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 
 	for _, event := range events {
 		t.Run(fmt.Sprintf("when %s happens, updates instance", event.String()), func(t *testing.T) {
-			mockCtrl, runtime, roomManager, workerOptions := workerOptions(t)
+			mockCtrl, runtime, roomManager, _, workerOptions := workerOptions(t)
 
 			scheduler := &entities.Scheduler{Name: "test"}
 			watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -102,7 +109,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 		})
 
 		t.Run(fmt.Sprintf("when %s happens, and update instance fails, does nothing", event.String()), func(t *testing.T) {
-			mockCtrl, runtime, roomManager, workerOptions := workerOptions(t)
+			mockCtrl, runtime, roomManager, _, workerOptions := workerOptions(t)
 
 			scheduler := &entities.Scheduler{Name: "test"}
 			watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -144,7 +151,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 	}
 
 	t.Run("fails to start watcher", func(t *testing.T) {
-		_, runtime, _, workerOptions := workerOptions(t)
+		_, runtime, _, _, workerOptions := workerOptions(t)
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -167,7 +174,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 	})
 
 	t.Run("clean room state on delete event", func(t *testing.T) {
-		mockCtrl, runtime, roomManager, workerOptions := workerOptions(t)
+		mockCtrl, runtime, roomManager, _, workerOptions := workerOptions(t)
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -206,7 +213,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 	})
 
 	t.Run("when clean room state fails, does nothing", func(t *testing.T) {
-		mockCtrl, runtime, roomManager, workerOptions := workerOptions(t)
+		mockCtrl, runtime, roomManager, _, workerOptions := workerOptions(t)
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
@@ -245,25 +252,29 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 	})
 
 	t.Run("when resultChan is closed, worker stops without error", func(t *testing.T) {
-		mockCtrl, runtime, _, workerOptions := workerOptions(t)
+		mockCtrl, runtime, _, roomStorage, workerOptions := workerOptions(t)
 
 		scheduler := &entities.Scheduler{Name: "test"}
 		watcher := NewRuntimeWatcherWorker(scheduler, workerOptions)
 
 		runtimeWatcher := mockports.NewMockRuntimeWatcher(mockCtrl)
 		runtime.EXPECT().WatchGameRoomInstances(gomock.Any(), scheduler).Return(runtimeWatcher, nil)
-
 		resultChan := make(chan game_room.InstanceEvent)
 		runtimeWatcher.EXPECT().ResultChan().Return(resultChan)
 		runtimeWatcher.EXPECT().Stop()
 
+		runtime.EXPECT().MitigateDisruption(gomock.Any(), gomock.Any(), 0, 0.0).Return(nil).MinTimes(0)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, nil).MinTimes(0)
+
+		ctx, cancelFunc := context.WithCancel(context.Background())
+
 		go func() {
 			time.Sleep(time.Millisecond * 100)
 			close(resultChan)
+			cancelFunc()
 		}()
 
-		err := watcher.Start(context.Background())
+		err := watcher.Start(ctx)
 		require.NoError(t, err)
 	})
-
 }
