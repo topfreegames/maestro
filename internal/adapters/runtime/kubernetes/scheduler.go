@@ -35,6 +35,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const DisruptionSafetyPercentage float32 = 1.05 // 5% added to roomAmount value for extra safety on disruptions
+
 func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *entities.Scheduler) (*v1Policy.PodDisruptionBudget, error) {
 	if scheduler == nil {
 		return nil, errors.NewErrInvalidArgument("scheduler pointer can not be nil")
@@ -96,6 +98,49 @@ func (k *kubernetes) DeleteScheduler(ctx context.Context, scheduler *entities.Sc
 		}
 
 		return errors.NewErrUnexpected("error deleting scheduler: %s", err)
+	}
+
+	return nil
+}
+
+func (k *kubernetes) MitigateDisruption(
+	ctx context.Context,
+	scheduler *entities.Scheduler,
+	roomAmount int,
+	thresholdPercentage float64,
+) error {
+	if scheduler == nil {
+		return errors.NewErrInvalidArgument("empty pointer received for scheduler, can not mitigate disruptions")
+	}
+
+	// For kubernetes mitigating disruptions means updating the current PDB
+	// minAvailable to the number of occupied rooms if above a threshold
+	pdb, err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+	if !kerrors.IsNotFound(err) {
+		// Non-recoverable errors
+		return errors.NewErrUnexpected("non recoverable error when getting PDB for scheduler '%s': %s", scheduler.Name, err)
+	}
+
+	if pdb == nil || kerrors.IsNotFound(err) {
+		pdb, err = k.createPDBFromScheduler(ctx, scheduler)
+		if err != nil {
+			return errors.NewErrUnexpected("error creating PDB for scheduler '%s': %s", scheduler.Name, err)
+		}
+	}
+
+	currentPdbMinAvailable := pdb.Spec.MinAvailable.IntVal
+	if currentPdbMinAvailable == int32(float32(roomAmount)*DisruptionSafetyPercentage) {
+		return nil
+	}
+
+	pdb.Spec.MinAvailable = &intstr.IntOrString{
+		Type:   intstr.Int,
+		IntVal: int32(float32(roomAmount) * DisruptionSafetyPercentage),
+	}
+
+	_, err = k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Update(ctx, pdb, metav1.UpdateOptions{})
+	if err != nil {
+		return errors.NewErrUnexpected("error updating PDB to mitigate disruptions for scheduler '%s': %s", scheduler.Name, err)
 	}
 
 	return nil
