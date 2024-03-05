@@ -12,6 +12,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/events"
 	"github.com/topfreegames/maestro/internal/core/services/workers"
 	"github.com/topfreegames/maestro/internal/core/worker"
+	config2 "github.com/topfreegames/maestro/internal/core/worker/config"
 	"github.com/topfreegames/maestro/internal/core/worker/runtimewatcher"
 	"github.com/topfreegames/maestro/internal/service"
 )
@@ -76,6 +77,14 @@ func provideRuntimeWatcherBuilder() *worker.WorkerBuilder {
 	}
 }
 
-var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, RoomManagerSet, wire.Struct(new(worker.WorkerOptions), "RoomManager", "Runtime"))
+func provideRuntimeWatcherConfig(c config.Config) *config2.RuntimeWatcherConfig {
+	return &config2.RuntimeWatcherConfig{
+		DisruptionWatcherIntervalSeconds:     c.GetDuration("runtimeWatcher.disruption.intervalSeconds"),
+		DisruptionWatcherThresholdPercentage: c.GetFloat64("runtimeWatcher.disruption.thresholdPercentage"),
+	}
+}
+
+var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, RoomManagerSet,
+	provideRuntimeWatcherConfig, wire.Struct(new(worker.WorkerOptions), "RoomManager", "Runtime"))
 
 var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, service.NewRoomManagerConfig, service.NewRoomManager, service.NewEventsForwarder, events.NewEventsForwarderService, service.NewEventsForwarderServiceConfig)

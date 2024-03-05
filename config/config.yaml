@@ -59,6 +59,10 @@ workers:
 reporter:
   metrics:
     intervalMillis: 10000
+runtimeWatcher:
+  disruption:
+    intervalSeconds: 5
+    thresholdPercentage: 5
 
 services:
   roomManager:

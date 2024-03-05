@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
+	"github.com/topfreegames/maestro/internal/core/worker/config"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -53,6 +54,7 @@ type runtimeWatcherWorker struct {
 	logger          *zap.Logger
 	ctx             context.Context
 	cancelFunc      context.CancelFunc
+	config          *config.RuntimeWatcherConfig
 	workerWaitGroup *sync.WaitGroup
 }
 
@@ -63,6 +65,7 @@ func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *worker.WorkerO
 		runtime:         opts.Runtime,
 		logger:          zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 		workerWaitGroup: &sync.WaitGroup{},
+		config:          opts.RuntimeWatcherConfig,
 	}
 }
 
@@ -105,7 +108,12 @@ func (w *runtimeWatcherWorker) mitigateDisruptions() error {
 		)
 		return err
 	}
-	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, occupiedRoomsAmount, float64(5))
+	err = w.runtime.MitigateDisruption(
+		w.ctx,
+		w.scheduler,
+		occupiedRoomsAmount,
+		w.config.DisruptionWatcherThresholdPercentage,
+	)
 	if err != nil {
 		w.logger.Error(
 			"failed to mitigate disruption",
@@ -128,8 +136,7 @@ func (w *runtimeWatcherWorker) spawnDisruptionWatcher() {
 
 	go func() {
 		defer w.workerWaitGroup.Done()
-		// TODO: Replace number with config like w.config.MetricsReporterIntervalMillis
-		ticker := time.NewTicker(time.Second * 5)
+		ticker := time.NewTicker(time.Second * w.config.DisruptionWatcherIntervalSeconds)
 		defer ticker.Stop()
 
 		for {
