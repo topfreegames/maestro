@@ -31,9 +31,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/test"
 	v1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -85,5 +87,105 @@ func TestSchedulerDeletion(t *testing.T) {
 		err := kubernetesRuntime.DeleteScheduler(ctx, scheduler)
 		require.Error(t, err)
 		require.ErrorIs(t, err, errors.ErrNotFound)
+	})
+}
+
+func TestPDBCreationAndDeletion(t *testing.T) {
+	ctx := context.Background()
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
+	kubernetesRuntime := New(client)
+
+	t.Run("create pdb from scheduler without autoscaling", func(t *testing.T) {
+		if !kubernetesRuntime.isPDBSupported() {
+			t.Log("Kubernetes version does not support PDB, skipping")
+			t.SkipNow()
+		}
+
+		scheduler := &entities.Scheduler{Name: "scheduler-pdb-test-no-autoscaling"}
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		if err != nil {
+			require.ErrorIs(t, errors.ErrAlreadyExists, err)
+		}
+
+		defer func() {
+			err := kubernetesRuntime.DeleteScheduler(ctx, scheduler)
+			if err != nil {
+				require.ErrorIs(t, errors.ErrNotFound, err)
+			}
+		}()
+
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
+	})
+
+	t.Run("create pdb from scheduler with autoscaling", func(t *testing.T) {
+		if !kubernetesRuntime.isPDBSupported() {
+			t.Log("Kubernetes version does not support PDB, skipping")
+			t.SkipNow()
+		}
+
+		scheduler := &entities.Scheduler{
+			Name: "scheduler-pdb-test-with-autoscaling",
+			Autoscaling: &autoscaling.Autoscaling{
+				Enabled: true,
+				Min:     2,
+				Max:     3,
+				Policy: autoscaling.Policy{
+					Type: autoscaling.RoomOccupancy,
+					Parameters: autoscaling.PolicyParameters{
+						RoomOccupancy: &autoscaling.RoomOccupancyParams{
+							ReadyTarget: 0.1,
+						},
+					},
+				},
+			},
+		}
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		if err != nil {
+			require.ErrorIs(t, errors.ErrAlreadyExists, err)
+		}
+
+		defer func() {
+			err := kubernetesRuntime.DeleteScheduler(ctx, scheduler)
+			if err != nil {
+				require.ErrorIs(t, errors.ErrNotFound, err)
+			}
+		}()
+
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(2))
+	})
+
+	t.Run("delete pdb on scheduler deletion", func(t *testing.T) {
+		if !kubernetesRuntime.isPDBSupported() {
+			t.Log("Kubernetes version does not support PDB, skipping")
+			t.SkipNow()
+		}
+
+		scheduler := &entities.Scheduler{Name: "scheduler-pdb-test-delete"}
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		if err != nil {
+			require.ErrorIs(t, errors.ErrAlreadyExists, err)
+		}
+
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
+
+		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
+		if err != nil {
+			require.ErrorIs(t, errors.ErrNotFound, err)
+		}
+
+		_, err = client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.True(t, kerrors.IsNotFound(err))
 	})
 }

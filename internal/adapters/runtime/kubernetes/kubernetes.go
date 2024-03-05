@@ -23,7 +23,9 @@
 package kubernetes
 
 import (
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"go.uber.org/zap"
 	kube "k8s.io/client-go/kubernetes"
 )
 
@@ -31,8 +33,12 @@ var _ ports.Runtime = (*kubernetes)(nil)
 
 type kubernetes struct {
 	clientSet kube.Interface
+	logger    *zap.Logger
 }
 
 func New(clientSet kube.Interface) *kubernetes {
-	return &kubernetes{clientSet}
+	return &kubernetes{
+		clientSet: clientSet,
+		logger:    zap.L().With(zap.String(logs.LogFieldRuntime, "kubernetes")),
+	}
 }

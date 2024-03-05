@@ -27,10 +27,60 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
+	v1Policy "k8s.io/api/policy/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *entities.Scheduler) (*v1Policy.PodDisruptionBudget, error) {
+	if scheduler == nil {
+		return nil, errors.NewErrInvalidArgument("scheduler pointer can not be nil")
+	}
+	pdbSpec := &v1Policy.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: scheduler.Name,
+		},
+		Spec: v1Policy.PodDisruptionBudgetSpec{
+			MinAvailable: &intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: int32(0),
+			},
+		},
+	}
+
+	if scheduler.Autoscaling != nil && scheduler.Autoscaling.Enabled {
+		pdbSpec.Spec.MinAvailable = &intstr.IntOrString{
+			Type:   intstr.Int,
+			IntVal: int32(scheduler.Autoscaling.Min),
+		}
+	}
+
+	pdb, err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Create(ctx, pdbSpec, metav1.CreateOptions{})
+	if err != nil && !kerrors.IsAlreadyExists(err) {
+		k.logger.Warn("error creating pdb", zap.String("scheduler", scheduler.Name), zap.Error(err))
+		return nil, err
+	}
+
+	return pdb, nil
+}
+
+func (k *kubernetes) deletePDBFromScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	if scheduler == nil {
+		return errors.NewErrInvalidArgument("scheduler pointer can not be nil")
+	}
+	if !k.isPDBSupported() {
+		return errors.NewErrUnexpected("PDBs are not supported for this kube API version")
+	}
+	err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Delete(ctx, scheduler.Name, metav1.DeleteOptions{})
+	if err != nil && !kerrors.IsNotFound(err) {
+		k.logger.Warn("error deleting pdb", zap.String("scheduler", scheduler.Name), zap.Error(err))
+		return err
+	}
+	return nil
+}
 
 func (k *kubernetes) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
 	namespace := &v1.Namespace{
@@ -48,11 +98,20 @@ func (k *kubernetes) CreateScheduler(ctx context.Context, scheduler *entities.Sc
 		return errors.NewErrUnexpected("error creating scheduler: %s", err)
 	}
 
+	_, err = k.createPDBFromScheduler(ctx, scheduler)
+	if err != nil {
+		k.logger.Warn("PDB Creation during scheduler creation failed", zap.String("scheduler", scheduler.Name), zap.Error(err))
+	}
+
 	return nil
 }
 
 func (k *kubernetes) DeleteScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
-	err := k.clientSet.CoreV1().Namespaces().Delete(ctx, scheduler.Name, metav1.DeleteOptions{})
+	err := k.deletePDBFromScheduler(ctx, scheduler)
+	if err != nil {
+		k.logger.Warn("PDB Deletion during scheduler deletion failed", zap.String("scheduler", scheduler.Name), zap.Error(err))
+	}
+	err = k.clientSet.CoreV1().Namespaces().Delete(ctx, scheduler.Name, metav1.DeleteOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return errors.NewErrNotFound("scheduler '%s' not found", scheduler.Name)
