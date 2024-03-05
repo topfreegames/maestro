@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 
@@ -94,10 +95,60 @@ func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room
 	}
 }
 
+func (w *runtimeWatcherWorker) mitigateDisruptions() error {
+	occupiedRoomsAmount, err := w.roomManager.GetOccupiedRooms(w.ctx, w.scheduler.Name)
+	if err != nil {
+		w.logger.Error(
+			"failed to get occupied rooms for scheduler",
+			zap.String("scheduler", w.scheduler.Name),
+			zap.Error(err),
+		)
+		return err
+	}
+	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, occupiedRoomsAmount, float64(5))
+	if err != nil {
+		w.logger.Error(
+			"failed to mitigate disruption",
+			zap.String("scheduler", w.scheduler.Name),
+			zap.Error(err),
+		)
+		return err
+	}
+	w.logger.Debug(
+		"mitigated disruption for occupied rooms",
+		zap.String("scheduler", w.scheduler.Name),
+		zap.Int("occupiedRooms", occupiedRoomsAmount),
+	)
+
+	return nil
+}
+
+func (w *runtimeWatcherWorker) spawnDisruptionWatcher() {
+	w.workerWaitGroup.Add(1)
+
+	go func() {
+		defer w.workerWaitGroup.Done()
+		// TODO: Replace number with config like w.config.MetricsReporterIntervalMillis
+		ticker := time.NewTicker(time.Second * 5)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				w.mitigateDisruptions()
+			case <-w.ctx.Done():
+				return
+			}
+		}
+
+	}()
+}
+
 func (w *runtimeWatcherWorker) spawnWatchers(
 	resultChan chan game_room.InstanceEvent,
 ) {
 	w.spawnUpdateRoomWatchers(resultChan)
+	w.spawnDisruptionWatcher()
 }
 
 func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
