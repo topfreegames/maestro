@@ -27,10 +27,45 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
+	v1Policy "k8s.io/api/policy/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *entities.Scheduler) (*v1Policy.PodDisruptionBudget, error) {
+	if scheduler == nil {
+		return nil, errors.NewErrInvalidArgument("scheduler pointer can not be nil")
+	}
+	pdbSpec := &v1Policy.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: scheduler.Name,
+		},
+		Spec: v1Policy.PodDisruptionBudgetSpec{
+			MinAvailable: &intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: int32(0),
+			},
+		},
+	}
+
+	if scheduler.Autoscaling != nil {
+		pdbSpec.Spec.MinAvailable = &intstr.IntOrString{
+			Type:   intstr.Int,
+			IntVal: int32(scheduler.Autoscaling.Min),
+		}
+	}
+
+	pdb, err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Create(ctx, pdbSpec, metav1.CreateOptions{})
+	if err != nil {
+		k.logger.Warn("error creating pdb", zap.String("scheduler", scheduler.Name), zap.Error(err))
+		return nil, err
+	}
+
+	return pdb, nil
+}
 
 func (k *kubernetes) CreateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
 	namespace := &v1.Namespace{
@@ -47,6 +82,8 @@ func (k *kubernetes) CreateScheduler(ctx context.Context, scheduler *entities.Sc
 
 		return errors.NewErrUnexpected("error creating scheduler: %s", err)
 	}
+
+	k.createPDBFromScheduler(ctx, scheduler)
 
 	return nil
 }
