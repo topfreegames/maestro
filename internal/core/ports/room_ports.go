@@ -75,6 +75,9 @@ type RoomManager interface {
 	// WaitRoomStatus blocks the caller until the context is canceled, an error
 	// happens in the process or the game room has the desired status.
 	WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status []game_room.GameRoomStatus) (game_room.GameRoomStatus, error)
+	// GetOccupiedRooms reads from room storage the current number of rooms with
+	// occupied status
+	GetOccupiedRooms(ctx context.Context, scheduler string) (int, error)
 }
 
 // Secondary Ports (output, driven ports)

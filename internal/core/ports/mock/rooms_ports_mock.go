@@ -83,6 +83,21 @@ func (mr *MockRoomManagerMockRecorder) DeleteRoom(ctx, gameRoom interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRoom", reflect.TypeOf((*MockRoomManager)(nil).DeleteRoom), ctx, gameRoom)
 }
 
+// GetOccupiedRooms mocks base method.
+func (m *MockRoomManager) GetOccupiedRooms(ctx context.Context, scheduler string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOccupiedRooms", ctx, scheduler)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOccupiedRooms indicates an expected call of GetOccupiedRooms.
+func (mr *MockRoomManagerMockRecorder) GetOccupiedRooms(ctx, scheduler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOccupiedRooms", reflect.TypeOf((*MockRoomManager)(nil).GetOccupiedRooms), ctx, scheduler)
+}
+
 // GetRoomInstance mocks base method.
 func (m *MockRoomManager) GetRoomInstance(ctx context.Context, scheduler, roomID string) (*game_room.Instance, error) {
 	m.ctrl.T.Helper()

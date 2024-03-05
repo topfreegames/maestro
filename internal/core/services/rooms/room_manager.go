@@ -80,6 +80,14 @@ func (m *RoomManager) CreateRoom(ctx context.Context, scheduler entities.Schedul
 	return m.createRoomOnStorageAndRuntime(ctx, &scheduler, isValidationRoom)
 }
 
+func (m *RoomManager) GetOccupiedRooms(ctx context.Context, scheduler string) (int, error) {
+	occupiedRoomsAmount, err := m.RoomStorage.GetRoomCountByStatus(ctx, scheduler, game_room.GameStatusOccupied)
+	if err != nil {
+		return 0, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
+	}
+	return occupiedRoomsAmount, nil
+}
+
 func (m *RoomManager) GetRoomInstance(ctx context.Context, scheduler, roomID string) (*game_room.Instance, error) {
 	instance, err := m.InstanceStorage.GetInstance(ctx, scheduler, roomID)
 	if err != nil {

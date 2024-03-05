@@ -109,6 +109,20 @@ func (mr *MockRuntimeMockRecorder) DeleteScheduler(ctx, scheduler interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteScheduler", reflect.TypeOf((*MockRuntime)(nil).DeleteScheduler), ctx, scheduler)
 }
 
+// MitigateDisruption mocks base method.
+func (m *MockRuntime) MitigateDisruption(ctx context.Context, scheduler *entities.Scheduler, occupiedRooms int, diffThreshold float64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MitigateDisruption", ctx, scheduler, occupiedRooms, diffThreshold)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MitigateDisruption indicates an expected call of MitigateDisruption.
+func (mr *MockRuntimeMockRecorder) MitigateDisruption(ctx, scheduler, occupiedRooms, diffThreshold interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MitigateDisruption", reflect.TypeOf((*MockRuntime)(nil).MitigateDisruption), ctx, scheduler, occupiedRooms, diffThreshold)
+}
+
 // WatchGameRoomInstances mocks base method.
 func (m *MockRuntime) WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (ports.RuntimeWatcher, error) {
 	m.ctrl.T.Helper()
