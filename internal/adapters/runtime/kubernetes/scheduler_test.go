@@ -28,6 +28,7 @@ package kubernetes
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -187,5 +188,143 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 
 		_, err = client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.True(t, kerrors.IsNotFound(err))
+	})
+}
+
+func TestMitigateDisruption(t *testing.T) {
+	ctx := context.Background()
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
+	kubernetesRuntime := New(client)
+
+	t.Run("should not mitigate disruption if scheduler is nil", func(t *testing.T) {
+		err := kubernetesRuntime.MitigateDisruption(ctx, nil, 0, 0.0)
+		require.ErrorIs(t, errors.ErrInvalidArgument, err)
+	})
+
+	t.Run("should create PDB on mitigatation if not created before", func(t *testing.T) {
+		if !kubernetesRuntime.isPDBSupported() {
+			t.Log("Kubernetes version does not support PDB, skipping")
+			t.SkipNow()
+		}
+
+		scheduler := &entities.Scheduler{Name: "scheduler-pdb-mitigation-create"}
+		namespace := &v1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: scheduler.Name,
+			},
+		}
+
+		_, err := client.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+		require.NoError(t, err)
+
+		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, 0, 0.0)
+		require.NoError(t, err)
+
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
+	})
+
+	t.Run("should update PDB on mitigatation if not equal to current minAvailable", func(t *testing.T) {
+		if !kubernetesRuntime.isPDBSupported() {
+			t.Log("Kubernetes version does not support PDB, skipping")
+			t.SkipNow()
+		}
+
+		scheduler := &entities.Scheduler{
+			Name: "scheduler-pdb-mitigation-update",
+			Autoscaling: &autoscaling.Autoscaling{
+				Enabled: true,
+				Min:     100,
+				Max:     200,
+				Policy: autoscaling.Policy{
+					Type: autoscaling.RoomOccupancy,
+					Parameters: autoscaling.PolicyParameters{
+						RoomOccupancy: &autoscaling.RoomOccupancyParams{
+							ReadyTarget: 0.1,
+						},
+					},
+				},
+			},
+		}
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		if err != nil {
+			require.ErrorIs(t, errors.ErrAlreadyExists, err)
+		}
+
+		defer func() {
+			err := kubernetesRuntime.DeleteScheduler(ctx, scheduler)
+			if err != nil {
+				require.ErrorIs(t, errors.ErrNotFound, err)
+			}
+		}()
+
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(scheduler.Autoscaling.Min))
+
+		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, scheduler.Autoscaling.Min, 0.0)
+		require.NoError(t, err)
+
+		pdb, err = client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+
+		incSafetyPercentage := 1.0 + DefaultDisruptionSafetyPercentage
+		newRoomAmount := int32(float64(scheduler.Autoscaling.Min) * incSafetyPercentage)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, newRoomAmount)
+	})
+
+	t.Run("should default safety percentage if invalid value", func(t *testing.T) {
+		if !kubernetesRuntime.isPDBSupported() {
+			t.Log("Kubernetes version does not support PDB, skipping")
+			t.SkipNow()
+		}
+
+		scheduler := &entities.Scheduler{
+			Name: "scheduler-pdb-mitigation-no-update",
+			Autoscaling: &autoscaling.Autoscaling{
+				Enabled: true,
+				Min:     100,
+				Max:     200,
+				Policy: autoscaling.Policy{
+					Type: autoscaling.RoomOccupancy,
+					Parameters: autoscaling.PolicyParameters{
+						RoomOccupancy: &autoscaling.RoomOccupancyParams{
+							ReadyTarget: 0.1,
+						},
+					},
+				},
+			},
+		}
+		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
+		if err != nil {
+			require.ErrorIs(t, errors.ErrAlreadyExists, err)
+		}
+
+		defer func() {
+			err := kubernetesRuntime.DeleteScheduler(ctx, scheduler)
+			if err != nil {
+				require.ErrorIs(t, errors.ErrNotFound, err)
+			}
+		}()
+
+		time.Sleep(time.Millisecond * 100)
+		newValue := 100
+		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, newValue, 0.0)
+		require.NoError(t, err)
+
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+
+		incSafetyPercentage := 1.0 + DefaultDisruptionSafetyPercentage
+		require.Equal(t, int32(float64(newValue)*incSafetyPercentage), pdb.Spec.MinAvailable.IntVal)
 	})
 }

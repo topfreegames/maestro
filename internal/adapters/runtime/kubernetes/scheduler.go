@@ -24,6 +24,7 @@ package kubernetes
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -34,6 +35,54 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+const (
+	DefaultDisruptionSafetyPercentage float64 = 0.05
+	MajorKubeVersionPDB               int     = 1
+	MinorKubeVersionPDB               int     = 21
+)
+
+func (k *kubernetes) isPDBSupported() bool {
+	// Check based on the kube version of the clientSet if PDBs are supported (1.21+)
+	version, err := k.clientSet.Discovery().ServerVersion()
+	if err != nil {
+		k.logger.Warn("Could not get kube API version, can not check for PDB support", zap.Error(err))
+		return false
+	}
+	major, err := strconv.Atoi(version.Major)
+	if err != nil {
+		k.logger.Warn(
+			"Could not convert major kube API version to int, can not check for PDB support",
+			zap.String("majorKubeAPIVersion", version.Major),
+		)
+		return false
+	}
+	if major < MajorKubeVersionPDB {
+		k.logger.Warn(
+			"Can not create PDB for this kube API version",
+			zap.Int("majorKubeAPIVersion", major),
+			zap.Int("majorPDBVersionRequired", MajorKubeVersionPDB),
+		)
+		return false
+	}
+	minor, err := strconv.Atoi(version.Minor)
+	if err != nil {
+		k.logger.Warn(
+			"Could not convert minor kube API version to int, can not check for PDB support",
+			zap.String("minorKubeAPIVersion", version.Minor),
+		)
+		return false
+	}
+	if minor < MinorKubeVersionPDB {
+		k.logger.Warn(
+			"Can not create PDB for this kube API version",
+			zap.Int("minorKubeAPIVersion", minor),
+			zap.Int("minorPDBVersionRequired", MinorKubeVersionPDB),
+		)
+		return false
+	}
+	return true
+}
 
 func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *entities.Scheduler) (*v1Policy.PodDisruptionBudget, error) {
 	if scheduler == nil {
@@ -118,6 +167,60 @@ func (k *kubernetes) DeleteScheduler(ctx context.Context, scheduler *entities.Sc
 		}
 
 		return errors.NewErrUnexpected("error deleting scheduler: %s", err)
+	}
+
+	return nil
+}
+
+func (k *kubernetes) MitigateDisruption(
+	ctx context.Context,
+	scheduler *entities.Scheduler,
+	roomAmount int,
+	safetyPercentage float64,
+) error {
+	if scheduler == nil {
+		return errors.NewErrInvalidArgument("empty pointer received for scheduler, can not mitigate disruptions")
+	}
+
+	incSafetyPercentage := 1.0
+	if safetyPercentage < DefaultDisruptionSafetyPercentage {
+		k.logger.Warn(
+			"invalid safety percentage, using default percentage",
+			zap.Float64("safetyPercentage", safetyPercentage),
+			zap.Float64("DefaultDisruptionSafetyPercentage", DefaultDisruptionSafetyPercentage),
+		)
+		safetyPercentage = DefaultDisruptionSafetyPercentage
+	}
+	incSafetyPercentage += safetyPercentage
+
+	// For kubernetes mitigating disruptions means updating the current PDB
+	// minAvailable to the number of occupied rooms if above a threshold
+	pdb, err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+	if err != nil && !kerrors.IsNotFound(err) {
+		// Non-recoverable errors
+		return errors.NewErrUnexpected("non recoverable error when getting PDB for scheduler '%s': %s", scheduler.Name, err)
+	}
+
+	if pdb == nil || kerrors.IsNotFound(err) {
+		pdb, err = k.createPDBFromScheduler(ctx, scheduler)
+		if err != nil {
+			return errors.NewErrUnexpected("error creating PDB for scheduler '%s': %s", scheduler.Name, err)
+		}
+	}
+
+	currentPdbMinAvailable := pdb.Spec.MinAvailable.IntVal
+	if currentPdbMinAvailable == int32(float64(roomAmount)*incSafetyPercentage) {
+		return nil
+	}
+
+	pdb.Spec.MinAvailable = &intstr.IntOrString{
+		Type:   intstr.Int,
+		IntVal: int32(float64(roomAmount) * incSafetyPercentage),
+	}
+
+	_, err = k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Update(ctx, pdb, metav1.UpdateOptions{})
+	if err != nil {
+		return errors.NewErrUnexpected("error updating PDB to mitigate disruptions for scheduler '%s': %s", scheduler.Name, err)
 	}
 
 	return nil
