@@ -65,17 +65,7 @@ func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *worker.WorkerO
 	}
 }
 
-func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
-	watcher, err := w.runtime.WatchGameRoomInstances(ctx, w.scheduler)
-	if err != nil {
-		return fmt.Errorf("failed to start watcher: %w", err)
-	}
-
-	w.ctx, w.cancelFunc = context.WithCancel(ctx)
-	defer w.cancelFunc()
-
-	resultChan := watcher.ResultChan()
-
+func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room.InstanceEvent) {
 	for i := 0; i < 200; i++ {
 		w.workerWaitGroup.Add(1)
 		go func(goroutineNumber int) {
@@ -86,10 +76,10 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 				select {
 				case event, ok := <-resultChan:
 					if !ok {
-						w.logger.Warn("resultChan closed, finishing worker goroutine", zap.Error(err))
+						w.logger.Warn("resultChan closed, finishing worker goroutine")
 						return
 					}
-					err = w.processEvent(w.ctx, event)
+					err := w.processEvent(w.ctx, event)
 					if err != nil {
 						w.logger.Warn("failed to process event", zap.Error(err))
 						reportEventProcessingStatus(event, false)
@@ -102,6 +92,24 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 			}
 		}(i)
 	}
+}
+
+func (w *runtimeWatcherWorker) spawnWatchers(
+	resultChan chan game_room.InstanceEvent,
+) {
+	w.spawnUpdateRoomWatchers(resultChan)
+}
+
+func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
+	watcher, err := w.runtime.WatchGameRoomInstances(ctx, w.scheduler)
+	if err != nil {
+		return fmt.Errorf("failed to start watcher: %w", err)
+	}
+
+	w.ctx, w.cancelFunc = context.WithCancel(ctx)
+	defer w.cancelFunc()
+
+	w.spawnWatchers(watcher.ResultChan())
 
 	w.workerWaitGroup.Wait()
 	watcher.Stop()
