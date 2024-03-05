@@ -48,18 +48,20 @@ type runtimeWatcherWorker struct {
 	roomManager ports.RoomManager
 	// TODO(gabrielcorado): should we access the port directly? do we need to
 	// provide the same `Watcher` interface but on the RoomManager?
-	runtime    ports.Runtime
-	logger     *zap.Logger
-	ctx        context.Context
-	cancelFunc context.CancelFunc
+	runtime         ports.Runtime
+	logger          *zap.Logger
+	ctx             context.Context
+	cancelFunc      context.CancelFunc
+	workerWaitGroup *sync.WaitGroup
 }
 
 func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &runtimeWatcherWorker{
-		scheduler:   scheduler,
-		roomManager: opts.RoomManager,
-		runtime:     opts.Runtime,
-		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		scheduler:       scheduler,
+		roomManager:     opts.RoomManager,
+		runtime:         opts.Runtime,
+		logger:          zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		workerWaitGroup: &sync.WaitGroup{},
 	}
 }
 
@@ -74,12 +76,10 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 
 	resultChan := watcher.ResultChan()
 
-	workerWaitGroup := &sync.WaitGroup{}
-
 	for i := 0; i < 200; i++ {
-		workerWaitGroup.Add(1)
+		w.workerWaitGroup.Add(1)
 		go func(goroutineNumber int) {
-			defer workerWaitGroup.Done()
+			defer w.workerWaitGroup.Done()
 			goroutineLogger := w.logger.With(zap.Int("goroutine", goroutineNumber))
 			goroutineLogger.Info("Starting event processing goroutine")
 			for {
@@ -103,7 +103,7 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 		}(i)
 	}
 
-	workerWaitGroup.Wait()
+	w.workerWaitGroup.Wait()
 	watcher.Stop()
 	return nil
 }
