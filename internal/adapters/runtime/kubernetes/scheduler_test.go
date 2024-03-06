@@ -31,11 +31,59 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/test"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestPDBCreation(t *testing.T) {
+	ctx := context.Background()
+	client := test.GetKubernetesClientSet(t, kubernetesContainer)
+	kubernetesRuntime := New(client)
+
+	t.Run("create pdb from scheduler without autoscaling", func(t *testing.T) {
+		scheduler := &entities.Scheduler{Name: "single-scheduler-test"}
+		pdb, err := kubernetesRuntime.createPDBFromScheduler(ctx, scheduler)
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+
+		pdb, err = client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
+	})
+
+	t.Run("create pdb from scheduler with autoscaling", func(t *testing.T) {
+		scheduler := &entities.Scheduler{
+			Name: "single-scheduler-test",
+			Autoscaling: &autoscaling.Autoscaling{
+				Enabled: true,
+				Min:     2,
+				Max:     3,
+				Policy: autoscaling.Policy{
+					Type: autoscaling.RoomOccupancy,
+					Parameters: autoscaling.PolicyParameters{
+						RoomOccupancy: &autoscaling.RoomOccupancyParams{
+							ReadyTarget: 0.1,
+						},
+					},
+				},
+			},
+		}
+		pdb, err := kubernetesRuntime.createPDBFromScheduler(ctx, scheduler)
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+
+		pdb, err = client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(2))
+	})
+}
 
 func TestSchedulerCreation(t *testing.T) {
 	ctx := context.Background()
@@ -49,6 +97,12 @@ func TestSchedulerCreation(t *testing.T) {
 
 		_, err = client.CoreV1().Namespaces().Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.NoError(t, err)
+
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
 	})
 
 	t.Run("fail to create scheduler with the same name", func(t *testing.T) {
@@ -78,6 +132,10 @@ func TestSchedulerDeletion(t *testing.T) {
 		ns, err := client.CoreV1().Namespaces().Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.Equal(t, v1.NamespaceTerminating, ns.Status.Phase)
+
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.Error(t, err)
+		require.Nil(t, pdb)
 	})
 
 	t.Run("fail to delete inexistent scheduler", func(t *testing.T) {
