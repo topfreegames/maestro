@@ -20,25 +20,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package kubernetes
+package config
 
-import (
-	"github.com/topfreegames/maestro/internal/core/logs"
-	"github.com/topfreegames/maestro/internal/core/ports"
-	"go.uber.org/zap"
-	kube "k8s.io/client-go/kubernetes"
-)
+import "time"
 
-var _ ports.Runtime = (*kubernetes)(nil)
-
-type kubernetes struct {
-	clientSet kube.Interface
-	logger    *zap.Logger
-}
-
-func New(clientSet kube.Interface) *kubernetes {
-	return &kubernetes{
-		clientSet: clientSet,
-		logger:    zap.L().With(zap.String(logs.LogFieldRuntime, "kubernetes")),
-	}
+type RuntimeWatcherConfig struct {
+	DisruptionWorkerIntervalSeconds time.Duration
+	DisruptionSafetyPercentage      float64
 }

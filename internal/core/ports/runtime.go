@@ -45,6 +45,8 @@ type Runtime interface {
 	WatchGameRoomInstances(ctx context.Context, scheduler *entities.Scheduler) (RuntimeWatcher, error)
 	// Create a name to the room.
 	CreateGameRoomName(ctx context.Context, scheduler entities.Scheduler) (string, error)
+	// Apply changes to runtime to mitigate disruptions looking at current number of rooms
+	MitigateDisruption(ctx context.Context, scheduler *entities.Scheduler, roomAmount int, safetyPercentage float64) error
 }
 
 // RuntimeWatcher defines a process of watcher, it will have a chan with the

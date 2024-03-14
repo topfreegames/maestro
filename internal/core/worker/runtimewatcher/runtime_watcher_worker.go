@@ -26,8 +26,10 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
+	"github.com/topfreegames/maestro/internal/core/worker/config"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -46,50 +48,44 @@ const WorkerName = "runtime_watcher"
 type runtimeWatcherWorker struct {
 	scheduler   *entities.Scheduler
 	roomManager ports.RoomManager
+	roomStorage ports.RoomStorage
 	// TODO(gabrielcorado): should we access the port directly? do we need to
 	// provide the same `Watcher` interface but on the RoomManager?
-	runtime    ports.Runtime
-	logger     *zap.Logger
-	ctx        context.Context
-	cancelFunc context.CancelFunc
+	runtime         ports.Runtime
+	logger          *zap.Logger
+	ctx             context.Context
+	cancelFunc      context.CancelFunc
+	config          *config.RuntimeWatcherConfig
+	workerWaitGroup *sync.WaitGroup
 }
 
 func NewRuntimeWatcherWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &runtimeWatcherWorker{
-		scheduler:   scheduler,
-		roomManager: opts.RoomManager,
-		runtime:     opts.Runtime,
-		logger:      zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		scheduler:       scheduler,
+		roomManager:     opts.RoomManager,
+		roomStorage:     opts.RoomStorage,
+		runtime:         opts.Runtime,
+		logger:          zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		workerWaitGroup: &sync.WaitGroup{},
+		config:          opts.RuntimeWatcherConfig,
 	}
 }
 
-func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
-	watcher, err := w.runtime.WatchGameRoomInstances(ctx, w.scheduler)
-	if err != nil {
-		return fmt.Errorf("failed to start watcher: %w", err)
-	}
-
-	w.ctx, w.cancelFunc = context.WithCancel(ctx)
-	defer w.cancelFunc()
-
-	resultChan := watcher.ResultChan()
-
-	workerWaitGroup := &sync.WaitGroup{}
-
+func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room.InstanceEvent) {
 	for i := 0; i < 200; i++ {
-		workerWaitGroup.Add(1)
+		w.workerWaitGroup.Add(1)
 		go func(goroutineNumber int) {
-			defer workerWaitGroup.Done()
+			defer w.workerWaitGroup.Done()
 			goroutineLogger := w.logger.With(zap.Int("goroutine", goroutineNumber))
 			goroutineLogger.Info("Starting event processing goroutine")
 			for {
 				select {
 				case event, ok := <-resultChan:
 					if !ok {
-						w.logger.Warn("resultChan closed, finishing worker goroutine", zap.Error(err))
+						w.logger.Warn("resultChan closed, finishing worker goroutine")
 						return
 					}
-					err = w.processEvent(w.ctx, event)
+					err := w.processEvent(w.ctx, event)
 					if err != nil {
 						w.logger.Warn("failed to process event", zap.Error(err))
 						reportEventProcessingStatus(event, false)
@@ -102,8 +98,82 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 			}
 		}(i)
 	}
+}
 
-	workerWaitGroup.Wait()
+func (w *runtimeWatcherWorker) mitigateDisruptions() error {
+	occupiedRoomsAmount, err := w.roomStorage.GetRoomCountByStatus(w.ctx, w.scheduler.Name, game_room.GameStatusOccupied)
+	if err != nil {
+		w.logger.Error(
+			"failed to get occupied rooms for scheduler",
+			zap.String("scheduler", w.scheduler.Name),
+			zap.Error(err),
+		)
+		return err
+	}
+	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, occupiedRoomsAmount, w.config.DisruptionSafetyPercentage)
+	if err != nil {
+		w.logger.Error(
+			"failed to mitigate disruption",
+			zap.String("scheduler", w.scheduler.Name),
+			zap.Error(err),
+		)
+		return err
+	}
+	w.logger.Debug(
+		"mitigated disruption for occupied rooms",
+		zap.String("scheduler", w.scheduler.Name),
+		zap.Int("occupiedRooms", occupiedRoomsAmount),
+	)
+
+	return nil
+}
+
+func (w *runtimeWatcherWorker) spawnDisruptionWatcher() {
+	w.workerWaitGroup.Add(1)
+
+	go func() {
+		defer w.workerWaitGroup.Done()
+		ticker := time.NewTicker(time.Second * w.config.DisruptionWorkerIntervalSeconds)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				err := w.mitigateDisruptions()
+				if err != nil {
+					w.logger.Warn(
+						"Mitigate Disruption watcher run failed",
+						zap.String("scheduler", w.scheduler.Name),
+						zap.Error(err),
+					)
+				}
+			case <-w.ctx.Done():
+				return
+			}
+		}
+
+	}()
+}
+
+func (w *runtimeWatcherWorker) spawnWatchers(
+	resultChan chan game_room.InstanceEvent,
+) {
+	w.spawnUpdateRoomWatchers(resultChan)
+	w.spawnDisruptionWatcher()
+}
+
+func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
+	watcher, err := w.runtime.WatchGameRoomInstances(ctx, w.scheduler)
+	if err != nil {
+		return fmt.Errorf("failed to start watcher: %w", err)
+	}
+
+	w.ctx, w.cancelFunc = context.WithCancel(ctx)
+	defer w.cancelFunc()
+
+	w.spawnWatchers(watcher.ResultChan())
+
+	w.workerWaitGroup.Wait()
 	watcher.Stop()
 	return nil
 }
