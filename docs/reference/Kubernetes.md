@@ -39,8 +39,31 @@ flowchart BT
 ```
 
 ### Runtime watcher
-The runtime watcher component maintains a worker process for each scheduler that keeps watching and processing _change
-events_ in pods resources. For doing that, it uses a [pods informer](https://pkg.go.dev/k8s.io/client-go/informers),
+The runtime watcher component spawn two types of workers: one that is responsible for mitigating disruptions and another for processing _change events_ in pods resources.
+
+#### Disruption Worker
+
+This worker consists in a single goroutine with a ticker. Each time it runs, it will
+check the number of occupied rooms at the time and try to mitigate disruptions. For k8s,
+this mitigation consists on applying a PDB to the scheduler's namespace, that has
+`minAvailable` equals to the number of occupied rooms plus a safety percentage.
+
+One can configure the interval in which this worker runs and also the safety percentage
+in `config/config.yaml`:
+
+```yaml
+runtimeWatcher:
+  disruptionWorker:
+    intervalSeconds: 5
+    safetyPercentage: 0.05
+```
+
+#### Pod Change Events Worker
+
+For this type of worker, runtime watcher spawns multiple goroutines, maintaining a worker
+process for each scheduler that keeps watching and processing _change events_ in pods
+resources. For doing that, it uses a
+[pods informer](https://pkg.go.dev/k8s.io/client-go/informers),
 binding handlers for **add**, **update** and **delete** events for all pods managed by it.
 
 This component is not responsible for updating/creating/deleting
