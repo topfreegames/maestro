@@ -58,6 +58,9 @@ runtimeWatcher:
     safetyPercentage: 0.05
 ```
 
+We should always allow node consolidation to happen, thus if the total number of rooms
+is 1, then we set PDB's `minAvailable: 0`.
+
 #### Pod Change Events Worker
 
 For this type of worker, runtime watcher spawns multiple goroutines, maintaining a worker

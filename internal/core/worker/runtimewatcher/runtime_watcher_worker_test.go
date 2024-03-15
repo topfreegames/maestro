@@ -264,6 +264,7 @@ func TestRuntimeWatcher_Start(t *testing.T) {
 		runtimeWatcher.EXPECT().Stop()
 
 		runtime.EXPECT().MitigateDisruption(gomock.Any(), gomock.Any(), 0, 0.0).Return(nil).MinTimes(0)
+		roomStorage.EXPECT().GetRoomCount(gomock.Any(), gomock.Any()).Return(2, nil).MinTimes(0)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, nil).MinTimes(0)
 
 		ctx, cancelFunc := context.WithCancel(context.Background())

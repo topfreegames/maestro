@@ -101,16 +101,28 @@ func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room
 }
 
 func (w *runtimeWatcherWorker) mitigateDisruptions() error {
-	occupiedRoomsAmount, err := w.roomStorage.GetRoomCountByStatus(w.ctx, w.scheduler.Name, game_room.GameStatusOccupied)
+	totalRoomsAmount, err := w.roomStorage.GetRoomCount(w.ctx, w.scheduler.Name)
 	if err != nil {
 		w.logger.Error(
-			"failed to get occupied rooms for scheduler",
+			"failed to get total rooms amount for scheduler",
 			zap.String("scheduler", w.scheduler.Name),
 			zap.Error(err),
 		)
 		return err
 	}
-	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, occupiedRoomsAmount, w.config.DisruptionSafetyPercentage)
+	mitigateForRoomsAmount := 0
+	if totalRoomsAmount >= 2 {
+		mitigateForRoomsAmount, err = w.roomStorage.GetRoomCountByStatus(w.ctx, w.scheduler.Name, game_room.GameStatusOccupied)
+		if err != nil {
+			w.logger.Error(
+				"failed to get occupied rooms for scheduler",
+				zap.String("scheduler", w.scheduler.Name),
+				zap.Error(err),
+			)
+			return err
+		}
+	}
+	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, mitigateForRoomsAmount, w.config.DisruptionSafetyPercentage)
 	if err != nil {
 		w.logger.Error(
 			"failed to mitigate disruption",
@@ -122,7 +134,7 @@ func (w *runtimeWatcherWorker) mitigateDisruptions() error {
 	w.logger.Debug(
 		"mitigated disruption for occupied rooms",
 		zap.String("scheduler", w.scheduler.Name),
-		zap.Int("occupiedRooms", occupiedRoomsAmount),
+		zap.Int("mitigateForRoomsAmount", mitigateForRoomsAmount),
 	)
 
 	return nil

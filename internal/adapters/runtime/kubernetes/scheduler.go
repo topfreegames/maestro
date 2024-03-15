@@ -91,20 +91,21 @@ func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *enti
 	pdbSpec := &v1Policy.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: scheduler.Name,
+			Labels: map[string]string{
+				"app.kubernetes.io/managed-by": "maestro",
+			},
 		},
 		Spec: v1Policy.PodDisruptionBudgetSpec{
 			MinAvailable: &intstr.IntOrString{
 				Type:   intstr.Int,
 				IntVal: int32(0),
 			},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"maestro-scheduler": scheduler.Name,
+				},
+			},
 		},
-	}
-
-	if scheduler.Autoscaling != nil && scheduler.Autoscaling.Enabled {
-		pdbSpec.Spec.MinAvailable = &intstr.IntOrString{
-			Type:   intstr.Int,
-			IntVal: int32(scheduler.Autoscaling.Min),
-		}
 	}
 
 	pdb, err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Create(ctx, pdbSpec, metav1.CreateOptions{})
