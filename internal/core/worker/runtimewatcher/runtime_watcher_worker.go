@@ -99,6 +99,7 @@ func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room
 						reportEventProcessingStatus(event, true)
 					}
 				case <-w.ctx.Done():
+					w.logger.Info("context closed, exiting update rooms watcher")
 					return
 				}
 			}
@@ -162,6 +163,7 @@ func (w *runtimeWatcherWorker) spawnDisruptionWatcher() {
 					return
 				}
 			case <-w.ctx.Done():
+				w.logger.Info("context closed, exiting disruption watcher")
 				return
 			}
 		}
@@ -177,6 +179,7 @@ func (w *runtimeWatcherWorker) spawnWatchers(
 }
 
 func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
+	w.logger.Info("starting runtime watcher", zap.String("scheduler", w.scheduler.Name))
 	watcher, err := w.runtime.WatchGameRoomInstances(ctx, w.scheduler)
 	if err != nil {
 		return fmt.Errorf("failed to start watcher: %w", err)
@@ -186,13 +189,16 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 	defer w.cancelFunc()
 
 	w.spawnWatchers(watcher.ResultChan())
+	w.logger.Info("spawned all goroutines", zap.String("scheduler", w.scheduler.Name))
 
 	w.workerWaitGroup.Wait()
+	w.logger.Info("wait group ended, all goroutines stopped", zap.String("scheduler", w.scheduler.Name))
 	watcher.Stop()
 	return nil
 }
 
 func (w *runtimeWatcherWorker) Stop(_ context.Context) {
+	w.logger.Info("stopping runtime watcher", zap.String("scheduler", w.scheduler.Name))
 	if w.cancelFunc != nil {
 		w.cancelFunc()
 	}
