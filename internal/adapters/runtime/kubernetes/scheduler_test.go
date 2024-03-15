@@ -118,8 +118,12 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.NotNil(t, pdb)
+		require.NotNil(t, pdb.Spec)
+		require.NotNil(t, pdb.Spec.Selector)
 		require.Equal(t, pdb.Name, scheduler.Name)
 		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
+		require.Contains(t, pdb.Spec.Selector.MatchLabels, "maestro-scheduler")
+		require.Contains(t, pdb.Spec.Selector.MatchLabels["maestro-scheduler"], scheduler.Name)
 	})
 
 	t.Run("create pdb from scheduler with autoscaling", func(t *testing.T) {
@@ -319,6 +323,7 @@ func TestMitigateDisruption(t *testing.T) {
 		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, newValue, 0.0)
 		require.NoError(t, err)
 
+		time.Sleep(time.Millisecond * 100)
 		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.NotNil(t, pdb)

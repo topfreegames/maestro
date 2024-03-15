@@ -97,6 +97,11 @@ func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *enti
 				Type:   intstr.Int,
 				IntVal: int32(0),
 			},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"maestro-scheduler": scheduler.Name,
+				},
+			},
 		},
 	}
 
