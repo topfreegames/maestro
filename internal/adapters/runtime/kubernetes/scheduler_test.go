@@ -124,6 +124,8 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
 		require.Contains(t, pdb.Spec.Selector.MatchLabels, "maestro-scheduler")
 		require.Contains(t, pdb.Spec.Selector.MatchLabels["maestro-scheduler"], scheduler.Name)
+		require.Contains(t, pdb.Labels, "app.kubernetes.io/managed-by")
+		require.Contains(t, pdb.Labels["app.kubernetes.io/managed-by"], "maestro")
 	})
 
 	t.Run("create pdb from scheduler with autoscaling", func(t *testing.T) {

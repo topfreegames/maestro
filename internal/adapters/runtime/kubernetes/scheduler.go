@@ -91,6 +91,9 @@ func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *enti
 	pdbSpec := &v1Policy.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: scheduler.Name,
+			Labels: map[string]string{
+				"app.kubernetes.io/managed-by": "maestro",
+			},
 		},
 		Spec: v1Policy.PodDisruptionBudgetSpec{
 			MinAvailable: &intstr.IntOrString{
