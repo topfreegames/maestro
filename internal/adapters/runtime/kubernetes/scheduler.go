@@ -108,13 +108,6 @@ func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *enti
 		},
 	}
 
-	if scheduler.Autoscaling != nil && scheduler.Autoscaling.Enabled {
-		pdbSpec.Spec.MinAvailable = &intstr.IntOrString{
-			Type:   intstr.Int,
-			IntVal: int32(scheduler.Autoscaling.Min),
-		}
-	}
-
 	pdb, err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Create(ctx, pdbSpec, metav1.CreateOptions{})
 	if err != nil && !kerrors.IsAlreadyExists(err) {
 		k.logger.Warn("error creating pdb", zap.String("scheduler", scheduler.Name), zap.Error(err))

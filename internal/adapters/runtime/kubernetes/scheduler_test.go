@@ -128,7 +128,7 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 		require.Contains(t, pdb.Labels["app.kubernetes.io/managed-by"], "maestro")
 	})
 
-	t.Run("create pdb from scheduler with autoscaling", func(t *testing.T) {
+	t.Run("pdb should not use scheduler min as minAvailable", func(t *testing.T) {
 		if !kubernetesRuntime.isPDBSupported() {
 			t.Log("Kubernetes version does not support PDB, skipping")
 			t.SkipNow()
@@ -166,7 +166,7 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, pdb)
 		require.Equal(t, pdb.Name, scheduler.Name)
-		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(2))
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
 	})
 
 	t.Run("delete pdb on scheduler deletion", func(t *testing.T) {
@@ -233,7 +233,7 @@ func TestMitigateDisruption(t *testing.T) {
 		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
 	})
 
-	t.Run("should update PDB on mitigatation if not equal to current minAvailable", func(t *testing.T) {
+	t.Run("should update PDB on mitigation if not equal to current value", func(t *testing.T) {
 		if !kubernetesRuntime.isPDBSupported() {
 			t.Log("Kubernetes version does not support PDB, skipping")
 			t.SkipNow()
@@ -241,19 +241,6 @@ func TestMitigateDisruption(t *testing.T) {
 
 		scheduler := &entities.Scheduler{
 			Name: "scheduler-pdb-mitigation-update",
-			Autoscaling: &autoscaling.Autoscaling{
-				Enabled: true,
-				Min:     100,
-				Max:     200,
-				Policy: autoscaling.Policy{
-					Type: autoscaling.RoomOccupancy,
-					Parameters: autoscaling.PolicyParameters{
-						RoomOccupancy: &autoscaling.RoomOccupancyParams{
-							ReadyTarget: 0.1,
-						},
-					},
-				},
-			},
 		}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		if err != nil {
@@ -271,9 +258,10 @@ func TestMitigateDisruption(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, pdb)
 		require.Equal(t, pdb.Name, scheduler.Name)
-		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(scheduler.Autoscaling.Min))
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
 
-		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, scheduler.Autoscaling.Min, 0.0)
+		occupiedRooms := 100
+		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, occupiedRooms, 0.0)
 		require.NoError(t, err)
 
 		pdb, err = client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
@@ -282,7 +270,7 @@ func TestMitigateDisruption(t *testing.T) {
 		require.Equal(t, pdb.Name, scheduler.Name)
 
 		incSafetyPercentage := 1.0 + DefaultDisruptionSafetyPercentage
-		newRoomAmount := int32(float64(scheduler.Autoscaling.Min) * incSafetyPercentage)
+		newRoomAmount := int32(float64(occupiedRooms) * incSafetyPercentage)
 		require.Equal(t, pdb.Spec.MinAvailable.IntVal, newRoomAmount)
 	})
 
