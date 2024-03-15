@@ -96,7 +96,7 @@ curl --request POST \
 	},
 	"maxSurge": "10%",
 	"spec": {
-		"terminationGracePeriod": "100",
+		"terminationGracePeriod": "100s",
 		"containers": [
 			{
 				"name": "alpine",
