@@ -64,7 +64,7 @@ portRange:
   end: 60000
 maxSurge: 30%
 spec:
-  terminationGracePeriod: '100'
+  terminationGracePeriod: '100s'
   containers:
     - name: alpine
       image: alpine
@@ -138,7 +138,7 @@ autoscaling:
     },
     "maxSurge": "30%",
     "spec": {
-        "terminationGracePeriod": '100',
+        "terminationGracePeriod": '100s',
         "containers": [
             {
                 "name": "alpine",
@@ -301,12 +301,12 @@ It might be important to understand the basics of kubernetes before deep diving 
 
 It is represented as:
 ```yaml
-terminationGracePeriod: Integer
+terminationGracePeriod: String
 containers: Containers
 toleration: String
 affinity: String
 ```
-- **terminationGracePeriod**: Required integer value. Must be greater than 0. When a game room receives the signal to be deleted, it will take this value (in milliseconds) to be completely deleted;
+- **terminationGracePeriod**: Required string value. Must be greater than 0 and have the unit set, i.e "100s". When a game room receives the signal to be deleted, it will take this value (in seconds) to be completely deleted;
 - **containers**: Contain the information about the game room, such as the image and environment variables. This is a list since the game room can be compounded by
 more than two containers;
 - **toleration**: Kubernetes specific. Represents the toleration value for all GRUs on the scheduler. See [more](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/);

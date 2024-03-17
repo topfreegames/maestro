@@ -40,7 +40,13 @@ import (
 
 var _ worker.Worker = (*runtimeWatcherWorker)(nil)
 
-const WorkerName = "runtime_watcher"
+const (
+	WorkerName = "runtime_watcher"
+	// Apply disruptions only if the total number of rooms is greater than
+	// MinRoomsToApplyDisruption. It prevents a 0% disruption budget that may
+	// block node drains entirely.
+	MinRoomsToApplyDisruption = 2
+)
 
 // runtimeWatcherWorker is a work that will watch for changes on the Runtime
 // and apply to keep the Maestro state up-to-date. It is not expected to perform
@@ -93,6 +99,7 @@ func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room
 						reportEventProcessingStatus(event, true)
 					}
 				case <-w.ctx.Done():
+					w.logger.Info("context closed, exiting update rooms watcher")
 					return
 				}
 			}
@@ -108,33 +115,28 @@ func (w *runtimeWatcherWorker) mitigateDisruptions() error {
 			zap.String("scheduler", w.scheduler.Name),
 			zap.Error(err),
 		)
-		return err
+		return nil
 	}
-	mitigateForRoomsAmount := 0
-	if totalRoomsAmount >= 2 {
-		mitigateForRoomsAmount, err = w.roomStorage.GetRoomCountByStatus(w.ctx, w.scheduler.Name, game_room.GameStatusOccupied)
+	mitigationQuota := 0
+	if totalRoomsAmount >= MinRoomsToApplyDisruption {
+		mitigationQuota, err = w.roomStorage.GetRoomCountByStatus(w.ctx, w.scheduler.Name, game_room.GameStatusOccupied)
 		if err != nil {
 			w.logger.Error(
 				"failed to get occupied rooms for scheduler",
 				zap.String("scheduler", w.scheduler.Name),
 				zap.Error(err),
 			)
-			return err
+			return nil
 		}
 	}
-	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, mitigateForRoomsAmount, w.config.DisruptionSafetyPercentage)
+	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, mitigationQuota, w.config.DisruptionSafetyPercentage)
 	if err != nil {
-		w.logger.Error(
-			"failed to mitigate disruption",
-			zap.String("scheduler", w.scheduler.Name),
-			zap.Error(err),
-		)
 		return err
 	}
 	w.logger.Debug(
 		"mitigated disruption for occupied rooms",
 		zap.String("scheduler", w.scheduler.Name),
-		zap.Int("mitigateForRoomsAmount", mitigateForRoomsAmount),
+		zap.Int("mitigationQuota", mitigationQuota),
 	)
 
 	return nil
@@ -153,13 +155,15 @@ func (w *runtimeWatcherWorker) spawnDisruptionWatcher() {
 			case <-ticker.C:
 				err := w.mitigateDisruptions()
 				if err != nil {
-					w.logger.Warn(
-						"Mitigate Disruption watcher run failed",
+					w.logger.Error(
+						"unrecoverable error mitigating disruption",
 						zap.String("scheduler", w.scheduler.Name),
 						zap.Error(err),
 					)
+					return
 				}
 			case <-w.ctx.Done():
+				w.logger.Info("context closed, exiting disruption watcher")
 				return
 			}
 		}
@@ -175,6 +179,7 @@ func (w *runtimeWatcherWorker) spawnWatchers(
 }
 
 func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
+	w.logger.Info("starting runtime watcher", zap.String("scheduler", w.scheduler.Name))
 	watcher, err := w.runtime.WatchGameRoomInstances(ctx, w.scheduler)
 	if err != nil {
 		return fmt.Errorf("failed to start watcher: %w", err)
@@ -184,13 +189,16 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 	defer w.cancelFunc()
 
 	w.spawnWatchers(watcher.ResultChan())
+	w.logger.Info("spawned all goroutines", zap.String("scheduler", w.scheduler.Name))
 
 	w.workerWaitGroup.Wait()
+	w.logger.Info("wait group ended, all goroutines stopped", zap.String("scheduler", w.scheduler.Name))
 	watcher.Stop()
 	return nil
 }
 
 func (w *runtimeWatcherWorker) Stop(_ context.Context) {
+	w.logger.Info("stopping runtime watcher", zap.String("scheduler", w.scheduler.Name))
 	if w.cancelFunc != nil {
 		w.cancelFunc()
 	}
