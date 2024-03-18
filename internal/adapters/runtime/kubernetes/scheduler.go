@@ -209,14 +209,26 @@ func (k *kubernetes) MitigateDisruption(
 		}
 	}
 
-	currentPdbMinAvailable := pdb.Spec.MinAvailable.IntVal
+	var currentPdbMinAvailable int32
+	// PDB might exist and is based on MaxUnavailable
+	if pdb.Spec.MinAvailable != nil {
+		currentPdbMinAvailable = pdb.Spec.MinAvailable.IntVal
+	}
+
 	if currentPdbMinAvailable == int32(float64(roomAmount)*incSafetyPercentage) {
 		return nil
 	}
 
-	pdb.Spec.MinAvailable = &intstr.IntOrString{
-		Type:   intstr.Int,
-		IntVal: int32(float64(roomAmount) * incSafetyPercentage),
+	pdb.Spec = v1Policy.PodDisruptionBudgetSpec{
+		MinAvailable: &intstr.IntOrString{
+			Type:   intstr.Int,
+			IntVal: int32(float64(roomAmount) * incSafetyPercentage),
+		},
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"maestro-scheduler": scheduler.Name,
+			},
+		},
 	}
 
 	_, err = k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Update(ctx, pdb, metav1.UpdateOptions{})
