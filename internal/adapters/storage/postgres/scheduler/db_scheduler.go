@@ -59,6 +59,7 @@ type schedulerInfo struct {
 	Containers             []game_room.Container
 	PortRange              *entities.PortRange
 	MaxSurge               string
+	DownSurge              string
 	RoomsReplicas          int
 	Forwarders             []*forwarder.Forwarder
 	Autoscaling            *autoscaling.Autoscaling
@@ -75,6 +76,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		Containers:             scheduler.Spec.Containers,
 		PortRange:              scheduler.PortRange,
 		MaxSurge:               scheduler.MaxSurge,
+		DownSurge:              scheduler.DownSurge,
 		RoomsReplicas:          scheduler.RoomsReplicas,
 		Forwarders:             scheduler.Forwarders,
 		Autoscaling:            scheduler.Autoscaling,
@@ -117,6 +119,7 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		CreatedAt:       s.CreatedAt.Time,
 		LastDownscaleAt: info.LastDownscaleAt,
 		MaxSurge:        info.MaxSurge,
+		DownSurge:       info.DownSurge,
 		RoomsReplicas:   info.RoomsReplicas,
 		Forwarders:      info.Forwarders,
 		Autoscaling:     info.Autoscaling,

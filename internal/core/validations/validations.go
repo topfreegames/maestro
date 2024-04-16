@@ -52,22 +52,22 @@ func IsAutoscalingMinMaxValid(min int, max int) bool {
 	return true
 }
 
-// IsMaxSurgeValid check if MaxSurge is valid. A MaxSurge valid is a number greater than zero or a number greater than zero with suffix '%'
-func IsMaxSurgeValid(maxSurge string) bool {
-	if maxSurge == "" {
-		return false
+// IsSurgeValid check if Max or Down Surge are valid. A Surge valid is a number greater than zero or a number greater than zero with suffix '%'
+func IsSurgeValid(surge string, acceptOptional bool) bool {
+	if surge == "" {
+		return acceptOptional
 	}
-	minMaxSurge := 1
+	minSurge := 1
 	relativeSymbol := "%"
 
-	isRelative := strings.HasSuffix(maxSurge, relativeSymbol)
-	maxSurgeInt, err := strconv.Atoi(strings.TrimSuffix(maxSurge, relativeSymbol))
+	isRelative := strings.HasSuffix(surge, relativeSymbol)
+	surgeInt, err := strconv.Atoi(strings.TrimSuffix(surge, relativeSymbol))
 	if err != nil {
 		return false
 	}
 
 	if !isRelative {
-		if minMaxSurge > maxSurgeInt {
+		if minSurge > surgeInt {
 			return false
 		}
 	}

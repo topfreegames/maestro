@@ -113,6 +113,21 @@ func (mr *MockRoomManagerMockRecorder) ListRoomsWithDeletionPriority(ctx, schedu
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomsWithDeletionPriority", reflect.TypeOf((*MockRoomManager)(nil).ListRoomsWithDeletionPriority), ctx, schedulerName, ignoredVersion, amount, roomsBeingReplaced)
 }
 
+// SchedulerDownSurge mocks base method.
+func (m *MockRoomManager) SchedulerDownSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SchedulerDownSurge", ctx, scheduler)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SchedulerDownSurge indicates an expected call of SchedulerDownSurge.
+func (mr *MockRoomManagerMockRecorder) SchedulerDownSurge(ctx, scheduler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SchedulerDownSurge", reflect.TypeOf((*MockRoomManager)(nil).SchedulerDownSurge), ctx, scheduler)
+}
+
 // SchedulerMaxSurge mocks base method.
 func (m *MockRoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error) {
 	m.ctrl.T.Helper()

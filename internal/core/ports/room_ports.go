@@ -41,6 +41,9 @@ type RoomManager interface {
 	// SchedulerMaxSurge calculates the current scheduler max surge based on
 	// the number of rooms the scheduler has.
 	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
+	// SchedulerDownSurge calculates the current scheduler down surge based on
+	// the number of rooms the scheduler has.
+	SchedulerDownSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
 	// ListRoomsWithDeletionPriority returns a specified number of rooms, following
 	// the priority of it being deleted and filtering the ignored version,
 	// the function will return rooms discarding such filter option.

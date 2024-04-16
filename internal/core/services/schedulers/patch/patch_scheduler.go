@@ -42,6 +42,8 @@ const (
 	LabelSchedulerPortRange = "port_range"
 	// LabelSchedulerMaxSurge is the max surge key in the patch map.
 	LabelSchedulerMaxSurge = "max_surge"
+	// LabelSchedulerDownSurge is the down surge key in the patch map.
+	LabelSchedulerDownSurge = "down_surge"
 	// LabelSchedulerRoomsReplicas is the rooms replicas key in the patch map.
 	LabelSchedulerRoomsReplicas = "rooms_replicas"
 	// LabelAutoscaling is the key to autoscaling in the patch map.
@@ -101,6 +103,10 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 
 	if _, ok := patchMap[LabelSchedulerMaxSurge]; ok {
 		scheduler.MaxSurge = fmt.Sprint(patchMap[LabelSchedulerMaxSurge])
+	}
+
+	if _, ok := patchMap[LabelSchedulerDownSurge]; ok {
+		scheduler.DownSurge = fmt.Sprint(patchMap[LabelSchedulerDownSurge])
 	}
 
 	if _, ok := patchMap[LabelSchedulerRoomsReplicas]; ok {

@@ -181,6 +181,8 @@ message Scheduler {
   map<string, string> annotations = 11;
   // List with labels
   map<string, string> labels = 12;
+  // Down surge of rooms
+  string down_surge = 13;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
@@ -203,6 +205,8 @@ message SchedulerWithoutSpec {
   string max_surge = 7;
   // Rooms Replicas is the desired number that a Scheduler maintains.
   int32 rooms_replicas = 8;
+  // Down surge of rooms
+  string down_surge = 9;
 }
 
 // The List Operation Item object representation.

@@ -34,23 +34,45 @@ import (
 
 func TestIsMaxSurgeValid(t *testing.T) {
 	t.Run("with success when max surge is a number greater than zero", func(t *testing.T) {
-		maxSurgeValid := IsMaxSurgeValid("5")
+		maxSurgeValid := IsSurgeValid("5", false)
 		assert.True(t, maxSurgeValid)
 	})
 
 	t.Run("with success when maxSurge is a number greater than zero with suffix '%'", func(t *testing.T) {
-		maxSurgeValid := IsMaxSurgeValid("5%")
+		maxSurgeValid := IsSurgeValid("5%", false)
 		assert.True(t, maxSurgeValid)
 	})
 
 	t.Run("fails when maxSurge is empty", func(t *testing.T) {
-		maxSurgeValid := IsMaxSurgeValid("")
+		maxSurgeValid := IsSurgeValid("", false)
 		assert.False(t, maxSurgeValid)
 	})
 
 	t.Run("fails when maxSurge is less or equal zero", func(t *testing.T) {
-		maxSurgeValid := IsMaxSurgeValid("0")
+		maxSurgeValid := IsSurgeValid("0", false)
 		assert.False(t, maxSurgeValid)
+	})
+}
+
+func TestIsDownSurgeValid(t *testing.T) {
+	t.Run("with success when down surge is a number greater than zero", func(t *testing.T) {
+		downSurgeValid := IsSurgeValid("5", true)
+		assert.True(t, downSurgeValid)
+	})
+
+	t.Run("with success when downSurge is a number greater than zero with suffix '%'", func(t *testing.T) {
+		downSurgeValid := IsSurgeValid("5%", true)
+		assert.True(t, downSurgeValid)
+	})
+
+	t.Run("with success when downSurge is empty", func(t *testing.T) {
+		downSurgeValid := IsSurgeValid("", true)
+		assert.True(t, downSurgeValid)
+	})
+
+	t.Run("fails when downSurge is less or equal zero", func(t *testing.T) {
+		downSurgeValid := IsSurgeValid("0", true)
+		assert.False(t, downSurgeValid)
 	})
 }
 

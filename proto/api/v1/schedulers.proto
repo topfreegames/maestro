@@ -127,6 +127,8 @@ message CreateSchedulerRequest {
   map<string, string> annotations = 9;
   // Add labels for scheduler
   map<string, string> labels = 10;
+  // The down surge of rooms, used to downscale
+  optional string down_surge = 11;
 }
 
 // Get Scheduler operation request
@@ -165,6 +167,8 @@ message NewSchedulerVersionRequest {
   map<string, string> annotations = 9;
   // New labels for scheduler
   map<string, string> labels = 10;
+  // The down surge of rooms, used to downscale
+  optional string down_surge = 11;
 }
 
 // Update schedule operation response payload.
@@ -193,6 +197,8 @@ message PatchSchedulerRequest {
   map<string, string> annotations = 8;
   // Labels declaration for the scheduler
   map<string, string> labels = 9;
+  // The down surge of rooms, used to downscale
+  optional string down_surge = 11;
 }
 
 // PatchSchedulerResponse have the operation response id that represents the operation creted to this change.

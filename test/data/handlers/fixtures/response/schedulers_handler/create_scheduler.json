@@ -82,6 +82,7 @@
     },
     "labels": {
       "scheduler": "scheduler-name"
-    }
+    },
+    "downSurge": ""
   }
 }

@@ -58,6 +58,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch.LabelSchedulerMaxSurge] = request.GetMaxSurge()
 	}
 
+	if request.DownSurge != nil {
+		patchMap[patch.LabelSchedulerDownSurge] = request.GetDownSurge()
+	}
+
 	if request.RoomsReplicas != nil {
 		patchMap[patch.LabelSchedulerRoomsReplicas] = int(request.GetRoomsReplicas())
 	}
@@ -120,6 +124,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		request.GetGame(),
 		entities.StateCreating,
 		request.GetMaxSurge(),
+		request.GetDownSurge(),
 		*fromApiSpec(request.GetSpec()),
 		entities.NewPortRange(
 			request.GetPortRange().GetStart(),
@@ -142,6 +147,7 @@ func FromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.Schedule
 		PortRange:     getPortRange(entity.PortRange),
 		CreatedAt:     timestamppb.New(entity.CreatedAt),
 		MaxSurge:      entity.MaxSurge,
+		DownSurge:     entity.DownSurge,
 		RoomsReplicas: int32(entity.RoomsReplicas),
 	}
 }
@@ -157,6 +163,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		request.GetGame(),
 		entities.StateCreating,
 		request.GetMaxSurge(),
+		request.GetDownSurge(),
 		*fromApiSpec(request.GetSpec()),
 		entities.NewPortRange(
 			request.GetPortRange().GetStart(),
@@ -184,6 +191,7 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 		PortRange:     getPortRange(entity.PortRange),
 		CreatedAt:     timestamppb.New(entity.CreatedAt),
 		MaxSurge:      entity.MaxSurge,
+		DownSurge:     entity.DownSurge,
 		RoomsReplicas: int32(entity.RoomsReplicas),
 		Spec:          getSpec(entity.Spec),
 		Autoscaling:   getAutoscaling(entity.Autoscaling),

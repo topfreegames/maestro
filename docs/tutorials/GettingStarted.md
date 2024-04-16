@@ -61,7 +61,8 @@ curl --request POST \
             "start": 20000,
             "end": 21000
 	},
-	"maxSurge": "10%",
+	"maxSurge": "25%",
+	"downSurge": "20%",
 	"spec": {
             "terminationGracePeriod": "100s",
             "containers": [

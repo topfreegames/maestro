@@ -516,6 +516,10 @@
                     "type": "string"
                   },
                   "title": "New labels for scheduler"
+                },
+                "downSurge": {
+                  "type": "string",
+                  "title": "The down surge of rooms, used to downscale"
                 }
               },
               "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -600,6 +604,10 @@
                     "type": "string"
                   },
                   "title": "Labels declaration for the scheduler"
+                },
+                "downSurge": {
+                  "type": "string",
+                  "title": "The down surge of rooms, used to downscale"
                 }
               },
               "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
@@ -1250,6 +1258,10 @@
             "type": "string"
           },
           "title": "Add labels for scheduler"
+        },
+        "downSurge": {
+          "type": "string",
+          "title": "The down surge of rooms, used to downscale"
         }
       },
       "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -1750,6 +1762,10 @@
             "type": "string"
           },
           "title": "List with labels"
+        },
+        "downSurge": {
+          "type": "string",
+          "title": "Down surge of rooms"
         }
       },
       "description": "Scheduler definition."
@@ -1856,6 +1872,10 @@
           "type": "integer",
           "format": "int32",
           "description": "Rooms Replicas is the desired number that a Scheduler maintains."
+        },
+        "downSurge": {
+          "type": "string",
+          "title": "Down surge of rooms"
         }
       },
       "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unnecessary for the list function"

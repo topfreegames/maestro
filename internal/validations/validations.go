@@ -81,6 +81,12 @@ func RegisterValidations() error {
 	}
 	addTranslation(Validate, "max_surge", "{0} must be a number greater than zero or a number greater than zero with suffix '%'")
 
+	err = Validate.RegisterValidation("down_surge", downSurgeValidate)
+	if err != nil {
+		return errors.New("could not register downSurgeValidate")
+	}
+	addTranslation(Validate, "down_surge", "{0} must be a number greater than zero or a number greater than zero with suffix '%'")
+
 	err = Validate.RegisterValidation("kube_resource_name", kubeResourceNameValidate)
 	if err != nil {
 		return errors.New("could not register kubeResourceNameValidate")
@@ -137,7 +143,11 @@ func roomOccupancyParameterValidate(fl validator.FieldLevel) bool {
 }
 
 func maxSurgeValidate(fl validator.FieldLevel) bool {
-	return validations.IsMaxSurgeValid(fl.Field().String())
+	return validations.IsSurgeValid(fl.Field().String(), false)
+}
+
+func downSurgeValidate(fl validator.FieldLevel) bool {
+	return validations.IsSurgeValid(fl.Field().String(), true)
 }
 
 func semanticValidate(fl validator.FieldLevel) bool {

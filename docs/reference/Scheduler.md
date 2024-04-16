@@ -63,6 +63,7 @@ portRange:
   start: 40000
   end: 60000
 maxSurge: 30%
+downSurge: 10%
 spec:
   terminationGracePeriod: '100s'
   containers:
@@ -137,6 +138,7 @@ autoscaling:
       "imageregistry":"https://dockerhub.com/"    
     },
     "maxSurge": "30%",
+    "downSurge": "10%",
     "spec": {
         "terminationGracePeriod": '100s',
         "containers": [
@@ -228,7 +230,8 @@ The **scheduler** is represented as:
 name: String
 game: String
 createdAt: Timestamp
-maxSurge: String | Integer
+maxSurge: String
+downSurge: String
 portRange: PortRange
 forwarders: Forwarders
 autoscaling: Autoscaling
@@ -245,6 +248,9 @@ annotation: Map
   altered anytime. Used by Maestro to replace pods. Ex: If maxSurge = 3,
   the [Switch Active Version](Operations.md#switch-active-version) (Major change) operation will replace pods from 3 to
   3;
+- **downSurge**: Optional value represented the same way as **maxSurge**. Used by maestro to remove the pods being replaced by the new version.
+Ex: If downSurge = 10, the health controller will periodically check if there are rooms with a different scheduler version and mark them for deletion - at max remove 10 rooms at once.
+This allows Maestro to be as aggressive as possible in creating new rooms with **maxSurge** but more conservative in downscaling them, based on **downSurge**.
 - **portRange**: Range of ports that can be used by Maestro to create GRUs for the specified scheduler. Can be altered
   by the user anytime. More info [here](#portrange);
 - **forwarders**: Maestro can pass ahead info sent by the game rooms, such as Ping (Ready, Occupied, Terminating...),

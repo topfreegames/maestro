@@ -46,8 +46,9 @@ import (
 )
 
 const (
-	minSchedulerMaxSurge            = 1
-	schedulerMaxSurgeRelativeSymbol = "%"
+	minSchedulerMaxSurge         = 1
+	minSchedulerDownSurge        = 1
+	schedulerSurgeRelativeSymbol = "%"
 )
 
 type RoomManager struct {
@@ -275,8 +276,8 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 		return minSchedulerMaxSurge, nil
 	}
 
-	isRelative := strings.HasSuffix(scheduler.MaxSurge, schedulerMaxSurgeRelativeSymbol)
-	maxSurgeNum, err := strconv.Atoi(strings.TrimSuffix(scheduler.MaxSurge, schedulerMaxSurgeRelativeSymbol))
+	isRelative := strings.HasSuffix(scheduler.MaxSurge, schedulerSurgeRelativeSymbol)
+	maxSurgeNum, err := strconv.Atoi(strings.TrimSuffix(scheduler.MaxSurge, schedulerSurgeRelativeSymbol))
 	if err != nil {
 		return -1, fmt.Errorf("failed to parse max surge into a number: %w", err)
 	}
@@ -289,14 +290,39 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 		return maxSurgeNum, nil
 	}
 
-	// TODO(gabriel.corado): should we count terminating and error rooms?
+	return m.computeSurgeAmount(ctx, scheduler, float64(maxSurgeNum), minSchedulerMaxSurge)
+}
+
+func (m *RoomManager) SchedulerDownSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error) {
+	if scheduler.DownSurge == "" {
+		return minSchedulerDownSurge, nil
+	}
+
+	isRelative := strings.HasSuffix(scheduler.DownSurge, schedulerSurgeRelativeSymbol)
+	downSurgeNum, err := strconv.Atoi(strings.TrimSuffix(scheduler.DownSurge, schedulerSurgeRelativeSymbol))
+	if err != nil {
+		return -1, fmt.Errorf("failed to parse down surge into a number: %w", err)
+	}
+
+	if !isRelative {
+		if minSchedulerDownSurge > downSurgeNum {
+			return minSchedulerDownSurge, nil
+		}
+
+		return downSurgeNum, nil
+	}
+
+	return m.computeSurgeAmount(ctx, scheduler, float64(downSurgeNum), minSchedulerDownSurge)
+}
+
+func (m *RoomManager) computeSurgeAmount(ctx context.Context, scheduler *entities.Scheduler, surgeValue, minSurgeAmount float64) (int, error) {
 	roomsNum, err := m.RoomStorage.GetRoomCount(ctx, scheduler.Name)
 	if err != nil {
 		return -1, fmt.Errorf("failed to count current number of game rooms: %w", err)
 	}
 
-	absoluteNum := math.Round((float64(roomsNum) / 100) * float64(maxSurgeNum))
-	return int(math.Max(minSchedulerMaxSurge, absoluteNum)), nil
+	absoluteNum := math.Round((float64(roomsNum) / 100) * float64(surgeValue))
+	return int(math.Max(minSurgeAmount, absoluteNum)), nil
 }
 
 func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error {

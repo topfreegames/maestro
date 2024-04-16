@@ -216,7 +216,7 @@ For more details on how to use Maestro API, see [this section](https://topfreega
 
 ### **Switch Active Version**
 - Accessed through `PUT /schedulers/:schedulerName` endpoint.
-  - If it's a major change (anything under Scheduler.Spec changed), GRUs are replaced using scheduler **maxSurge** property;
+  - If it's a major change (anything under Scheduler.Spec changed), GRUs are replaced using scheduler **maxSurge** and **downSurge** property;
   - If it's a minor change (Scheduler.Spec haven't changed), GRUs are **not** replaced;
 
 ### **Add Rooms**

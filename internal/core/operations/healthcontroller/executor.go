@@ -45,6 +45,7 @@ type Config struct {
 	RoomInitializationTimeout time.Duration
 	RoomPingTimeout           time.Duration
 	RoomDeletionTimeout       time.Duration
+	RoomsDownscaleSurge       float32
 }
 
 // Executor holds dependencies to execute Executor.

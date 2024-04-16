@@ -47,6 +47,7 @@ func TestNewScheduler(t *testing.T) {
 	name := "scheduler-name"
 	game := "scheduler-game"
 	maxSurge := "10"
+	downSurge := "1"
 	roomsReplicas := 3
 	containers := []game_room.Container{
 		game_room.Container{
@@ -99,6 +100,7 @@ func TestNewScheduler(t *testing.T) {
 			game,
 			entities.StateCreating,
 			maxSurge,
+			downSurge,
 			spec,
 			portRange,
 			roomsReplicas,
@@ -111,6 +113,7 @@ func TestNewScheduler(t *testing.T) {
 			Name:          name,
 			Game:          game,
 			MaxSurge:      maxSurge,
+			DownSurge:     downSurge,
 			State:         entities.StateCreating,
 			Spec:          spec,
 			PortRange:     portRange,
@@ -131,6 +134,7 @@ func TestNewScheduler(t *testing.T) {
 			"",
 			entities.StateCreating,
 			maxSurge,
+			downSurge,
 			spec,
 			portRange,
 			roomsReplicas,
@@ -146,6 +150,7 @@ func TestNewScheduler(t *testing.T) {
 			"",
 			entities.StateCreating,
 			"10",
+			downSurge,
 			*game_room.NewSpec(
 				"v1",
 				10,
@@ -170,6 +175,7 @@ func TestNewScheduler(t *testing.T) {
 			"",
 			entities.StateCreating,
 			"10",
+			downSurge,
 			*game_room.NewSpec(
 				"v1",
 				10,

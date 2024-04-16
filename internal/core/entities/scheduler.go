@@ -63,6 +63,7 @@ type Scheduler struct {
 	CreatedAt       time.Time
 	LastDownscaleAt time.Time
 	MaxSurge        string                 `validate:"required,max_surge"`
+	DownSurge       string                 `validate:"down_surge"`
 	Forwarders      []*forwarder.Forwarder `validate:"dive"`
 	Annotations     map[string]string
 	Labels          map[string]string
@@ -74,6 +75,7 @@ func NewScheduler(
 	game string,
 	state string,
 	maxSurge string,
+	downSurge string,
 	spec game_room.Spec,
 	portRange *PortRange,
 	roomsReplicas int,
@@ -89,6 +91,7 @@ func NewScheduler(
 		Spec:          spec,
 		PortRange:     portRange,
 		MaxSurge:      maxSurge,
+		DownSurge:     downSurge,
 		RoomsReplicas: roomsReplicas,
 		Autoscaling:   autoscaling,
 		Forwarders:    forwarders,
@@ -139,6 +142,7 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"CreatedAt",
 			"LastDownscaleAt",
 			"MaxSurge",
+			"DownSurge",
 			"RoomsReplicas",
 			"Autoscaling",
 		),
