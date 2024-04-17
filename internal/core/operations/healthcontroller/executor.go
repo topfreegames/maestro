@@ -51,6 +51,7 @@ type Config struct {
 type Executor struct {
 	autoscaler       ports.Autoscaler
 	roomStorage      ports.RoomStorage
+	roomManager      ports.RoomManager
 	instanceStorage  ports.GameRoomInstanceStorage
 	schedulerStorage ports.SchedulerStorage
 	operationManager ports.OperationManager
@@ -60,10 +61,20 @@ type Executor struct {
 var _ operations.Executor = (*Executor)(nil)
 
 // NewExecutor creates a new instance of Executor.
-func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, autoscaler ports.Autoscaler, config Config) *Executor {
+func NewExecutor(
+	roomStorage ports.RoomStorage,
+	roomManager ports.RoomManager,
+	instanceStorage ports.GameRoomInstanceStorage,
+	schedulerStorage ports.SchedulerStorage,
+	operationManager ports.OperationManager,
+	autoscaler ports.Autoscaler,
+	config Config,
+) *Executor {
 	return &Executor{
-		autoscaler:       autoscaler,
+		autoscaler: autoscaler,
+		// TODO: replace roomStorage operations with roomManager
 		roomStorage:      roomStorage,
+		roomManager:      roomManager,
 		instanceStorage:  instanceStorage,
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,
@@ -99,7 +110,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 
 	if len(expiredRooms) > 0 {
 		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
-		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
+		err = ex.enqueueRemoveRooms(ctx, op, logger, expiredRooms)
 		if err != nil {
 			logger.Error("could not enqueue operation to delete expired rooms", zap.Error(err))
 		}
@@ -113,6 +124,11 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	}
 	reportDesiredNumberOfRooms(scheduler.Game, scheduler.Name, desiredNumberOfRooms)
 
+	// Check if the system is in a rollingUpdate by listing rooms that are not the current scheduler version
+	roomsPreviousSchedulerVersion, isRollingUpdate := ex.checkRollingUpdate(ctx, logger, scheduler, availableRooms)
+	if isRollingUpdate {
+		return ex.performRollingUpdate(ctx, op, def, logger, scheduler, desiredNumberOfRooms, availableRooms, roomsPreviousSchedulerVersion)
+	}
 	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, scheduler, logger, len(availableRooms), desiredNumberOfRooms)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
@@ -280,16 +296,16 @@ func (ex *Executor) isRoomStatus(room *game_room.GameRoom, status game_room.Game
 	return room.Status == status
 }
 
-func (ex *Executor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
+func (ex *Executor) enqueueRemoveRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, roomsIDs []string) error {
 	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
-		RoomsIDs: expiredRoomsIDs,
+		RoomsIDs: roomsIDs,
 		Reason:   remove.Expired,
 	})
 	if err != nil {
 		return err
 	}
 
-	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove %v expired rooms.", removeOperation.ID, len(expiredRoomsIDs))
+	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, len(roomsIDs))
 	logger.Info(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 
@@ -370,4 +386,138 @@ func (ex *Executor) canPerformDownscale(ctx context.Context, scheduler *entities
 	}
 
 	return can && !waitingCooldown, "ok"
+}
+
+func (ex *Executor) checkRollingUpdate(
+	ctx context.Context,
+	logger *zap.Logger,
+	scheduler *entities.Scheduler,
+	availableRoomsIDs []string,
+) ([]string, bool) {
+	logger.Debug("checking if system is in the middle of a rolling update of scheduler")
+	var roomsPreviousScheduler, occupiedRoomsPreviousScheduler []string
+	// TODO: build this struct during findAvailableAndExpiredRooms() call
+	for _, roomID := range availableRoomsIDs {
+		room, err := ex.roomStorage.GetRoom(ctx, scheduler.Name, roomID)
+		// if err != nil we will miss the room, the system can still recover itself in
+		// the next health_controller operation
+		if err == nil && room.Version != scheduler.Spec.Version {
+			if room.Status == game_room.GameStatusOccupied {
+				occupiedRoomsPreviousScheduler = append(occupiedRoomsPreviousScheduler, roomID)
+			} else {
+				roomsPreviousScheduler = append(roomsPreviousScheduler, roomID)
+			}
+		}
+	}
+	// Append occupied to the end so when deleting we prioritize non-occupied rooms
+	roomsPreviousScheduler = append(roomsPreviousScheduler, occupiedRoomsPreviousScheduler...)
+	logger.Info("rooms that did not match current scheduler versions", zap.Int("rooms", len(roomsPreviousScheduler)))
+	return roomsPreviousScheduler, len(roomsPreviousScheduler) != 0
+}
+
+func (ex *Executor) performRollingUpdate(
+	ctx context.Context,
+	op *operation.Operation,
+	def *Definition,
+	logger *zap.Logger,
+	scheduler *entities.Scheduler,
+	desiredNumberOfRooms int,
+	availableRoomsIDs []string,
+	roomsWithPreviousSchedulerVersion []string,
+) error {
+	logger.Info("performing rolling update", zap.String("scheduler.Version", scheduler.Spec.Version))
+	maxSurgeAmount, err := ex.roomManager.SchedulerMaxSurge(ctx, scheduler)
+	if err != nil {
+		logger.Error("failed to perform rolling update while getting max surge amount of rooms", zap.Error(err))
+		return err
+	}
+	if len(roomsWithPreviousSchedulerVersion) < maxSurgeAmount {
+		maxSurgeAmount = len(roomsWithPreviousSchedulerVersion)
+	}
+	if maxSurgeAmount <= 0 {
+		maxSurgeAmount = 1
+	}
+	logger.Info(
+		"upscaling new rooms",
+		zap.Int("desired", desiredNumberOfRooms),
+		zap.Int("maxSurgeAmount", maxSurgeAmount),
+		zap.Int("available", len(availableRoomsIDs)),
+		zap.Int("oldRooms", len(roomsWithPreviousSchedulerVersion)),
+	)
+	addOp, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add.Definition{
+		Amount: int32(maxSurgeAmount),
+	})
+	if err != nil {
+		logger.Error("failed to enqueue add operation for rolling update", zap.Error(err))
+		return err
+	}
+	msgToAppend := fmt.Sprintf("created operation (id: %s) to surge %v rooms.", addOp.ID, maxSurgeAmount)
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
+	ex.setTookAction(def, true)
+
+	roomsMarkedForDeletion, err := ex.markPreviousSchedulerRoomsForDeletion(
+		ctx,
+		logger,
+		scheduler,
+		roomsWithPreviousSchedulerVersion,
+		desiredNumberOfRooms,
+	)
+	if err != nil {
+		logger.Error("could not delete rooms with previous scheduler version", zap.Error(err))
+		return err
+	}
+	if len(roomsMarkedForDeletion) <= 0 {
+		logger.Info("no rooms marked for deletion", zap.Int("roomsMarkedForDeletion", len(roomsMarkedForDeletion)))
+		return nil
+	}
+	removeOp, err := ex.operationManager.CreateOperation(ctx, op.SchedulerName, &remove.Definition{
+		RoomsIDs: roomsMarkedForDeletion,
+		Reason:   remove.RollingUpdateReplace,
+	})
+	if err != nil {
+		logger.Error("failed to enqueue remove operation for rolling update", zap.Error(err))
+		return err
+	}
+	msgToAppend = fmt.Sprintf("created operation (id: %s) to remove rooms with previous scheduler version.", removeOp.ID)
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
+	ex.setTookAction(def, true)
+
+	return nil
+}
+
+func (ex *Executor) markPreviousSchedulerRoomsForDeletion(
+	ctx context.Context,
+	logger *zap.Logger,
+	scheduler *entities.Scheduler,
+	roomsWithPreviousSchedulerVersion []string,
+	desiredNumberOfTotalRooms int,
+) ([]string, error) {
+	curReadyRooms, err := ex.roomStorage.GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
+	if err != nil {
+		return []string{}, fmt.Errorf("failed to list scheduler rooms on ready status: %w", err)
+	}
+	curOccupiedRooms, err := ex.roomStorage.GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied)
+	if err != nil {
+		return []string{}, fmt.Errorf("failed to list scheduler rooms on occupied status: %w", err)
+	}
+	desiredNumberOfReadyRooms := desiredNumberOfTotalRooms - len(curOccupiedRooms)
+	bufferRoomsToBeRemoved := len(curReadyRooms) - desiredNumberOfReadyRooms
+	logger = logger.With(
+		zap.Int("roomsWithPreviousSchedulerVersion", len(roomsWithPreviousSchedulerVersion)),
+		zap.Int("currentOccupiedRooms", len(curOccupiedRooms)),
+		zap.Int("currentReadyRooms", len(curReadyRooms)),
+		zap.Int("desiredNumberOfReadyRooms", desiredNumberOfReadyRooms),
+		zap.Int("desiredNumberOfTotalRooms", desiredNumberOfTotalRooms),
+		zap.Int("bufferRoomsToBeRemoved", bufferRoomsToBeRemoved),
+	)
+	if bufferRoomsToBeRemoved < 0 {
+		logger.Info("can not delete old rooms without offending maxUnavailable: 0")
+		return []string{}, nil
+	}
+	if bufferRoomsToBeRemoved > len(roomsWithPreviousSchedulerVersion) {
+		logger.Info("less rooms on previous scheduler version than the amount to delete, capping it")
+		return roomsWithPreviousSchedulerVersion, nil
+	}
+	logger.Sugar().Infof("successfully marked %d rooms for deletion", bufferRoomsToBeRemoved)
+	return roomsWithPreviousSchedulerVersion[:bufferRoomsToBeRemoved], nil
 }
