@@ -52,6 +52,7 @@ type Config struct {
 type Executor struct {
 	autoscaler       ports.Autoscaler
 	roomStorage      ports.RoomStorage
+	roomManager      ports.RoomManager
 	instanceStorage  ports.GameRoomInstanceStorage
 	schedulerStorage ports.SchedulerStorage
 	operationManager ports.OperationManager
@@ -61,10 +62,20 @@ type Executor struct {
 var _ operations.Executor = (*Executor)(nil)
 
 // NewExecutor creates a new instance of Executor.
-func NewExecutor(roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, schedulerStorage ports.SchedulerStorage, operationManager ports.OperationManager, autoscaler ports.Autoscaler, config Config) *Executor {
+func NewExecutor(
+	roomStorage ports.RoomStorage,
+	roomManager ports.RoomManager,
+	instanceStorage ports.GameRoomInstanceStorage,
+	schedulerStorage ports.SchedulerStorage,
+	operationManager ports.OperationManager,
+	autoscaler ports.Autoscaler,
+	config Config,
+) *Executor {
 	return &Executor{
-		autoscaler:       autoscaler,
+		autoscaler: autoscaler,
+		// TODO: replace roomStorage operations with roomManager
 		roomStorage:      roomStorage,
+		roomManager:      roomManager,
 		instanceStorage:  instanceStorage,
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,
@@ -98,12 +109,28 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 
 	if len(expiredRooms) > 0 {
 		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
-		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
+		err = ex.enqueueRemoveRooms(ctx, op, logger, expiredRooms)
 		if err != nil {
 			logger.Error("could not enqueue operation to delete expired rooms", zap.Error(err))
 		}
 		ex.setTookAction(def, true)
 	}
+
+	// Downscale based on if there are rooms with scheduler other than the current version
+	roomsMarkedForDeletion, err := ex.ensureCurrentSchedulerVersion(ctx, logger, scheduler, availableRooms)
+	if err != nil {
+		logger.Error("cannot ensure only rooms with current scheduler are running", zap.Error(err))
+		return err
+	}
+	if len(roomsMarkedForDeletion) > 0 {
+		logger.Sugar().Infof("found %v rooms not matching cur scheduler to be deleted", len(roomsMarkedForDeletion))
+		err = ex.enqueueRemoveRooms(ctx, op, logger, roomsMarkedForDeletion)
+		if err != nil {
+			logger.Error("could not enqueue operation to delete not-matcihng cur scheduler rooms", zap.Error(err))
+		}
+		ex.setTookAction(def, true)
+	}
+	availableRoomsAmount := len(availableRooms) - len(roomsMarkedForDeletion)
 
 	desiredNumberOfRooms, err := ex.getDesiredNumberOfRooms(ctx, logger, scheduler)
 	if err != nil {
@@ -112,7 +139,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	}
 	reportDesiredNumberOfRooms(scheduler.Game, scheduler.Name, desiredNumberOfRooms)
 
-	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, scheduler, logger, len(availableRooms), desiredNumberOfRooms)
+	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, scheduler, logger, availableRoomsAmount, desiredNumberOfRooms)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
 		return err
@@ -277,15 +304,15 @@ func (ex *Executor) isRoomStatus(room *game_room.GameRoom, status game_room.Game
 	return room.Status == status
 }
 
-func (ex *Executor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
+func (ex *Executor) enqueueRemoveRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, roomsIDs []string) error {
 	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
-		RoomsIDs: expiredRoomsIDs,
+		RoomsIDs: roomsIDs,
 	})
 	if err != nil {
 		return err
 	}
 
-	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove %v expired rooms.", removeOperation.ID, len(expiredRoomsIDs))
+	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, len(roomsIDs))
 	logger.Info(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 
@@ -366,4 +393,38 @@ func (ex *Executor) canPerformDownscale(ctx context.Context, scheduler *entities
 	}
 
 	return can && !waitingCooldown, "ok"
+}
+
+// Ensure we only have game room instances with the current scheduler version
+func (ex *Executor) ensureCurrentSchedulerVersion(
+	ctx context.Context,
+	logger *zap.Logger,
+	scheduler *entities.Scheduler,
+	availableRoomIDs []string,
+) ([]string, error) {
+	var roomsMarkedForDeletion []string
+	logger.Debug(
+		"ensuring only rooms with current scheduler version are running",
+		zap.String("scheduler.Name", scheduler.Name),
+		zap.String("scheduler.Version", scheduler.Spec.Version),
+	)
+	downSurgeAmount, err := ex.roomManager.SchedulerDownSurge(ctx, scheduler)
+	if err != nil {
+		logger.Error("could not compute down surge amount, not ensuring scheduler version", zap.Error(err))
+		return roomsMarkedForDeletion, err
+	}
+	for _, roomID := range availableRoomIDs {
+		room, err := ex.roomStorage.GetRoom(ctx, scheduler.Name, roomID)
+		if err != nil {
+			continue
+		}
+		if room.Version != scheduler.Spec.Version {
+			roomsMarkedForDeletion = append(roomsMarkedForDeletion, roomID)
+		}
+		if len(roomsMarkedForDeletion) == downSurgeAmount {
+			break
+		}
+	}
+	logger.Debug("marked rooms for deletion", zap.Strings("rooms", roomsMarkedForDeletion))
+	return roomsMarkedForDeletion, nil
 }
