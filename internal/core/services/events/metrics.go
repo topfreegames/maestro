@@ -35,6 +35,7 @@ var (
 		Labels: []string{
 			monitoring.LabelGame,
 			monitoring.LabelScheduler,
+			monitoring.LabelCode,
 		},
 	})
 )
@@ -48,6 +49,7 @@ var (
 		Labels: []string{
 			monitoring.LabelGame,
 			monitoring.LabelScheduler,
+			monitoring.LabelCode,
 		},
 	})
 )
@@ -61,6 +63,7 @@ var (
 		Labels: []string{
 			monitoring.LabelGame,
 			monitoring.LabelScheduler,
+			monitoring.LabelCode,
 		},
 	})
 )
@@ -74,22 +77,23 @@ var (
 		Labels: []string{
 			monitoring.LabelGame,
 			monitoring.LabelScheduler,
+			monitoring.LabelCode,
 		},
 	})
 )
 
-func reportRoomEventForwardingSuccess(game, schedulerName string) {
-	successRoomEventForwardingMetric.WithLabelValues(game, schedulerName).Inc()
+func reportRoomEventForwardingSuccess(game, schedulerName, code string) {
+	successRoomEventForwardingMetric.WithLabelValues(game, schedulerName, code).Inc()
 }
 
-func reportPlayerEventForwardingSuccess(game, schedulerName string) {
-	successPlayerEventForwardingMetric.WithLabelValues(game, schedulerName).Inc()
+func reportPlayerEventForwardingSuccess(game, schedulerName, code string) {
+	successPlayerEventForwardingMetric.WithLabelValues(game, schedulerName, code).Inc()
 }
 
-func reportRoomEventForwardingFailed(game, schedulerName string) {
-	failedRoomEventForwardingMetric.WithLabelValues(game, schedulerName).Inc()
+func reportRoomEventForwardingFailed(game, schedulerName, code string) {
+	failedRoomEventForwardingMetric.WithLabelValues(game, schedulerName, code).Inc()
 }
 
-func reportPlayerEventForwardingFailed(game, schedulerName string) {
-	failedPlayerEventForwardingMetric.WithLabelValues(game, schedulerName).Inc()
+func reportPlayerEventForwardingFailed(game, schedulerName, code string) {
+	failedPlayerEventForwardingMetric.WithLabelValues(game, schedulerName, code).Inc()
 }

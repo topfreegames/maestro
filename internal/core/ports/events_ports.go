@@ -42,9 +42,9 @@ type EventsService interface {
 
 type EventsForwarder interface {
 	// ForwardRoomEvent forwards room events. It receives the room event attributes and forwarder configuration.
-	ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) error
+	ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) (int32, error)
 	// ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
-	ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) error
+	ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) (int32, error)
 	// Name returns the forwarder name. This name should be unique among other events forwarders.
 	Name() string
 }
