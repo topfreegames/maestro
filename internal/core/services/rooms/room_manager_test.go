@@ -1205,6 +1205,26 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
 		require.NoError(t, err)
 	})
+
+	t.Run("When instance status is terminating, and game room is deleted from storage, forward ping", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		schedulerName := "schedulerName"
+		roomId := "room-id"
+		roomStorage, instanceStorage, roomManager, eventsService := setup(mockCtrl)
+
+		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusTerminating, Status: game_room.GameStatusReady}
+		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+
+		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceTerminating}}
+		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+
+		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), schedulerName, roomId, game_room.GameStatusTerminating).Return(porterrors.ErrNotFound)
+		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any()).Return(nil)
+
+		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
+		require.NoError(t, err)
+	})
 }
 
 func TestRoomManager_GetRoomInstance(t *testing.T) {
