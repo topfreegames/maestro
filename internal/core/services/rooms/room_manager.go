@@ -326,7 +326,9 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gam
 
 	err = m.RoomStorage.UpdateRoomStatus(ctx, schedulerId, gameRoomId, newStatus)
 	if err != nil {
-		return fmt.Errorf("failed to update game room status: %w", err)
+		if !errors.Is(err, porterrors.ErrNotFound) && instance.Status.Type != game_room.InstanceTerminating {
+			return fmt.Errorf("failed to update game room status: %w", err)
+		}
 	}
 
 	if instance.Status.Type == game_room.InstanceTerminating {
