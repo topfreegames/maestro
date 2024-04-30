@@ -37,8 +37,6 @@ import (
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
 
-const UnknownCode = -1
-
 type eventsForwarder struct {
 	forwarderClient ports.ForwarderClient
 }
@@ -232,7 +230,7 @@ func handlerGrpcClientResponse(forwarder entities.Forwarder, eventResponse *pb.R
 		return grpcStatus.Code(), errors.NewErrUnexpected("failed to forward event room at \"%s\" with code %s", forwarder.Name, grpcStatus.Code().String())
 	}
 
-	ret := codes.OK
+	var ret codes.Code
 	// Matchmaker sends the status code as a http one, we normalize it to grpc codes for logs and metrics.
 	switch eventResponse.Code {
 	case 200:
