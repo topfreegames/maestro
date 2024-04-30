@@ -89,7 +89,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 				staticForwarder,
 			},
 			nil,
-			200,
+			codes.OK,
 		},
 		{
 			"failed when event type is Arbitrary and roomEvent is not provided",
@@ -151,7 +151,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 					},
 					EventType: "ready",
 				}
-				forwarderClientMock.EXPECT().SendRoomEvent(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 3}, nil)
+				forwarderClientMock.EXPECT().SendRoomEvent(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 404}, nil)
 				return forwarderClientMock
 			},
 			args{
@@ -160,7 +160,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 				staticForwarder,
 			},
 			nil,
-			codes.InvalidArgument,
+			codes.NotFound,
 		},
 		{
 			"with success when event type is Ping",
@@ -190,7 +190,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 				staticForwarder,
 			},
 			nil,
-			codes.Code(200),
+			codes.OK,
 		},
 		{
 			"failed when event type is Ping and forwarder client returns error",
@@ -241,7 +241,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 					},
 					StatusType: pb.RoomStatus_ready,
 				}
-				forwarderClientMock.EXPECT().SendRoomReSync(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 3}, nil)
+				forwarderClientMock.EXPECT().SendRoomReSync(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 404}, nil)
 				return forwarderClientMock
 			},
 			args{
@@ -250,7 +250,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 				staticForwarder,
 			},
 			nil,
-			codes.InvalidArgument,
+			codes.NotFound,
 		},
 		{
 			"with success when event type is Status",
@@ -280,7 +280,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 				staticForwarder,
 			},
 			nil,
-			codes.Code(200),
+			codes.OK,
 		},
 		{
 			"success when event type is Status and forwarder client returns status code different than 200",
@@ -301,7 +301,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 					},
 					StatusType: pb.RoomStatus_ready,
 				}
-				forwarderClientMock.EXPECT().SendRoomStatus(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 3}, nil)
+				forwarderClientMock.EXPECT().SendRoomStatus(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 404}, nil)
 				return forwarderClientMock
 			},
 			args{
@@ -310,7 +310,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 				staticForwarder,
 			},
 			nil,
-			codes.InvalidArgument,
+			codes.NotFound,
 		},
 		{
 			"succeed when event type is Status and forwarder client returns status code different than 200",
@@ -331,7 +331,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 					},
 					StatusType: pb.RoomStatus_ready,
 				}
-				forwarderClientMock.EXPECT().SendRoomStatus(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 3}, nil)
+				forwarderClientMock.EXPECT().SendRoomStatus(context.Background(), staticForwarder, &requiredEvent).Return(&pb.Response{Code: 500}, nil)
 				return forwarderClientMock
 			},
 			args{
@@ -340,7 +340,7 @@ func Test_eventsForwarder_ForwardRoomEvent(t *testing.T) {
 				staticForwarder,
 			},
 			nil,
-			codes.InvalidArgument,
+			codes.Internal,
 		},
 	}
 	for _, tt := range tests {
@@ -373,7 +373,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 		code, err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newStaticForwarder())
 
 		// assert
-		require.Equal(t, code, codes.Code(200))
+		require.Equal(t, codes.OK, code)
 		require.NoError(t, err)
 		require.Nil(t, err)
 	})
@@ -387,7 +387,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 		code, err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newStaticForwarder())
 
 		// assert
-		require.Equal(t, code, codes.Unknown)
+		require.Equal(t, codes.Unknown, code)
 		require.Error(t, err)
 		require.NotNil(t, err)
 	})
@@ -400,7 +400,7 @@ func TestForwardPlayerEvent(t *testing.T) {
 		// act
 		code, err := eventsForwarderAdapter.ForwardPlayerEvent(context.Background(), newPlayerEventAttributes(), newStaticForwarder())
 
-		require.Equal(t, code, codes.Code(404))
+		require.Equal(t, codes.NotFound, code)
 		require.NoError(t, err)
 	})
 }

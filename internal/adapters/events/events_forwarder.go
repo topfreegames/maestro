@@ -72,6 +72,7 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 	case events.Status:
 		event, err := f.buildRoomStatusMessage(eventAttributes, forwarder)
 		if err != nil {
+			return codes.InvalidArgument, errors.NewErrInvalidArgument("failed to build room status message: %s", err)
 		}
 
 		eventResponse, err := f.forwarderClient.SendRoomStatus(ctx, forwarder, &event)
@@ -228,9 +229,22 @@ func handlerGrpcClientResponse(forwarder entities.Forwarder, eventResponse *pb.R
 			return codes.Unknown, errors.NewErrUnexpected("failed to forward event room at \"%s\" with unknown grpc code: %s", forwarder.Name, err.Error())
 		}
 
-		return grpcStatus.Code(), errors.NewErrUnexpected("failed to forward event room at \"%s\" with code %d ", forwarder.Name, grpcStatus.Code())
+		return grpcStatus.Code(), errors.NewErrUnexpected("failed to forward event room at \"%s\" with code %s", forwarder.Name, grpcStatus.Code().String())
 	}
 
-	// Was able to successfully forward, even though the forward response may contain errors sent by the receiver.
-	return codes.Code(eventResponse.Code), nil
+	ret := codes.OK
+	// Matchmaker sends the status code as a http one, we normalize it to grpc codes for logs and metrics.
+	switch eventResponse.Code {
+	case 200:
+		ret = codes.OK
+	case 404:
+		ret = codes.NotFound
+	case 500:
+		ret = codes.Internal
+	default:
+		ret = codes.Unknown
+	}
+
+	// Was able to successfully forward, even though the forward response may contain error codes sent by the receiver.
+	return ret, nil
 }
