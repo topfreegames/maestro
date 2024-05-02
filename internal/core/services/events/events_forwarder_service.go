@@ -335,7 +335,18 @@ func (es *EventsForwarderService) updatePlayerState(ctx context.Context, event *
 		return
 	}
 
-	players := room.Metadata["players"].(int)
+	if room.IsValidationRoom {
+		return
+	}
+
+	if room.Metadata == nil {
+		room.Metadata = make(map[string]interface{})
+	}
+
+	var players int
+	if key, ok := room.Metadata["players"]; ok {
+		players = key.(int)
+	}
 
 	switch playerAttributes.EventType {
 	case events.PlayerJoin:
