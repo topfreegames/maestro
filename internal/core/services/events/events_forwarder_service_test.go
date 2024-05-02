@@ -203,7 +203,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		require.Empty(t, event.Attributes["ports"])
 	})
 
-	t.Run("should increase player count for PlayerEvent", func(t *testing.T) {
+	t.Run("should increase room player count when event is PlayerEvent and event type is playerJoin", func(t *testing.T) {
 		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
 
 		event := &events.Event{
@@ -240,39 +240,7 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 		require.Empty(t, event.Attributes["ports"])
 	})
 
-	t.Run("should decrease player count for PlayerEvent", func(t *testing.T) {
-		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
-
-		event := &events.Event{
-			Name:        events.PlayerEvent,
-			SchedulerID: expectedScheduler.Name,
-			RoomID:      "room",
-			Attributes: map[string]interface{}{
-				"eventType": "playerLeft",
-				"playerId":  "player",
-			},
-		}
-
-		room := &game_room.GameRoom{
-			ID:               event.RoomID,
-			SchedulerID:      event.SchedulerID,
-			IsValidationRoom: true,
-		}
-
-		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
-		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
-		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
-		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
-		roomStorage.EXPECT().UpdateRoom(gomock.Any(), room).MaxTimes(0)
-
-		err := eventsForwarderService.ProduceEvent(context.Background(), event)
-		require.NoError(t, err)
-		require.Empty(t, event.Attributes["ports"])
-	})
-
-	t.Run("should ignore player state update for PlayerEvent", func(t *testing.T) {
+	t.Run("should decrease room player count when event is PlayerEvent and event type is playerLeft", func(t *testing.T) {
 		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
 
 		event := &events.Event{
@@ -303,6 +271,38 @@ func TestEventsForwarderService_ProduceEvent(t *testing.T) {
 
 		room.Metadata["players"] = 4
 		roomStorage.EXPECT().UpdateRoom(gomock.Any(), room).Return(nil)
+
+		err := eventsForwarderService.ProduceEvent(context.Background(), event)
+		require.NoError(t, err)
+		require.Empty(t, event.Attributes["ports"])
+	})
+
+	t.Run("should not update room player count when event is PlayerEvent and room is validationRoom", func(t *testing.T) {
+		eventsForwarderService, config, eventsForwarder, schedulerStorage, roomStorage, instanceStorage, schedulerCache := testSetup(t)
+
+		event := &events.Event{
+			Name:        events.PlayerEvent,
+			SchedulerID: expectedScheduler.Name,
+			RoomID:      "room",
+			Attributes: map[string]interface{}{
+				"eventType": "playerLeft",
+				"playerId":  "player",
+			},
+		}
+
+		room := &game_room.GameRoom{
+			ID:               event.RoomID,
+			SchedulerID:      event.SchedulerID,
+			IsValidationRoom: true,
+		}
+
+		schedulerCache.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(nil, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), event.SchedulerID).Return(expectedScheduler, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), event.SchedulerID, event.RoomID).Return(expectedGameRoomInstance, nil).Times(0)
+		schedulerCache.EXPECT().SetScheduler(context.Background(), expectedScheduler, config.SchedulerCacheTtl).Return(nil)
+		eventsForwarder.EXPECT().ForwardPlayerEvent(context.Background(), gomock.Any(), gomock.Any()).Return(nil)
+		roomStorage.EXPECT().GetRoom(gomock.Any(), event.SchedulerID, event.RoomID).Return(room, nil)
+		roomStorage.EXPECT().UpdateRoom(gomock.Any(), room).MaxTimes(0)
 
 		err := eventsForwarderService.ProduceEvent(context.Background(), event)
 		require.NoError(t, err)
