@@ -310,13 +310,19 @@ func TestMitigateDisruption(t *testing.T) {
 			}
 		}()
 
+		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NotNil(t, pdb)
+		require.Equal(t, pdb.Name, scheduler.Name)
+		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
+
 		time.Sleep(time.Millisecond * 100)
 		newValue := 100
 		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, newValue, 0.0)
 		require.NoError(t, err)
 
 		time.Sleep(time.Millisecond * 100)
-		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		pdb, err = client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.NotNil(t, pdb)
 		require.Equal(t, pdb.Name, scheduler.Name)
