@@ -222,6 +222,8 @@ func (es *EventsForwarderService) forwardPlayerEvent(
 		es.logger.Error(fmt.Sprintf("Failed to forward player events for room %s and scheduler %s", event.RoomID, event.SchedulerID), zap.Error(err))
 		return err
 	}
+
+	es.updatePlayerState(ctx, event, playerAttributes)
 	reportPlayerEventForwardingSuccess(scheduler.Game, event.SchedulerID)
 	return nil
 }
@@ -326,4 +328,37 @@ func (es *EventsForwarderService) isRoomInUnreliableState(event *events.Event) b
 	}
 
 	return false
+}
+
+func (es *EventsForwarderService) updatePlayerState(ctx context.Context, event *events.Event, playerAttributes events.PlayerEventAttributes) {
+	room, err := es.roomStorage.GetRoom(ctx, event.SchedulerID, event.RoomID)
+	if err != nil {
+		es.logger.Error(fmt.Sprintf("Failed to get room %s from storage", event.RoomID), zap.Error(err))
+		return
+	}
+
+	if room.IsValidationRoom {
+		return
+	}
+
+	if room.Metadata == nil {
+		room.Metadata = make(map[string]interface{})
+	}
+
+	var players int
+	if key, ok := room.Metadata["players"]; ok {
+		players = key.(int)
+	}
+
+	switch playerAttributes.EventType {
+	case events.PlayerJoin:
+		room.Metadata["players"] = players + 1
+	case events.PlayerLeft:
+		room.Metadata["players"] = players - 1
+	}
+
+	err = es.roomStorage.UpdateRoom(ctx, room)
+	if err != nil {
+		es.logger.Error(fmt.Sprintf("Failed to update room %s in storage", event.RoomID), zap.Error(err))
+	}
 }
