@@ -93,7 +93,7 @@ func ProvideExecutors(
 	executors[addrooms.OperationName] = addrooms.NewExecutor(roomManager, schedulerStorage, operationManager)
 	executors[removerooms.OperationName] = removerooms.NewExecutor(roomManager, roomStorage, operationManager)
 	executors[test.OperationName] = test.NewExecutor()
-	executors[switchversion.OperationName] = switchversion.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)
+	executors[switchversion.OperationName] = switchversion.NewExecutor(schedulerManager, operationManager)
 	executors[newversion.OperationName] = newversion.NewExecutor(roomManager, schedulerManager, operationManager, newSchedulerVersionConfig)
 	executors[healthcontroller.OperationName] = healthcontroller.NewExecutor(roomStorage, instanceStorage, schedulerStorage, operationManager, autoscaler, healthControllerConfig)
 	executors[storagecleanup.OperationName] = storagecleanup.NewExecutor(operationStorage)
