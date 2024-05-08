@@ -111,6 +111,34 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 
 			assert.Equal(t, maximumNumberOfRooms, desiredNumberOfRoom)
 		})
+
+		t.Run("When DesiredNumber is greater than Max but Max is -1 do not cap", func(t *testing.T) {
+			scheduler := &entities.Scheduler{
+				Name: "some-name",
+				Autoscaling: &autoscaling.Autoscaling{
+					Min: minimumNumberOfRooms,
+					Max: -1,
+					Policy: autoscaling.Policy{
+						Type:       policyType,
+						Parameters: autoscaling.PolicyParameters{},
+					},
+				},
+			}
+			hugeAmountOfRooms := 10000
+			mockPolicy := mock.NewMockPolicy(ctrl)
+
+			currentState := policies.CurrentState{}
+
+			mockPolicy.EXPECT().CurrentStateBuilder(gomock.Any(), scheduler).Return(currentState, nil)
+			mockPolicy.EXPECT().CalculateDesiredNumberOfRooms(scheduler.Autoscaling.Policy.Parameters, currentState).Return(hugeAmountOfRooms, nil)
+
+			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: mockPolicy})
+
+			desiredNumberOfRoom, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
+			assert.NoError(t, err)
+
+			assert.Equal(t, hugeAmountOfRooms, desiredNumberOfRoom)
+		})
 	})
 
 	t.Run("Error cases", func(t *testing.T) {
