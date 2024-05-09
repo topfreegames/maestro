@@ -121,8 +121,8 @@ So basically Maestro will constantly try to maintain a certain percentage of roo
 actual room occupancy rate (number of rooms in **occupied** state).
 
 #### Room Occupancy Policy Parameters
-- **readyTarget** [float]: The percentage (in decimal value) of rooms that Maestro should try to keep in **ready** state, must be a value between 0.1 and 0.9.
-- **downThreshold** [float]: It adjusts how often maestro scale down Game Rooms, where 0.99 means that maestro will always scale down a Game Room when it is free (respecting the readyTarget), and 0 means that maestro will never scale down. Must be a value between 0 and 0.99.
+- **readyTarget** [float]: The percentage (in decimal value) of rooms that Maestro should try to keep in **ready** state, must be a value greater than 0 and less than 1.
+- **downThreshold** [float]: It adjusts how often maestro scale down Game Rooms, where 0.99 means that maestro will always scale down a Game Room when it is free (respecting the readyTarget), and a value close to 0 means that maestro will almost never scale down. Must be a value greater than 0 and less than 1.
 
 #### Example
 

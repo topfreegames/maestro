@@ -30,7 +30,8 @@ type PolicyType string
 const (
 	// RoomOccupancy is an implemented policy in maestro autoscaler,
 	// it uses the number of occupied rooms and a ready rooms target percentage to calculate the desired number of rooms in a scheduler.
-	RoomOccupancy PolicyType = "roomOccupancy"
+	RoomOccupancy        PolicyType = "roomOccupancy"
+	DefaultDownThreshold float32    = 0.99
 )
 
 // Autoscaling represents the autoscaling configuration for a scheduler.
@@ -85,7 +86,7 @@ type PolicyParameters struct {
 // RoomOccupancyParams represents the parameters accepted by rooms occupancy autoscaling properties.
 type RoomOccupancyParams struct {
 	// ReadyTarget indicates the target percentage of ready rooms a scheduler should maintain.
-	ReadyTarget float64 `validate:"gt=0,lte=0.9"`
+	ReadyTarget float64 `validate:"gt=0,lt=1"`
 	// DownThreshold indicates the percentage of occupied rooms a scheduler should have to trigger a downscale event.
-	DownThreshold float64 `validate:"gte=0,lte=0.99"`
+	DownThreshold float64 `validate:"gt=0,lt=1"`
 }

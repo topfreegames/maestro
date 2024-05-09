@@ -702,7 +702,8 @@ func TestPatchScheduler(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(genericFloat32),
 								},
 							},
 						},
@@ -720,7 +721,8 @@ func TestPatchScheduler(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(genericFloat32),
 								},
 							},
 						},
@@ -752,7 +754,8 @@ func TestPatchScheduler(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(genericFloat32),
 								},
 							},
 						},
@@ -784,7 +787,8 @@ func TestPatchScheduler(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(genericFloat32),
 								},
 							},
 						},
@@ -812,7 +816,8 @@ func TestPatchScheduler(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(genericFloat32),
 								},
 							},
 						},
@@ -990,7 +995,8 @@ func basicSchedulerToPatchSchedulerTests() *entities.Scheduler {
 				Type: autoscaling.RoomOccupancy,
 				Parameters: autoscaling.PolicyParameters{
 					RoomOccupancy: &autoscaling.RoomOccupancyParams{
-						ReadyTarget: float64(genericFloat32),
+						ReadyTarget:   float64(genericFloat32),
+						DownThreshold: float64(genericFloat32),
 					},
 				},
 			},
