@@ -106,7 +106,7 @@ func (a *Autoscaler) CanDownscale(ctx context.Context, scheduler *entities.Sched
 func ensureDesiredNumberIsBetweenMinAndMax(autoscaling *autoscaling.Autoscaling, desiredNumberOfRooms int) int {
 	if desiredNumberOfRooms < autoscaling.Min {
 		desiredNumberOfRooms = autoscaling.Min
-	} else if desiredNumberOfRooms > autoscaling.Max {
+	} else if autoscaling.Max >= 0 && desiredNumberOfRooms > autoscaling.Max {
 		desiredNumberOfRooms = autoscaling.Max
 	}
 
