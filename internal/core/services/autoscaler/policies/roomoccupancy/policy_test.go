@@ -195,7 +195,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			}
 
 			_, err := policy.CalculateDesiredNumberOfRooms(policyParams, schedulerState)
-			assert.EqualError(t, err, "Ready target must be between 0 and 1")
+			assert.EqualError(t, err, "ready target must be greater than 0 and less than 1")
 		})
 		t.Run("when ready target is greater than 1", func(t *testing.T) {
 			readyTarget := float64(1.1)
@@ -212,7 +212,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			}
 
 			_, err := policy.CalculateDesiredNumberOfRooms(policyParams, schedulerState)
-			assert.EqualError(t, err, "Ready target must be between 0 and 1")
+			assert.EqualError(t, err, "ready target must be greater than 0 and less than 1")
 		})
 		t.Run("when ready target is 0", func(t *testing.T) {
 			readyTarget := float64(0.0)
@@ -229,7 +229,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			}
 
 			_, err := policy.CalculateDesiredNumberOfRooms(policyParams, schedulerState)
-			assert.EqualError(t, err, "Ready target must be between 0 and 1")
+			assert.EqualError(t, err, "ready target must be greater than 0 and less than 1")
 		})
 		t.Run("when ready target is lower than 0", func(t *testing.T) {
 			readyTarget := float64(-0.1)
@@ -246,7 +246,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			}
 
 			_, err := policy.CalculateDesiredNumberOfRooms(policyParams, schedulerState)
-			assert.EqualError(t, err, "Ready target must be between 0 and 1")
+			assert.EqualError(t, err, "ready target must be greater than 0 and less than 1")
 		})
 	})
 }
@@ -380,7 +380,7 @@ func TestCanDownscale(t *testing.T) {
 			}
 
 			_, err := policy.CanDownscale(policyParams, schedulerState)
-			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
+			assert.EqualError(t, err, "downscale threshold must be greater than 0 and less than 1")
 		})
 		t.Run("when ready target is greater than 1", func(t *testing.T) {
 			downThreshold := float64(1.1)
@@ -399,7 +399,7 @@ func TestCanDownscale(t *testing.T) {
 			}
 
 			_, err := policy.CanDownscale(policyParams, schedulerState)
-			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
+			assert.EqualError(t, err, "downscale threshold must be greater than 0 and less than 1")
 		})
 		t.Run("when down threshold is 0", func(t *testing.T) {
 			downThreshold := float64(0.0)
@@ -418,7 +418,7 @@ func TestCanDownscale(t *testing.T) {
 			}
 
 			_, err := policy.CanDownscale(policyParams, schedulerState)
-			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
+			assert.EqualError(t, err, "downscale threshold must be greater than 0 and less than 1")
 		})
 		t.Run("when down threshold is lower than 0", func(t *testing.T) {
 			downThreshold := float64(-0.1)
@@ -437,7 +437,7 @@ func TestCanDownscale(t *testing.T) {
 			}
 
 			_, err := policy.CanDownscale(policyParams, schedulerState)
-			assert.EqualError(t, err, "Downscale threshold must be between 0 and 1")
+			assert.EqualError(t, err, "downscale threshold must be greater than 0 and less than 1")
 		})
 	})
 }

@@ -290,7 +290,7 @@ message RoomOccupancy {
   // ReadyTarget represents the number of rooms ready rate that the scheduler should keep
   float ready_target = 1;
   // DownThreshold represents the minimum occupation rate that should trigger a scale down
-  float down_threshold = 2;
+  optional float down_threshold = 2;
 }
 
 // The operation lease object representation

@@ -343,7 +343,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Parameters: &api.PolicyParameters{
 								RoomOccupancy: &api.RoomOccupancy{
 									ReadyTarget:   genericFloat32,
-									DownThreshold: genericFloat32,
+									DownThreshold: &genericFloat32,
 								},
 							},
 						},
@@ -380,7 +380,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 							Parameters: &api.PolicyParameters{
 								RoomOccupancy: &api.RoomOccupancy{
 									ReadyTarget:   genericFloat32,
-									DownThreshold: genericFloat32,
+									DownThreshold: &genericFloat32,
 								},
 							},
 						},
@@ -645,7 +645,8 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(autoscaling.DefaultDownThreshold),
 								},
 							},
 						},
@@ -1299,7 +1300,8 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: float64(genericFloat32),
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(autoscaling.DefaultDownThreshold),
 								},
 							},
 						},
@@ -1363,6 +1365,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
 	genericTime := time.Now()
+	genericFloat32 := float32(0.3)
 
 	testCases := []struct {
 		Title string
@@ -1441,7 +1444,8 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
-									ReadyTarget: 0.3,
+									ReadyTarget:   float64(genericFloat32),
+									DownThreshold: float64(genericFloat32),
 								},
 							},
 						},
@@ -1532,7 +1536,8 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 							Type: "roomOccupancy",
 							Parameters: &api.PolicyParameters{
 								RoomOccupancy: &api.RoomOccupancy{
-									ReadyTarget: float32(0.3),
+									ReadyTarget:   genericFloat32,
+									DownThreshold: &genericFloat32,
 								},
 							},
 						},

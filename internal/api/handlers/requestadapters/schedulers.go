@@ -372,6 +372,9 @@ func fromApiRoomOccupancyPolicyToEntity(roomOccupancy *api.RoomOccupancy) *autos
 	roomOccupancyParam.ReadyTarget = float64(readyTarget)
 
 	downThreshold := roomOccupancy.GetDownThreshold()
+	if downThreshold == 0 {
+		downThreshold = autoscaling.DefaultDownThreshold
+	}
 	roomOccupancyParam.DownThreshold = float64(downThreshold)
 
 	return roomOccupancyParam
@@ -538,9 +541,10 @@ func getRoomOccupancy(roomOccupancyParameters *autoscaling.RoomOccupancyParams) 
 	if roomOccupancyParameters == nil {
 		return nil
 	}
+	downThresholdVal := float32(roomOccupancyParameters.DownThreshold)
 	return &api.RoomOccupancy{
 		ReadyTarget:   float32(roomOccupancyParameters.ReadyTarget),
-		DownThreshold: float32(roomOccupancyParameters.DownThreshold),
+		DownThreshold: &downThresholdVal,
 	}
 }
 
