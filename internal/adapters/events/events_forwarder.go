@@ -27,6 +27,8 @@ import (
 	"fmt"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	entities "github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -46,7 +48,7 @@ func NewEventsForwarder(forwarderClient ports.ForwarderClient) *eventsForwarder 
 }
 
 // ForwardRoomEvent forwards room events. It receives the room event attributes and forwarder configuration.
-func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) error {
+func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder entities.Forwarder) (codes.Code, error) {
 	switch eventAttributes.EventType {
 	case events.Arbitrary:
 		if roomEvent, ok := eventAttributes.Other["roomEvent"].(string); ok {
@@ -54,12 +56,12 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 			eventResponse, err := f.forwarderClient.SendRoomEvent(ctx, forwarder, &event)
 			return handlerGrpcClientResponse(forwarder, eventResponse, err)
 		}
-		return errors.NewErrInvalidArgument("invalid or missing eventAttributes.Other['roomEvent'] field")
+		return codes.InvalidArgument, errors.NewErrInvalidArgument("invalid or missing eventAttributes.Other['roomEvent'] field")
 
 	case events.Ping:
 		event, err := f.buildRoomStatusMessage(eventAttributes, forwarder)
 		if err != nil {
-			return errors.NewErrInvalidArgument("failed to build room status message: %s", err)
+			return codes.InvalidArgument, errors.NewErrInvalidArgument("failed to build room status message: %s", err)
 		}
 
 		eventResponse, err := f.forwarderClient.SendRoomReSync(ctx, forwarder, &event)
@@ -68,7 +70,7 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 	case events.Status:
 		event, err := f.buildRoomStatusMessage(eventAttributes, forwarder)
 		if err != nil {
-			return errors.NewErrInvalidArgument("failed to build room status message: %s", err)
+			return codes.InvalidArgument, errors.NewErrInvalidArgument("failed to build room status message: %s", err)
 		}
 
 		eventResponse, err := f.forwarderClient.SendRoomStatus(ctx, forwarder, &event)
@@ -76,11 +78,11 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
-	return errors.NewErrUnexpected("failed to forward event room. event type doesn't exists \"%s\"", eventAttributes.EventType)
+	return codes.Unknown, errors.NewErrUnexpected("failed to forward event room. event type doesn't exists \"%s\"", eventAttributes.EventType)
 }
 
 // ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
-func (f *eventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder entities.Forwarder) error {
+func (f *eventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder entities.Forwarder) (codes.Code, error) {
 	event := f.buildPlayerEventMessage(eventAttributes, forwarder)
 	eventResponse, err := f.forwarderClient.SendPlayerEvent(ctx, forwarder, &event)
 
@@ -217,12 +219,32 @@ func fromPlayerEventTypeToGrpcPlayerEventType(eventType events.PlayerEventType) 
 	}
 }
 
-func handlerGrpcClientResponse(forwarder entities.Forwarder, eventResponse *pb.Response, err error) error {
+// handlerGrpcClientResponse checks if the gRPC response had unexpected communication or network errors.
+func handlerGrpcClientResponse(forwarder entities.Forwarder, eventResponse *pb.Response, err error) (codes.Code, error) {
 	if err != nil {
-		return err
+		grpcStatus, ok := status.FromError(err)
+		if !ok {
+			return codes.Unknown, errors.NewErrUnexpected("failed to forward event room at \"%s\" with unknown grpc code: %s", forwarder.Name, err.Error())
+		}
+
+		return grpcStatus.Code(), errors.NewErrUnexpected("failed to forward event room at \"%s\" with code %s", forwarder.Name, grpcStatus.Code().String())
 	}
-	if eventResponse.Code != 200 {
-		return errors.NewErrUnexpected("failed to forward event room at \"%s\"", forwarder.Name)
+
+	var ret codes.Code
+	// Forwarder event's "code" field is being used as an HTTP status code. we normalize it to grpc codes for logs and metrics.
+	switch eventResponse.Code {
+	case 200:
+		ret = codes.OK
+	case 404:
+		ret = codes.NotFound
+	case 406: // Room does not exist
+		ret = codes.FailedPrecondition
+	case 500:
+		ret = codes.Internal
+	default:
+		ret = codes.Unknown
 	}
-	return nil
+
+	// Was able to successfully forward, even though the forward response may contain error codes sent by the receiver.
+	return ret, nil
 }

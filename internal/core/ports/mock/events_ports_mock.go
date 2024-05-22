@@ -12,6 +12,7 @@ import (
 	events "github.com/topfreegames/maestro/internal/core/entities/events"
 	forwarder "github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	eventforwarder "github.com/topfreegames/protos/maestro/grpc/generated"
+	codes "google.golang.org/grpc/codes"
 )
 
 // MockEventsService is a mock of EventsService interface.
@@ -75,11 +76,12 @@ func (m *MockEventsForwarder) EXPECT() *MockEventsForwarderMockRecorder {
 }
 
 // ForwardPlayerEvent mocks base method.
-func (m *MockEventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) error {
+func (m *MockEventsForwarder) ForwardPlayerEvent(ctx context.Context, eventAttributes events.PlayerEventAttributes, forwarder forwarder.Forwarder) (codes.Code, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForwardPlayerEvent", ctx, eventAttributes, forwarder)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(codes.Code)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ForwardPlayerEvent indicates an expected call of ForwardPlayerEvent.
@@ -89,11 +91,12 @@ func (mr *MockEventsForwarderMockRecorder) ForwardPlayerEvent(ctx, eventAttribut
 }
 
 // ForwardRoomEvent mocks base method.
-func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) error {
+func (m *MockEventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes events.RoomEventAttributes, forwarder forwarder.Forwarder) (codes.Code, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ForwardRoomEvent", ctx, eventAttributes, forwarder)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(codes.Code)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ForwardRoomEvent indicates an expected call of ForwardRoomEvent.
