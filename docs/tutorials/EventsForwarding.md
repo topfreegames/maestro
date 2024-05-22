@@ -92,3 +92,6 @@ Currently, Maestro only supports gRPC forwarder type.
 ### GRPC
 This event forwarding type uses the [GRPCForwarder service proto definition](https://github.com/topfreegames/protos/blob/master/maestro/grpc/protobuf/events.proto)
 to forward events, this means that the external service should use gRPC protocol and implement this service to receive events.
+
+#### Response
+Maestro expects the forwarder event response to return a HTTP code, which is mapped internally to a gRPC code. This mapping is done in the [handlerGrpcClientResponse function](https://github.com/topfreegames/maestro/blob/main/internal/adapters/events/events_forwarder.go)

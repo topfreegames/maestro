@@ -78,7 +78,7 @@ func (f *eventsForwarder) ForwardRoomEvent(ctx context.Context, eventAttributes 
 		return handlerGrpcClientResponse(forwarder, eventResponse, err)
 	}
 
-	return codes.NotFound, errors.NewErrUnexpected("failed to forward event room. event type doesn't exists \"%s\"", eventAttributes.EventType)
+	return codes.Unknown, errors.NewErrUnexpected("failed to forward event room. event type doesn't exists \"%s\"", eventAttributes.EventType)
 }
 
 // ForwardPlayerEvent forwards a player events. It receives the player events attributes and forwarder configuration.
@@ -231,12 +231,14 @@ func handlerGrpcClientResponse(forwarder entities.Forwarder, eventResponse *pb.R
 	}
 
 	var ret codes.Code
-	// Matchmaker sends the status code as a http one, we normalize it to grpc codes for logs and metrics.
+	// Forwarder event's "code" field is being used as an HTTP status code. we normalize it to grpc codes for logs and metrics.
 	switch eventResponse.Code {
 	case 200:
 		ret = codes.OK
 	case 404:
 		ret = codes.NotFound
+	case 406: // Room does not exist
+		ret = codes.FailedPrecondition
 	case 500:
 		ret = codes.Internal
 	default:
