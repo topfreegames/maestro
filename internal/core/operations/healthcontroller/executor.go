@@ -86,6 +86,8 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		return err
 	}
 
+	logger = logger.With(zap.String(logs.LogFieldSchedulerVersion, scheduler.Spec.Version))
+
 	nonexistentGameRoomsIDs, existentGameRoomsInstancesMap := ex.mapExistentAndNonExistentGameRooms(gameRoomIDs, instances)
 	if len(nonexistentGameRoomsIDs) > 0 {
 		logger.Error("found registered rooms that no longer exists")
@@ -172,6 +174,7 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 	var msgToAppend string
 	var tookAction bool
 
+	logger = logger.With(zap.Int("actual", actualAmount), zap.Int("desired", desiredAmount))
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
 		can, msg := ex.canPerformDownscale(ctx, scheduler, logger)
