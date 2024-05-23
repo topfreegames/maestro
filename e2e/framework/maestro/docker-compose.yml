@@ -1,6 +1,6 @@
 version: '3.8'
+name: maestro
 services:
-
   management-api:
     build:
       context: ../../..
@@ -109,7 +109,6 @@ services:
     volumes:
     # This is just so that we get the kubeconfig file out
       - ../../../kubeconfig:/output
-
     ports:
     - "6443:6443"  # Kubernetes API Server
 
