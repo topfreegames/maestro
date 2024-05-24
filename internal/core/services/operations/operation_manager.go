@@ -306,7 +306,7 @@ func (om *OperationManager) StartLeaseRenewGoRoutine(operationCtx context.Contex
 		for {
 			select {
 			case <-ticker.C:
-				if op.Status == operation.StatusFinished || op.Status == operation.StatusError {
+				if op.Status == operation.StatusFinished || op.Status == operation.StatusError || op.Status == operation.StatusCanceled {
 					status, _ := op.Status.String()
 					managerLogger.Sugar().Debugf("finish operation lease renew go routine since operation got status %v", status)
 					break renewLeaseLoop

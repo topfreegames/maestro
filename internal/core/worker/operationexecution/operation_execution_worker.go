@@ -260,7 +260,7 @@ func (w *OperationExecutionWorker) prepareExecutionAndLease(op *operation.Operat
 		return operationContext, operationCancellationFunction, workererrors.NewErrStartOperationFailed("failed to start operation \"%s\" for the scheduler \"%s\"", op.ID, op.SchedulerName)
 	}
 
-	w.operationManager.StartLeaseRenewGoRoutine(w.workerContext, op)
+	w.operationManager.StartLeaseRenewGoRoutine(operationContext, op)
 
 	return operationContext, operationCancellationFunction, err
 }
