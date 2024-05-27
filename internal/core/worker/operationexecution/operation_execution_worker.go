@@ -216,7 +216,17 @@ func (w *OperationExecutionWorker) finishOperationAndLease(op *operation.Operati
 	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation finished")
 }
 
-func (w OperationExecutionWorker) executeOperationWithLease(operationContext context.Context, op *operation.Operation, def operations.Definition, executor operations.Executor) error {
+func (w OperationExecutionWorker) executeOperationWithLease(operationContext context.Context, op *operation.Operation, def operations.Definition, executor operations.Executor) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic while executing operation")
+		}
+	}()
+	select {
+	case <-operationContext.Done():
+		return operationContext.Err()
+	default:
+	}
 	return w.executeCollectingLatencyMetrics(op.DefinitionName, func() error {
 		return executor.Execute(operationContext, op, def)
 	})
