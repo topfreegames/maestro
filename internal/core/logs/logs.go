@@ -24,6 +24,7 @@ package logs
 
 const (
 	LogFieldSchedulerName       = "scheduler_name"
+	LogFieldSchedulerVersion    = "scheduler_version"
 	LogFieldGame                = "game"
 	LogFieldInstanceID          = "instance_id"
 	LogFieldRoomID              = "room_id"

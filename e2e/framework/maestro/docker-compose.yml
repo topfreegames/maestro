@@ -1,6 +1,6 @@
 version: '3.8'
+name: maestro
 services:
-
   management-api:
     build:
       context: ../../..
@@ -76,7 +76,6 @@ services:
       - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/kubeconfig.yaml
       - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=https://k3s_server:6443
       - MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL=redis://redis:6379/0
-      - MAESTRO_WORKERS_OPERATIONEXECUTION_HEALTHCONTROLLERINTERVAL=5s
       - MAESTRO_INTERNALAPI_PORT=8051
       - MAESTRO_WORKERS_HEALTHCONTROLLERINTERVAL=5s
       - MAESTRO_WORKERS_STORAGECLENUPINTERVAL=5s
@@ -109,7 +108,6 @@ services:
     volumes:
     # This is just so that we get the kubeconfig file out
       - ../../../kubeconfig:/output
-
     ports:
     - "6443:6443"  # Kubernetes API Server
 

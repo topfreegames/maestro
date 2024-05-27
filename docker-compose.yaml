@@ -1,7 +1,7 @@
 # to run define K3S_TOKEN, K3S_VERSION is optional, eg:
 #   K3S_TOKEN=${RANDOM}${RANDOM}${RANDOM} docker-compose up
-
 version: '3'
+name: maestro
 services:
   k3s_server:
     image: "rancher/k3s:v1.19.11-k3s1"

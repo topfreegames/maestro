@@ -120,25 +120,25 @@ migrate: ## Execute migration.
 .PHONY: deps/up
 deps/up: ## Create containers dependencies.
 	@echo "Creating dependencies "
-	@docker-compose --project-name maestro up -d
+	@docker-compose up -d --build
 	@echo "Dependencies created successfully."
 
 .PHONY: deps/start
 deps/start: ## Start containers dependencies.
 	@echo "Starting dependencies "
-	@docker-compose --project-name maestro start
+	@docker-compose start
 	@echo "Dependencies started successfully."
 
 .PHONY: deps/stop
 deps/stop: ## Stop containers dependencies.
 	@echo "Stopping dependencies "
-	@docker-compose --project-name maestro stop
+	@docker-compose stop
 	@echo "Dependencies stopped successfully."
 
 .PHONY: deps/down
 deps/down: ## Delete containers dependencies.
 	@echo "Deleting dependencies "
-	@docker-compose --project-name maestro down
+	@docker-compose down
 	@echo "Dependencies deleted successfully."
 
 
@@ -148,13 +148,13 @@ deps/down: ## Delete containers dependencies.
 .PHONY: maestro/start
 maestro/start: build-linux-x86_64 ## Start Maestro with all of its dependencies.
 	@echo "Starting maestro..."
-	@cd ./e2e/framework/maestro; docker-compose --project-name maestro up --build -d
+	@cd ./e2e/framework/maestro; docker-compose up --build -d
 	@MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate;
-	@cd ./e2e/framework/maestro; docker-compose --project-name maestro up --build -d worker runtime-watcher #Worker and watcher do not work before migration, so we start them after it.
+	@cd ./e2e/framework/maestro; docker-compose up --build -d worker runtime-watcher #Worker and watcher do not work before migration, so we start them after it.
 	@echo "Maestro is up and running!"
 
 .PHONY: maestro/down
 maestro/down: ## Delete Maestro and all of its dependencies.
 	@echo "Deleting maestro..."
-	@cd ./e2e/framework/maestro; docker-compose --project-name maestro down
+	@cd ./e2e/framework/maestro; docker-compose down
 	@echo "Maestro was deleted with success!"

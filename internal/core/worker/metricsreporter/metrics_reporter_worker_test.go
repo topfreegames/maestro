@@ -111,7 +111,7 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 		instanceStorage := mock.NewMockGameRoomInstanceStorage(mockCtl)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 
-		scheduler := &entities.Scheduler{Name: "random-scheduler"}
+		scheduler := &entities.Scheduler{Name: "random-scheduler-2"}
 
 		workerOpts := &worker.WorkerOptions{
 			RoomStorage:           roomStorage,

@@ -37,7 +37,7 @@ If autoscaling is configured **and** enabled, it will use the configured autosca
     decide_operation --  desired < actual --> remove_rooms_operation --> finish;
 ```
 
-Currently, the sync interval is configured by environment variable `MAESTRO_WORKERS_OPERATIONEXECUTION_HEALTHCONTROLLERINTERVAL`.
+Currently, the sync interval is configured by environment variable `MAESTRO_WORKERS_HEALTHCONTROLLERINTERVAL`.
 
 > By default, the scheduler does not have autoscaling configured.
 
