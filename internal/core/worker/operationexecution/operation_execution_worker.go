@@ -25,7 +25,8 @@ package operationexecution
 import (
 	"context"
 	"fmt"
-	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/m-lab/go/memoryless"
@@ -45,7 +46,11 @@ import (
 
 var _ worker.Worker = (*OperationExecutionWorker)(nil)
 
-const WorkerName = "operation_execution"
+const (
+	WorkerName = "operation_execution"
+	// Size of channel storing operations to be aborted
+	OperationsToBeAbortedChannelSize = 100
+)
 
 // OperationExecutionWorker is the service responsible for implementing the worker
 // responsibilities.
@@ -53,14 +58,24 @@ type OperationExecutionWorker struct {
 	scheduler                         *entities.Scheduler
 	healthControllerExecutionInterval time.Duration
 	storagecleanupExecutionInterval   time.Duration
+	workersStopTimeoutDuration        time.Duration
 	operationManager                  ports.OperationManager
 	// TODO(gabrielcorado): check if we this is the right place to have all
 	// executors.
-	executorsByName     map[string]operations.Executor
-	workerContext       context.Context
-	cancelWorkerContext context.CancelFunc
+	executorsByName         map[string]operations.Executor
+	workerContext           context.Context
+	cancelWorkerContext     context.CancelFunc
+	operationsToAbort       chan OperationExecutionInstance
+	isStopping              *atomic.Bool
+	abortingOperationsGroup *sync.WaitGroup
 
 	logger *zap.Logger
+}
+
+type OperationExecutionInstance struct {
+	op       *operation.Operation
+	def      operations.Definition
+	executor operations.Executor
 }
 
 // NewOperationExecutionWorker instantiate a new OperationExecutionWorker to a specified scheduler.
@@ -72,6 +87,10 @@ func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *worker.Wor
 		executorsByName:                   opts.OperationExecutors,
 		scheduler:                         scheduler,
 		logger:                            zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		operationsToAbort:                 make(chan OperationExecutionInstance, OperationsToBeAbortedChannelSize),
+		isStopping:                        &atomic.Bool{},
+		abortingOperationsGroup:           &sync.WaitGroup{},
+		workersStopTimeoutDuration:        opts.Configuration.WorkersStopTimeoutDuration,
 	}
 }
 
@@ -79,9 +98,9 @@ func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *worker.Wor
 // constantly look to execute operations, and this loop can be canceled using
 // the provided context. NOTE: It is a blocking function.
 func (w *OperationExecutionWorker) Start(ctx context.Context) error {
+	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 	defer w.Stop(ctx)
 
-	w.workerContext, w.cancelWorkerContext = context.WithCancel(ctx)
 	pendingOpsChan := w.operationManager.PendingOperationsChan(w.workerContext, w.scheduler.Name)
 
 	healthControllerTicker := time.NewTicker(w.healthControllerExecutionInterval)
@@ -101,6 +120,7 @@ func (w *OperationExecutionWorker) Start(ctx context.Context) error {
 
 	defer storagecleanupTicker.Stop()
 
+	defer close(w.operationsToAbort)
 	for {
 		select {
 		case <-w.workerContext.Done():
@@ -158,62 +178,62 @@ func (w *OperationExecutionWorker) executeOperationFlow(operationID string) erro
 		return err
 	}
 
-	executionErr := w.executeOperationWithLease(operationContext, op, def, executor)
-
-	if executionErr != nil {
-		w.handleExecutionError(op, executionErr, loopLogger)
-		w.rollbackOperation(op, def, executionErr, loopLogger, executor)
-	} else {
-		op.Status = operation.StatusFinished
+	done := make(chan error, 1)
+	go func() {
+		done <- w.executeOperationWithLease(operationContext, op, def, executor)
+	}()
+	select {
+	case <-w.workerContext.Done():
+		w.operationsToAbort <- OperationExecutionInstance{op, def, executor}
+	case executionErr := <-done:
+		if executionErr != nil {
+			w.handleExecutionError(op, def, executionErr, loopLogger, executor)
+		} else {
+			op.Status = operation.StatusFinished
+			w.finishOperationAndLease(w.workerContext, op, def, loopLogger)
+		}
 	}
-
-	w.finishOperationAndLease(op, def, loopLogger)
 
 	return nil
 }
 
-func (w *OperationExecutionWorker) rollbackOperation(op *operation.Operation, def operations.Definition, executionErr error, loopLogger *zap.Logger, executor operations.Executor) {
-	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation rollback")
+func (w *OperationExecutionWorker) rollbackOperation(ctx context.Context, op *operation.Operation, def operations.Definition, executionErr error, loopLogger *zap.Logger, executor operations.Executor) {
+	loopLogger.Info("rolling back operation")
+	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation rollback")
 	rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
-		return executor.Rollback(w.workerContext, op, def, executionErr)
+		return executor.Rollback(ctx, op, def, executionErr)
 	})
 
 	if rollbackErr != nil {
 		loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
 	} else {
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation rollback flow execution finished with success")
+		loopLogger.Info("successfully rolled back operation")
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation rollback flow execution finished with success")
 	}
 }
 
-func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation, executionErr error, loopLogger *zap.Logger) {
-	if strings.Contains(executionErr.Error(), context.Canceled.Error()) {
-		op.Status = operation.StatusCanceled
-
-		loopLogger.Info("operation execution canceled")
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation canceled by the user")
-	} else {
-		op.Status = operation.StatusError
-
-		loopLogger.Error("operation execution failed", zap.Error(executionErr))
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation execution failed")
-	}
+func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation, def operations.Definition, executionErr error, loopLogger *zap.Logger, executor operations.Executor) {
+	op.Status = operation.StatusError
+	msg := "operation execution failed"
+	loopLogger.Error(msg, zap.Error(executionErr))
+	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, msg)
+	w.rollbackOperation(w.workerContext, op, def, executionErr, loopLogger, executor)
+	w.finishOperationAndLease(w.workerContext, op, def, loopLogger)
 }
 
-func (w *OperationExecutionWorker) finishOperationAndLease(op *operation.Operation, def operations.Definition, loopLogger *zap.Logger) {
-	loopLogger.Info("Finishing operation")
-
+func (w *OperationExecutionWorker) finishOperationAndLease(ctx context.Context, op *operation.Operation, def operations.Definition, loopLogger *zap.Logger) {
 	// TODO(gabrielcorado): we need to propagate the error reason.
 	// TODO(gabrielcorado): consider handling the finish operation error.
-	err := w.operationManager.FinishOperation(w.workerContext, op, def)
+	err := w.operationManager.FinishOperation(ctx, op, def)
 	if err != nil {
 		loopLogger.Error("failed to finish operation", zap.Error(err))
 	}
-	err = w.operationManager.RevokeLease(w.workerContext, op)
+	err = w.operationManager.RevokeLease(ctx, op)
 	if err != nil {
 		loopLogger.Error("failed to revoke operation lease", zap.Error(err))
 	}
-	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation finished")
+	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation finished")
 }
 
 func (w OperationExecutionWorker) executeOperationWithLease(operationContext context.Context, op *operation.Operation, def operations.Definition, executor operations.Executor) error {
@@ -292,12 +312,50 @@ func (w *OperationExecutionWorker) createOperation(ctx context.Context, operatio
 	return nil
 }
 
+func (w *OperationExecutionWorker) AbortOngoingOperations(ctx context.Context) {
+	w.logger.Info("aborting operations that were in progress", zap.Int("operationsToAbort", len(w.operationsToAbort)))
+	for {
+		instance, ok := <-w.operationsToAbort
+		if !ok {
+			return
+		}
+		logger := w.logger.With(
+			zap.String(logs.LogFieldOperationID, instance.op.ID),
+			zap.String(logs.LogFieldOperationDefinition, instance.def.Name()),
+		)
+		instance.op.Status = operation.StatusCanceled
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, instance.op, context.Canceled.Error())
+		w.rollbackOperation(ctx, instance.op, instance.def, context.Canceled, logger, instance.executor)
+		w.finishOperationAndLease(ctx, instance.op, instance.def, logger)
+	}
+}
+
 func (w *OperationExecutionWorker) Stop(_ context.Context) {
-	if w.workerContext == nil {
+	w.logger.Info("stopping operation execution worker")
+	defer w.isStopping.Store(false)
+	defer w.cancelWorkerContext()
+
+	if w.isStopping.Load() {
+		w.logger.Debug("already aborting operations, waiting for them to finish")
+		// Worker can be stopped by multiple callers: WorkerManager and
+		// OperationExecutinWorker on the second call, we need to wait all
+		// operations to be aborted
+		w.abortingOperationsGroup.Wait()
+		w.isStopping.Store(false)
 		return
 	}
 
-	w.cancelWorkerContext()
+	w.isStopping.Store(true)
+	w.abortingOperationsGroup.Add(1)
+	defer w.abortingOperationsGroup.Done()
+
+	if len(w.operationsToAbort) == 0 {
+		w.logger.Info("no operations to abort, worker stopping")
+		return
+	}
+
+	w.AbortOngoingOperations(context.Background())
+	w.logger.Info("operations aborted, worker stopping")
 }
 
 func (w *OperationExecutionWorker) IsRunning() bool {

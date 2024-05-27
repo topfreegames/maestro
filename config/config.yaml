@@ -1,6 +1,6 @@
 api:
   port: 8080
-  gracefulShutdownTimeout: 10s
+  gracefulShutdownTimeout: 30s
   metrics:
     enabled: true
   tracing:
@@ -9,7 +9,7 @@ api:
 
 internalApi:
   port: 8081
-  gracefulShutdownTimeout: 10s
+  gracefulShutdownTimeout: 30s
   metrics:
     enabled: true
   healthcheck:
@@ -51,7 +51,7 @@ adapters:
       kubeconfig: "./kubeconfig/kubeconfig.yaml"
 workers:
   syncInterval: 10s
-  stopTimeoutDuration: 1m
+  stopTimeoutDuration: 2m
   redis:
     operationsTTL: 24h
   healthControllerInterval: 1m

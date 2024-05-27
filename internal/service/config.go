@@ -29,6 +29,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/events"
 	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations"
 	roommanager "github.com/topfreegames/maestro/internal/core/services/rooms"
+	"github.com/topfreegames/maestro/internal/core/services/workers"
 
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/worker"
@@ -95,9 +96,11 @@ func NewRoomManagerConfig(c config.Config) (roommanager.RoomManagerConfig, error
 func NewWorkersConfig(c config.Config) (worker.Configuration, error) {
 	healthControllerExecutionInterval := c.GetDuration(healthControllerExecutionIntervalConfigPath)
 	storagecleanupExecutionInterval := c.GetDuration(storagecleanupExecutionIntervalConfigPath)
+	workersStopTimeoutDuration := c.GetDuration(workers.WorkersStopTimeoutDurationPath)
 	config := worker.Configuration{
 		HealthControllerExecutionInterval: healthControllerExecutionInterval,
 		StorageCleanupExecutionInterval:   storagecleanupExecutionInterval,
+		WorkersStopTimeoutDuration:        workersStopTimeoutDuration,
 	}
 
 	return config, nil
