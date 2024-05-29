@@ -97,21 +97,19 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation finished")
 
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).
-			Do(func(ctx, operation, definition interface{}) {
-				time.Sleep(time.Second * 1)
-			}).
+			Do(func(ctx, operation, definition interface{}) {}).
 			Return(nil)
 
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
 
+			time.Sleep(10 * time.Millisecond)
 			workerService.Stop(context.Background())
 			require.False(t, workerService.IsRunning())
 		}()
 
 		err := workerService.Start(ctx)
 		require.NoError(t, err)
-
 	})
 
 	t.Run("execute Rollback when a Execute fails", func(t *testing.T) {
@@ -161,11 +159,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executionErr := fmt.Errorf("some execution error")
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
 		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
-			func(ctx, operation, definition, executeErr interface{}) {
-				time.Sleep(time.Second * 1)
-			},
+			func(ctx, operation, definition, executeErr interface{}) {},
 		).Return(nil)
-		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation execution failed")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "operation execution failed")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation rollback")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
 
@@ -176,6 +172,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
 
+			time.Sleep(10 * time.Millisecond)
 			workerService.Stop(context.Background())
 			require.False(t, workerService.IsRunning())
 		}()
@@ -231,11 +228,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		executionErr := fmt.Errorf("some execution error: %s", context.Canceled.Error())
 		operationExecutor.EXPECT().Execute(gomock.Any(), expectedOperation, operationDefinition).Return(executionErr)
 		operationExecutor.EXPECT().Rollback(gomock.Any(), expectedOperation, operationDefinition, executionErr).Do(
-			func(ctx, operation, definition, executeErr interface{}) {
-				time.Sleep(time.Second * 1)
-			},
+			func(ctx, operation, definition, executeErr interface{}) {},
 		).Return(nil)
-		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation canceled by the user")
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "operation canceled by the user")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Starting operation rollback")
 		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), expectedOperation, "Operation rollback flow execution finished with success")
 
@@ -246,6 +241,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
 
+			time.Sleep(10 * time.Millisecond)
 			workerService.Stop(context.Background())
 			require.False(t, workerService.IsRunning())
 		}()
@@ -292,6 +288,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
 
+			time.Sleep(10 * time.Millisecond)
 			workerService.Stop(context.Background())
 			require.False(t, workerService.IsRunning())
 		}()
@@ -342,9 +339,9 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
 
+			time.Sleep(10 * time.Millisecond)
 			workerService.Stop(context.Background())
 			require.False(t, workerService.IsRunning())
-			time.Sleep(time.Millisecond * 100)
 		}()
 
 		err := workerService.Start(ctx)
@@ -401,6 +398,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
 
+			time.Sleep(10 * time.Millisecond)
 			workerService.Stop(context.Background())
 			require.False(t, workerService.IsRunning())
 		}()
@@ -458,6 +456,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
 
+			time.Sleep(10 * time.Millisecond)
 			workerService.Stop(context.Background())
 			require.False(t, workerService.IsRunning())
 		}()
@@ -549,6 +548,7 @@ func TestSchedulerOperationsExecutionLoop(t *testing.T) {
 		go func() {
 			pendingOpsChan <- expectedOperation.ID
 
+			time.Sleep(10 * time.Millisecond)
 			workerService.Stop(context.Background())
 			require.False(t, workerService.IsRunning())
 		}()

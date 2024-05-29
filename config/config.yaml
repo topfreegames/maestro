@@ -1,6 +1,6 @@
 api:
   port: 8080
-  gracefulShutdownTimeout: 10s
+  gracefulShutdownTimeout: 2m
   metrics:
     enabled: true
   tracing:
@@ -9,7 +9,7 @@ api:
 
 internalApi:
   port: 8081
-  gracefulShutdownTimeout: 10s
+  gracefulShutdownTimeout: 2m
   metrics:
     enabled: true
   healthcheck:

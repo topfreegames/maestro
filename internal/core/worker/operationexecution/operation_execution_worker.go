@@ -45,7 +45,13 @@ import (
 
 var _ worker.Worker = (*OperationExecutionWorker)(nil)
 
-const WorkerName = "operation_execution"
+const (
+	WorkerName = "operation_execution"
+	// When context is canceled, we need to cancel operations running, rollback and
+	// update its state to Canceled. For this, we need a new context with timeout so
+	// we don't hog ourselves in that process
+	TerminationGracePeriodTimeout = 1 * time.Minute
+)
 
 // OperationExecutionWorker is the service responsible for implementing the worker
 // responsibilities.
@@ -161,75 +167,77 @@ func (w *OperationExecutionWorker) executeOperationFlow(operationID string) erro
 	executionErr := w.executeOperationWithLease(operationContext, op, def, executor)
 
 	if executionErr != nil {
-		w.handleExecutionError(op, executionErr, loopLogger)
-		w.rollbackOperation(op, def, executionErr, loopLogger, executor)
+		w.handleExecutionError(op, def, executionErr, loopLogger, executor)
 	} else {
 		op.Status = operation.StatusFinished
+		w.finishOperationAndLease(w.workerContext, op, def, loopLogger)
 	}
-
-	w.finishOperationAndLease(op, def, loopLogger)
 
 	return nil
 }
 
-func (w *OperationExecutionWorker) rollbackOperation(op *operation.Operation, def operations.Definition, executionErr error, loopLogger *zap.Logger, executor operations.Executor) {
-	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation rollback")
+func (w *OperationExecutionWorker) rollbackOperation(ctx context.Context, op *operation.Operation, def operations.Definition, executionErr error, loopLogger *zap.Logger, executor operations.Executor) {
+	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation rollback")
 	rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
-		return executor.Rollback(w.workerContext, op, def, executionErr)
+		return executor.Rollback(ctx, op, def, executionErr)
 	})
 
 	if rollbackErr != nil {
 		loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
 	} else {
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation rollback flow execution finished with success")
+		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation rollback flow execution finished with success")
 	}
 }
 
-func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation, executionErr error, loopLogger *zap.Logger) {
+func (w *OperationExecutionWorker) handleExecutionError(op *operation.Operation, def operations.Definition, executionErr error, loopLogger *zap.Logger, executor operations.Executor) {
+	executionErrCtx := w.workerContext
+	var msg string
 	if strings.Contains(executionErr.Error(), context.Canceled.Error()) {
 		op.Status = operation.StatusCanceled
-
-		loopLogger.Info("operation execution canceled")
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation canceled by the user")
+		msg = "operation canceled by the user"
+		var cancelFunc func()
+		executionErrCtx, cancelFunc = context.WithTimeout(context.Background(), TerminationGracePeriodTimeout)
+		defer cancelFunc()
 	} else {
 		op.Status = operation.StatusError
-
-		loopLogger.Error("operation execution failed", zap.Error(executionErr))
-		w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation execution failed")
+		msg = "operation execution failed"
 	}
+	loopLogger.Error(msg, zap.Error(executionErr))
+	w.operationManager.AppendOperationEventToExecutionHistory(executionErrCtx, op, msg)
+	w.rollbackOperation(executionErrCtx, op, def, executionErr, loopLogger, executor)
+	w.finishOperationAndLease(executionErrCtx, op, def, loopLogger)
 }
 
-func (w *OperationExecutionWorker) finishOperationAndLease(op *operation.Operation, def operations.Definition, loopLogger *zap.Logger) {
+func (w *OperationExecutionWorker) finishOperationAndLease(ctx context.Context, op *operation.Operation, def operations.Definition, loopLogger *zap.Logger) {
 	loopLogger.Info("Finishing operation")
 
 	// TODO(gabrielcorado): we need to propagate the error reason.
 	// TODO(gabrielcorado): consider handling the finish operation error.
-	err := w.operationManager.FinishOperation(w.workerContext, op, def)
+	err := w.operationManager.FinishOperation(ctx, op, def)
 	if err != nil {
 		loopLogger.Error("failed to finish operation", zap.Error(err))
 	}
-	err = w.operationManager.RevokeLease(w.workerContext, op)
+	err = w.operationManager.RevokeLease(ctx, op)
 	if err != nil {
 		loopLogger.Error("failed to revoke operation lease", zap.Error(err))
 	}
-	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Operation finished")
+	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation finished")
 }
 
 func (w OperationExecutionWorker) executeOperationWithLease(operationContext context.Context, op *operation.Operation, def operations.Definition, executor operations.Executor) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic while executing operation")
-		}
+	done := make(chan error, 1)
+	go func() {
+		done <- w.executeCollectingLatencyMetrics(op.DefinitionName, func() error {
+			return executor.Execute(operationContext, op, def)
+		})
 	}()
 	select {
 	case <-operationContext.Done():
 		return operationContext.Err()
-	default:
+	case err := <-done:
+		return err
 	}
-	return w.executeCollectingLatencyMetrics(op.DefinitionName, func() error {
-		return executor.Execute(operationContext, op, def)
-	})
 }
 
 func (w *OperationExecutionWorker) prepareExecutionAndLease(op *operation.Operation, def operations.Definition, loopLogger *zap.Logger) (operationContext context.Context, operationCancellationFunction context.CancelFunc, err error) {
