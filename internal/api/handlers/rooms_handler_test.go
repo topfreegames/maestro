@@ -27,9 +27,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -54,12 +54,12 @@ const fixturesRelativePath = "../../../test/data/handlers/fixtures"
 
 func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
-	validRequests, _ := ioutil.ReadFile(fixturesRelativePath + "/request/valid-ping-data-list.json")
+	validRequests, _ := os.ReadFile(fixturesRelativePath + "/request/valid-ping-data-list.json")
 	var validRawRequests []*json.RawMessage
 	err := json.Unmarshal(validRequests, &validRawRequests)
 	require.NoError(t, err)
 
-	invalidStateRequests, _ := ioutil.ReadFile(fixturesRelativePath + "/request/invalid-state-transition-ping-data.json")
+	invalidStateRequests, _ := os.ReadFile(fixturesRelativePath + "/request/invalid-state-transition-ping-data.json")
 	var invalidStateRawRequests []*json.RawMessage
 	err = json.Unmarshal(invalidStateRequests, &invalidStateRawRequests)
 	require.NoError(t, err)
@@ -153,7 +153,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/bad-ping-data.json")
+		request, err := os.ReadFile(fixturesRelativePath + "/request/bad-ping-data.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPut, "/scheduler/scheduler-name-1/rooms/room-name-1/ping", bytes.NewReader(request))
@@ -168,7 +168,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 
 func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 
-	requests, _ := ioutil.ReadFile(fixturesRelativePath + "/request/room-events.json")
+	requests, _ := os.ReadFile(fixturesRelativePath + "/request/room-events.json")
 	var rawRequests []*json.RawMessage
 	err := json.Unmarshal(requests, &rawRequests)
 	require.NoError(t, err)
@@ -238,7 +238,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 
 func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 
-	requests, _ := ioutil.ReadFile(fixturesRelativePath + "/request/player-events.json")
+	requests, _ := os.ReadFile(fixturesRelativePath + "/request/player-events.json")
 	var rawRequests []*json.RawMessage
 	err := json.Unmarshal(requests, &rawRequests)
 	require.NoError(t, err)
@@ -472,7 +472,7 @@ func TestRoomsHandler_GetRoomAddress(t *testing.T) {
 }
 
 func extractBodyForComparisons(t *testing.T, body []byte, expectedBodyFixturePath string) (string, string) {
-	fixture, err := ioutil.ReadFile(fmt.Sprintf("%s/response/%s", fixturesRelativePath, expectedBodyFixturePath))
+	fixture, err := os.ReadFile(fmt.Sprintf("%s/response/%s", fixturesRelativePath, expectedBodyFixturePath))
 	require.NoError(t, err)
 	bodyBuffer := new(bytes.Buffer)
 	expectedBodyBuffer := new(bytes.Buffer)

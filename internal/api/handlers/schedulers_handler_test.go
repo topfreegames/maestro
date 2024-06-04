@@ -30,9 +30,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -571,7 +571,7 @@ func TestCreateScheduler(t *testing.T) {
 		err = api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
+		request, err := os.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
@@ -593,7 +593,7 @@ func TestCreateScheduler(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/bad-scheduler-config.json")
+		request, err := os.ReadFile(fixturesRelativePath + "/request/bad-scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
@@ -643,7 +643,7 @@ func TestCreateScheduler(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
+		request, err := os.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers", bytes.NewReader(request))
@@ -690,7 +690,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
+		request, err := os.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
@@ -720,7 +720,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
+		request, err := os.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
@@ -754,7 +754,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
 		require.NoError(t, err)
 
-		request, err := ioutil.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
+		request, err := os.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
@@ -1112,7 +1112,7 @@ func TestPatchScheduler(t *testing.T) {
 			url := "/schedulers/scheduler-name-1"
 
 			requestFile := fmt.Sprintf("%s/request/%s", fixturesRelativePath, testCase.Mocks.RequestFile)
-			request, err := ioutil.ReadFile(requestFile)
+			request, err := os.ReadFile(requestFile)
 			require.NoError(t, err)
 
 			req, err := http.NewRequest("PATCH", url, bytes.NewReader(request))

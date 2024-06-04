@@ -30,9 +30,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -780,7 +780,7 @@ func TestGetOperation(t *testing.T) {
 }
 
 func extractBodyForComparison(t *testing.T, body []byte, expectedBodyFixturePath string) (string, string) {
-	fixture, err := ioutil.ReadFile(fmt.Sprintf("%s/response/%s", fixturesRelativePath, expectedBodyFixturePath))
+	fixture, err := os.ReadFile(fmt.Sprintf("%s/response/%s", fixturesRelativePath, expectedBodyFixturePath))
 	require.NoError(t, err)
 	bodyBuffer := new(bytes.Buffer)
 	expectedBodyBuffer := new(bytes.Buffer)

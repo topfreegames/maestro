@@ -32,7 +32,7 @@ lint: lint/go lint/protobuf ## Execute linters.
 
 .PHONY: lint/go
 lint/go: ## Execute golangci-lint.
-	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.47.2 run
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.0 run
 
 .PHONY: lint/protobuf
 lint/protobuf: ## Execute buf linter.

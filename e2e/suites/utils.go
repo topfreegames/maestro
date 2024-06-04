@@ -26,8 +26,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -290,7 +290,7 @@ func createTestOperation(ctx context.Context, t *testing.T, operationStorage por
 func addStubRequestToMockedGrpcServer(stubFileName string) error {
 	httpClient := &http.Client{}
 	stubsPath := "../framework/maestro/servermocks/"
-	stub, err := ioutil.ReadFile(stubsPath + stubFileName + ".json")
+	stub, err := os.ReadFile(stubsPath + stubFileName + ".json")
 	if err != nil {
 		return err
 	}

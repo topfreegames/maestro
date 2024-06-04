@@ -15,7 +15,7 @@ go install \
 ```
 
 #### Golang version
-The project requires golang version 1.18 or higher.
+The project requires golang version 1.20 or higher.
 
 #### Building and running
 1. Run `make setup` to get all required modules
@@ -39,7 +39,7 @@ The project requires golang version 1.18 or higher.
 To help you get along with Maestro, by the end of this section you should have a scheduler up and running.
 
 #### Prerequisites
-- Golang v1.18+
+- Golang v1.20+
 - Linux/MacOS environment
 - Docker
 

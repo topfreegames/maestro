@@ -25,7 +25,6 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -63,7 +62,7 @@ func WithGrpcMockContainer(exec func(grpcMockAddress, httpInputMockAddress strin
 // AddStubRequestToMockedGrpcServer add a mock to GRPC server.
 func AddStubRequestToMockedGrpcServer(httpInputMockAddress, stubFilePath string) error {
 	httpClient := &http.Client{}
-	stub, err := ioutil.ReadFile(stubFilePath)
+	stub, err := os.ReadFile(stubFilePath)
 	if err != nil {
 		return err
 	}
