@@ -39,6 +39,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	informersv1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -854,13 +855,13 @@ func (w *Watcher) AutoScale() error {
 	})
 	logger.Info("starting auto scale")
 
-	 if reporters.HasReporters() {
-		 reporters.Report(reportersConstants.EventWatcherAutoScale, map[string]interface{}{
-			 reportersConstants.TagGame:      w.GameName,
-			 reportersConstants.TagScheduler: w.SchedulerName,
-			 reportersConstants.ValueGauge:  "1.00",
-		 })
-	 }
+	if reporters.HasReporters() {
+		reporters.Report(reportersConstants.EventWatcherAutoScale, map[string]interface{}{
+			reportersConstants.TagGame:      w.GameName,
+			reportersConstants.TagScheduler: w.SchedulerName,
+			reportersConstants.ValueGauge:   "1.00",
+		})
+	}
 
 	scheduler, autoScalingInfo, roomCountByStatus, err := controller.GetSchedulerScalingInfo(
 		logger,
@@ -1794,7 +1795,15 @@ func (w *Watcher) watchPods(stopCh <-chan struct{}) {
 }
 
 func (w *Watcher) configureKubeWatch() {
-	w.Informer = informersv1.NewPodInformer(w.KubernetesClient, w.SchedulerName, 30*time.Second, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	w.Informer = informersv1.NewFilteredPodInformer(
+		w.KubernetesClient,
+		w.SchedulerName,
+		30*time.Second,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+		func(options *metav1.ListOptions) {
+			options.LabelSelector = labels.Set{"heritage": "maestro"}.AsSelector().String()
+		},
+	)
 	w.Lister = listersv1.NewPodLister(w.Informer.GetIndexer()).Pods(w.SchedulerName)
 	rateLimiter := workqueue.NewItemFastSlowRateLimiter(20*time.Millisecond, 500*time.Millisecond, 5)
 	w.Queue = workqueue.NewNamedRateLimitingQueue(rateLimiter, w.SchedulerName)
