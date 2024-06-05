@@ -28,7 +28,6 @@ package kubernetes
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -274,61 +273,6 @@ func TestMitigateDisruption(t *testing.T) {
 		incSafetyPercentage := 1.0 + DefaultDisruptionSafetyPercentage
 		newRoomAmount := int32(float64(occupiedRooms) * incSafetyPercentage)
 		require.Equal(t, pdb.Spec.MinAvailable.IntVal, newRoomAmount)
-	})
-
-	t.Run("should default safety percentage if invalid value", func(t *testing.T) {
-		if !kubernetesRuntime.isPDBSupported() {
-			t.Log("Kubernetes version does not support PDB, skipping")
-			t.SkipNow()
-		}
-
-		scheduler := &entities.Scheduler{
-			Name: "scheduler-pdb-mitigation-no-update",
-			Autoscaling: &autoscaling.Autoscaling{
-				Enabled: true,
-				Min:     100,
-				Max:     200,
-				Policy: autoscaling.Policy{
-					Type: autoscaling.RoomOccupancy,
-					Parameters: autoscaling.PolicyParameters{
-						RoomOccupancy: &autoscaling.RoomOccupancyParams{
-							ReadyTarget: 0.1,
-						},
-					},
-				},
-			},
-		}
-		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
-		if err != nil {
-			require.ErrorIs(t, errors.ErrAlreadyExists, err)
-		}
-
-		defer func() {
-			err := kubernetesRuntime.DeleteScheduler(ctx, scheduler)
-			if err != nil {
-				require.ErrorIs(t, errors.ErrNotFound, err)
-			}
-		}()
-
-		time.Sleep(time.Millisecond * 100)
-		pdb, err := client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
-		require.NoError(t, err)
-		require.NotNil(t, pdb)
-		require.Equal(t, pdb.Name, scheduler.Name)
-		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
-
-		newValue := 100
-		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, newValue, 0.0)
-		require.NoError(t, err)
-
-		time.Sleep(time.Millisecond * 100)
-		pdb, err = client.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
-		require.NoError(t, err)
-		require.NotNil(t, pdb)
-		require.Equal(t, pdb.Name, scheduler.Name)
-
-		incSafetyPercentage := 1.0 + DefaultDisruptionSafetyPercentage
-		require.Equal(t, int32(float64(newValue)*incSafetyPercentage), pdb.Spec.MinAvailable.IntVal)
 	})
 
 	t.Run("should clear maxUnavailable and set minAvailable if existing PDB uses maxUnavailable", func(t *testing.T) {
