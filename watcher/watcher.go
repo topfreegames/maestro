@@ -1701,6 +1701,7 @@ func (w *Watcher) podEventHandler(key string) error {
 	}
 
 	kubePod, err := w.Lister.Get(name)
+	w.Logger.Infof("[podEventHandler]: name=%s, kubePod=%s, err=%s", name, kubePod, err)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			return err
