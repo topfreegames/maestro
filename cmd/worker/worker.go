@@ -24,6 +24,7 @@ package worker
 
 import (
 	"context"
+	"sync"
 
 	"github.com/topfreegames/maestro/cmd/commom"
 	"github.com/topfreegames/maestro/internal/core/worker"
@@ -83,7 +84,10 @@ func runWorker() {
 		zap.L().Info("operation cancellation request watcher stopped")
 	}()
 
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		zap.L().Info("operation execution worker manager initialized, starting...")
 		err := operationExecutionWorkerManager.Start(ctx)
 		if err != nil {
@@ -100,4 +104,8 @@ func runWorker() {
 	if err != nil {
 		zap.L().With(zap.Error(err)).Fatal("failed to shutdown internal server")
 	}
+
+	zap.L().Info("waiting for worker to gracefully stop")
+	wg.Wait()
+	zap.L().Info("worker gracefully stopped")
 }

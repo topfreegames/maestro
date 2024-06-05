@@ -44,7 +44,7 @@ const (
 	syncWorkersIntervalPath = "workers.syncInterval"
 	// Workers stop timeout: duration that the workers have to stop their
 	// execution until the context is canceled.
-	workersStopTimeoutDurationPath = "workers.stopTimeoutDuration"
+	WorkersStopTimeoutDurationPath = "workers.stopTimeoutDuration"
 )
 
 // WorkersManager is the default struct of WorkersManager service
@@ -70,7 +70,7 @@ func NewWorkersManager(builder *worker.WorkerBuilder, configs config.Config, sch
 		CurrentWorkers:             map[string]worker.Worker{},
 		syncWorkersInterval:        configs.GetDuration(syncWorkersIntervalPath),
 		WorkerOptions:              workerOptions,
-		workersStopTimeoutDuration: configs.GetDuration(workersStopTimeoutDurationPath),
+		workersStopTimeoutDuration: configs.GetDuration(WorkersStopTimeoutDurationPath),
 		logger:                     zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "workers_manager")),
 	}
 }

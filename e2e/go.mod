@@ -1,6 +1,6 @@
 module github.com/topfreegames/maestro/e2e
 
-go 1.18
+go 1.20
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5

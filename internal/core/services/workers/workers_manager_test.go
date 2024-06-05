@@ -73,7 +73,7 @@ func TestStart(t *testing.T) {
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
-		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
+		configs.EXPECT().GetDuration(WorkersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
@@ -129,7 +129,7 @@ func TestStart(t *testing.T) {
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
-		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
+		configs.EXPECT().GetDuration(WorkersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(context.Background()).Return(nil, errors.ErrUnexpected)
 		workerBuilder := &worker.WorkerBuilder{Func: func(_ *entities.Scheduler, _ *worker.WorkerOptions) worker.Worker {
 			return &workermock.MockWorker{Run: false}
@@ -174,7 +174,7 @@ func TestStart(t *testing.T) {
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
-		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
+		configs.EXPECT().GetDuration(WorkersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(ctx).AnyTimes().Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
@@ -239,7 +239,7 @@ func TestStart(t *testing.T) {
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
-		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
+		configs.EXPECT().GetDuration(WorkersStopTimeoutDurationPath).Return(10 * time.Second)
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 		require.Empty(t, workersManager.CurrentWorkers)
@@ -323,7 +323,7 @@ func TestStart(t *testing.T) {
 
 		ctx, cancelFn := context.WithCancel(context.Background())
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
-		configs.EXPECT().GetDuration(workersStopTimeoutDurationPath).Return(10 * time.Second)
+		configs.EXPECT().GetDuration(WorkersStopTimeoutDurationPath).Return(10 * time.Second)
 		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Times(3).Return([]*entities.Scheduler{
 			{
 				Name:            "zooba-us",
