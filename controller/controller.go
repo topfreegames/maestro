@@ -87,26 +87,23 @@ func CreateScheduler(
 		return err
 	}
 
-	if exists {
-		logger.Error("namespace already exists, aborting scheduler creation")
-		return fmt.Errorf(`namespace "%s" already exists`, namespace.Name)
-	}
-
-	err = mr.WithSegment(models.SegmentNamespace, func() error {
-		return namespace.Create(clientset)
-	})
-
-	if err != nil {
-		logger.WithError(err).Error("error creating namespace")
-
-		deleteErr := mr.WithSegment(models.SegmentNamespace, func() error {
-			return namespace.Delete(clientset)
+	if !exists {
+		err = mr.WithSegment(models.SegmentNamespace, func() error {
+			return namespace.Create(clientset)
 		})
-		if deleteErr != nil {
-			logger.WithError(err).Error("error deleting namespace")
-			return deleteErr
+
+		if err != nil {
+			logger.WithError(err).Error("error creating namespace")
+
+			deleteErr := mr.WithSegment(models.SegmentNamespace, func() error {
+				return namespace.Delete(clientset)
+			})
+			if deleteErr != nil {
+				logger.WithError(err).Error("error deleting namespace")
+				return deleteErr
+			}
+			return err
 		}
-		return err
 	}
 
 	scheduler := models.NewScheduler(configYAML.Name, configYAML.Game, yamlString)
@@ -840,7 +837,8 @@ func UpdateSchedulerConfig(
 }
 
 // MustUpdatePods returns true if it's necessary to delete old pod and create a new one
-//  so this have the new configuration.
+//
+//	so this have the new configuration.
 func MustUpdatePods(old, new *models.ConfigYAML) bool {
 	if old.Version() == "v1" && new.Version() == "v2" && len(new.Containers) != 1 {
 		return true

@@ -1413,34 +1413,6 @@ func deleteSchedulerHelper(
 		}
 	}
 
-	err = mr.WithSegment(models.SegmentNamespace, func() error {
-		return namespace.Delete(clientset)
-	})
-	if err != nil {
-		logger.WithError(err).Error("failed to delete namespace while deleting scheduler")
-		return err
-	}
-	timeoutNamespace := time.NewTimer(time.Duration(timeoutSec) * time.Second)
-	defer timeoutNamespace.Stop()
-
-	time.Sleep(10 * time.Nanosecond) //This negligible sleep avoids race condition
-	exit = false
-	for !exit {
-		select {
-		case <-timeoutNamespace.C:
-			return errors.New("timeout deleting namespace")
-		default:
-			exists, existsErr := namespace.Exists(clientset)
-			if existsErr != nil {
-				logger.WithError(existsErr).Error("error checking namespace existence")
-			} else if !exists {
-				exit = true
-			}
-			logger.Debug("deleting scheduler namespace")
-			time.Sleep(time.Duration(1) * time.Second)
-		}
-	}
-
 	// Delete from DB must be the last operation because
 	// if kubernetes failed to delete pods, watcher will recreate
 	// and keep the last state
