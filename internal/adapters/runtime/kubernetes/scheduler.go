@@ -219,6 +219,16 @@ func (k *kubernetes) MitigateDisruption(
 		return nil
 	}
 
+	// In theory, the PDB object can be changed in the runtime in the meantime after
+	// fetching initial state/ask for creation (beginning of the function) and before
+	// updating the value. This should never happen in production because there is only
+	// one agent setting this PDB in the namespace and it's the worker. However, on tests
+	// we were seeing intermittent failures running parallel cases, hence why adding this
+	// code it is safer to update the PDB object
+	pdb, err = k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+	if err != nil || pdb == nil {
+		return errors.NewErrUnexpected("non recoverable error when getting PDB for scheduler '%s': %s", scheduler.Name, err)
+	}
 	pdb.Spec = v1Policy.PodDisruptionBudgetSpec{
 		MinAvailable: &intstr.IntOrString{
 			Type:   intstr.Int,
