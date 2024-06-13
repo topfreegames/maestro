@@ -10,3 +10,4 @@ The reference documentation are available for this module:
 
 * [Operations](./reference/Operations.md)
 
+* [Rolling Update](./reference/RollingUpdate.md)
