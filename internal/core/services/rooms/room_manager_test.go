@@ -48,6 +48,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 
 	"github.com/golang/mock/gomock"
 
@@ -99,7 +100,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		Spec: game_room.Spec{
 			Containers: []game_room.Container{container1, container2},
 		},
-		PortRange:   nil,
+		PortRange:   &port.PortRange{},
 		Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
 		Labels:      map[string]string{"scheduler": "scheduler-name"},
 	}
@@ -122,7 +123,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		portAllocator.EXPECT().Allocate(&port.PortRange{}, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &scheduler, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(&gameRoomInstance, nil)
@@ -158,7 +159,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
-		portAllocator.EXPECT().Allocate(nil, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
+		portAllocator.EXPECT().Allocate(&port.PortRange{}, 2).Return(nil, porterrors.NewErrInvalidArgument("not enough ports to allocate"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
 		assert.EqualError(t, err, "not enough ports to allocate")
@@ -169,7 +170,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	t.Run("when game room creation fails while creating instance on runtime then it returns nil with proper error", func(t *testing.T) {
 		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		portAllocator.EXPECT().Allocate(&port.PortRange{}, 2).Return([]int32{5000, 6000}, nil)
 
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &scheduler, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
@@ -186,7 +187,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		portAllocator.EXPECT().Allocate(&port.PortRange{}, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &scheduler, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(nil, porterrors.NewErrUnexpected("error creating game room on runtime"))
@@ -203,7 +204,7 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		runtime.EXPECT().CreateGameRoomName(gomock.Any(), scheduler).Return(gameRoomName, nil)
 		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
 
-		portAllocator.EXPECT().Allocate(nil, 2).Return([]int32{5000, 6000}, nil)
+		portAllocator.EXPECT().Allocate(&port.PortRange{}, 2).Return([]int32{5000, 6000}, nil)
 		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &scheduler, gameRoomName, game_room.Spec{
 			Containers: []game_room.Container{containerWithHostPort1, containerWithHostPort2}},
 		).Return(&gameRoomInstance, nil)
