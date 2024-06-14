@@ -35,6 +35,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/golang/mock/gomock"
@@ -1234,7 +1235,7 @@ func newValidScheduler() *entities.Scheduler {
 				},
 			},
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},

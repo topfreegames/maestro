@@ -41,6 +41,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/filters"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
@@ -79,7 +80,7 @@ func TestListSchedulers(t *testing.T) {
 				RoomsReplicas:   6,
 				RollbackVersion: "1.0.0",
 				CreatedAt:       time.Now(),
-				PortRange: &entities.PortRange{
+				PortRange: &port.PortRange{
 					Start: 1,
 					End:   2,
 				},
@@ -256,7 +257,7 @@ func TestGetScheduler(t *testing.T) {
 				},
 			},
 			CreatedAt: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
-			PortRange: &entities.PortRange{
+			PortRange: &port.PortRange{
 				Start: 1,
 				End:   2,
 			},
@@ -526,7 +527,7 @@ func TestCreateScheduler(t *testing.T) {
 					},
 				},
 			},
-			PortRange: &entities.PortRange{
+			PortRange: &port.PortRange{
 				Start: 1,
 				End:   1000,
 			},
@@ -675,7 +676,7 @@ func TestNewSchedulerVersion(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		currentScheduler := newValidScheduler()
-		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+		currentScheduler.PortRange = &port.PortRange{Start: 1, End: 2}
 
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -736,10 +737,10 @@ func TestNewSchedulerVersion(t *testing.T) {
 	t.Run("with failure", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		currentScheduler := newValidScheduler()
-		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+		currentScheduler.PortRange = &port.PortRange{Start: 1, End: 2}
 
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -1089,7 +1090,7 @@ func TestPatchScheduler(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 
 			currentScheduler := newValidScheduler()
-			currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+			currentScheduler.PortRange = &port.PortRange{Start: 1, End: 2}
 
 			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 			operationManager := mock.NewMockOperationManager(mockCtrl)
@@ -1276,7 +1277,7 @@ func newValidScheduler() *entities.Scheduler {
 				},
 			},
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},

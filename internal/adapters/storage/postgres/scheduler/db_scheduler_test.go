@@ -36,6 +36,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 )
 
 func TestScheduler_ToScheduler(t *testing.T) {
@@ -77,7 +78,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Toleration:             "toleration",
 					Affinity:               "affinity",
 				},
-				PortRange: &entities.PortRange{
+				PortRange: &port.PortRange{
 					Start: 40000,
 					End:   60000,
 				},
@@ -171,7 +172,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Affinity:               "affinity",
 					TerminationGracePeriod: 60,
 				},
-				PortRange: &entities.PortRange{
+				PortRange: &port.PortRange{
 					Start: 40000,
 					End:   60000,
 				},

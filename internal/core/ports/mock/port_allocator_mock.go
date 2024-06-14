@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	entities "github.com/topfreegames/maestro/internal/core/entities"
+	port "github.com/topfreegames/maestro/internal/core/entities/port"
 )
 
 // MockPortAllocator is a mock of PortAllocator interface.
@@ -35,7 +35,7 @@ func (m *MockPortAllocator) EXPECT() *MockPortAllocatorMockRecorder {
 }
 
 // Allocate mocks base method.
-func (m *MockPortAllocator) Allocate(portRange *entities.PortRange, quantity int) ([]int32, error) {
+func (m *MockPortAllocator) Allocate(portRange *port.PortRange, quantity int) ([]int32, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Allocate", portRange, quantity)
 	ret0, _ := ret[0].([]int32)

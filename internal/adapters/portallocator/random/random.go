@@ -25,7 +25,7 @@ package random
 import (
 	"math/rand"
 
-	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 )
@@ -33,16 +33,16 @@ import (
 var _ ports.PortAllocator = (*RandomPortAllocator)(nil)
 
 type RandomPortAllocator struct {
-	defaultPortRange *entities.PortRange
+	defaultPortRange *port.PortRange
 }
 
-func NewRandomPortAllocator(portRange *entities.PortRange) *RandomPortAllocator {
+func NewRandomPortAllocator(portRange *port.PortRange) *RandomPortAllocator {
 	return &RandomPortAllocator{
 		defaultPortRange: portRange,
 	}
 }
 
-func (r *RandomPortAllocator) Allocate(portRange *entities.PortRange, quantity int) ([]int32, error) {
+func (r *RandomPortAllocator) Allocate(portRange *port.PortRange, quantity int) ([]int32, error) {
 	currentRange := r.defaultPortRange
 	if portRange != nil {
 		currentRange = portRange

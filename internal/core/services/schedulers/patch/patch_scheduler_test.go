@@ -39,6 +39,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 )
 
 func TestPatchScheduler(t *testing.T) {
@@ -143,7 +144,7 @@ func TestPatchScheduler(t *testing.T) {
 			Input: Input{
 				Scheduler: basicSchedulerToPatchSchedulerTests(),
 				PatchMap: map[string]interface{}{
-					patch.LabelSchedulerPortRange: &entities.PortRange{
+					patch.LabelSchedulerPortRange: &port.PortRange{
 						Start: 10000,
 						End:   60000,
 					},
@@ -152,7 +153,7 @@ func TestPatchScheduler(t *testing.T) {
 			Output: Output{
 				ChangeSchedulerFunc: func() *entities.Scheduler {
 					scheduler := basicSchedulerToPatchSchedulerTests()
-					scheduler.PortRange = &entities.PortRange{
+					scheduler.PortRange = &port.PortRange{
 						Start: 10000,
 						End:   60000,
 					}
@@ -1029,7 +1030,7 @@ func basicSchedulerToPatchSchedulerTests() *entities.Scheduler {
 				},
 			},
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},

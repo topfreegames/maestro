@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
@@ -94,7 +95,7 @@ const (
 // PatchScheduler function applies the patchMap in the scheduler, returning the patched Scheduler.
 func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{}) (*entities.Scheduler, error) {
 	if _, ok := patchMap[LabelSchedulerPortRange]; ok {
-		if scheduler.PortRange, ok = patchMap[LabelSchedulerPortRange].(*entities.PortRange); !ok {
+		if scheduler.PortRange, ok = patchMap[LabelSchedulerPortRange].(*port.PortRange); !ok {
 			return nil, fmt.Errorf("error parsing scheduler: port range malformed")
 		}
 	}

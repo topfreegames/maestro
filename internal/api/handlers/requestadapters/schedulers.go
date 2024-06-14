@@ -29,6 +29,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 	_struct "google.golang.org/protobuf/types/known/structpb"
@@ -48,7 +49,7 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	}
 
 	if request.PortRange != nil {
-		patchMap[patch.LabelSchedulerPortRange] = entities.NewPortRange(
+		patchMap[patch.LabelSchedulerPortRange] = port.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		)
@@ -121,7 +122,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		entities.StateCreating,
 		request.GetMaxSurge(),
 		*fromApiSpec(request.GetSpec()),
-		entities.NewPortRange(
+		port.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		),
@@ -158,7 +159,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		entities.StateCreating,
 		request.GetMaxSurge(),
 		*fromApiSpec(request.GetSpec()),
-		entities.NewPortRange(
+		port.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		),
@@ -486,7 +487,7 @@ func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
 	return forwarders
 }
 
-func getPortRange(portRange *entities.PortRange) *api.PortRange {
+func getPortRange(portRange *port.PortRange) *api.PortRange {
 	if portRange != nil {
 		return &api.PortRange{
 			Start: portRange.Start,

@@ -41,6 +41,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/validations"
 )
@@ -633,7 +634,7 @@ func newValidSchedulerV2() *entities.Scheduler {
 				},
 			},
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},

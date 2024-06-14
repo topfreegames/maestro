@@ -48,6 +48,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -166,7 +167,7 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 
 	t.Run("return the operation when no error occurs", func(t *testing.T) {
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -187,7 +188,7 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 
 	t.Run("return error when the scheduler is invalid", func(t *testing.T) {
 		scheduler := newInvalidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -205,7 +206,7 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 
 	t.Run("return error when scheduler is not found", func(t *testing.T) {
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -222,7 +223,7 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 
 	t.Run("with failure", func(t *testing.T) {
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -251,10 +252,10 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 	t.Run("return the operation when no error occurs", func(t *testing.T) {
 
 		currentScheduler := newValidScheduler()
-		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+		currentScheduler.PortRange = &port.PortRange{Start: 1, End: 2}
 
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -274,10 +275,10 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 
 	t.Run("return error when some error occurs while creating operation", func(t *testing.T) {
 		currentScheduler := newValidScheduler()
-		currentScheduler.PortRange = &entities.PortRange{Start: 1, End: 2}
+		currentScheduler.PortRange = &port.PortRange{Start: 1, End: 2}
 
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -305,7 +306,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 
 	t.Run("return the operation when no error occurs using cache", func(t *testing.T) {
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 		opDef := &delete.Definition{}
 
 		ctx := context.Background()
@@ -326,7 +327,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 
 	t.Run("return the operation when no error occurs using storage", func(t *testing.T) {
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 		opDef := &delete.Definition{}
 
 		ctx := context.Background()
@@ -348,7 +349,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 
 	t.Run("return error when some error occurs while creating operation", func(t *testing.T) {
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 		opDef := &delete.Definition{}
 
 		ctx := context.Background()
@@ -369,7 +370,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 
 	t.Run("return error when can't find scheduler to delete", func(t *testing.T) {
 		scheduler := newValidScheduler()
-		scheduler.PortRange = &entities.PortRange{Start: 0, End: 1}
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
 
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
@@ -1071,7 +1072,7 @@ func newValidScheduler() *entities.Scheduler {
 				},
 			},
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},
@@ -1111,7 +1112,7 @@ func newInvalidScheduler() *entities.Scheduler {
 				},
 			},
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: -1,
 			End:   -1000,
 		},

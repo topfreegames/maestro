@@ -39,6 +39,7 @@ import (
 
 	configmock "github.com/topfreegames/maestro/internal/config/mock"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/worker"
@@ -80,7 +81,7 @@ func TestStart(t *testing.T) {
 				Game:            "zooba",
 				State:           entities.StateCreating,
 				RollbackVersion: "1.0.0",
-				PortRange: &entities.PortRange{
+				PortRange: &port.PortRange{
 					Start: 1,
 					End:   10000,
 				},
@@ -181,7 +182,7 @@ func TestStart(t *testing.T) {
 				Game:            "zooba",
 				State:           entities.StateCreating,
 				RollbackVersion: "1.0.0",
-				PortRange: &entities.PortRange{
+				PortRange: &port.PortRange{
 					Start: 1,
 					End:   10000,
 				},
@@ -275,7 +276,7 @@ func TestStart(t *testing.T) {
 				Game:            "zooba",
 				State:           entities.StateCreating,
 				RollbackVersion: "1.0.0",
-				PortRange: &entities.PortRange{
+				PortRange: &port.PortRange{
 					Start: 1,
 					End:   10000,
 				},
@@ -330,7 +331,7 @@ func TestStart(t *testing.T) {
 				Game:            "zooba",
 				State:           entities.StateCreating,
 				RollbackVersion: "1.0.0",
-				PortRange: &entities.PortRange{
+				PortRange: &port.PortRange{
 					Start: 1,
 					End:   10000,
 				},

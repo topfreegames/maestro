@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -58,7 +59,7 @@ type Scheduler struct {
 	RollbackVersion string
 	Spec            game_room.Spec
 	Autoscaling     *autoscaling.Autoscaling
-	PortRange       *PortRange
+	PortRange       *port.PortRange
 	RoomsReplicas   int `validate:"min=0"`
 	CreatedAt       time.Time
 	LastDownscaleAt time.Time
@@ -75,7 +76,7 @@ func NewScheduler(
 	state string,
 	maxSurge string,
 	spec game_room.Spec,
-	portRange *PortRange,
+	portRange *port.PortRange,
 	roomsReplicas int,
 	autoscaling *autoscaling.Autoscaling,
 	forwarders []*forwarder.Forwarder,
