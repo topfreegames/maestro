@@ -25,6 +25,7 @@ package service
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
 	"github.com/topfreegames/maestro/internal/core/services/events"
 	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations"
@@ -46,6 +47,7 @@ const (
 	roomDeletionTimeoutMillisConfigPath         = "services.roomManager.roomDeletionTimeoutMillis"
 	operationLeaseTTLMillisConfigPath           = "services.operationManager.operationLeaseTTLMillis"
 	schedulerCacheTTLMillisConfigPath           = "services.eventsForwarder.schedulerCacheTTLMillis"
+	operationsRoomsAddLimitConfigPath           = "operations.rooms.add.limit"
 )
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
@@ -74,6 +76,17 @@ func NewHealthControllerConfig(c config.Config) healthcontroller.Config {
 		RoomInitializationTimeout: initializationTimeout,
 		RoomPingTimeout:           pingTimeout,
 		RoomDeletionTimeout:       deletionTimeout,
+	}
+
+	return config
+}
+
+// NewOperationRoomsAddConfig instantiate a new add.Config to be used by the rooms add operation.
+func NewOperationRoomsAddConfig(c config.Config) add.Config {
+	operationsRoomsAddLimit := int32(c.GetInt(operationsRoomsAddLimitConfigPath))
+
+	config := add.Config{
+		AmountLimit: operationsRoomsAddLimit,
 	}
 
 	return config

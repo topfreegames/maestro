@@ -25,6 +25,7 @@ package providers
 import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	addrooms "github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	removerooms "github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 	createscheduler "github.com/topfreegames/maestro/internal/core/operations/schedulers/create"
@@ -86,11 +87,12 @@ func ProvideExecutors(
 	autoscaler ports.Autoscaler,
 	newSchedulerVersionConfig newversion.Config,
 	healthControllerConfig healthcontroller.Config,
+	addRoomsConfig add.Config,
 ) map[string]operations.Executor {
 
 	executors := map[string]operations.Executor{}
 	executors[createscheduler.OperationName] = createscheduler.NewExecutor(runtime, schedulerManager, operationManager)
-	executors[addrooms.OperationName] = addrooms.NewExecutor(roomManager, schedulerStorage, operationManager)
+	executors[addrooms.OperationName] = addrooms.NewExecutor(roomManager, schedulerStorage, operationManager, addRoomsConfig)
 	executors[removerooms.OperationName] = removerooms.NewExecutor(roomManager, roomStorage, operationManager)
 	executors[test.OperationName] = test.NewExecutor()
 	executors[switchversion.OperationName] = switchversion.NewExecutor(roomManager, schedulerManager, operationManager, roomStorage)

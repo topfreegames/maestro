@@ -63,6 +63,7 @@ type Configuration struct {
 	HealthControllerExecutionInterval time.Duration
 	StorageCleanupExecutionInterval   time.Duration
 	WorkersStopTimeoutDuration        time.Duration
+	AddRoomsLimit                     int
 }
 
 // ProvideWorkerOptions instantiate an WorkerOptions structure.

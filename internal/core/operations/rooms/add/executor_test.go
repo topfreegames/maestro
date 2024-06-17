@@ -83,6 +83,10 @@ func TestExecutor_Execute(t *testing.T) {
 		SchedulerID: "game",
 	}
 
+	config := Config{
+		AmountLimit: 10,
+	}
+
 	op := operation.Operation{
 		ID:             "some-op-id",
 		SchedulerName:  "zooba_blue:1.0.0",
@@ -91,19 +95,19 @@ func TestExecutor_Execute(t *testing.T) {
 	}
 
 	t.Run("should succeed - all room creations succeed => return nil, no error", func(t *testing.T) {
-		_, roomsManager, schedulerStorage, operationsManager := testSetup(t)
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, config)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(10)
 
-		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager)
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, config)
 		err := executor.Execute(context.Background(), &op, &definition)
 
 		require.Nil(t, err)
 	})
 
 	t.Run("should fail - some room creation fail, others succeed => returns unexpected error", func(t *testing.T) {
-		_, roomsManager, schedulerStorage, operationsManager := testSetup(t)
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, config)
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
 
@@ -114,7 +118,7 @@ func TestExecutor_Execute(t *testing.T) {
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "error while creating room: error")
 
-		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager)
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, config)
 		err := executor.Execute(context.Background(), &op, &definition)
 
 		require.NotNil(t, err)
@@ -122,14 +126,41 @@ func TestExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("should fail - no scheduler found => returns error", func(t *testing.T) {
-		_, roomsManager, schedulerStorage, operationsManager := testSetup(t)
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, config)
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(nil, porterrors.NewErrNotFound("scheduler not found"))
 		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "error fetching scheduler from storage: scheduler not found")
 
-		err := NewExecutor(roomsManager, schedulerStorage, operationsManager).Execute(context.Background(), &op, &definition)
+		err := NewExecutor(roomsManager, schedulerStorage, operationsManager, config).Execute(context.Background(), &op, &definition)
 		require.NotNil(t, err)
 		require.ErrorContains(t, err, "error fetching scheduler from storage: scheduler not found")
+	})
+
+	t.Run("use default amount limit if AmountLimit not set", func(t *testing.T) {
+		executor, _, _, _ := testSetup(t, Config{})
+		require.NotNil(t, executor)
+		require.Equal(t, executor.config.AmountLimit, int32(DefaultAmountLimit))
+	})
+
+	t.Run("use default amount limit if invalid AmountLimit value", func(t *testing.T) {
+		executor, _, _, _ := testSetup(t, Config{AmountLimit: -1})
+		require.NotNil(t, executor)
+		require.Equal(t, executor.config.AmountLimit, int32(DefaultAmountLimit))
+	})
+
+	t.Run("should succeed - cap to the default amount if asked to create more than whats configured", func(t *testing.T) {
+		bigAmountDefinition := Definition{Amount: 10000}
+		smallDefaultConfig := Config{AmountLimit: 10}
+
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, smallDefaultConfig)
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(int(smallDefaultConfig.AmountLimit))
+
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, smallDefaultConfig)
+		err := executor.Execute(context.Background(), &op, &bigAmountDefinition)
+
+		require.Nil(t, err)
 	})
 }
 
@@ -144,21 +175,25 @@ func TestExecutor_Rollback(t *testing.T) {
 		DefinitionName: "zooba_blue:1.0.0",
 	}
 
-	t.Run("does nothing and return nil", func(t *testing.T) {
-		_, roomsManager, schedulerStorage, operationsManager := testSetup(t)
+	config := Config{
+		AmountLimit: 10,
+	}
 
-		rollbackErr := NewExecutor(roomsManager, schedulerStorage, operationsManager).Rollback(context.Background(), &op, &definition, nil)
+	t.Run("does nothing and return nil", func(t *testing.T) {
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, config)
+
+		rollbackErr := NewExecutor(roomsManager, schedulerStorage, operationsManager, config).Rollback(context.Background(), &op, &definition, nil)
 		require.NoError(t, rollbackErr)
 	})
 
 }
 
-func testSetup(t *testing.T) (*Executor, *mockports.MockRoomManager, *mockports.MockSchedulerStorage, *mockports.MockOperationManager) {
+func testSetup(t *testing.T, cfg Config) (*Executor, *mockports.MockRoomManager, *mockports.MockSchedulerStorage, *mockports.MockOperationManager) {
 	mockCtrl := gomock.NewController(t)
 
 	roomsManager := mockports.NewMockRoomManager(mockCtrl)
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 	operationsManager := mockports.NewMockOperationManager(mockCtrl)
-	executor := NewExecutor(roomsManager, schedulerStorage, operationsManager)
+	executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, cfg)
 	return executor, roomsManager, schedulerStorage, operationsManager
 }
