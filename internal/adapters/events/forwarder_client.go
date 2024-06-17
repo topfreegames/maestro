@@ -38,6 +38,7 @@ import (
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 // Address represent a host:port to a grpc server that understand Event messages.
@@ -169,6 +170,7 @@ func (f *ForwarderClient) createGRPCConnection(address string) (*grpc.ClientConn
 	conn, err := grpc.Dial(
 		address,
 		dialOption,
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{Time: 30 * time.Second, Timeout: 10 * time.Second, PermitWithoutStream: true}),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 	)
 	if err != nil {
