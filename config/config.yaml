@@ -64,6 +64,11 @@ runtimeWatcher:
     intervalSeconds: 5
     safetyPercentage: 0.05
 
+operations:
+  rooms:
+    add:
+      limit: 1000
+
 services:
   roomManager:
     roomPingTimeoutMillis: 240000

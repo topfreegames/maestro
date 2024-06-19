@@ -39,19 +39,31 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 )
 
+const DefaultAmountLimit = 1000
+
+type Config struct {
+	AmountLimit int32
+}
+
 type Executor struct {
 	roomManager      ports.RoomManager
 	storage          ports.SchedulerStorage
 	operationManager ports.OperationManager
+	config           Config
 }
 
 var _ operations.Executor = (*Executor)(nil)
 
-func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage, operationManager ports.OperationManager) *Executor {
+func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage, operationManager ports.OperationManager, config Config) *Executor {
+	if config.AmountLimit <= 0 {
+		zap.L().Sugar().Infof("Amount limit wrongly configured with %d, using default value %d", config.AmountLimit, DefaultAmountLimit)
+		config.AmountLimit = DefaultAmountLimit
+	}
 	return &Executor{
-		roomManager:      roomManager,
-		storage:          storage,
-		operationManager: operationManager,
+		roomManager,
+		storage,
+		operationManager,
+		config,
 	}
 }
 
@@ -69,6 +81,11 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		getSchedulerStorageErr := fmt.Errorf("error fetching scheduler from storage: %w", err)
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, getSchedulerStorageErr.Error())
 		return getSchedulerStorageErr
+	}
+
+	if amount > ex.config.AmountLimit {
+		executionLogger.Info("operation called with amount greater than limit, capping it", zap.Int32("calledAmount", amount), zap.Int32("limit", ex.config.AmountLimit))
+		amount = ex.config.AmountLimit
 	}
 
 	errGroup, errContext := errgroup.WithContext(ctx)

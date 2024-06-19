@@ -68,6 +68,7 @@ type OperationExecutionWorker struct {
 	operationsToAbort       chan OperationExecutionInstance
 	isStopping              *atomic.Bool
 	abortingOperationsGroup *sync.WaitGroup
+	addRoomsLimit           int
 
 	logger *zap.Logger
 }
@@ -81,6 +82,7 @@ type OperationExecutionInstance struct {
 // NewOperationExecutionWorker instantiate a new OperationExecutionWorker to a specified scheduler.
 func NewOperationExecutionWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &OperationExecutionWorker{
+		addRoomsLimit:                     opts.Configuration.AddRoomsLimit,
 		healthControllerExecutionInterval: opts.Configuration.HealthControllerExecutionInterval,
 		storagecleanupExecutionInterval:   opts.Configuration.StorageCleanupExecutionInterval,
 		operationManager:                  opts.OperationManager,
