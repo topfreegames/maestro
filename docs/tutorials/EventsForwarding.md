@@ -95,3 +95,18 @@ to forward events, this means that the external service should use gRPC protocol
 
 #### Response
 Maestro expects the forwarder event response to return a HTTP code, which is mapped internally to a gRPC code. This mapping is done in the [handlerGrpcClientResponse function](https://github.com/topfreegames/maestro/blob/main/internal/adapters/events/events_forwarder.go)
+
+#### Client Configuration
+
+The GRPC forwarder uses a client that will dial into the address of the forwarder configured in the scheduler and forward events to it. However, we need
+to configure a KeepAlive mechanism so we constantly send HTTP/2 ping frames on the channel and detect broken connections. Without a KeepAlive mechanism,
+broken TCP connections are only refreshed when Kernel kills the fd responsible due to inactivity, which can take up to 20 minutes.
+
+Thus, there are some configurations that you can do to tweak the KeepAlive configuration. Those configs can be set either as an env var or in the `config.yaml`:
+
+* `adapters.grpc.keepAlive.time`: After a duration of this time if the client doesn't see any activity it pings the server to see if the transport is still alive. If set below 10s, a minimum value of 10s will be used instead. Defaults to 30s.
+* `adapters.grpc.keepAlive.timeout`: After having pinged for keepalive check, the client waits for a duration of Timeout and if no activity is seen even after that the connection is closed. Defaults to 5s.
+
+[GRPC Official Doc Reference](https://grpc.io/docs/guides/keepalive/)
+
+[GRPC Internals Reference](https://github.com/grpc/grpc/blob/master/doc/keepalive.md)

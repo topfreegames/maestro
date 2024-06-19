@@ -49,6 +49,10 @@ adapters:
       inCluster: false
       masterUrl: "https://127.0.0.1:6443"
       kubeconfig: "./kubeconfig/kubeconfig.yaml"
+  grpc:
+    keepAlive:
+      time: 30s
+      timeout: 5s
 workers:
   syncInterval: 10s
   stopTimeoutDuration: 2m
