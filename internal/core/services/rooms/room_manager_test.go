@@ -217,6 +217,43 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		assert.Nil(t, instance)
 	})
 
+	t.Run("when port is configured per container it should allocate correctly", func(t *testing.T) {
+		modifiedScheduler := scheduler
+		modifiedScheduler.PortRange = nil
+		modifiedScheduler.Spec.Containers[0].Ports[0].TargetPortRange = &port.PortRange{
+			Start: 2000,
+			End:   3000,
+		}
+
+		modifiedScheduler.Spec.Containers[1].Ports[0].TargetPortRange = &port.PortRange{
+			Start: 3000,
+			End:   4000,
+		}
+
+		modifiedContainerWithHostPort1 := containerWithHostPort1
+		modifiedContainerWithHostPort1.Ports[0].HostPort = 2500
+		modifiedContainerWithHostPort1.Ports[0].TargetPortRange = modifiedScheduler.Spec.Containers[0].Ports[0].TargetPortRange
+		modifiedContainerWithHostPort2 := containerWithHostPort2
+		modifiedContainerWithHostPort2.Ports[0].HostPort = 3500
+		modifiedContainerWithHostPort2.Ports[0].TargetPortRange = modifiedScheduler.Spec.Containers[1].Ports[0].TargetPortRange
+
+		runtime.EXPECT().CreateGameRoomName(gomock.Any(), modifiedScheduler).Return(gameRoomName, nil)
+		roomStorage.EXPECT().CreateRoom(context.Background(), &gameRoom)
+
+		portAllocator.EXPECT().Allocate(modifiedScheduler.Spec.Containers[0].Ports[0].TargetPortRange, 1).Return([]int32{2500}, nil)
+		portAllocator.EXPECT().Allocate(modifiedScheduler.Spec.Containers[1].Ports[0].TargetPortRange, 1).Return([]int32{3500}, nil)
+		runtime.EXPECT().CreateGameRoomInstance(context.Background(), &modifiedScheduler, gameRoomName, game_room.Spec{
+			Containers: []game_room.Container{modifiedContainerWithHostPort1, modifiedContainerWithHostPort2}},
+		).Return(&gameRoomInstance, nil)
+
+		instanceStorage.EXPECT().UpsertInstance(gomock.Any(), &gameRoomInstance).Return(nil)
+
+		room, instance, err := roomManager.CreateRoom(context.Background(), modifiedScheduler, false)
+		assert.NoError(t, err)
+		assert.Equal(t, &gameRoom, room)
+		assert.Equal(t, &gameRoomInstance, instance)
+	})
+
 }
 
 func TestRoomManager_DeleteRoom(t *testing.T) {

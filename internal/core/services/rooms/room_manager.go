@@ -448,14 +448,14 @@ func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*g
 			}
 		}
 	} else { // We should allow each Port to define its own range in order to avoid port conflicts between different protocols
-		for _, c := range spec.Containers {
-			for _, p := range c.Ports {
-				allocatedPorts, err := m.PortAllocator.Allocate(p.TargetPortRange, 1)
+		for _, container := range spec.Containers {
+			for i := range container.Ports {
+				allocatedPorts, err := m.PortAllocator.Allocate(container.Ports[i].TargetPortRange, 1)
 				if err != nil {
 					return nil, err
 				}
 
-				p.HostPort = int(allocatedPorts[0])
+				container.Ports[i].HostPort = int(allocatedPorts[0])
 			}
 		}
 	}
