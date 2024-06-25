@@ -114,7 +114,7 @@ message CreateSchedulerRequest {
   // The spec object defines all the game room container configurations and spec of the scheduler.
   Spec spec = 3;
   // The port range object describes what is the port range used to allocate game rooms.
-  PortRange port_range = 4;
+  optional PortRange port_range = 4;
   // The max surge of new rooms, used to scale and update
   string max_surge = 5;
   // The rooms replicas defines the desired number of Game Rooms in a scheduler.

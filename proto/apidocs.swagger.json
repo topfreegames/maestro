@@ -1180,6 +1180,10 @@
           "type": "integer",
           "format": "int32",
           "description": "Optional container host port."
+        },
+        "targetPortRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "title": "Optional target port range, replaces the PortRange in the Scheduler object"
         }
       },
       "description": "Container exposed port definition."

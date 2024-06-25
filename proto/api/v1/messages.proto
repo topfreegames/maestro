@@ -115,6 +115,8 @@ message ContainerPort {
   int32 port = 3;
   // Optional container host port.
   int32 host_port = 4;
+  // Optional target port range, replaces the PortRange in the Scheduler object
+  optional PortRange target_port_range = 5;
 }
 
 // Port range is the range definition that the rooms will use. If a scheduler
