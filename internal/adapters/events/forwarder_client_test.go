@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/test"
+	"google.golang.org/grpc/keepalive"
 
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 )
@@ -190,7 +191,7 @@ func TestForwarderClient_SendRoomStatus(t *testing.T) {
 				)
 				require.NoError(t, err)
 			}
-			f := NewForwarderClient()
+			f := NewForwarderClient(keepalive.ClientParameters{})
 			got, err := f.SendRoomStatus(tt.args.ctx, tt.args.forwarder, &tt.args.in)
 			if !tt.wantErr(t, err, fmt.Sprintf("SendRoomStatus(%v, %v, %v)", tt.args.ctx, tt.args.forwarder, tt.args.in)) {
 				return
@@ -237,7 +238,7 @@ func TestSendPlayerEvent(t *testing.T) {
 }
 
 func basicArrangeForwarderClient(t *testing.T) {
-	forwarderClientAdapter = NewForwarderClient()
+	forwarderClientAdapter = NewForwarderClient(keepalive.ClientParameters{})
 }
 
 func newRoomEvent(mockIdentifier string) pb.RoomEvent {

@@ -48,20 +48,45 @@ var (
 	_ ports.ForwarderClient = (*ForwarderClient)(nil)
 )
 
+const (
+	DefaultKeepAliveTime                = 30 * time.Second
+	DefaultKeepAliveTimeout             = 10 * time.Second
+	DefaultKeepAlivePermitWithoutStream = true
+)
+
+type ForwarderClientConfig struct {
+	KeepAlive keepalive.ClientParameters
+}
+
 // ForwarderClient is a struct that holds grpc clients to be used by forwarders.
 type ForwarderClient struct {
-	c *cache.Cache
+	c      *cache.Cache
+	config ForwarderClientConfig
 }
 
 // NewForwarderClient instantiate a new grpc forwarder client.
-func NewForwarderClient() *ForwarderClient {
+func NewForwarderClient(keepAliveCfg keepalive.ClientParameters) *ForwarderClient {
 	cache := cache.New(24*time.Hour, 0)
 	cache.OnEvicted(func(_key string, clientFromCache interface{}) {
 		ForwarderClient := clientFromCache.(*grpc.ClientConn)
 		ForwarderClient.Close()
 	})
+	config := ForwarderClientConfig{
+		KeepAlive: keepalive.ClientParameters{
+			Time:                DefaultKeepAliveTime,
+			Timeout:             DefaultKeepAliveTimeout,
+			PermitWithoutStream: DefaultKeepAlivePermitWithoutStream,
+		},
+	}
+	if keepAliveCfg.Time > 0 {
+		config.KeepAlive.Time = keepAliveCfg.Time
+	}
+	if keepAliveCfg.Timeout > 0 {
+		config.KeepAlive.Timeout = keepAliveCfg.Timeout
+	}
 	return &ForwarderClient{
-		c: cache,
+		c:      cache,
+		config: config,
 	}
 }
 
@@ -170,7 +195,7 @@ func (f *ForwarderClient) createGRPCConnection(address string) (*grpc.ClientConn
 	conn, err := grpc.Dial(
 		address,
 		dialOption,
-		grpc.WithKeepaliveParams(keepalive.ClientParameters{Time: 30 * time.Second, Timeout: 10 * time.Second, PermitWithoutStream: true}),
+		grpc.WithKeepaliveParams(f.config.KeepAlive),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 	)
 	if err != nil {

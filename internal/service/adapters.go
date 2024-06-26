@@ -57,6 +57,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/rooms"
 	"github.com/topfreegames/maestro/internal/core/services/schedulers"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"google.golang.org/grpc/keepalive"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -64,6 +65,9 @@ import (
 
 // configurations paths for the adapters
 const (
+	// GRPC KeepAlive Configs
+	grpcKeepAliveTimePath    = "adapters.grpc.keepalive.time"
+	grpcKeepAliveTimeoutPath = "adapters.grpc.keepalive.timeout"
 	// Kubernetes runtime
 	runtimeKubernetesMasterURLPath  = "adapters.runtime.kubernetes.masterUrl"
 	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
@@ -110,7 +114,11 @@ func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomSt
 
 // NewEventsForwarder instantiates GRPC as events forwarder.
 func NewEventsForwarder(c config.Config) (ports.EventsForwarder, error) {
-	forwarderGrpc := eventsadapters.NewForwarderClient()
+	keepAliveCfg := keepalive.ClientParameters{
+		Time:    c.GetDuration(grpcKeepAliveTimePath),
+		Timeout: c.GetDuration(grpcKeepAliveTimeoutPath),
+	}
+	forwarderGrpc := eventsadapters.NewForwarderClient(keepAliveCfg)
 	return eventsadapters.NewEventsForwarder(forwarderGrpc), nil
 }
 
