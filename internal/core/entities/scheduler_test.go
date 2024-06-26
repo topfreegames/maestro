@@ -311,3 +311,79 @@ func TestIsMajorVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestHasValidPortRangeConfiguration(t *testing.T) {
+	tests := map[string]struct {
+		scheduler *entities.Scheduler
+		expected  error
+	}{
+		"should succeed if only scheduler.portrange is configured": {
+			scheduler: &entities.Scheduler{PortRange: &port.PortRange{}},
+			expected:  nil,
+		},
+		"should succeed if only scheduler.spec.container.ports.targetportrange is configured": {
+			scheduler: &entities.Scheduler{
+				Spec: game_room.Spec{
+					Containers: []game_room.Container{
+						{
+							Ports: []game_room.ContainerPort{
+								{
+									TargetPortRange: &port.PortRange{},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: nil,
+		},
+		"should fail if neither scheduler.portrange nor container.ports.targetportrange are configured": {
+			scheduler: &entities.Scheduler{},
+			expected:  entities.ErrNoPortRangeConfigured,
+		},
+		"should fail if both scheduler.portrange and container.ports.targetportrange are configured": {
+			scheduler: &entities.Scheduler{
+				PortRange: &port.PortRange{},
+				Spec: game_room.Spec{
+					Containers: []game_room.Container{
+						{
+							Ports: []game_room.ContainerPort{
+								{
+									TargetPortRange: &port.PortRange{},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: entities.ErrBothPortRangesConfigured,
+		},
+		"should fail if not all container.ports have targetportrange configured": {
+			scheduler: &entities.Scheduler{
+				PortRange: &port.PortRange{},
+				Spec: game_room.Spec{
+					Containers: []game_room.Container{
+						{
+							Ports: []game_room.ContainerPort{
+								{
+									TargetPortRange: &port.PortRange{},
+								},
+								{
+									TargetPortRange: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: entities.ErrBothPortRangesConfigured,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := test.scheduler.HasValidPortRangeConfiguration()
+			require.ErrorIs(t, test.expected, err)
+		})
+	}
+}

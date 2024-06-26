@@ -30,8 +30,6 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
-	"github.com/go-playground/validator/v10"
-
 	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"go.uber.org/zap"
@@ -138,7 +136,7 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 	handlerLogger.Info("handling create scheduler request")
 	scheduler, err := requestadapters.FromApiCreateSchedulerRequestToEntity(request)
 	if err != nil {
-		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
+		apiValidationError := parseValidationError(err)
 		handlerLogger.Error("error parsing scheduler", zap.Error(apiValidationError))
 		return nil, status.Error(codes.InvalidArgument, apiValidationError.Error())
 	}
@@ -166,7 +164,7 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 	handlerLogger.Info("handling new scheduler version request")
 	scheduler, err := requestadapters.FromApiNewSchedulerVersionRequestToEntity(request)
 	if err != nil {
-		apiValidationError := parseValidationError(err.(validator.ValidationErrors))
+		apiValidationError := parseValidationError(err)
 		handlerLogger.Error("error parsing scheduler version", zap.Error(apiValidationError))
 		return nil, status.Error(codes.InvalidArgument, apiValidationError.Error())
 	}

@@ -23,6 +23,7 @@
 package entities
 
 import (
+	"errors"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
@@ -48,6 +49,12 @@ const (
 
 	//StateOnError represents a cluster state
 	StateOnError = "on-error"
+)
+
+var (
+	ErrNoPortRangeConfigured     = errors.New("must configure scheduler.PortRange or scheduler.Spec.Container.Ports.TargetPortRange")
+	ErrBothPortRangesConfigured  = errors.New("cannot configure both scheduler.PortRange and scheduler.Spec.Container.Ports.TargetPortRange")
+	ErrMissingContainerPortRange = errors.New("must configure TargetPortRange for all scheduler.Spec.Container.Ports")
 )
 
 // Scheduler represents one of the basic maestro structs.
@@ -108,7 +115,17 @@ func (s *Scheduler) SetSchedulerRollbackVersion(version string) {
 }
 
 func (s *Scheduler) Validate() error {
-	return validations.Validate.Struct(s)
+	err := validations.Validate.Struct(s)
+	if err != nil {
+		return err
+	}
+
+	err = s.HasValidPortRangeConfiguration()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // IsMajorVersion checks if the scheduler changes are major or not.
@@ -144,4 +161,40 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"Autoscaling",
 		),
 	)
+}
+
+// HasValidPortRangeConfiguration checks if the scheduler's port range configuration is valid.
+// It is possible to configure PortRange in the scheduler, but also TargetPortRange in each Spec.Container.Ports,
+// both port ranges were made optional in the API, so we need to validate them here.
+// The scheduler.PortRange was kept to avoid a breaking change to schedulers in older versions.
+func (s *Scheduler) HasValidPortRangeConfiguration() error {
+	hasSchedulerPortRange := false
+	if s.PortRange != nil {
+		hasSchedulerPortRange = true
+	}
+
+	hasContainerPortRange := false
+	for _, c := range s.Spec.Containers {
+		amountOfTargetPortRanges := 0
+		for _, p := range c.Ports {
+			if p.TargetPortRange != nil {
+				amountOfTargetPortRanges++
+				hasContainerPortRange = true
+			}
+		}
+
+		if !hasSchedulerPortRange && len(c.Ports) != amountOfTargetPortRanges {
+			return ErrMissingContainerPortRange
+		}
+	}
+
+	if hasSchedulerPortRange && hasContainerPortRange {
+		return ErrBothPortRangesConfigured
+	}
+
+	if !hasSchedulerPortRange && !hasContainerPortRange {
+		return ErrNoPortRangeConfigured
+	}
+
+	return nil
 }
