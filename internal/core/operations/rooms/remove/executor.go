@@ -26,7 +26,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -34,6 +33,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
