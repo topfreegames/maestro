@@ -27,18 +27,23 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"go.uber.org/zap"
 	kube "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/record"
 )
 
 var _ ports.Runtime = (*kubernetes)(nil)
 
 type kubernetes struct {
-	clientSet kube.Interface
-	logger    *zap.Logger
+	clientSet        kube.Interface
+	logger           *zap.Logger
+	eventBroadcaster record.EventBroadcaster
+	eventRecorders   map[string]record.EventRecorder
 }
 
 func New(clientSet kube.Interface) *kubernetes {
 	return &kubernetes{
-		clientSet: clientSet,
-		logger:    zap.L().With(zap.String(logs.LogFieldRuntime, "kubernetes")),
+		clientSet:        clientSet,
+		logger:           zap.L().With(zap.String(logs.LogFieldRuntime, "kubernetes")),
+		eventBroadcaster: record.NewBroadcaster(),
+		eventRecorders:   make(map[string]record.EventRecorder, 0),
 	}
 }
