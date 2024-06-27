@@ -53,7 +53,7 @@ const (
 
 var (
 	ErrNoPortRangeConfigured     = errors.New("must configure scheduler.PortRange or scheduler.Spec.Container.Ports.TargetPortRange")
-	ErrBothPortRangesConfigured  = errors.New("cannot configure both scheduler.PortRange and scheduler.Spec.Container.Ports.TargetPortRange")
+	ErrBothPortRangesConfigured  = errors.New("scheduler.PortRange and scheduler.Spec.Container.Ports.TargetPortRange are mutually exclusive configurations; please choose only one")
 	ErrMissingContainerPortRange = errors.New("must configure TargetPortRange for all scheduler.Spec.Container.Ports")
 )
 
