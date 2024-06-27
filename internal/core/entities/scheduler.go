@@ -52,9 +52,9 @@ const (
 )
 
 var (
-	ErrNoPortRangeConfigured     = errors.New("must configure scheduler.PortRange or scheduler.Spec.Container.Ports.TargetPortRange")
-	ErrBothPortRangesConfigured  = errors.New("cannot configure both scheduler.PortRange and scheduler.Spec.Container.Ports.TargetPortRange")
-	ErrMissingContainerPortRange = errors.New("must configure TargetPortRange for all scheduler.Spec.Container.Ports")
+	ErrNoPortRangeConfigured     = errors.New("must configure scheduler.PortRange or scheduler.Spec.Container.Ports.HostPortRange")
+	ErrBothPortRangesConfigured  = errors.New("cannot configure both scheduler.PortRange and scheduler.Spec.Container.Ports.HostPortRange")
+	ErrMissingContainerPortRange = errors.New("must configure HostPortRange for all scheduler.Spec.Container.Ports")
 )
 
 // Scheduler represents one of the basic maestro structs.
@@ -164,7 +164,7 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 }
 
 // HasValidPortRangeConfiguration checks if the scheduler's port range configuration is valid.
-// It is possible to configure PortRange in the scheduler, but also TargetPortRange in each Spec.Container.Ports,
+// It is possible to configure PortRange in the scheduler, but also HostPortRange in each Spec.Container.Ports,
 // both port ranges were made optional in the API, so we need to validate them here.
 // The scheduler.PortRange was kept to avoid a breaking change to schedulers in older versions.
 func (s *Scheduler) HasValidPortRangeConfiguration() error {
@@ -175,15 +175,15 @@ func (s *Scheduler) HasValidPortRangeConfiguration() error {
 
 	hasContainerPortRange := false
 	for _, c := range s.Spec.Containers {
-		amountOfTargetPortRanges := 0
+		amountOfHostPortRanges := 0
 		for _, p := range c.Ports {
-			if p.TargetPortRange != nil {
-				amountOfTargetPortRanges++
+			if p.HostPortRange != nil {
+				amountOfHostPortRanges++
 				hasContainerPortRange = true
 			}
 		}
 
-		if !hasSchedulerPortRange && len(c.Ports) != amountOfTargetPortRanges {
+		if !hasSchedulerPortRange && len(c.Ports) != amountOfHostPortRanges {
 			return ErrMissingContainerPortRange
 		}
 	}

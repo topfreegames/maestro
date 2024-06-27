@@ -1183,7 +1183,7 @@
         },
         "targetPortRange": {
           "$ref": "#/definitions/v1PortRange",
-          "title": "Optional target port range, replaces the PortRange in the Scheduler object"
+          "title": "Optional host port range, replaces the PortRange in the Scheduler object"
         }
       },
       "description": "Container exposed port definition."

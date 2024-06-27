@@ -555,8 +555,8 @@ type ContainerPort struct {
 	Port int32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
 	// Optional container host port.
 	HostPort int32 `protobuf:"varint,4,opt,name=host_port,json=hostPort,proto3" json:"host_port,omitempty"`
-	// Optional target port range, replaces the PortRange in the Scheduler object
-	TargetPortRange *PortRange `protobuf:"bytes,5,opt,name=target_port_range,json=targetPortRange,proto3,oneof" json:"target_port_range,omitempty"`
+	// Optional host port range, replaces the PortRange in the Scheduler object
+	HostPortRange *PortRange `protobuf:"bytes,5,opt,name=host_port_range,json=targetPortRange,proto3,oneof" json:"host_port_range,omitempty"`
 }
 
 func (x *ContainerPort) Reset() {
@@ -619,9 +619,9 @@ func (x *ContainerPort) GetHostPort() int32 {
 	return 0
 }
 
-func (x *ContainerPort) GetTargetPortRange() *PortRange {
+func (x *ContainerPort) GetHostPortRange() *PortRange {
 	if x != nil {
-		return x.TargetPortRange
+		return x.HostPortRange
 	}
 	return nil
 }
@@ -2595,7 +2595,7 @@ var file_api_v1_messages_proto_depIdxs = []int32{
 	3,  // 8: api.v1.ContainerEnvironment.value_from:type_name -> api.v1.ContainerEnvironmentValueFrom
 	4,  // 9: api.v1.ContainerEnvironmentValueFrom.field_ref:type_name -> api.v1.ContainerEnvironmentValueFromFieldRef
 	5,  // 10: api.v1.ContainerEnvironmentValueFrom.secret_key_ref:type_name -> api.v1.ContainerEnvironmentValueFromSecretKeyRef
-	8,  // 11: api.v1.ContainerPort.target_port_range:type_name -> api.v1.PortRange
+	8,  // 11: api.v1.ContainerPort.host_port_range:type_name -> api.v1.PortRange
 	29, // 12: api.v1.Spec.termination_grace_period:type_name -> google.protobuf.Duration
 	0,  // 13: api.v1.Spec.containers:type_name -> api.v1.Container
 	29, // 14: api.v1.OptionalSpec.termination_grace_period:type_name -> google.protobuf.Duration

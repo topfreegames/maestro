@@ -321,14 +321,14 @@ func TestHasValidPortRangeConfiguration(t *testing.T) {
 			scheduler: &entities.Scheduler{PortRange: &port.PortRange{}},
 			expected:  nil,
 		},
-		"should succeed if only scheduler.spec.container.ports.targetportrange is configured": {
+		"should succeed if only scheduler.spec.container.ports.hostportrange is configured": {
 			scheduler: &entities.Scheduler{
 				Spec: game_room.Spec{
 					Containers: []game_room.Container{
 						{
 							Ports: []game_room.ContainerPort{
 								{
-									TargetPortRange: &port.PortRange{},
+									HostPortRange: &port.PortRange{},
 								},
 							},
 						},
@@ -337,11 +337,11 @@ func TestHasValidPortRangeConfiguration(t *testing.T) {
 			},
 			expected: nil,
 		},
-		"should fail if neither scheduler.portrange nor container.ports.targetportrange are configured": {
+		"should fail if neither scheduler.portrange nor container.ports.hostportrange are configured": {
 			scheduler: &entities.Scheduler{},
 			expected:  entities.ErrNoPortRangeConfigured,
 		},
-		"should fail if both scheduler.portrange and container.ports.targetportrange are configured": {
+		"should fail if both scheduler.portrange and container.ports.hostportrange are configured": {
 			scheduler: &entities.Scheduler{
 				PortRange: &port.PortRange{},
 				Spec: game_room.Spec{
@@ -349,7 +349,7 @@ func TestHasValidPortRangeConfiguration(t *testing.T) {
 						{
 							Ports: []game_room.ContainerPort{
 								{
-									TargetPortRange: &port.PortRange{},
+									HostPortRange: &port.PortRange{},
 								},
 							},
 						},
@@ -358,7 +358,7 @@ func TestHasValidPortRangeConfiguration(t *testing.T) {
 			},
 			expected: entities.ErrBothPortRangesConfigured,
 		},
-		"should fail if not all container.ports have targetportrange configured": {
+		"should fail if not all container.ports have hostportrange configured": {
 			scheduler: &entities.Scheduler{
 				PortRange: &port.PortRange{},
 				Spec: game_room.Spec{
@@ -366,10 +366,10 @@ func TestHasValidPortRangeConfiguration(t *testing.T) {
 						{
 							Ports: []game_room.ContainerPort{
 								{
-									TargetPortRange: &port.PortRange{},
+									HostPortRange: &port.PortRange{},
 								},
 								{
-									TargetPortRange: nil,
+									HostPortRange: nil,
 								},
 							},
 						},

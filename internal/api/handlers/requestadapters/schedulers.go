@@ -116,21 +116,13 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		return nil, err
 	}
 
-	var portRange *port.PortRange
-	if request.PortRange != nil {
-		portRange = port.NewPortRange(
-			request.GetPortRange().GetStart(),
-			request.GetPortRange().GetEnd(),
-		)
-	}
-
 	return entities.NewScheduler(
 		request.GetName(),
 		request.GetGame(),
 		entities.StateCreating,
 		request.GetMaxSurge(),
 		*fromApiSpec(request.GetSpec()),
-		portRange,
+		fromApiPortRange(request.PortRange),
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
@@ -352,6 +344,17 @@ func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
 	)
 }
 
+func fromApiPortRange(apiPortRange *api.PortRange) *port.PortRange {
+	if apiPortRange != nil {
+		return port.NewPortRange(
+			apiPortRange.GetStart(),
+			apiPortRange.GetEnd(),
+		)
+	}
+
+	return nil
+}
+
 func fromApiAutoscalingPolicy(apiAutoscalingPolicy *api.AutoscalingPolicy) autoscaling.Policy {
 	var policy autoscaling.Policy
 	if policyType := apiAutoscalingPolicy.GetType(); policyType != "" {
@@ -428,20 +431,12 @@ func fromApiContainers(apiContainers []*api.Container) []game_room.Container {
 func fromApiContainerPorts(apiPorts []*api.ContainerPort) []game_room.ContainerPort {
 	var ports []game_room.ContainerPort
 	for _, apiPort := range apiPorts {
-		var targetPortRange *port.PortRange
-		if apiPort.TargetPortRange != nil {
-			targetPortRange = port.NewPortRange(
-				apiPort.GetTargetPortRange().GetStart(),
-				apiPort.GetTargetPortRange().GetEnd(),
-			)
-		}
-
 		port := game_room.ContainerPort{
-			Name:            apiPort.GetName(),
-			Port:            int(apiPort.GetPort()),
-			Protocol:        apiPort.GetProtocol(),
-			HostPort:        int(apiPort.GetHostPort()),
-			TargetPortRange: targetPortRange,
+			Name:          apiPort.GetName(),
+			Port:          int(apiPort.GetPort()),
+			Protocol:      apiPort.GetProtocol(),
+			HostPort:      int(apiPort.GetHostPort()),
+			HostPortRange: fromApiPortRange(apiPort.HostPortRange),
 		}
 		ports = append(ports, port)
 	}
@@ -620,11 +615,11 @@ func fromEntityContainerPortsToApiContainerPorts(ports []game_room.ContainerPort
 	var convertedContainerPort []*api.ContainerPort
 	for _, port := range ports {
 		convertedContainerPort = append(convertedContainerPort, &api.ContainerPort{
-			Name:            port.Name,
-			Protocol:        port.Protocol,
-			Port:            int32(port.Port),
-			HostPort:        int32(port.HostPort),
-			TargetPortRange: getPortRange(port.TargetPortRange),
+			Name:          port.Name,
+			Protocol:      port.Protocol,
+			Port:          int32(port.Port),
+			HostPort:      int32(port.HostPort),
+			HostPortRange: getPortRange(port.HostPortRange),
 		})
 	}
 	return convertedContainerPort
