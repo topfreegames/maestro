@@ -1181,9 +1181,9 @@
           "format": "int32",
           "description": "Optional container host port."
         },
-        "targetPortRange": {
+        "hostPortRange": {
           "$ref": "#/definitions/v1PortRange",
-          "title": "Optional host port range, replaces the PortRange in the Scheduler object"
+          "description": "The host port range object describes what is the port range used to allocate game rooms."
         }
       },
       "description": "Container exposed port definition."

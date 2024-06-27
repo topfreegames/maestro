@@ -115,7 +115,7 @@ message ContainerPort {
   int32 port = 3;
   // Optional container host port.
   int32 host_port = 4;
-  // Optional host port range, replaces the PortRange in the Scheduler object
+  // The host port range object describes what is the port range used to allocate game rooms.
   optional PortRange host_port_range = 5;
 }
 
