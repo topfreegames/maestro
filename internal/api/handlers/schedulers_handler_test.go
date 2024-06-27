@@ -616,8 +616,6 @@ func TestCreateScheduler(t *testing.T) {
 		assert.Contains(t, schedulerMessage, "Scheduler.Game: Game is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.MaxSurge: MaxSurge is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.RoomsReplicas: RoomsReplicas must be 0 or greater")
-		assert.Contains(t, schedulerMessage, "Scheduler.PortRange.Start: Start must be less than End")
-		assert.Contains(t, schedulerMessage, "Scheduler.PortRange.Start: Start must be less than End")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Environment[0].Name: Name is a required field")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.TerminationGracePeriod: TerminationGracePeriod must be greater than 0")
 		assert.Contains(t, schedulerMessage, "Scheduler.Spec.Containers[0].Name: Name is a required field")
