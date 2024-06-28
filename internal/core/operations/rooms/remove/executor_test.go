@@ -31,12 +31,12 @@ import (
 	"fmt"
 	"testing"
 
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
-
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -151,7 +151,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("should succeed - rooms are successfully removed => returns without error", func(t *testing.T) {
-			executor, roomsStorage, roomsManager, _ := testSetup(t)
+			executor, _, roomsManager, _ := testSetup(t)
 
 			firstRoomID := "first-room-id"
 			secondRoomID := "second-room-id"
@@ -163,17 +163,11 @@ func TestExecutor_Execute(t *testing.T) {
 			room := &game_room.GameRoom{
 				ID:          firstRoomID,
 				SchedulerID: schedulerName,
-				Status:      game_room.GameStatusReady,
-				Metadata:    map[string]interface{}{},
 			}
 			secondRoom := &game_room.GameRoom{
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
-				Status:      game_room.GameStatusReady,
-				Metadata:    map[string]interface{}{},
 			}
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(nil)
 
@@ -181,30 +175,8 @@ func TestExecutor_Execute(t *testing.T) {
 			require.Nil(t, err)
 		})
 
-		t.Run("when failed to get any room it returns with error", func(t *testing.T) {
-			executor, roomsStorage, _, _ := testSetup(t)
-
-			firstRoomID := "first-room-id"
-			secondRoomID := "second-room-id"
-
-			schedulerName := uuid.NewString()
-			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
-			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
-
-			room := &game_room.GameRoom{
-				ID:          firstRoomID,
-				SchedulerID: schedulerName,
-				Status:      game_room.GameStatusReady,
-			}
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(nil, fmt.Errorf("error on GetRoom"))
-
-			err := executor.Execute(context.Background(), op, definition)
-			require.ErrorContains(t, err, "error removing rooms by ids: error on GetRoom")
-		})
-
 		t.Run("when any room failed to delete with unexpected error it returns with error", func(t *testing.T) {
-			executor, roomsStorage, roomsManager, operationManager := testSetup(t)
+			executor, _, roomsManager, operationManager := testSetup(t)
 
 			firstRoomID := "first-room-id"
 			secondRoomID := "second-room-id"
@@ -216,17 +188,13 @@ func TestExecutor_Execute(t *testing.T) {
 			room := &game_room.GameRoom{
 				ID:          firstRoomID,
 				SchedulerID: schedulerName,
-				Status:      game_room.GameStatusReady,
 			}
 			secondRoom := &game_room.GameRoom{
-				ID:          firstRoomID,
+				ID:          secondRoomID,
 				SchedulerID: schedulerName,
-				Status:      game_room.GameStatusReady,
 			}
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
 
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(fmt.Errorf("error on remove room"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 
@@ -234,8 +202,8 @@ func TestExecutor_Execute(t *testing.T) {
 			require.ErrorContains(t, err, "error removing rooms by ids: error on remove room")
 		})
 
-		t.Run("when any room failed to delete with timeout error it returns with error", func(t *testing.T) {
-			executor, roomsStorage, roomsManager, operationManager := testSetup(t)
+		t.Run("when any room returns not found on delete it is ignored and returns without error", func(t *testing.T) {
+			executor, _, roomsManager, operationManager := testSetup(t)
 
 			firstRoomID := "first-room-id"
 			secondRoomID := "second-room-id"
@@ -247,15 +215,37 @@ func TestExecutor_Execute(t *testing.T) {
 			room := &game_room.GameRoom{
 				ID:          firstRoomID,
 				SchedulerID: schedulerName,
-				Status:      game_room.GameStatusReady,
 			}
 			secondRoom := &game_room.GameRoom{
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
-				Status:      game_room.GameStatusReady,
 			}
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(porterrors.NewErrNotFound("not found"))
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
+
+			err := executor.Execute(context.Background(), op, definition)
+			require.NoError(t, err)
+		})
+
+		t.Run("when any room failed to delete with timeout error it returns with error", func(t *testing.T) {
+			executor, _, roomsManager, operationManager := testSetup(t)
+
+			firstRoomID := "first-room-id"
+			secondRoomID := "second-room-id"
+
+			schedulerName := uuid.NewString()
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
+
+			room := &game_room.GameRoom{
+				ID:          firstRoomID,
+				SchedulerID: schedulerName,
+			}
+			secondRoom := &game_room.GameRoom{
+				ID:          secondRoomID,
+				SchedulerID: schedulerName,
+			}
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
@@ -278,7 +268,7 @@ func TestExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("should succeed - there are ids and amount => return without error", func(t *testing.T) {
-		executor, roomsStorage, roomsManager, _ := testSetup(t)
+		executor, _, roomsManager, _ := testSetup(t)
 
 		firstRoomID := "first-room-id"
 		secondRoomID := "second-room-id"
@@ -292,16 +282,6 @@ func TestExecutor_Execute(t *testing.T) {
 		}
 		op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
-		room := &game_room.GameRoom{
-			ID:          firstRoomID,
-			SchedulerID: schedulerName,
-			Status:      game_room.GameStatusReady,
-		}
-		secondRoom := &game_room.GameRoom{
-			ID:          secondRoomID,
-			SchedulerID: schedulerName,
-			Status:      game_room.GameStatusReady,
-		}
 		thirdRoom := &game_room.GameRoom{
 			ID:          thirdRoomID,
 			SchedulerID: schedulerName,
@@ -312,8 +292,6 @@ func TestExecutor_Execute(t *testing.T) {
 			SchedulerID: schedulerName,
 			Status:      game_room.GameStatusReady,
 		}
-		roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-		roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
 		roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 
 		availableRooms := []*game_room.GameRoom{thirdRoom, fourthRoom}

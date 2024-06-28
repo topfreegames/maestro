@@ -24,6 +24,7 @@ package remove
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -32,6 +33,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/ports"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -93,11 +95,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 func (e *Executor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string, op *operation.Operation) error {
 	rooms := make([]*game_room.GameRoom, 0, len(roomsIDs))
 	for _, roomID := range roomsIDs {
-		gameRoom, err := e.roomStorage.GetRoom(ctx, schedulerName, roomID)
-		if err != nil {
-			return err
-		}
-
+		gameRoom := &game_room.GameRoom{ID: roomID, SchedulerID: schedulerName}
 		rooms = append(rooms, gameRoom)
 	}
 
@@ -133,6 +131,9 @@ func (e *Executor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom,
 			if err != nil {
 				msg := fmt.Sprintf("error removing room \"%v\". Reason => %v", room.ID, err.Error())
 				e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)
+			}
+			if errors.Is(err, porterrors.ErrNotFound) {
+				return nil
 			}
 			return err
 		})
