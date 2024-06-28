@@ -29,15 +29,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"testing"
-
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
