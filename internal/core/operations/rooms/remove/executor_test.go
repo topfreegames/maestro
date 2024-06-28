@@ -29,6 +29,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"testing"
 
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
@@ -200,6 +201,32 @@ func TestExecutor_Execute(t *testing.T) {
 
 			err := executor.Execute(context.Background(), op, definition)
 			require.ErrorContains(t, err, "error removing rooms by ids: error on remove room")
+		})
+
+		t.Run("when any room returns not found on delete it is ignored and returns without error", func(t *testing.T) {
+			executor, _, roomsManager, operationManager := testSetup(t)
+
+			firstRoomID := "first-room-id"
+			secondRoomID := "second-room-id"
+
+			schedulerName := uuid.NewString()
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
+
+			room := &game_room.GameRoom{
+				ID:          firstRoomID,
+				SchedulerID: schedulerName,
+			}
+			secondRoom := &game_room.GameRoom{
+				ID:          secondRoomID,
+				SchedulerID: schedulerName,
+			}
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(porterrors.NewErrNotFound("not found"))
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
+
+			err := executor.Execute(context.Background(), op, definition)
+			require.NoError(t, err)
 		})
 
 		t.Run("when any room failed to delete with timeout error it returns with error", func(t *testing.T) {
