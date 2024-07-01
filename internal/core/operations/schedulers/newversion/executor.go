@@ -28,23 +28,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations/schedulers/switchversion"
-
-	"github.com/avast/retry-go/v4"
-
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
-
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	"github.com/topfreegames/maestro/internal/core/logs"
-
-	"github.com/topfreegames/maestro/internal/core/ports"
-
-	"github.com/topfreegames/maestro/internal/core/entities"
-
 	"github.com/Masterminds/semver/v3"
-
+	"github.com/avast/retry-go/v4"
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/switchversion"
+	"github.com/topfreegames/maestro/internal/core/ports"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 	"go.uber.org/zap"
 )
 
@@ -65,7 +59,7 @@ type Executor struct {
 
 var _ operations.Executor = (*Executor)(nil)
 
-// NewExecutor instantiate a new create new scheduler version executor.
+// NewExecutor instantiate a new scheduler version executor.
 func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, config Config) *Executor {
 	return &Executor{
 		roomManager:          roomManager,
@@ -145,7 +139,7 @@ func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, defin
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
 	if gameRoom, ok := ex.validationRoomIdsMap[op.SchedulerName]; ok {
-		err := ex.roomManager.DeleteRoom(ctx, gameRoom)
+		err := ex.roomManager.DeleteRoom(ctx, gameRoom, remove.NewVersionRollback)
 		if err != nil {
 			logger.Error("error deleting new game room created for validation", zap.Error(err))
 			return fmt.Errorf("error in Rollback function execution: %w", err)
@@ -190,7 +184,7 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 	ex.AddValidationRoomID(scheduler.Name, gameRoom)
 
 	defer func() {
-		err = ex.roomManager.DeleteRoom(ctx, gameRoom)
+		err = ex.roomManager.DeleteRoom(ctx, gameRoom, remove.NewVersionValidationFinished)
 		if err != nil {
 			logger.Error("error deleting new game room created for validation", zap.Error(err))
 		}

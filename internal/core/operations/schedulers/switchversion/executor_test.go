@@ -32,8 +32,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/switchversion"
-
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/golang/mock/gomock"
@@ -128,7 +128,7 @@ func TestExecutor_Execute(t *testing.T) {
 			}
 			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
 		}
-		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil).MaxTimes(len(append(gameRoomListCycle1, gameRoomListCycle2...)))
+		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(nil).MaxTimes(len(append(gameRoomListCycle1, gameRoomListCycle2...)))
 
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), newMajorScheduler).Return(nil)
 
@@ -197,7 +197,7 @@ func TestExecutor_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*game_room.GameRoom{}, nil).MaxTimes(1)
 
 		mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error")).MaxTimes(maxSurge)
-		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil).MaxTimes(maxSurge)
+		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(nil).MaxTimes(maxSurge)
 
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(nil)
 
@@ -247,7 +247,7 @@ func TestExecutor_Execute(t *testing.T) {
 		mocks.roomManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*game_room.GameRoom{}, nil).MaxTimes(1)
 
 		mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil).MaxTimes(maxSurge)
-		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(errors.New("error")).MaxTimes(maxSurge)
+		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(errors.New("error")).MaxTimes(maxSurge)
 
 		executor := switchversion.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
 		execErr := executor.Execute(context.Background(), &operation.Operation{SchedulerName: newMajorScheduler.Name}, definition)
@@ -415,7 +415,7 @@ func TestExecutor_Rollback(t *testing.T) {
 				LastPingAt:  time.Now(),
 			}
 			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
-			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(nil)
 		}
 
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
@@ -431,7 +431,7 @@ func TestExecutor_Rollback(t *testing.T) {
 		require.NotNil(t, execErr)
 
 		for range append(gameRoomListCycle1, gameRoomListCycle2...) {
-			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionRollback).Return(nil)
 		}
 
 		err = executor.Rollback(context.Background(), op, definition, nil)
@@ -476,7 +476,7 @@ func TestExecutor_Rollback(t *testing.T) {
 		for i := range allRooms {
 			if i == len(allRooms)-1 {
 				mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, errors.New("error"))
-				mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(errors.New("error"))
+				mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(errors.New("error"))
 				continue
 			}
 			gameRoom := &game_room.GameRoom{
@@ -487,7 +487,7 @@ func TestExecutor_Rollback(t *testing.T) {
 				LastPingAt:  time.Now(),
 			}
 			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
-			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(nil)
 		}
 
 		executor := switchversion.NewExecutor(mocks.roomManager, mocks.schedulerManager, mocks.operationManager, mocks.roomStorage)
@@ -504,7 +504,7 @@ func TestExecutor_Rollback(t *testing.T) {
 			if i == len(allRooms)-1 {
 				continue
 			}
-			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionRollback).Return(nil)
 		}
 
 		err = executor.Rollback(context.Background(), op, definition, nil)
@@ -552,7 +552,7 @@ func TestExecutor_Rollback(t *testing.T) {
 				LastPingAt:  time.Now(),
 			}
 			mocks.roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(gameRoom, nil, nil)
-			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil)
+			mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionReplace).Return(nil)
 		}
 
 		mocks.schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Return(errors.New("error"))
@@ -567,7 +567,7 @@ func TestExecutor_Rollback(t *testing.T) {
 		execErr := executor.Execute(context.Background(), op, definition)
 		require.NotNil(t, execErr)
 
-		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(errors.New("error"))
+		mocks.roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.SwitchVersionRollback).Return(errors.New("error"))
 
 		err = executor.Rollback(context.Background(), op, definition, nil)
 		require.Error(t, err)
@@ -610,7 +610,7 @@ func newValidSchedulerV2() *entities.Scheduler {
 		RollbackVersion: "",
 		Spec: game_room.Spec{
 			Version:                "v2",
-			TerminationGracePeriod: 60,
+			TerminationGracePeriod: 20,
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 			Containers: []game_room.Container{

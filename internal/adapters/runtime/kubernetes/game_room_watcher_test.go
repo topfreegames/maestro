@@ -235,7 +235,7 @@ func TestGameRoomsWatch(t *testing.T) {
 		instance, err := kubernetesRuntime.CreateGameRoomInstance(ctx, scheduler, gameRoomName, gameRoomSpec)
 		require.NoError(t, err)
 
-		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance)
+		err = kubernetesRuntime.DeleteGameRoomInstance(ctx, instance, "reason")
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {

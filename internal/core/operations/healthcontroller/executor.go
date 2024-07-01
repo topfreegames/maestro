@@ -187,6 +187,7 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 			removeAmount := actualAmount - desiredAmount
 			removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
 				Amount: removeAmount,
+				Reason: remove.ScaleDown,
 			})
 			if err != nil {
 				return err
@@ -282,6 +283,7 @@ func (ex *Executor) isRoomStatus(room *game_room.GameRoom, status game_room.Game
 func (ex *Executor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, expiredRoomsIDs []string) error {
 	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
 		RoomsIDs: expiredRoomsIDs,
+		Reason:   remove.Expired,
 	})
 	if err != nil {
 		return err

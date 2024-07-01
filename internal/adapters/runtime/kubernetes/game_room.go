@@ -29,9 +29,13 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 )
 
 func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
@@ -59,7 +63,9 @@ func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *enti
 	return instance, nil
 }
 
-func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance) error {
+func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance, reason string) error {
+	_ = k.createKubernetesEvent(ctx, gameRoomInstance.SchedulerID, gameRoomInstance.ID, reason, "GameRoomDeleted")
+
 	err := k.clientSet.CoreV1().Pods(gameRoomInstance.SchedulerID).Delete(ctx, gameRoomInstance.ID, metav1.DeleteOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
@@ -83,4 +89,31 @@ func (k *kubernetes) CreateGameRoomName(ctx context.Context, scheduler entities.
 		base = base[:MaxGeneratedNameLength]
 	}
 	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength)), nil
+}
+
+func (k *kubernetes) createKubernetesEvent(ctx context.Context, schedulerID string, gameRoomID string, reason string, message string) error {
+	pod, err := k.clientSet.CoreV1().Pods(schedulerID).Get(ctx, gameRoomID, metav1.GetOptions{})
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return errors.NewErrNotFound("game room '%s' not found", gameRoomID)
+		}
+
+		return errors.NewErrUnexpected("error getting game room instance: %s", err)
+	}
+
+	k.getEventRecorder(pod).Event(pod, corev1.EventTypeNormal, reason, message)
+
+	return nil
+}
+
+func (k *kubernetes) getEventRecorder(pod *corev1.Pod) record.EventRecorder {
+	if recorder, ok := k.eventRecorders[pod.Namespace]; ok {
+		return recorder
+	}
+
+	k.eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: k.clientSet.CoreV1().Events(pod.Namespace)})
+	recorder := k.eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "maestro-next"})
+	k.eventRecorders[pod.Namespace] = recorder
+
+	return recorder
 }

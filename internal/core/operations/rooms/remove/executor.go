@@ -68,7 +68,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 
 	if len(removeDefinition.RoomsIDs) > 0 {
 		logger.Info("start removing rooms", zap.Strings("RoomIDs", removeDefinition.RoomsIDs))
-		err := e.removeRoomsByIDs(ctx, op.SchedulerName, removeDefinition.RoomsIDs, op)
+		err := e.removeRoomsByIDs(ctx, op.SchedulerName, removeDefinition.RoomsIDs, op, removeDefinition.Reason)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("error removing rooms", zap.Error(err))
@@ -79,7 +79,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 
 	if removeDefinition.Amount > 0 {
 		logger.Info("start removing rooms", zap.Int("amount", removeDefinition.Amount))
-		err := e.removeRoomsByAmount(ctx, op.SchedulerName, removeDefinition.Amount, op)
+		err := e.removeRoomsByAmount(ctx, op.SchedulerName, removeDefinition.Amount, op, removeDefinition.Reason)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("error removing rooms", zap.Error(err))
@@ -92,14 +92,14 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 	return nil
 }
 
-func (e *Executor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string, op *operation.Operation) error {
+func (e *Executor) removeRoomsByIDs(ctx context.Context, schedulerName string, roomsIDs []string, op *operation.Operation, reason string) error {
 	rooms := make([]*game_room.GameRoom, 0, len(roomsIDs))
 	for _, roomID := range roomsIDs {
 		gameRoom := &game_room.GameRoom{ID: roomID, SchedulerID: schedulerName}
 		rooms = append(rooms, gameRoom)
 	}
 
-	err := e.deleteRooms(ctx, rooms, op)
+	err := e.deleteRooms(ctx, rooms, op, reason)
 	if err != nil {
 		return err
 	}
@@ -107,13 +107,13 @@ func (e *Executor) removeRoomsByIDs(ctx context.Context, schedulerName string, r
 	return nil
 }
 
-func (e *Executor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int, op *operation.Operation) error {
+func (e *Executor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int, op *operation.Operation, reason string) error {
 	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", amount, &sync.Map{})
 	if err != nil {
 		return err
 	}
 
-	err = e.deleteRooms(ctx, rooms, op)
+	err = e.deleteRooms(ctx, rooms, op, reason)
 	if err != nil {
 		return err
 	}
@@ -121,13 +121,13 @@ func (e *Executor) removeRoomsByAmount(ctx context.Context, schedulerName string
 	return nil
 }
 
-func (e *Executor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom, op *operation.Operation) error {
+func (e *Executor) deleteRooms(ctx context.Context, rooms []*game_room.GameRoom, op *operation.Operation, reason string) error {
 	errs, ctx := errgroup.WithContext(ctx)
 
 	for i := range rooms {
 		room := rooms[i]
 		errs.Go(func() error {
-			err := e.roomManager.DeleteRoom(ctx, room)
+			err := e.roomManager.DeleteRoom(ctx, room, reason)
 			if err != nil {
 				msg := fmt.Sprintf("error removing room \"%v\". Reason => %v", room.ID, err.Error())
 				e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msg)

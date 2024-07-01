@@ -73,7 +73,7 @@ func TestExecutor_Execute(t *testing.T) {
 				{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Metadata: map[string]interface{}{}},
 			}
 			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(2)
 			err := executor.Execute(ctx, op, definition)
 
 			require.Nil(t, err)
@@ -83,7 +83,7 @@ func TestExecutor_Execute(t *testing.T) {
 			executor, _, roomsManager, operationManager := testSetup(t)
 
 			schedulerName := uuid.NewString()
-			definition := &Definition{Amount: 2}
+			definition := &Definition{Amount: 2, Reason: "reason"}
 			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			availableRooms := []*game_room.GameRoom{
@@ -93,9 +93,9 @@ func TestExecutor_Execute(t *testing.T) {
 
 			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
 
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[0]).Return(nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[0], definition.Reason).Return(nil)
 
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[1]).Return(errors.New("failed to remove instance on the runtime: some error"))
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[1], definition.Reason).Return(errors.New("failed to remove instance on the runtime: some error"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 
 			err := executor.Execute(context.Background(), op, definition)
@@ -106,7 +106,7 @@ func TestExecutor_Execute(t *testing.T) {
 			executor, _, roomsManager, operationManager := testSetup(t)
 
 			schedulerName := uuid.NewString()
-			definition := &Definition{Amount: 2}
+			definition := &Definition{Amount: 2, Reason: "reason"}
 			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			availableRooms := []*game_room.GameRoom{
@@ -115,9 +115,9 @@ func TestExecutor_Execute(t *testing.T) {
 			}
 
 			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[0]).Return(nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[0], definition.Reason).Return(nil)
 
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[1]).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[1], definition.Reason).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 
 			err := executor.Execute(context.Background(), op, definition)
@@ -157,7 +157,7 @@ func TestExecutor_Execute(t *testing.T) {
 			secondRoomID := "second-room-id"
 
 			schedulerName := uuid.NewString()
-			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}, Reason: "reason"}
 			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			room := &game_room.GameRoom{
@@ -168,8 +168,9 @@ func TestExecutor_Execute(t *testing.T) {
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
 			}
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(nil)
+
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(nil)
 
 			err := executor.Execute(context.Background(), op, definition)
 			require.Nil(t, err)
@@ -182,7 +183,7 @@ func TestExecutor_Execute(t *testing.T) {
 			secondRoomID := "second-room-id"
 
 			schedulerName := uuid.NewString()
-			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}, Reason: "reason"}
 			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			room := &game_room.GameRoom{
@@ -194,8 +195,9 @@ func TestExecutor_Execute(t *testing.T) {
 				SchedulerID: schedulerName,
 			}
 
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(fmt.Errorf("error on remove room"))
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
+
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(fmt.Errorf("error on remove room"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 
 			err := executor.Execute(context.Background(), op, definition)
@@ -220,8 +222,9 @@ func TestExecutor_Execute(t *testing.T) {
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
 			}
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(porterrors.NewErrNotFound("not found"))
+
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(porterrors.NewErrNotFound("not found"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 
 			err := executor.Execute(context.Background(), op, definition)
@@ -235,7 +238,7 @@ func TestExecutor_Execute(t *testing.T) {
 			secondRoomID := "second-room-id"
 
 			schedulerName := uuid.NewString()
-			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}}
+			definition := &Definition{RoomsIDs: []string{firstRoomID, secondRoomID}, Reason: "reason"}
 			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
 			room := &game_room.GameRoom{
@@ -246,8 +249,9 @@ func TestExecutor_Execute(t *testing.T) {
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
 			}
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
+
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 
 			err := executor.Execute(context.Background(), op, definition)
@@ -279,6 +283,7 @@ func TestExecutor_Execute(t *testing.T) {
 		definition := &Definition{
 			RoomsIDs: []string{firstRoomID, secondRoomID},
 			Amount:   2,
+			Reason:   "reason",
 		}
 		op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
@@ -292,11 +297,12 @@ func TestExecutor_Execute(t *testing.T) {
 			SchedulerID: schedulerName,
 			Status:      game_room.GameStatusReady,
 		}
-		roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+
+		roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), definition.Reason).Return(nil).Times(2)
 
 		availableRooms := []*game_room.GameRoom{thirdRoom, fourthRoom}
 		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
-		roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+		roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), definition.Reason).Return(nil).Times(2)
 
 		err := executor.Execute(context.Background(), op, definition)
 		require.Nil(t, err)
