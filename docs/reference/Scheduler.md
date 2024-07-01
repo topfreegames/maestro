@@ -269,7 +269,7 @@ start: Integer
 end: Integer
 ```
 
-You **must** configure the port range either in `.PortRange` or in `.Spec.Containers.Ports.HostPortRange` - they are mutually exclusive configurations. If you want to configure a single port range for all container ports, use `.PortRange`, otherwise use `HostPortRange` in every Port to configure the port range for each one - this is useful when avoiding port conflicts on different protocols in case the network doesn't support it, for example.
+You **must** configure the port range either in `.PortRange` or in `.Spec.Containers.Ports.HostPortRange` - they are mutually exclusive configurations. If you want to configure a single port range for all container ports, use `.PortRange`, otherwise use `HostPortRange` in every Spec to configure the port range for each one - this is useful when avoiding port conflicts on different protocols in case the network doesn't support it, for example.
 
 ### Forwarders
 Forwarders are configured to pass ahead info offered by the game rooms to Maestro. 
