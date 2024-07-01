@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/validations"
@@ -74,7 +75,7 @@ func TestNewScheduler(t *testing.T) {
 		"10",
 		"10",
 	)
-	portRange := entities.NewPortRange(
+	portRange := port.NewPortRange(
 		1,
 		2,
 	)
@@ -153,7 +154,7 @@ func TestNewScheduler(t *testing.T) {
 				"10",
 				"10",
 			),
-			entities.NewPortRange(
+			port.NewPortRange(
 				1,
 				2,
 			),
@@ -177,7 +178,7 @@ func TestNewScheduler(t *testing.T) {
 				"10",
 				"10",
 			),
-			entities.NewPortRange(
+			port.NewPortRange(
 				1,
 				2,
 			),
@@ -196,8 +197,8 @@ func TestIsMajorVersion(t *testing.T) {
 		expected         bool
 	}{
 		"port range should be a major update": {
-			currentScheduler: &entities.Scheduler{PortRange: &entities.PortRange{Start: 1000, End: 2000}},
-			newScheduler:     &entities.Scheduler{PortRange: &entities.PortRange{Start: 1001, End: 2000}},
+			currentScheduler: &entities.Scheduler{PortRange: &port.PortRange{Start: 1000, End: 2000}},
+			newScheduler:     &entities.Scheduler{PortRange: &port.PortRange{Start: 1001, End: 2000}},
 			expected:         true,
 		},
 		"container resources should be a major update": {
@@ -214,8 +215,8 @@ func TestIsMajorVersion(t *testing.T) {
 			expected: true,
 		},
 		"no changes shouldn't be a major": {
-			currentScheduler: &entities.Scheduler{PortRange: &entities.PortRange{Start: 1000, End: 2000}},
-			newScheduler:     &entities.Scheduler{PortRange: &entities.PortRange{Start: 1000, End: 2000}},
+			currentScheduler: &entities.Scheduler{PortRange: &port.PortRange{Start: 1000, End: 2000}},
+			newScheduler:     &entities.Scheduler{PortRange: &port.PortRange{Start: 1000, End: 2000}},
 			expected:         false,
 		},
 		"max surge shouldn't be a major": {
@@ -307,6 +308,82 @@ func TestIsMajorVersion(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			isMajor := test.currentScheduler.IsMajorVersion(test.newScheduler)
 			require.Equal(t, test.expected, isMajor)
+		})
+	}
+}
+
+func TestHasValidPortRangeConfiguration(t *testing.T) {
+	tests := map[string]struct {
+		scheduler *entities.Scheduler
+		expected  error
+	}{
+		"should succeed if only scheduler.portrange is configured": {
+			scheduler: &entities.Scheduler{PortRange: &port.PortRange{}},
+			expected:  nil,
+		},
+		"should succeed if only scheduler.spec.container.ports.hostportrange is configured": {
+			scheduler: &entities.Scheduler{
+				Spec: game_room.Spec{
+					Containers: []game_room.Container{
+						{
+							Ports: []game_room.ContainerPort{
+								{
+									HostPortRange: &port.PortRange{},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: nil,
+		},
+		"should fail if neither scheduler.portrange nor container.ports.hostportrange are configured": {
+			scheduler: &entities.Scheduler{},
+			expected:  entities.ErrNoPortRangeConfigured,
+		},
+		"should fail if both scheduler.portrange and container.ports.hostportrange are configured": {
+			scheduler: &entities.Scheduler{
+				PortRange: &port.PortRange{},
+				Spec: game_room.Spec{
+					Containers: []game_room.Container{
+						{
+							Ports: []game_room.ContainerPort{
+								{
+									HostPortRange: &port.PortRange{},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: entities.ErrBothPortRangesConfigured,
+		},
+		"should fail if not all container.ports have hostportrange configured": {
+			scheduler: &entities.Scheduler{
+				PortRange: &port.PortRange{},
+				Spec: game_room.Spec{
+					Containers: []game_room.Container{
+						{
+							Ports: []game_room.ContainerPort{
+								{
+									HostPortRange: &port.PortRange{},
+								},
+								{
+									HostPortRange: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: entities.ErrBothPortRangesConfigured,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := test.scheduler.HasValidPortRangeConfiguration()
+			require.ErrorIs(t, test.expected, err)
 		})
 	}
 }

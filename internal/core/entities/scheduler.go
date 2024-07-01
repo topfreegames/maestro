@@ -23,9 +23,11 @@
 package entities
 
 import (
+	"errors"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -49,6 +51,12 @@ const (
 	StateOnError = "on-error"
 )
 
+var (
+	ErrNoPortRangeConfigured     = errors.New("must configure scheduler.PortRange or scheduler.Spec.Container.Ports.HostPortRange")
+	ErrBothPortRangesConfigured  = errors.New("scheduler.PortRange and scheduler.Spec.Container.Ports.HostPortRange are mutually exclusive configurations; please choose only one")
+	ErrMissingContainerPortRange = errors.New("must configure HostPortRange for all scheduler.Spec.Container.Ports")
+)
+
 // Scheduler represents one of the basic maestro structs.
 // It holds GameRooms specifications, as well as optional events forwarders.
 type Scheduler struct {
@@ -58,7 +66,7 @@ type Scheduler struct {
 	RollbackVersion string
 	Spec            game_room.Spec
 	Autoscaling     *autoscaling.Autoscaling
-	PortRange       *PortRange
+	PortRange       *port.PortRange
 	RoomsReplicas   int `validate:"min=0"`
 	CreatedAt       time.Time
 	LastDownscaleAt time.Time
@@ -75,7 +83,7 @@ func NewScheduler(
 	state string,
 	maxSurge string,
 	spec game_room.Spec,
-	portRange *PortRange,
+	portRange *port.PortRange,
 	roomsReplicas int,
 	autoscaling *autoscaling.Autoscaling,
 	forwarders []*forwarder.Forwarder,
@@ -107,7 +115,17 @@ func (s *Scheduler) SetSchedulerRollbackVersion(version string) {
 }
 
 func (s *Scheduler) Validate() error {
-	return validations.Validate.Struct(s)
+	err := validations.Validate.Struct(s)
+	if err != nil {
+		return err
+	}
+
+	err = s.HasValidPortRangeConfiguration()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // IsMajorVersion checks if the scheduler changes are major or not.
@@ -143,4 +161,40 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"Autoscaling",
 		),
 	)
+}
+
+// HasValidPortRangeConfiguration checks if the scheduler's port range configuration is valid.
+// It is possible to configure PortRange in the scheduler, but also HostPortRange in each Spec.Container.Ports,
+// both port ranges were made optional in the API, so we need to validate them here.
+// The scheduler.PortRange was kept to avoid a breaking change to schedulers in older versions.
+func (s *Scheduler) HasValidPortRangeConfiguration() error {
+	hasSchedulerPortRange := false
+	if s.PortRange != nil {
+		hasSchedulerPortRange = true
+	}
+
+	hasContainerPortRange := false
+	for _, c := range s.Spec.Containers {
+		amountOfHostPortRanges := 0
+		for _, p := range c.Ports {
+			if p.HostPortRange != nil {
+				amountOfHostPortRanges++
+				hasContainerPortRange = true
+			}
+		}
+
+		if !hasSchedulerPortRange && len(c.Ports) != amountOfHostPortRanges {
+			return ErrMissingContainerPortRange
+		}
+	}
+
+	if hasSchedulerPortRange && hasContainerPortRange {
+		return ErrBothPortRangesConfigured
+	}
+
+	if !hasSchedulerPortRange && !hasContainerPortRange {
+		return ErrNoPortRangeConfigured
+	}
+
+	return nil
 }

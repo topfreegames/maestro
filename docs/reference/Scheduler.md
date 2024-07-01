@@ -246,7 +246,7 @@ annotation: Map
   the [Switch Active Version](Operations.md#switch-active-version) (Major change) operation will replace pods from 3 to
   3;
 - **portRange**: Range of ports that can be used by Maestro to create GRUs for the specified scheduler. Can be altered
-  by the user anytime. More info [here](#portrange);
+  by the user anytime. More info [here](#portrange); Mutually exclusive with the Spec.Containers.Ports.HostPortRange configuration.
 - **forwarders**: Maestro can pass ahead info sent by the game rooms, such as Ping (Ready, Occupied, Terminating...),
   player and rooms events. The receivers can be configured here. More info [here](#forwarders);
 - **autoscaling**: Optional autoscaling policy configuration. More info [here](../tutorials/Autoscaling.md);
@@ -268,6 +268,8 @@ It is represented as:
 start: Integer
 end: Integer
 ```
+
+You **must** configure the port range either in `.PortRange` or in `.Spec.Containers.Ports.HostPortRange` - they are mutually exclusive configurations. If you want to configure a single port range for all container ports, use `.PortRange`, otherwise use `HostPortRange` in every Spec to configure the port range for each one - this is useful when avoiding port conflicts on different protocols in case the network doesn't support it, for example.
 
 ### Forwarders
 Forwarders are configured to pass ahead info offered by the game rooms to Maestro. 
@@ -395,8 +397,10 @@ It is represented as:
 - name: String
   protocol: String
   port: Integer
+  hostPortRange: PortRange
 ```
 
 - **name**: Name of the port. Facilitates on recognition;
 - **protocol**: Port protocol. Can be UDP, TCP or SCTP.;
 - **port**: The port exposed.
+- **hostPortRange**: The [port range](#portrange) for the port to be allocated in the host. Mutually exclusive with the port range configured in the root structure.

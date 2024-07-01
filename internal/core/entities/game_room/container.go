@@ -22,6 +22,8 @@
 
 package game_room
 
+import "github.com/topfreegames/maestro/internal/core/entities/port"
+
 type Container struct {
 	Name            string `validate:"required,kube_resource_name"`
 	Image           string `validate:"required"`
@@ -59,8 +61,9 @@ type ContainerResources struct {
 }
 
 type ContainerPort struct {
-	Name     string `validate:"required,max=15"`
-	Protocol string `validate:"required,ports_protocol"`
-	Port     int    `validate:"required"`
-	HostPort int
+	Name          string `validate:"required,max=15"`
+	Protocol      string `validate:"required,ports_protocol"`
+	Port          int    `validate:"required"`
+	HostPortRange *port.PortRange
+	HostPort      int
 }

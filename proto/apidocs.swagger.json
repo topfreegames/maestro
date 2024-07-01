@@ -1180,6 +1180,10 @@
           "type": "integer",
           "format": "int32",
           "description": "Optional container host port."
+        },
+        "hostPortRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "The host port range object describes what is the port range used to allocate game rooms."
         }
       },
       "description": "Container exposed port definition."

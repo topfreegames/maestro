@@ -38,6 +38,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/validations"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -104,7 +105,7 @@ func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
 			},
 			Output: Output{
 				PatchScheduler: map[string]interface{}{
-					patch.LabelSchedulerPortRange: entities.NewPortRange(10000, 60000),
+					patch.LabelSchedulerPortRange: port.NewPortRange(10000, 60000),
 				},
 			},
 		},
@@ -631,7 +632,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 						Toleration: genericString,
 						Affinity:   genericString,
 					},
-					PortRange: &entities.PortRange{
+					PortRange: &port.PortRange{
 						Start: 10000,
 						End:   60000,
 					},
@@ -819,7 +820,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 						Toleration: genericString,
 						Affinity:   genericString,
 					},
-					PortRange: &entities.PortRange{
+					PortRange: &port.PortRange{
 						Start: 10000,
 						End:   60000,
 					},
@@ -1045,7 +1046,7 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 						Toleration: genericString,
 						Affinity:   genericString,
 					},
-					PortRange: &entities.PortRange{
+					PortRange: &port.PortRange{
 						Start: 10000,
 						End:   60000,
 					},
@@ -1286,7 +1287,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 						Toleration: genericString,
 						Affinity:   genericString,
 					},
-					PortRange: &entities.PortRange{
+					PortRange: &port.PortRange{
 						Start: 10000,
 						End:   60000,
 					},
@@ -1430,7 +1431,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						Toleration: genericString,
 						Affinity:   genericString,
 					},
-					PortRange: &entities.PortRange{
+					PortRange: &port.PortRange{
 						Start: 10000,
 						End:   60000,
 					},
@@ -1625,7 +1626,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 						Toleration: genericString,
 						Affinity:   genericString,
 					},
-					PortRange: &entities.PortRange{
+					PortRange: &port.PortRange{
 						Start: 10000,
 						End:   60000,
 					},

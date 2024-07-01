@@ -29,6 +29,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 	_struct "google.golang.org/protobuf/types/known/structpb"
@@ -48,7 +49,7 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 	}
 
 	if request.PortRange != nil {
-		patchMap[patch.LabelSchedulerPortRange] = entities.NewPortRange(
+		patchMap[patch.LabelSchedulerPortRange] = port.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		)
@@ -121,10 +122,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		entities.StateCreating,
 		request.GetMaxSurge(),
 		*fromApiSpec(request.GetSpec()),
-		entities.NewPortRange(
-			request.GetPortRange().GetStart(),
-			request.GetPortRange().GetEnd(),
-		),
+		fromApiPortRange(request.PortRange),
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
@@ -158,7 +156,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		entities.StateCreating,
 		request.GetMaxSurge(),
 		*fromApiSpec(request.GetSpec()),
-		entities.NewPortRange(
+		port.NewPortRange(
 			request.GetPortRange().GetStart(),
 			request.GetPortRange().GetEnd(),
 		),
@@ -346,6 +344,17 @@ func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
 	)
 }
 
+func fromApiPortRange(apiPortRange *api.PortRange) *port.PortRange {
+	if apiPortRange != nil {
+		return port.NewPortRange(
+			apiPortRange.GetStart(),
+			apiPortRange.GetEnd(),
+		)
+	}
+
+	return nil
+}
+
 func fromApiAutoscalingPolicy(apiAutoscalingPolicy *api.AutoscalingPolicy) autoscaling.Policy {
 	var policy autoscaling.Policy
 	if policyType := apiAutoscalingPolicy.GetType(); policyType != "" {
@@ -423,10 +432,11 @@ func fromApiContainerPorts(apiPorts []*api.ContainerPort) []game_room.ContainerP
 	var ports []game_room.ContainerPort
 	for _, apiPort := range apiPorts {
 		port := game_room.ContainerPort{
-			Name:     apiPort.GetName(),
-			Port:     int(apiPort.GetPort()),
-			Protocol: apiPort.GetProtocol(),
-			HostPort: int(apiPort.GetHostPort()),
+			Name:          apiPort.GetName(),
+			Port:          int(apiPort.GetPort()),
+			Protocol:      apiPort.GetProtocol(),
+			HostPort:      int(apiPort.GetHostPort()),
+			HostPortRange: fromApiPortRange(apiPort.HostPortRange),
 		}
 		ports = append(ports, port)
 	}
@@ -486,7 +496,7 @@ func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
 	return forwarders
 }
 
-func getPortRange(portRange *entities.PortRange) *api.PortRange {
+func getPortRange(portRange *port.PortRange) *api.PortRange {
 	if portRange != nil {
 		return &api.PortRange{
 			Start: portRange.Start,
@@ -605,10 +615,11 @@ func fromEntityContainerPortsToApiContainerPorts(ports []game_room.ContainerPort
 	var convertedContainerPort []*api.ContainerPort
 	for _, port := range ports {
 		convertedContainerPort = append(convertedContainerPort, &api.ContainerPort{
-			Name:     port.Name,
-			Protocol: port.Protocol,
-			Port:     int32(port.Port),
-			HostPort: int32(port.HostPort),
+			Name:          port.Name,
+			Protocol:      port.Protocol,
+			Port:          int32(port.Port),
+			HostPort:      int32(port.HostPort),
+			HostPortRange: getPortRange(port.HostPortRange),
 		})
 	}
 	return convertedContainerPort

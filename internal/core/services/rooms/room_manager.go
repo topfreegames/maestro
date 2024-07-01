@@ -441,20 +441,37 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 }
 
 func (m *RoomManager) populateSpecWithHostPort(scheduler entities.Scheduler) (*game_room.Spec, error) {
-	numberOfPorts := 0
 	spec := scheduler.Spec.DeepCopy()
-	for _, container := range spec.Containers {
-		numberOfPorts += len(container.Ports)
-	}
-	allocatedPorts, err := m.PortAllocator.Allocate(scheduler.PortRange, numberOfPorts)
-	if err != nil {
-		return nil, err
-	}
-	portIndex := 0
-	for _, container := range spec.Containers {
-		for i := range container.Ports {
-			container.Ports[i].HostPort = int(allocatedPorts[portIndex])
-			portIndex++
+
+	// Backwards compatibility for legacy port range configuration
+	if scheduler.PortRange != nil {
+		numberOfPorts := 0
+		for _, container := range spec.Containers {
+			numberOfPorts += len(container.Ports)
+		}
+
+		allocatedPorts, err := m.PortAllocator.Allocate(scheduler.PortRange, numberOfPorts)
+		if err != nil {
+			return nil, err
+		}
+
+		portIndex := 0
+		for _, container := range spec.Containers {
+			for i := range container.Ports {
+				container.Ports[i].HostPort = int(allocatedPorts[portIndex])
+				portIndex++
+			}
+		}
+	} else { // We should allow each Port to define its own range in order to avoid port conflicts between different protocols
+		for _, container := range spec.Containers {
+			for i := range container.Ports {
+				allocatedPorts, err := m.PortAllocator.Allocate(container.Ports[i].HostPortRange, 1)
+				if err != nil {
+					return nil, err
+				}
+
+				container.Ports[i].HostPort = int(allocatedPorts[0])
+			}
 		}
 	}
 	return spec, nil

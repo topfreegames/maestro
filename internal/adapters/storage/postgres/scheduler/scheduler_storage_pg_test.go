@@ -41,6 +41,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/filters"
 
 	"github.com/stretchr/testify/require"
@@ -71,7 +72,7 @@ var expectedScheduler = &entities.Scheduler{
 		Toleration:             "toleration",
 		Affinity:               "affinity",
 	},
-	PortRange: &entities.PortRange{
+	PortRange: &port.PortRange{
 		Start: 40000,
 		End:   60000,
 	},
@@ -131,7 +132,7 @@ func TestSchedulerStorage_GetSchedulers(t *testing.T) {
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},
@@ -149,7 +150,7 @@ func TestSchedulerStorage_GetSchedulers(t *testing.T) {
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},
@@ -188,7 +189,7 @@ func TestSchedulerStorage_GetAllSchedulers(t *testing.T) {
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},
@@ -206,7 +207,7 @@ func TestSchedulerStorage_GetAllSchedulers(t *testing.T) {
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},
@@ -237,7 +238,7 @@ func TestSchedulerStorage_GetSchedulersWithFilter(t *testing.T) {
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},
@@ -255,7 +256,7 @@ func TestSchedulerStorage_GetSchedulersWithFilter(t *testing.T) {
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},
@@ -522,7 +523,7 @@ func TestSchedulerStorage_CreateSchedulerVersion(t *testing.T) {
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},
@@ -623,7 +624,7 @@ func TestSchedulerStorage_RunWithTransaction(t *testing.T) {
 			Toleration:             "toleration",
 			Affinity:               "affinity",
 		},
-		PortRange: &entities.PortRange{
+		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
 		},

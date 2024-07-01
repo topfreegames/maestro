@@ -23,7 +23,7 @@
 //go:build unit
 // +build unit
 
-package entities
+package port
 
 import (
 	"testing"

@@ -28,6 +28,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 
 	"github.com/ghodss/yaml"
 
@@ -57,7 +58,7 @@ type schedulerInfo struct {
 	Toleration             string
 	Affinity               string
 	Containers             []game_room.Container
-	PortRange              *entities.PortRange
+	PortRange              *port.PortRange
 	MaxSurge               string
 	RoomsReplicas          int
 	Forwarders             []*forwarder.Forwarder

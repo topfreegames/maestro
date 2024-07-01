@@ -43,8 +43,8 @@ import (
 	roomStorageRedis "github.com/topfreegames/maestro/internal/adapters/storage/redis/room"
 	"github.com/topfreegames/maestro/internal/adapters/tracing"
 	"github.com/topfreegames/maestro/internal/config"
-	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
@@ -213,7 +213,7 @@ func NewClockTime() ports.Clock {
 
 // NewPortAllocatorRandom instantiates a new port allocator.
 func NewPortAllocatorRandom(c config.Config) (ports.PortAllocator, error) {
-	portRange, err := entities.ParsePortRange(c.GetString(portAllocatorRandomRangePath))
+	portRange, err := port.ParsePortRange(c.GetString(portAllocatorRandomRangePath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize random port allocator: %w", err)
 	}
