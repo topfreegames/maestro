@@ -1,0 +1,1927 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Maestro",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "OperationsService"
+    },
+    {
+      "name": "RoomsService"
+    },
+    {
+      "name": "SchedulersService"
+    }
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/scheduler/{schedulerName}/rooms/{roomName}/address": {
+      "get": {
+        "summary": "Gets room public addresses.",
+        "operationId": "RoomsService_GetRoomAddress",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetRoomAddressResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "roomName",
+            "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
+    },
+    "/scheduler/{schedulerName}/rooms/{roomName}/ping": {
+      "put": {
+        "summary": "Updates a game room with ping data.",
+        "operationId": "RoomsService_UpdateRoomWithPing",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateRoomWithPingResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "roomName",
+            "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "type": "object",
+                  "description": "Target room metadata."
+                },
+                "status": {
+                  "type": "string",
+                  "description": "Indicates the room status."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "int64",
+                  "description": "Timestamp of the ping event."
+                }
+              },
+              "description": "The ping request."
+            }
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
+    },
+    "/scheduler/{schedulerName}/rooms/{roomName}/playerevent": {
+      "post": {
+        "summary": "Forward the incoming player event.",
+        "operationId": "RoomsService_ForwardPlayerEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ForwardPlayerEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "roomName",
+            "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "type": "object",
+                  "description": "Player event metadata."
+                },
+                "event": {
+                  "type": "string",
+                  "description": "The player event name."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "int64",
+                  "description": "Timestamp of the player event."
+                }
+              },
+              "description": "The player event request."
+            }
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
+    },
+    "/scheduler/{schedulerName}/rooms/{roomName}/roomevent": {
+      "post": {
+        "summary": "Forward the incoming room event.",
+        "operationId": "RoomsService_ForwardRoomEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ForwardRoomEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "roomName",
+            "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "type": "object",
+                  "description": "Room event metadata."
+                },
+                "event": {
+                  "type": "string",
+                  "description": "The room event name."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "int64",
+                  "description": "Timestamp of the room event."
+                }
+              },
+              "description": "The room event request."
+            }
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
+    },
+    "/scheduler/{schedulerName}/rooms/{roomName}/status": {
+      "put": {
+        "summary": "Endpoint created for maintaining compatibility with previous maestro version (v9). It is currently deprecated.",
+        "operationId": "RoomsService_UpdateRoomStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateRoomStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "roomName",
+            "description": "Target room name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "type": "object",
+                  "description": "Status update metadata."
+                },
+                "status": {
+                  "type": "string",
+                  "description": "The room status."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "int64",
+                  "description": "Timestamp of the status update."
+                }
+              },
+              "description": "The player event request."
+            }
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
+    },
+    "/schedulers": {
+      "get": {
+        "summary": "Lists all schedulers.",
+        "operationId": "SchedulersService_ListSchedulers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListSchedulersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Unique identifier for the scheduler.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "game",
+            "description": "Game the new scheduler will be part of.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "version",
+            "description": "Version to for the scheduler.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      },
+      "post": {
+        "summary": "Create a scheduler.",
+        "operationId": "SchedulersService_CreateScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CreateSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "Scheduler is the struct that defines a maestro scheduler.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CreateSchedulerRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    },
+    "/schedulers/info": {
+      "get": {
+        "summary": "List Scheduler and Game Rooms info by Game",
+        "operationId": "SchedulersService_GetSchedulersInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetSchedulersInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "game",
+            "description": "Game name to filter schedulers\n\nMapped to URL query parameter `game`.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    },
+    "/schedulers/{name}": {
+      "post": {
+        "summary": "Creates new scheduler version and switch it to active version.",
+        "operationId": "SchedulersService_NewSchedulerVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1NewSchedulerVersionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Unique identifier for the scheduler.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "game": {
+                  "type": "string",
+                  "description": "Game the new scheduler will be part of."
+                },
+                "spec": {
+                  "$ref": "#/definitions/v1Spec",
+                  "description": "The spec object defines all the game room container configurations and spec."
+                },
+                "portRange": {
+                  "$ref": "#/definitions/v1PortRange",
+                  "description": "The port range object describes what is the port range used to allocate game rooms."
+                },
+                "maxSurge": {
+                  "type": "string",
+                  "title": "The max surge of new rooms, used to scale and update"
+                },
+                "roomsReplicas": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "The rooms replicas is the desired number of rooms that maestro should keep available."
+                },
+                "autoscaling": {
+                  "$ref": "#/definitions/v1Autoscaling",
+                  "title": "The autoscaling defines the autoscaling and its policy to be followed"
+                },
+                "forwarders": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1Forwarder"
+                  },
+                  "title": "List of Scheduler forwarders"
+                },
+                "annotations": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "New annotations for scheduler"
+                },
+                "labels": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "New labels for scheduler"
+                }
+              },
+              "description": "Scheduler is the struct that defines a maestro scheduler."
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      },
+      "patch": {
+        "summary": "Patch a scheduler and switch it to active version.",
+        "operationId": "SchedulersService_PatchScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PatchSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "description": "Unique identifier for the scheduler.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "spec": {
+                  "$ref": "#/definitions/v1OptionalSpec",
+                  "description": "The spec object defines all the game room container configurations and spec."
+                },
+                "portRange": {
+                  "$ref": "#/definitions/v1PortRange",
+                  "description": "The port range object describes what is the port range used to allocate game rooms."
+                },
+                "maxSurge": {
+                  "type": "string",
+                  "title": "The max surge of new rooms, used to scale and update"
+                },
+                "roomsReplicas": {
+                  "type": "integer",
+                  "format": "int32",
+                  "title": "Rooms Replicas is the desired number of rooms"
+                },
+                "autoscaling": {
+                  "$ref": "#/definitions/v1OptionalAutoscaling",
+                  "title": "Autoscaling rules to the scheduler"
+                },
+                "forwarders": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1Forwarder"
+                  },
+                  "title": "List of Scheduler forwarders"
+                },
+                "annotations": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Annotations declaration for the scheduler"
+                },
+                "labels": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Labels declaration for the scheduler"
+                }
+              },
+              "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    },
+    "/schedulers/{schedulerName}": {
+      "get": {
+        "summary": "Get Specific Scheduler by name",
+        "operationId": "SchedulersService_GetScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name where the rooms will be added.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "version",
+            "description": "Scheduler version to be queried (query param)",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      },
+      "delete": {
+        "summary": "List Scheduler and Game Rooms info by Game",
+        "operationId": "SchedulersService_DeleteScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name to be deleted\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      },
+      "put": {
+        "summary": "Switch Active Version to Scheduler",
+        "operationId": "SchedulersService_SwitchActiveVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SwitchActiveVersionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler Name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "title": "Version that will be activate in Scheduler"
+                }
+              },
+              "title": "Switch Active Version Request"
+            }
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    },
+    "/schedulers/{schedulerName}/operations": {
+      "get": {
+        "summary": "List operations based on a scheduler.",
+        "operationId": "OperationsService_ListOperations",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ListOperationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "orderBy",
+            "description": "Optional parameter for enabling operations sorting.\nGeneral `order_by` string syntax: \u003cfield\u003e (\u003casc|desc\u003e)\nDefault value is `created_at desc`\nNOTE: On http protocol, this operates as a query parameter.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "stage",
+            "description": "Required parameter for enabling filter by operation execution stage, can be one of [pending, active, final].",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page",
+            "description": "Parameter for pagination, indicates the page number.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "perPage",
+            "description": "Optional parameter for pagination, indicates the number of items per page.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "OperationsService"
+        ]
+      }
+    },
+    "/schedulers/{schedulerName}/operations/{operationId}": {
+      "get": {
+        "summary": "Get operation based on scheduler name and operation ID",
+        "operationId": "OperationsService_GetOperation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetOperationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name that the operations are part of.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "operationId",
+            "description": "ID of the requested operation.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          }
+        ],
+        "tags": [
+          "OperationsService"
+        ]
+      }
+    },
+    "/schedulers/{schedulerName}/operations/{operationId}/cancel": {
+      "post": {
+        "summary": "Cancel operation based on scheduler name and operation ID",
+        "operationId": "OperationsService_CancelOperation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CancelOperationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name where the operation relies on.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "operationId",
+            "description": "Operation identifier to be canceled.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          }
+        ],
+        "tags": [
+          "OperationsService"
+        ]
+      }
+    },
+    "/schedulers/{schedulerName}/versions": {
+      "get": {
+        "summary": "Given a Scheduler, returns it's versions",
+        "operationId": "SchedulersService_GetSchedulerVersions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetSchedulerVersionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Scheduler name whose versions the client wants to fetch",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          }
+        ],
+        "tags": [
+          "SchedulersService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "apiv1Operation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the operation."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the operation.\nTODO(gabrielcorado): change to enum."
+        },
+        "definitionName": {
+          "type": "string",
+          "description": "Name of the operation being executed."
+        },
+        "lease": {
+          "$ref": "#/definitions/v1Lease",
+          "description": "Operation lease. This is an optional field since not all operations have a lease."
+        },
+        "schedulerName": {
+          "type": "string",
+          "description": "Scheduler identifier that the operation is from."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the operation was created."
+        },
+        "input": {
+          "type": "object",
+          "description": "Input the data that was sent by client."
+        },
+        "executionHistory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1OperationEvent"
+          },
+          "description": "ExecutionHistory is the execution details filled by Maestro."
+        }
+      },
+      "title": "The operation object representation"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1Autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable flag to autoscaling feature"
+        },
+        "min": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Min is the minimum number of game rooms that a scheduler should have"
+        },
+        "max": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Max is the maximum number of game rooms that a scheduler should have"
+        },
+        "policy": {
+          "$ref": "#/definitions/v1AutoscalingPolicy",
+          "title": "Policy is the autoscaling policy that scheduler should follow"
+        },
+        "cooldown": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Cooldown is the time in seconds that scheduler should wait before scale down"
+        }
+      },
+      "title": "Autoscaling struct representation"
+    },
+    "v1AutoscalingInfo": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable flag to autoscaling feature"
+        },
+        "min": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Min is the minimum number of game rooms that a scheduler should have"
+        },
+        "max": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Max is the maximum number of game rooms that a scheduler should have"
+        },
+        "cooldown": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Cooldown is the time in seconds that scheduler should wait before scale down"
+        }
+      },
+      "title": "Autoscaling Info for schedulerInfo message"
+    },
+    "v1AutoscalingPolicy": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type is the policy type to the scheduler"
+        },
+        "parameters": {
+          "$ref": "#/definitions/v1PolicyParameters",
+          "title": "Parameters is the autoscaling arguments to guide the policy execution"
+        }
+      },
+      "title": "AutoscalingPolicy object representation"
+    },
+    "v1CancelOperationResponse": {
+      "type": "object",
+      "description": "Empty response of the cancel operation request."
+    },
+    "v1Container": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the container."
+        },
+        "image": {
+          "type": "string",
+          "description": "Image address ."
+        },
+        "imagePullPolicy": {
+          "type": "string",
+          "description": "Image pull policy: Always, Never and IfNotExists."
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Container command to be called when container is instantiated."
+        },
+        "environment": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerEnvironment"
+          },
+          "description": "Container environment variables."
+        },
+        "requests": {
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources request (cpu/memory)."
+        },
+        "limits": {
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources limits (cpu/memory)."
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerPort"
+          },
+          "description": "Container exposed ports definitions."
+        }
+      },
+      "description": "Container is the struct that defines a game room container configuration."
+    },
+    "v1ContainerEnvironment": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Container environment variable name."
+        },
+        "value": {
+          "type": "string",
+          "description": "Container environment variable value."
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFrom",
+          "description": "Source for the environment variable's value. Cannot be used if value is not empty."
+        }
+      },
+      "description": "Container environment variables."
+    },
+    "v1ContainerEnvironmentValueFrom": {
+      "type": "object",
+      "properties": {
+        "fieldRef": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFromFieldRef",
+          "description": "Container environment variable name using field reference, supports metadata.name, metadata.namespace, `metadata.labels['\u003cKEY\u003e']`, `metadata.annotations['\u003cKEY\u003e']`,\nspec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs."
+        },
+        "secretKeyRef": {
+          "$ref": "#/definitions/v1ContainerEnvironmentValueFromSecretKeyRef",
+          "description": "Container environment variable value using a secret key reference contained in the namespace."
+        }
+      },
+      "title": "Container environment ValueFrom possible values"
+    },
+    "v1ContainerEnvironmentValueFromFieldRef": {
+      "type": "object",
+      "properties": {
+        "fieldPath": {
+          "type": "string",
+          "description": "The field path of the pod: supports metadata.name, metadata.namespace, `metadata.labels['\u003cKEY\u003e']`, `metadata.annotations['\u003cKEY\u003e']`,\nspec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs."
+        }
+      },
+      "description": "Container environment valueFrom using field reference."
+    },
+    "v1ContainerEnvironmentValueFromSecretKeyRef": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the secret contained in the scheduler namespace."
+        },
+        "key": {
+          "type": "string",
+          "description": "Secret key."
+        }
+      },
+      "description": "Container environment valueFrom using secret key reference."
+    },
+    "v1ContainerPort": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the exposed port."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Protocol used to expose the port (TCP, UDP, SCTP)."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port number used."
+        },
+        "hostPort": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Optional container host port."
+        },
+        "hostPortRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "The host port range object describes what is the port range used to allocate game rooms."
+        }
+      },
+      "description": "Container exposed port definition."
+    },
+    "v1ContainerResources": {
+      "type": "object",
+      "properties": {
+        "memory": {
+          "type": "string",
+          "description": "Container memory amount."
+        },
+        "cpu": {
+          "type": "string",
+          "description": "Container cpu amount."
+        }
+      },
+      "description": "Container resources (cpu/memory) (request and limits)."
+    },
+    "v1CreateSchedulerRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique identifier for the scheduler."
+        },
+        "game": {
+          "type": "string",
+          "description": "Game the new scheduler will be part of."
+        },
+        "spec": {
+          "$ref": "#/definitions/v1Spec",
+          "description": "The spec object defines all the game room container configurations and spec of the scheduler."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "The port range object describes what is the port range used to allocate game rooms."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "The max surge of new rooms, used to scale and update"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The rooms replicas defines the desired number of Game Rooms in a scheduler."
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1Autoscaling",
+          "title": "The autoscaling defines the autoscaling and its policy to be followed"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Add annotations for scheduler"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Add labels for scheduler"
+        }
+      },
+      "description": "Scheduler is the struct that defines a maestro scheduler."
+    },
+    "v1CreateSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "scheduler": {
+          "$ref": "#/definitions/v1Scheduler",
+          "description": "Scheduler that was created."
+        }
+      },
+      "description": "Response for the create scheduler."
+    },
+    "v1DeleteSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Delete scheduler operation ID."
+        }
+      },
+      "title": "Delete scheduler payload"
+    },
+    "v1ForwardPlayerEventResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "title": "Flag indicating if the forward process was successful or not"
+        },
+        "message": {
+          "type": "string",
+          "title": "Message from forwarding response (currently always blank)"
+        }
+      },
+      "description": "The player event response."
+    },
+    "v1ForwardRoomEventResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "title": "Flag indicating if the forward process was successful or not"
+        },
+        "message": {
+          "type": "string",
+          "title": "Message from forwarding response (currently always blank)"
+        }
+      },
+      "description": "The room event response."
+    },
+    "v1Forwarder": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Forwarder name used to identify it. Must be unique within the scheduler"
+        },
+        "enable": {
+          "type": "boolean",
+          "title": "Defines if the forwarder is going to receive events or not"
+        },
+        "type": {
+          "type": "string",
+          "title": "Forwarder type"
+        },
+        "address": {
+          "type": "string",
+          "description": "Forwarder gRPC service address."
+        },
+        "options": {
+          "$ref": "#/definitions/v1ForwarderOptions",
+          "title": "Forwarder Options"
+        }
+      },
+      "description": "Forwarder definitions."
+    },
+    "v1ForwarderOptions": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timeout of a request in milliseconds."
+        },
+        "metadata": {
+          "type": "object",
+          "title": "Additional information"
+        }
+      },
+      "description": "Forwarder Options definitions."
+    },
+    "v1GetOperationResponse": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "$ref": "#/definitions/apiv1Operation",
+          "description": "Operation requested."
+        }
+      },
+      "title": "The get operation route response/reply"
+    },
+    "v1GetRoomAddressResponse": {
+      "type": "object",
+      "properties": {
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Port"
+          },
+          "description": "List of game room ports."
+        },
+        "host": {
+          "type": "string",
+          "description": "Game room host."
+        },
+        "ipv6Label": {
+          "type": "string",
+          "description": "Game room ipv6_label, this field is deprecated and only exists for maestro v9 contract compatibility reasons."
+        }
+      },
+      "description": "The get room address response."
+    },
+    "v1GetSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "scheduler": {
+          "$ref": "#/definitions/v1Scheduler",
+          "description": "List of schedulers fetched."
+        }
+      },
+      "description": "The list schedulers response message."
+    },
+    "v1GetSchedulerVersionsResponse": {
+      "type": "object",
+      "properties": {
+        "versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1SchedulerVersion"
+          },
+          "title": "List of versions for an scheduler"
+        }
+      },
+      "title": "Get Scheduler Versions payload"
+    },
+    "v1GetSchedulersInfoResponse": {
+      "type": "object",
+      "properties": {
+        "schedulers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1SchedulerInfo"
+          },
+          "description": "List of schedulers fetched."
+        }
+      },
+      "title": "List Scheduler and Game Rooms Info Response"
+    },
+    "v1Lease": {
+      "type": "object",
+      "properties": {
+        "ttl": {
+          "type": "string",
+          "description": "Lease time to live in RFC3999 format UTC. if the current time is greater than this value,\nthe lease is probably expired."
+        }
+      },
+      "title": "The operation lease object representation"
+    },
+    "v1ListOperationItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the operation."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the operation.\nTODO(gabrielcorado): change to enum."
+        },
+        "definitionName": {
+          "type": "string",
+          "description": "Name of the operation being executed."
+        },
+        "lease": {
+          "$ref": "#/definitions/v1Lease",
+          "description": "Operation lease. This is an optional field since not all operations have a lease."
+        },
+        "schedulerName": {
+          "type": "string",
+          "description": "Scheduler identifier that the operation is from."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the operation was created."
+        }
+      },
+      "description": "The List Operation Item object representation."
+    },
+    "v1ListOperationsResponse": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Parameter for pagination."
+        },
+        "pageSize": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Optional parameter for pagination."
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Optional parameter for total."
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ListOperationItem"
+          },
+          "description": "List of the scheduler finished (with error or not) operations."
+        }
+      },
+      "title": "The list operation route response/reply\nThere's a list for each operation major status"
+    },
+    "v1ListSchedulersResponse": {
+      "type": "object",
+      "properties": {
+        "schedulers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1SchedulerWithoutSpec"
+          },
+          "description": "List of schedulers fetched."
+        }
+      },
+      "description": "The list schedulers response message."
+    },
+    "v1NewSchedulerVersionResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Operation ID, further this id can be used to consult its state."
+        }
+      },
+      "description": "Update schedule operation response payload."
+    },
+    "v1OperationEvent": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "DateTime is the time when the event occurred."
+        },
+        "event": {
+          "type": "string",
+          "description": "Event describe what happened in this event."
+        }
+      },
+      "description": "OperationEvent object represent an execution event."
+    },
+    "v1OptionalAutoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable flag to autoscaling feature"
+        },
+        "min": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Min is the minimum number of game rooms that a scheduler should have"
+        },
+        "max": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Max is the maximum number of game rooms that a scheduler should have"
+        },
+        "policy": {
+          "$ref": "#/definitions/v1AutoscalingPolicy",
+          "title": "Policy is the autoscaling policy that scheduler should follow"
+        },
+        "cooldown": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Cooldown is the time in seconds that scheduler should wait before scale down"
+        }
+      },
+      "title": "Autoscaling struct representation"
+    },
+    "v1OptionalContainer": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the container."
+        },
+        "image": {
+          "type": "string",
+          "description": "Image address."
+        },
+        "imagePullPolicy": {
+          "type": "string",
+          "description": "Image pull policy: Always, Never and IfNotExists."
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Container command to be called when container is instantiated."
+        },
+        "environment": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerEnvironment"
+          },
+          "description": "Container environment variables."
+        },
+        "requests": {
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources request (cpu/memory)."
+        },
+        "limits": {
+          "$ref": "#/definitions/v1ContainerResources",
+          "description": "Container resources limits (cpu/memory)."
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ContainerPort"
+          },
+          "description": "Container exposed ports definitions."
+        }
+      },
+      "description": "OptionalContainer is the struct that defines a game room container configuration.\nThis message is used to patch container configuration."
+    },
+    "v1OptionalSpec": {
+      "type": "object",
+      "properties": {
+        "terminationGracePeriod": {
+          "type": "string",
+          "description": "The game room termination grace period."
+        },
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1OptionalContainer"
+          },
+          "description": "The container object array defines all the game room container configurations."
+        },
+        "toleration": {
+          "type": "string",
+          "description": "Runtime game room toleration configuration."
+        },
+        "affinity": {
+          "type": "string",
+          "description": "Runtime game room affinity configuration."
+        }
+      },
+      "description": "OptionalSpec is the specifications of the scheduler, with relevant info about what is being used.\nThis message is used to patch spec configuration."
+    },
+    "v1PatchSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Operation ID, further this id can be used to consult its state."
+        }
+      },
+      "description": "PatchSchedulerResponse have the operation response id that represents the operation creted to this change."
+    },
+    "v1PolicyParameters": {
+      "type": "object",
+      "properties": {
+        "roomOccupancy": {
+          "$ref": "#/definitions/v1RoomOccupancy",
+          "title": "RoomOccupancy is the policy parameters to execute rooms occupancy policy"
+        }
+      },
+      "title": "PolicyParameters object representation"
+    },
+    "v1Port": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Port name."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Port protocol (tcp, udp)."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port number."
+        }
+      },
+      "description": "Port represents a game room port."
+    },
+    "v1PortRange": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Range start, it is inclusive."
+        },
+        "end": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Range end, it is exclusive."
+        }
+      },
+      "description": "Port range is the range definition that the rooms will use. If a scheduler\ndefines its range as 0-1000 (start-end), it is guarantee that all rooms be\nwithin this range."
+    },
+    "v1RoomOccupancy": {
+      "type": "object",
+      "properties": {
+        "readyTarget": {
+          "type": "number",
+          "format": "float",
+          "title": "ReadyTarget represents the number of rooms ready rate that the scheduler should keep"
+        },
+        "downThreshold": {
+          "type": "number",
+          "format": "float",
+          "title": "DownThreshold represents the minimum occupation rate that should trigger a scale down"
+        }
+      },
+      "title": "RoomOccupancy optional policy parameter"
+    },
+    "v1Scheduler": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name is an unique identifier for the scheduler."
+        },
+        "game": {
+          "type": "string",
+          "description": "Game is the \"scope\" where the scheduler will be placed. It is required, and\ngames name are unique."
+        },
+        "state": {
+          "type": "string",
+          "description": "Current state of the scheduler."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "Port range for the scheduler rooms."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the scheduler was created."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "Max surge of rooms"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms Replicas is the desired number of rooms"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1Spec",
+          "title": "GameRoom spec"
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1Autoscaling",
+          "title": "Autoscaling rules to the scheduler"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "List with annotations"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "List with labels"
+        }
+      },
+      "description": "Scheduler definition."
+    },
+    "v1SchedulerInfo": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Scheduler name."
+        },
+        "game": {
+          "type": "string",
+          "description": "Scheduler game."
+        },
+        "state": {
+          "type": "string",
+          "title": "Scheduler state"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Scheduler room replicas."
+        },
+        "roomsReady": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of game rooms in Ready state."
+        },
+        "roomsOccupied": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of game rooms in Occupied state."
+        },
+        "roomsPending": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of game rooms in Pending state."
+        },
+        "roomsTerminating": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of game rooms in Terminating state."
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1AutoscalingInfo",
+          "title": "Autoscaling info (min, max, enabled)"
+        }
+      },
+      "title": "Scheduler Info"
+    },
+    "v1SchedulerVersion": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "Specific version"
+        },
+        "isActive": {
+          "type": "boolean",
+          "title": "Flag indicating if the version is active or not"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Specifies when the version has been created"
+        }
+      },
+      "title": "Represents the version of a Scheduler"
+    },
+    "v1SchedulerWithoutSpec": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name is an unique identifier for the scheduler."
+        },
+        "game": {
+          "type": "string",
+          "description": "Game is the \"scope\" where the scheduler will be placed. It is required, and\ngames name are unique."
+        },
+        "state": {
+          "type": "string",
+          "description": "Current state of the scheduler."
+        },
+        "version": {
+          "type": "string",
+          "description": "Scheduler current version."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "Port range for the scheduler rooms."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the scheduler was created."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "Max surge of rooms"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Rooms Replicas is the desired number that a Scheduler maintains."
+        }
+      },
+      "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unnecessary for the list function"
+    },
+    "v1Spec": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "GameRoom.spec version"
+        },
+        "terminationGracePeriod": {
+          "type": "string",
+          "description": "The game room termination grace period."
+        },
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Container"
+          },
+          "description": "The container object array defines all the game room container configurations."
+        },
+        "toleration": {
+          "type": "string",
+          "description": "Runtime game room toleration configuration."
+        },
+        "affinity": {
+          "type": "string",
+          "description": "Runtime game room affinity configuration."
+        }
+      },
+      "description": "Spec is the specifications of the scheduler, with relevant info about what is being used."
+    },
+    "v1SwitchActiveVersionResponse": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "title": "Operation Id generated"
+        }
+      },
+      "title": "Switch Active Version Response"
+    },
+    "v1UpdateRoomStatusResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "title": "Flag indicating if the status update process was successful or not"
+        }
+      },
+      "description": "The player event response."
+    },
+    "v1UpdateRoomWithPingResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Indicates if the ping update succeeded or not."
+        }
+      },
+      "description": "The ping response."
+    }
+  }
+}
