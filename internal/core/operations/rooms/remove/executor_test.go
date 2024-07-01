@@ -168,8 +168,7 @@ func TestExecutor_Execute(t *testing.T) {
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
 			}
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
+
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(nil)
 
@@ -195,8 +194,7 @@ func TestExecutor_Execute(t *testing.T) {
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
 			}
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
+
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
 
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(fmt.Errorf("error on remove room"))
@@ -224,8 +222,9 @@ func TestExecutor_Execute(t *testing.T) {
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
 			}
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room).Return(nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom).Return(porterrors.NewErrNotFound("not found"))
+
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(porterrors.NewErrNotFound("not found"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 
 			err := executor.Execute(context.Background(), op, definition)
@@ -250,8 +249,7 @@ func TestExecutor_Execute(t *testing.T) {
 				ID:          secondRoomID,
 				SchedulerID: schedulerName,
 			}
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
+
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
 			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
@@ -299,8 +297,7 @@ func TestExecutor_Execute(t *testing.T) {
 			SchedulerID: schedulerName,
 			Status:      game_room.GameStatusReady,
 		}
-		roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, firstRoomID).Return(room, nil)
-		roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerName, secondRoomID).Return(secondRoom, nil)
+
 		roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), definition.Reason).Return(nil).Times(2)
 
 		availableRooms := []*game_room.GameRoom{thirdRoom, fourthRoom}
