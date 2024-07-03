@@ -38,6 +38,7 @@ const (
 	NewVersionValidationFinished string = "new_version_validation_finished"
 	SwitchVersionRollback        string = "switch_version_rollback"
 	SwitchVersionReplace         string = "switch_version_replace"
+	RollingUpdateReplace         string = "rolling_update_replace"
 )
 
 const OperationName = "remove_rooms"
