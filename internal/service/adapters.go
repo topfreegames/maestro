@@ -249,6 +249,10 @@ func createRedisClient(c config.Config, url string) (*redis.Client, error) {
 	}
 	opts.PoolSize = c.GetInt(redisPoolSizePath)
 
+	if opts.TLSConfig != nil {
+		opts.TLSConfig.InsecureSkipVerify = true
+	}
+
 	hostPort := strings.Split(opts.Addr, ":")
 
 	client := redis.NewClient(opts)
