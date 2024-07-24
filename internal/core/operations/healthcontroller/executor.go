@@ -25,6 +25,9 @@ package healthcontroller
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
@@ -38,6 +41,11 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"go.uber.org/zap"
+)
+
+const (
+	minSchedulerMaxSurge            = 1
+	schedulerMaxSurgeRelativeSymbol = "%"
 )
 
 // Config have the configs to execute healthcontroller.
@@ -426,16 +434,13 @@ func (ex *Executor) performRollingUpdate(
 	roomsWithPreviousSchedulerVersion []string,
 ) error {
 	logger.Info("performing rolling update", zap.String("scheduler.Version", scheduler.Spec.Version))
-	maxSurgeAmount, err := ex.roomManager.SchedulerMaxSurge(ctx, scheduler)
+	maxSurgeAmount, err := ComputeRollingSurge(scheduler, desiredNumberOfRooms, len(availableRoomsIDs))
 	if err != nil {
 		logger.Error("failed to perform rolling update while getting max surge amount of rooms", zap.Error(err))
 		return err
 	}
 	if len(roomsWithPreviousSchedulerVersion) < maxSurgeAmount {
 		maxSurgeAmount = len(roomsWithPreviousSchedulerVersion)
-	}
-	if maxSurgeAmount <= 0 {
-		maxSurgeAmount = 1
 	}
 	logger.Info(
 		"upscaling new rooms",
@@ -520,4 +525,26 @@ func (ex *Executor) markPreviousSchedulerRoomsForDeletion(
 	}
 	logger.Sugar().Infof("successfully marked %d rooms for deletion", bufferRoomsToBeRemoved)
 	return roomsWithPreviousSchedulerVersion[:bufferRoomsToBeRemoved], nil
+}
+
+func ComputeRollingSurge(scheduler *entities.Scheduler, desiredNumberOfRooms int, totalRoomsAmount int) (maxSurgeNum int, err error) {
+	maxSurgeNum = minSchedulerMaxSurge
+
+	if scheduler.MaxSurge != "" {
+		isRelative := strings.HasSuffix(scheduler.MaxSurge, schedulerMaxSurgeRelativeSymbol)
+		maxSurgeNum, err = strconv.Atoi(strings.TrimSuffix(scheduler.MaxSurge, schedulerMaxSurgeRelativeSymbol))
+		if err != nil {
+			return minSchedulerMaxSurge, fmt.Errorf("failed to parse max surge into a number: %w", err)
+		}
+		if isRelative {
+			absoluteNum := math.Round((float64(desiredNumberOfRooms) / 100) * float64(maxSurgeNum))
+			maxSurgeNum = int(math.Max(minSchedulerMaxSurge, absoluteNum))
+		}
+	}
+
+	maxRoomsToSurge := desiredNumberOfRooms + maxSurgeNum - totalRoomsAmount
+	if maxRoomsToSurge > maxSurgeNum {
+		return maxSurgeNum, nil
+	}
+	return maxRoomsToSurge, nil
 }

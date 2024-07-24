@@ -1370,7 +1370,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					op := operation.New(newScheduler.Name, definition.Name(), nil)
 
 					// Perform rolling update
-					roomManager.EXPECT().SchedulerMaxSurge(gomock.Any(), newScheduler).Return(1, nil)
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), newScheduler.Name, &add.Definition{Amount: 1}).Return(op, nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(2)
 					roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), newScheduler.Name, game_room.GameStatusOccupied).Return(gameRoomIDs, nil)
@@ -1465,5 +1464,71 @@ func newValidScheduler(autoscaling *autoscaling.Autoscaling) *entities.Scheduler
 		},
 		Forwarders:  forwarders,
 		Autoscaling: autoscaling,
+	}
+}
+
+func TestComputeRollingSurgeVariants(t *testing.T) {
+	testCases := []struct {
+		name                 string
+		maxSurge             string
+		desiredNumberOfRooms int
+		totalRoomsAmount     int
+		expectedSurgeAmount  int
+		expectError          bool
+	}{
+		{
+			name:                 "Standard surge calculation",
+			maxSurge:             "10",
+			desiredNumberOfRooms: 20,
+			totalRoomsAmount:     15,
+			expectedSurgeAmount:  10,
+			expectError:          false,
+		},
+		{
+			name:                 "High amount of rooms above 1000",
+			maxSurge:             "30%",
+			desiredNumberOfRooms: 1500,
+			totalRoomsAmount:     1000,
+			expectedSurgeAmount:  450, // It can surge up to 950 but we cap to the maxSurge of 450
+			expectError:          false,
+		},
+		{
+			name:                 "Relative maxSurge with rooms above 1000",
+			maxSurge:             "25%",
+			desiredNumberOfRooms: 1200,
+			totalRoomsAmount:     1000,
+			expectedSurgeAmount:  300, // 25% of 1200 is 300
+			expectError:          false,
+		},
+		{
+			name:                 "Invalid maxSurge string format",
+			maxSurge:             "twenty%", // Invalid because it's not a number
+			desiredNumberOfRooms: 300,
+			totalRoomsAmount:     250,
+			expectedSurgeAmount:  1, // Expected to be 1 because the function should return an error
+			expectError:          true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			scheduler := &entities.Scheduler{
+				MaxSurge: tc.maxSurge,
+			}
+
+			surgeAmount, err := healthcontroller.ComputeRollingSurge(scheduler, tc.desiredNumberOfRooms, tc.totalRoomsAmount)
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("expected an error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				if surgeAmount != tc.expectedSurgeAmount {
+					t.Errorf("expected surge amount to be %d, but got %d", tc.expectedSurgeAmount, surgeAmount)
+				}
+			}
+		})
 	}
 }
