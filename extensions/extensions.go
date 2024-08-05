@@ -8,6 +8,8 @@
 package extensions
 
 import (
+	"fmt"
+	goredis "github.com/go-redis/redis"
 	"sync"
 	"time"
 
@@ -31,6 +33,19 @@ func GetRedisClient(logger logrus.FieldLogger, config *viper.Viper, ifaces ...in
 	})
 
 	l.Debug("connecting to Redis...")
+
+	if len(ifaces) == 0 {
+		options, err := goredis.ParseURL(config.GetString(fmt.Sprintf("%s.url", "extensions.redis")))
+		if err != nil {
+			return nil, err
+		}
+		if options.TLSConfig != nil {
+			options.TLSConfig.InsecureSkipVerify = true
+		}
+		redisClient := goredis.NewClient(options)
+		ifaces = []interface{}{redisClient}
+	}
+
 	client, err := redis.NewClient("extensions.redis", config, ifaces...)
 	if err != nil {
 		l.WithError(err).Error("connection to redis failed")
