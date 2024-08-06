@@ -75,10 +75,10 @@ version in the database
 that is not from the active scheduler version
 6. If it does not have, run normal autoscale. If it has, it is performing a rolling
 update, proceed with the update
-7. The update checks how many rooms it can spawn by computing the below
-```
-maxSurge * totalAvailableRooms (pending + unready + ready + occupied)
-```
+7. The update checks how many rooms it can spawn by computing the below:
+   1. Calculate the current `deviation` (`totalRoomsAmount - desiredAmountOfRooms`);
+   2. Calculate the `surge` amount over the desired (`surge = (maxSurge / 100) * desiredAmountOfRooms`);
+   3. Discount the deviation from the surge (`surge = surge - deviation`);
 8. Enqueues a priority _add_room_ operation to create the surge amount
 9. Check how many old rooms it can delete by computing
 ```
@@ -118,55 +118,28 @@ throughout the cycle and rolling update will adjust to that as well.
 
 | **loop** | **ready** | **occupied** | **available** | **desired** | **desiredReady** | **toSurge** | **toBeDeleted** |
 |----------|-----------|--------------|---------------|-------------|------------------|-------------|-----------------|
-| **1**    | 20        | 5            | 25 (0 new)    | 10          | 5                | 7           | 15              |
-| **2**    | 12        | 5            | 17 (7 new)    | 10          | 5                | 4           | 7               |
-| **3**    | 9         | 5            | 14 (11 new)   | 10          | 5                | 3           | 3 (4 actually)  |
-| **4**    | 9         | 5            | 14 (14 new)   | 10          | 5                | -           | 4 by autoscale  |
-| **5**    | 5         | 5            | 10 (10 new)   | 10          | 5                | -           | -               |
+| **1**    | 20        | 5            | 25 (0 new)    | 10          | 5                | 0           | 15              |
+| **2**    | 5         | 5            | 10 (0 new)    | 10          | 5                | 2           | 0               |
+| **3**    | 7         | 5            | 12 (2 new)    | 10          | 5                | 0           | 2               |
+| **4**    | 5         | 5            | 10 (2 new)    | 10          | 5                | 2           | 0               |
+| **5**    | 7         | 5            | 12 (4 new)    | 10          | 5                | 0           | 2               |
+| **6**    | 5         | 5            | 10 (4 new)    | 10          | 5                | 2           | 0               |
+| **7**    | 7         | 5            | 12 (6 new)    | 10          | 5                | 0           | 2               |
+| **8**    | 5         | 5            | 10 (6 new)    | 10          | 5                | 2           | 0               |
+| **9**    | 7         | 5            | 12 (8 new)    | 10          | 5                | 0           | 2               |
+| **10**   | 5         | 5            | 10 (8 new)    | 10          | 5                | 2           | 0               |
+| **11**   | 7         | 5            | 12 (10 new)   | 10          | 5                | -           | 2               |
+| **12**   | 5         | 5            | 10 (10 new)   | 10          | 5                | -           | -               |
 
 ### Upscale
 
 | **loop** | **ready** | **occupied** | **available** | **desired** | **desiredReady** | **toSurge** | **toBeDeleted** |
 |----------|-----------|--------------|---------------|-------------|------------------|-------------|-----------------|
-| **1**    | 5         | 20           | 25 (0 new)    | 40          | 20               | 7           | 0               |
-| **2**    | 12        | 20           | 32 (7 new)    | 40          | 20               | 8           | 0               |
-| **3**    | 20        | 20           | 40 (15 new)   | 40          | 20               | 10          | 0               |
-| **4**    | 30        | 20           | 50 (25 new)   | 40          | 20               | 13          | 10              |
-| **5**    | 33        | 20           | 53 (38 new)   | 40          | 20               | 14          | 13              |
-| **6**    | 34        | 20           | 54 (52 new)   | 40          | 20               | 14          | 2 (actual 14)   |
-| **7**    | 46        | 20           | 66 (66 new)   | 40          | 20               | -           | 26 by autoscale |
-| **8**    | 20        | 20           | 40 (40 new)   | 40          | 20               | -           | -               |
-
-## Big Amount of Game Rooms
-
-### Upscale
-
-* readyTarget: 0.4 -> 0.7
-* maxSurge: 25%
-
-| **loop** | **ready** | **occupied** | **available**   | **desired** | **desiredReady** | **toSurge** | **toBeDeleted**  |
-|----------|-----------|--------------|-----------------|-------------|------------------|-------------|------------------|
-| **1**    | 209       | 458          | 667 (0 new)     | 1526        | 1068             | 167         | 0                |
-| **2**    | 376       | 458          | 834 (167 new)   | 1526        | 1068             | 209         | 0                |
-| **3**    | 585       | 458          | 1043 (376 new)  | 1526        | 1068             | 261         | 0                |
-| **4**    | 846       | 458          | 1304 (637 new)  | 1526        | 1068             | 326         | 0                |
-| **5**    | 1172      | 458          | 1630 (963 new)  | 1526        | 1068             | 408         | 104              |
-| **6**    | 1476      | 458          | 1934 (1371 new) | 1526        | 1068             | 484         | 408              |
-| **7**    | 1552      | 458          | 2010 (1855 new) | 1526        | 1068             | 503         | 155              |
-| **8**    | 2055      | 458          | 2513 (2513 new) | 1526        | 1068             | -           | 987 by autoscale |
-| **9**    | 1068      | 458          | 1526 (1526 new) | 1526        | 1068             | -           | -                |
-
-### Downscale
-
-* readyTarget: 0.7 -> 0.4
-* maxSurge: 25%
-
-| **loop** | **ready** | **occupied** | **available**   | **desired** | **desiredReady** | **toSurge** | **toBeDeleted**   |
-|----------|-----------|--------------|-----------------|-------------|------------------|-------------|-------------------|
-| **1**    | 940       | 1040         | 1980 (0 new)    | 1733        | 693              | 495         | 247               |
-| **2**    | 1188      | 1040         | 2228 (495 new)  | 1733        | 693              | 557         | 495               |
-| **3**    | 1250      | 1040         | 2290 (1052 new) | 1733        | 693              | 573         | 557               |
-| **4**    | 1266      | 1040         | 2306 (1625 new) | 1733        | 693              | 577         | 573               |
-| **5**    | 1270      | 1040         | 2310 (2202 new) | 1733        | 693              | 578         | 108 (577)         |
-| **6**    | 1740      | 1040         | 2780 (2780 new) | 1733        | 693              | -           | 1047 by autoscale |
-| **7**    | 693       | 1040         | 1733 (1733 new) | 1733        | 693              | -           | -                 |
+| **1**    | 5         | 20           | 25 (0 new)    | 40          | 20               | 10          | 0               |
+| **2**    | 15        | 20           | 35 (10 new)   | 40          | 20               | 10          | 0               |
+| **3**    | 25        | 20           | 45 (20 new)   | 40          | 20               | 5           | 5               |
+| **4**    | 25        | 20           | 45 (25 new)   | 40          | 20               | 5           | 5               |
+| **5**    | 25        | 20           | 45 (30 new)   | 40          | 20               | 5           | 5               |
+| **6**    | 35        | 20           | 45 (35 new)   | 40          | 20               | 5           | 5               |
+| **7**    | 25        | 20           | 45 (40 new)   | 40          | 20               | 0           | 5               |
+| **8**    | 20        | 20           | 40 (40 new)   | 40          | 20               | 0           | 0               |

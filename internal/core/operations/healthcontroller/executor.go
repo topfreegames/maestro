@@ -25,6 +25,9 @@ package healthcontroller
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
@@ -38,6 +41,10 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"go.uber.org/zap"
+)
+
+const (
+	schedulerMaxSurgeRelativeSymbol = "%"
 )
 
 // Config have the configs to execute healthcontroller.
@@ -127,8 +134,13 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	// Check if the system is in a rollingUpdate by listing rooms that are not the current scheduler version
 	roomsPreviousSchedulerVersion, isRollingUpdate := ex.checkRollingUpdate(ctx, logger, scheduler, availableRooms)
 	if isRollingUpdate {
-		return ex.performRollingUpdate(ctx, op, def, logger, scheduler, desiredNumberOfRooms, availableRooms, roomsPreviousSchedulerVersion)
+		err = ex.performRollingUpdate(ctx, op, def, logger, scheduler, desiredNumberOfRooms, availableRooms, roomsPreviousSchedulerVersion)
+		if err != nil {
+			logger.Error("could not perform rolling update", zap.Error(err))
+			// Rolling update should not block the health controller
+		}
 	}
+
 	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, scheduler, logger, len(availableRooms), desiredNumberOfRooms)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
@@ -426,19 +438,18 @@ func (ex *Executor) performRollingUpdate(
 	roomsWithPreviousSchedulerVersion []string,
 ) error {
 	logger.Info("performing rolling update", zap.String("scheduler.Version", scheduler.Spec.Version))
-	maxSurgeAmount, err := ex.roomManager.SchedulerMaxSurge(ctx, scheduler)
+	maxSurgeAmount, err := ComputeRollingSurge(scheduler, desiredNumberOfRooms, len(availableRoomsIDs))
 	if err != nil {
 		logger.Error("failed to perform rolling update while getting max surge amount of rooms", zap.Error(err))
 		return err
 	}
+
 	if len(roomsWithPreviousSchedulerVersion) < maxSurgeAmount {
 		maxSurgeAmount = len(roomsWithPreviousSchedulerVersion)
 	}
-	if maxSurgeAmount <= 0 {
-		maxSurgeAmount = 1
-	}
+
 	logger.Info(
-		"upscaling new rooms",
+		"up scaling new rooms",
 		zap.Int("desired", desiredNumberOfRooms),
 		zap.Int("maxSurgeAmount", maxSurgeAmount),
 		zap.Int("available", len(availableRoomsIDs)),
@@ -520,4 +531,23 @@ func (ex *Executor) markPreviousSchedulerRoomsForDeletion(
 	}
 	logger.Sugar().Infof("successfully marked %d rooms for deletion", bufferRoomsToBeRemoved)
 	return roomsWithPreviousSchedulerVersion[:bufferRoomsToBeRemoved], nil
+}
+
+func ComputeRollingSurge(scheduler *entities.Scheduler, desiredNumberOfRooms, totalRoomsAmount int) (maxSurgeNum int, err error) {
+	if scheduler.MaxSurge != "" {
+		isRelative := strings.HasSuffix(scheduler.MaxSurge, schedulerMaxSurgeRelativeSymbol)
+		maxSurgeNum, err = strconv.Atoi(strings.TrimSuffix(scheduler.MaxSurge, schedulerMaxSurgeRelativeSymbol))
+		if err != nil {
+			return 0, fmt.Errorf("failed to parse max surge into a number: %w", err)
+		}
+		if isRelative {
+			maxSurgeNum = int(math.Round((float64(maxSurgeNum) / 100) * float64(desiredNumberOfRooms)))
+		}
+	}
+
+	// Capping the amount of rooms to surge
+	deviation := int(math.Max(float64(totalRoomsAmount-desiredNumberOfRooms), 0))
+	maxSurgeNum = int(math.Max(float64(maxSurgeNum-deviation), 0))
+
+	return maxSurgeNum, nil
 }
