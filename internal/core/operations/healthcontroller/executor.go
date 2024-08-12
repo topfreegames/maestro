@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 
@@ -408,18 +409,42 @@ func (ex *Executor) checkRollingUpdate(
 ) ([]string, bool) {
 	logger.Debug("checking if system is in the middle of a rolling update of scheduler")
 	var roomsPreviousScheduler, occupiedRoomsPreviousScheduler []string
+	majorVersionComparison := make(map[string]bool)
+	var hasMajorVersionUpdate bool
 	// TODO: build this struct during findAvailableAndExpiredRooms() call
 	for _, roomID := range availableRoomsIDs {
 		room, err := ex.roomStorage.GetRoom(ctx, scheduler.Name, roomID)
 		// if err != nil we will miss the room, the system can still recover itself in
 		// the next health_controller operation
-		if err == nil && room.Version != scheduler.Spec.Version {
+		if err != nil || room.Version == scheduler.Spec.Version {
+			continue
+		}
+
+		// Check against the cache to avoid unnecessary calls to the storage
+		if _, ok := majorVersionComparison[room.Version]; !ok {
+			// Defaults to false when creating the map
+			majorVersionComparison[room.Version] = false
+			roomScheduler, err := ex.schedulerStorage.GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+				Name:    scheduler.Name,
+				Version: room.Version,
+			})
+			if err == nil {
+				majorVersionComparison[room.Version] = roomScheduler.IsMajorVersion(scheduler)
+			}
+		}
+
+		if majorVersionComparison[room.Version] {
+			hasMajorVersionUpdate = true
 			if room.Status == game_room.GameStatusOccupied {
 				occupiedRoomsPreviousScheduler = append(occupiedRoomsPreviousScheduler, roomID)
 			} else {
 				roomsPreviousScheduler = append(roomsPreviousScheduler, roomID)
 			}
 		}
+	}
+	if !hasMajorVersionUpdate {
+		logger.Info("system only has rooms in previous minor scheduler versions, skipping rolling update")
+		return []string{}, false
 	}
 	// Append occupied to the end so when deleting we prioritize non-occupied rooms
 	roomsPreviousScheduler = append(roomsPreviousScheduler, occupiedRoomsPreviousScheduler...)

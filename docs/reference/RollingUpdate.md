@@ -1,6 +1,6 @@
 # Rolling Update
 
-When the scheduler is updated, minor of major, the switch version operation will
+When the scheduler is updated, only minor, the switch version operation will
 simply change the new active version in the database. Thus, who is responsible for
 actually performing runtime changes to enforce that all existing Game Rooms are from
 the active schedulers is the _health_controller_ operation.
@@ -72,7 +72,12 @@ becomes ready, the new version is marked as safe to be deployed
 4. _switch_version_ operation starts by the worker, simply changing the active
 version in the database
 5. _health_controller_ operation runs and check if there is any existing game room
-that is not from the active scheduler version
+that is not from the active scheduler version. More details on how we check for it below.
+   1. Get all rooms from that scheduler
+   2. For each room check if the version is not equal to the current active scheduler version
+   3. Check if we have compared with this version before. If not, get the scheduler entity for that old version
+   4. Compare the old version with the new one, if it's a major one add it to the comparison map
+   5. At the end of the rooms loop, if we do not find any major change return false when checking for a rolling update. If we found a major change, append the occupied and then ready rooms to the array
 6. If it does not have, run normal autoscale. If it has, it is performing a rolling
 update, proceed with the update
 7. The update checks how many rooms it can spawn by computing the below:
