@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 
@@ -1306,7 +1307,98 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 			},
 		},
 		{
-			title:      "room scheduler version do not match current scheduler, start rolling update and not autoscale",
+			title:      "do not start rolling update if there are only rooms with a minor difference in version",
+			definition: &healthcontroller.Definition{},
+			executionPlan: executionPlan{
+				tookAction: false,
+				planMocks: func(
+					roomStorage *mockports.MockRoomStorage,
+					roomManager *mockports.MockRoomManager,
+					instanceStorage *mockports.MockGameRoomInstanceStorage,
+					schedulerStorage *mockports.MockSchedulerStorage,
+					operationManager *mockports.MockOperationManager,
+					autoscaler *mockports.MockAutoscaler,
+				) {
+					gameRoomIDs := []string{"room-1", "room-2"}
+					instances := []*game_room.Instance{
+						{
+							ID: "room-1",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+						{
+							ID: "room-2",
+							Status: game_room.InstanceStatus{
+								Type: game_room.InstanceReady,
+							},
+						},
+					}
+					// Simulate change in autoscaling, its considered minor
+					newScheduler := newValidScheduler(&autoscaling.Autoscaling{
+						Enabled:  true,
+						Min:      2,
+						Max:      10,
+						Cooldown: 60,
+						Policy: autoscaling.Policy{
+							Type: autoscaling.RoomOccupancy,
+							Parameters: autoscaling.PolicyParameters{
+								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									DownThreshold: 0.99,
+								},
+							},
+						},
+					})
+					newScheduler.Spec.Version = "v1.1"
+					gameRoom1 := &game_room.GameRoom{
+						ID:          gameRoomIDs[0],
+						SchedulerID: genericSchedulerAutoscalingEnabled.Name,
+						Status:      game_room.GameStatusReady,
+						LastPingAt:  time.Now(),
+						CreatedAt:   time.Now(),
+						Version:     genericSchedulerAutoscalingEnabled.Spec.Version,
+					}
+					gameRoom2 := &game_room.GameRoom{
+						ID:          gameRoomIDs[1],
+						SchedulerID: newScheduler.Name,
+						Status:      game_room.GameStatusOccupied,
+						LastPingAt:  time.Now(),
+						Version:     newScheduler.Spec.Version,
+					}
+
+					// load
+					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
+					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
+
+					// findAvailableAndExpiredRooms
+					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[0]).Return(gameRoom1, nil)
+					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[1]).Return(gameRoom2, nil)
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+					// getDesiredNumberOfRooms
+					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newScheduler, nil)
+					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), newScheduler).Return(2, nil)
+
+					// Check for rolling update
+					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[0]).Return(gameRoom1, nil)
+					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[1]).Return(gameRoom2, nil)
+					schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), &filters.SchedulerFilter{
+						Name:    genericSchedulerAutoscalingEnabled.Name,
+						Version: genericSchedulerAutoscalingEnabled.Spec.Version,
+					}).Return(genericSchedulerAutoscalingEnabled, nil)
+
+					_ = operation.New(newScheduler.Name, definition.Name(), nil)
+
+					// Do not perform rolling update
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), newScheduler.Name, &add.Definition{Amount: 0}).Times(0)
+					roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), newScheduler.Name, game_room.GameStatusOccupied).Times(0)
+					roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), newScheduler.Name, game_room.GameStatusReady).Times(0)
+					operationManager.EXPECT().CreateOperation(gomock.Any(), newScheduler.Name, &remove.Definition{RoomsIDs: gameRoomIDs, Reason: remove.RollingUpdateReplace}).Times(0)
+				},
+			},
+		},
+		{
+			title:      "start rolling update if there are rooms with a major difference in version",
 			definition: &healthcontroller.Definition{},
 			executionPlan: executionPlan{
 				tookAction: true,
@@ -1335,6 +1427,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					}
 					newScheduler := newValidScheduler(&autoscalingEnabled)
 					newScheduler.Spec.Version = "v2"
+					// TerminationGracePeriod field is considered a major change
+					newScheduler.Spec.TerminationGracePeriod += 1
 					gameRoom1 := &game_room.GameRoom{
 						ID:          gameRoomIDs[0],
 						SchedulerID: genericSchedulerAutoscalingEnabled.Name,
@@ -1366,6 +1460,10 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					// Check for rolling update
 					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[0]).Return(gameRoom1, nil)
 					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[1]).Return(gameRoom2, nil)
+					schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), &filters.SchedulerFilter{
+						Name:    genericSchedulerAutoscalingEnabled.Name,
+						Version: genericSchedulerAutoscalingEnabled.Spec.Version,
+					}).Return(genericSchedulerAutoscalingEnabled, nil)
 
 					op := operation.New(newScheduler.Name, definition.Name(), nil)
 
