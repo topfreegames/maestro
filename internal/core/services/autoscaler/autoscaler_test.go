@@ -54,8 +54,9 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 	scheduler := &entities.Scheduler{
 		Name: "some-name",
 		Autoscaling: &autoscaling.Autoscaling{
-			Min: minimumNumberOfRooms,
-			Max: maximumNumberOfRooms,
+			Enabled: true,
+			Min:     minimumNumberOfRooms,
+			Max:     maximumNumberOfRooms,
 			Policy: autoscaling.Policy{
 				Type:       policyType,
 				Parameters: autoscaling.PolicyParameters{},
@@ -116,8 +117,9 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			scheduler := &entities.Scheduler{
 				Name: "some-name",
 				Autoscaling: &autoscaling.Autoscaling{
-					Min: minimumNumberOfRooms,
-					Max: -1,
+					Enabled: true,
+					Min:     minimumNumberOfRooms,
+					Max:     -1,
 					Policy: autoscaling.Policy{
 						Type:       policyType,
 						Parameters: autoscaling.PolicyParameters{},
@@ -196,8 +198,9 @@ func TestCanDownscale(t *testing.T) {
 	scheduler := &entities.Scheduler{
 		Name: "some-name",
 		Autoscaling: &autoscaling.Autoscaling{
-			Min: 1,
-			Max: 5,
+			Enabled: true,
+			Min:     1,
+			Max:     5,
 			Policy: autoscaling.Policy{
 				Type: policyType,
 				Parameters: autoscaling.PolicyParameters{
