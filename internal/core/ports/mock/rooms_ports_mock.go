@@ -7,7 +7,6 @@ package mock
 import (
 	context "context"
 	reflect "reflect"
-	sync "sync"
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
@@ -99,18 +98,18 @@ func (mr *MockRoomManagerMockRecorder) GetRoomInstance(ctx, scheduler, roomID in
 }
 
 // ListRoomsWithDeletionPriority mocks base method.
-func (m *MockRoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error) {
+func (m *MockRoomManager) ListRoomsWithDeletionPriority(ctx context.Context, activeScheduler *entities.Scheduler, amount int) ([]*game_room.GameRoom, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRoomsWithDeletionPriority", ctx, schedulerName, ignoredVersion, amount, roomsBeingReplaced)
+	ret := m.ctrl.Call(m, "ListRoomsWithDeletionPriority", ctx, activeScheduler, amount)
 	ret0, _ := ret[0].([]*game_room.GameRoom)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRoomsWithDeletionPriority indicates an expected call of ListRoomsWithDeletionPriority.
-func (mr *MockRoomManagerMockRecorder) ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, amount, roomsBeingReplaced interface{}) *gomock.Call {
+func (mr *MockRoomManagerMockRecorder) ListRoomsWithDeletionPriority(ctx, activeScheduler, amount interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomsWithDeletionPriority", reflect.TypeOf((*MockRoomManager)(nil).ListRoomsWithDeletionPriority), ctx, schedulerName, ignoredVersion, amount, roomsBeingReplaced)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomsWithDeletionPriority", reflect.TypeOf((*MockRoomManager)(nil).ListRoomsWithDeletionPriority), ctx, activeScheduler, amount)
 }
 
 // SchedulerMaxSurge mocks base method.
