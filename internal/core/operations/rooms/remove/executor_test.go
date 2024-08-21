@@ -57,7 +57,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 			emptyGameRoomSlice := []*game_room.GameRoom{}
 			schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), schedulerName).Return(nil, errors.New("error getting active scheduler"))
-			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(emptyGameRoomSlice, nil)
+			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any()).Return(emptyGameRoomSlice, nil)
 
 			err := executor.Execute(ctx, op, definition)
 			require.Nil(t, err)
@@ -108,7 +108,7 @@ func TestExecutor_Execute(t *testing.T) {
 				availableRooms[7], // P2v2
 			}
 			schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), schedulerName).Return(schedulerV2, nil)
-			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
+			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), expectedSortedRoomsOrder[0], gomock.Any()).Times(1)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), expectedSortedRoomsOrder[1], gomock.Any()).Times(1)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), expectedSortedRoomsOrder[2], gomock.Any()).Times(1)
@@ -135,7 +135,7 @@ func TestExecutor_Execute(t *testing.T) {
 			}
 
 			schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), schedulerName).Return(nil, errors.New("error getting active scheduler"))
-			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
+			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
 
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[0], definition.Reason).Return(nil)
 
@@ -159,7 +159,7 @@ func TestExecutor_Execute(t *testing.T) {
 			}
 
 			schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), schedulerName).Return(nil, errors.New("error getting active scheduler"))
-			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
+			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[0], definition.Reason).Return(nil)
 
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), availableRooms[1], definition.Reason).Return(serviceerrors.NewErrGameRoomStatusWaitingTimeout("some error"))
@@ -176,7 +176,7 @@ func TestExecutor_Execute(t *testing.T) {
 			definition := &Definition{Amount: 2}
 			op := &operation.Operation{ID: "random-uuid", SchedulerName: schedulerName}
 
-			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error"))
+			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("error"))
 
 			err := executor.Execute(context.Background(), op, definition)
 			require.NotNil(t, err)
@@ -348,7 +348,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		availableRooms := []*game_room.GameRoom{thirdRoom, fourthRoom}
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), schedulerName).Return(nil, errors.New("error getting active scheduler"))
-		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
+		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
 		roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), definition.Reason).Return(nil).Times(2)
 
 		err := executor.Execute(context.Background(), op, definition)

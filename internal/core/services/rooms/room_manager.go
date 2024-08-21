@@ -29,7 +29,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
@@ -38,6 +37,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -201,7 +201,7 @@ func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId 
 	return nil
 }
 
-func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error) {
+func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedulerName string, amount int) ([]*game_room.GameRoom, error) {
 
 	var schedulerRoomsIDs []string
 	onErrorRoomIDs, err := m.RoomStorage.GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError)
@@ -234,7 +234,26 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 	schedulerRoomsIDs = append(schedulerRoomsIDs, pendingRoomIDs...)
 	schedulerRoomsIDs = append(schedulerRoomsIDs, readyRoomIDs...)
 	schedulerRoomsIDs = append(schedulerRoomsIDs, occupiedRoomIDs...)
+
+	m.Logger.Info("schedulerRoomsIDs",
+		zap.Array("schedulerRoomsIDs", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+			for _, room := range schedulerRoomsIDs {
+				enc.AppendString(room)
+			}
+			return nil
+		})),
+	)
+
 	schedulerRoomsIDs = removeDuplicateValues(schedulerRoomsIDs)
+
+	m.Logger.Info("schedulerRoomsIDs after duplicates",
+		zap.Array("schedulerRoomsIDs", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+			for _, room := range schedulerRoomsIDs {
+				enc.AppendString(room)
+			}
+			return nil
+		})),
+	)
 
 	var toDeleteRooms []*game_room.GameRoom
 	var terminatingRooms []*game_room.GameRoom
@@ -248,19 +267,9 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 			room = &game_room.GameRoom{ID: roomID, SchedulerID: schedulerName, Status: game_room.GameStatusError}
 		}
 
-		_, roomIsBeingReplaced := roomsBeingReplaced.Load(room.ID)
-
-		if roomIsBeingReplaced {
-			continue
-		}
-
 		// Select Terminating rooms to be re-deleted. This is useful for fixing any desync state.
 		if room.Status == game_room.GameStatusTerminating {
 			terminatingRooms = append(terminatingRooms, room)
-			continue
-		}
-
-		if ignoredVersion != "" && ignoredVersion == room.Version {
 			continue
 		}
 
@@ -269,6 +278,15 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, schedul
 			break
 		}
 	}
+
+	m.Logger.Info("toDeleteRooms",
+		zap.Array("toDeleteRooms", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+			for _, room := range toDeleteRooms {
+				enc.AppendString(fmt.Sprintf("%s-%s-%s", room.ID, room.Version, room.Status.String()))
+			}
+			return nil
+		})),
+	)
 
 	result := append(toDeleteRooms, terminatingRooms...)
 

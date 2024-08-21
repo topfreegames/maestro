@@ -26,7 +26,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -35,6 +34,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -110,7 +110,7 @@ func (e *Executor) removeRoomsByIDs(ctx context.Context, schedulerName string, r
 }
 
 func (e *Executor) removeRoomsByAmount(ctx context.Context, logger *zap.Logger, schedulerName string, amount int, op *operation.Operation, reason string) error {
-	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", amount, &sync.Map{})
+	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, amount)
 	if err != nil {
 		return err
 	}
@@ -121,6 +121,8 @@ func (e *Executor) removeRoomsByAmount(ctx context.Context, logger *zap.Logger, 
 	} else {
 		var activeVersionRooms []*game_room.GameRoom
 		var mostPrioRoomsToBeRemoved []*game_room.GameRoom
+		originalRoomsOrder := make([]*game_room.GameRoom, len(rooms))
+		copy(originalRoomsOrder, rooms)
 		for _, room := range rooms {
 			if room.Status == game_room.GameStatusOccupied || room.Status == game_room.GameStatusReady || room.Status == game_room.GameStatusPending {
 				if room.Version == activeScheduler.Spec.Version {
@@ -133,6 +135,20 @@ func (e *Executor) removeRoomsByAmount(ctx context.Context, logger *zap.Logger, 
 			}
 		}
 		rooms = append(mostPrioRoomsToBeRemoved, activeVersionRooms...)
+		logger.Info("removing rooms by amount sorting by version",
+			zap.Array("originalRoomsOrder", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+				for _, room := range originalRoomsOrder {
+					enc.AppendString(fmt.Sprintf("%s-%s-%s", room.ID, room.Version, room.Status.String()))
+				}
+				return nil
+			})),
+			zap.Array("newRoomsOrder", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+				for _, room := range rooms {
+					enc.AppendString(fmt.Sprintf("%s-%s-%s", room.ID, room.Version, room.Status.String()))
+				}
+				return nil
+			})),
+		)
 	}
 
 	err = e.deleteRooms(ctx, rooms, op, reason)

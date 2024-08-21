@@ -29,7 +29,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -462,7 +461,6 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		eventsService,
 		RoomManagerConfig{RoomPingTimeout: time.Hour},
 	)
-	roomsBeingReplaced := &sync.Map{}
 
 	t.Run("when there are enough rooms it should return the specified number", func(t *testing.T) {
 		ctx := context.Background()
@@ -502,7 +500,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[3].ID).Return(availableRooms[3], nil)
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[4].ID).Return(availableRooms[4], nil)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "v1.2.2", 5, roomsBeingReplaced)
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 5)
 		require.NoError(t, err)
 		require.Len(t, rooms, 5)
 	})
@@ -514,7 +512,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
@@ -527,7 +525,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).Return([]string{}, nil)
 		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
@@ -541,7 +539,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{}, nil)
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
@@ -556,7 +554,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending).Return([]string{}, nil)
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusReady).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
@@ -572,7 +570,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusReady).Return([]string{}, nil)
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusOccupied).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
@@ -596,7 +594,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		getRoomErr := porterrors.NewErrNotFound("failed to get")
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, notFoundRoomID).Return(nil, getRoomErr)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.NoError(t, err)
 
 		availableRooms = append(availableRooms, &game_room.GameRoom{ID: notFoundRoomID, SchedulerID: schedulerName, Status: game_room.GameStatusError})
@@ -619,38 +617,17 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		getRoomErr := errors.New("failed to get")
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(nil, getRoomErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomErr)
-	})
-
-	t.Run("when no room matches version returns an empty list", func(t *testing.T) {
-		ctx := context.Background()
-		schedulerName := "test-scheduler"
-		ignoredVersion := "v1.2.3"
-		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: ignoredVersion},
-			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: ignoredVersion},
-		}
-
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[1].ID}, nil)
-
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
-
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
-		require.NoError(t, err)
-		require.Empty(t, rooms)
 	})
 
 	t.Run("when retrieving rooms with terminating status it returns them", func(t *testing.T) {
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
-		ignoredVersion := "v1.2.3"
 		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
-			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating},
+			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating},
 		}
 
 		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{}, nil).AnyTimes()
@@ -659,7 +636,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.NoError(t, err)
 		require.Equal(t, availableRooms, rooms)
 	})
@@ -667,7 +644,6 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 	t.Run("when retrieving rooms with terminating status always includes them", func(t *testing.T) {
 		ctx := context.Background()
 		schedulerName := "test-scheduler"
-		ignoredVersion := "v1.2.3"
 		availableRooms := []*game_room.GameRoom{
 			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: "v1.1.1"},
 			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
@@ -681,7 +657,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
 		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[2].ID).Return(availableRooms[2], nil)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, 2)
 		require.NoError(t, err)
 		require.Equal(t, availableRooms, rooms)
 	})

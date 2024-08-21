@@ -24,7 +24,6 @@ package ports
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -42,8 +41,7 @@ type RoomManager interface {
 	// the number of rooms the scheduler has.
 	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
 	// ListRoomsWithDeletionPriority returns a specified number of rooms, following
-	// the priority of it being deleted and filtering the ignored version,
-	// the function will return rooms discarding such filter option.
+	// the priority of it being deleted
 	//
 	// The priority is:
 	//
@@ -55,7 +53,7 @@ type RoomManager interface {
 	//
 	// This function can return less rooms than the `amount` since it might not have
 	// enough rooms on the scheduler.
-	ListRoomsWithDeletionPriority(ctx context.Context, schedulerName, ignoredVersion string, amount int, roomsBeingReplaced *sync.Map) ([]*game_room.GameRoom, error)
+	ListRoomsWithDeletionPriority(ctx context.Context, schedulerName string, amount int) ([]*game_room.GameRoom, error)
 	// CleanRoomState cleans the remaining state of a room. This function is
 	// intended to be used after a `DeleteRoom`, where the room instance is
 	// signaled to terminate.
