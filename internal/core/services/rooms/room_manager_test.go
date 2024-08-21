@@ -29,7 +29,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -462,117 +461,115 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		eventsService,
 		RoomManagerConfig{RoomPingTimeout: time.Hour},
 	)
-	roomsBeingReplaced := &sync.Map{}
 
 	t.Run("when there are enough rooms it should return the specified number", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
-		schedulerLastVersion := "v1.2.3"
+		scheduler := newValidScheduler()
 		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Version: schedulerLastVersion, Status: game_room.GameStatusError},
-			{ID: "second-room", SchedulerID: schedulerName, Version: schedulerLastVersion, Status: game_room.GameStatusReady},
-			{ID: "third-room", SchedulerID: schedulerName, Version: schedulerLastVersion, Status: game_room.GameStatusPending},
-			{ID: "forth-room", SchedulerID: schedulerName, Version: schedulerLastVersion, Status: game_room.GameStatusReady},
-			{ID: "fifth-room", SchedulerID: schedulerName, Version: schedulerLastVersion, Status: game_room.GameStatusOccupied},
+			{ID: "first-room", SchedulerID: scheduler.Name, Version: scheduler.Spec.Version, Status: game_room.GameStatusError},
+			{ID: "second-room", SchedulerID: scheduler.Name, Version: scheduler.Spec.Version, Status: game_room.GameStatusReady},
+			{ID: "third-room", SchedulerID: scheduler.Name, Version: scheduler.Spec.Version, Status: game_room.GameStatusPending},
+			{ID: "forth-room", SchedulerID: scheduler.Name, Version: scheduler.Spec.Version, Status: game_room.GameStatusReady},
+			{ID: "fifth-room", SchedulerID: scheduler.Name, Version: scheduler.Spec.Version, Status: game_room.GameStatusOccupied},
 		}
 
 		roomStorage.EXPECT().
-			GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).
+			GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusError).
 			Return([]string{availableRooms[0].ID}, nil)
 
 		roomStorage.EXPECT().
-			GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).
+			GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).
 			Return([]string{availableRooms[1].ID}, nil)
 
 		roomStorage.EXPECT().
-			GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending).
+			GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusPending).
 			Return([]string{availableRooms[2].ID}, nil)
 
 		roomStorage.EXPECT().
-			GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusReady).
+			GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusReady).
 			Return([]string{availableRooms[3].ID}, nil)
 
 		roomStorage.EXPECT().
-			GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusOccupied).
+			GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied).
 			Return([]string{availableRooms[4].ID, availableRooms[1].ID}, nil)
 
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[2].ID).Return(availableRooms[2], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[3].ID).Return(availableRooms[3], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[4].ID).Return(availableRooms[4], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[1].ID).Return(availableRooms[1], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[2].ID).Return(availableRooms[2], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[3].ID).Return(availableRooms[3], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[4].ID).Return(availableRooms[4], nil)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "v1.2.2", 5, roomsBeingReplaced)
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 5)
 		require.NoError(t, err)
 		require.Len(t, rooms, 5)
 	})
 
 	t.Run("when error happens while fetching on-error room ids it returns error", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
+		scheduler := newValidScheduler()
 		getRoomIDsErr := errors.New("failed to get rooms IDs")
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).Return(nil, getRoomIDsErr)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusError).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
 
 	t.Run("when error happens while fetching old ping room ids it returns error", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
+		scheduler := newValidScheduler()
 		getRoomIDsErr := errors.New("failed to get rooms IDs")
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return(nil, getRoomIDsErr)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusError).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
 
 	t.Run("when error happens while fetching pending room ids it returns error", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
+		scheduler := newValidScheduler()
 		getRoomIDsErr := errors.New("failed to get rooms IDs")
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending).Return(nil, getRoomIDsErr)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusError).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusPending).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
 
 	t.Run("when error happens while fetching ready room ids it returns error", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
+		scheduler := newValidScheduler()
 		getRoomIDsErr := errors.New("failed to get rooms IDs")
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusReady).Return(nil, getRoomIDsErr)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusError).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusPending).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusReady).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
 
 	t.Run("when error happens while fetching occupied room ids it returns error", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
+		scheduler := newValidScheduler()
 		getRoomIDsErr := errors.New("failed to get rooms IDs")
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusError).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusPending).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusReady).Return([]string{}, nil)
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, game_room.GameStatusOccupied).Return(nil, getRoomIDsErr)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusError).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusPending).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusReady).Return([]string{}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied).Return(nil, getRoomIDsErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomIDsErr)
 	})
@@ -581,107 +578,85 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 	// a room that could be only existent in one of them should be deleted as well.
 	t.Run("when fetching a room that does not exists returns room with ID", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
+		scheduler := newValidScheduler()
 		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "first-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusReady},
 		}
 
 		notFoundRoomID := "second-room"
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{notFoundRoomID}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return([]string{notFoundRoomID}, nil)
 
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[0].ID).Return(availableRooms[0], nil)
 
 		getRoomErr := porterrors.NewErrNotFound("failed to get")
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, notFoundRoomID).Return(nil, getRoomErr)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, notFoundRoomID).Return(nil, getRoomErr)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.NoError(t, err)
 
-		availableRooms = append(availableRooms, &game_room.GameRoom{ID: notFoundRoomID, SchedulerID: schedulerName, Status: game_room.GameStatusError})
+		availableRooms = append(availableRooms, &game_room.GameRoom{ID: notFoundRoomID, SchedulerID: scheduler.Name, Status: game_room.GameStatusError})
 		require.Equal(t, rooms, availableRooms)
 	})
 
 	t.Run("when error happens while fetch a room it returns error", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
+		scheduler := newValidScheduler()
 		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
-			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady},
+			{ID: "first-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusReady},
+			{ID: "second-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusReady},
 		}
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[1].ID}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return([]string{availableRooms[1].ID}, nil)
 
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[0].ID).Return(availableRooms[0], nil)
 
 		getRoomErr := errors.New("failed to get")
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(nil, getRoomErr)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[1].ID).Return(nil, getRoomErr)
 
-		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", 2, roomsBeingReplaced)
+		_, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.Error(t, err)
 		require.ErrorIs(t, err, getRoomErr)
 	})
 
-	t.Run("when no room matches version returns an empty list", func(t *testing.T) {
-		ctx := context.Background()
-		schedulerName := "test-scheduler"
-		ignoredVersion := "v1.2.3"
-		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: ignoredVersion},
-			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: ignoredVersion},
-		}
-
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[1].ID}, nil)
-
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
-
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
-		require.NoError(t, err)
-		require.Empty(t, rooms)
-	})
-
 	t.Run("when retrieving rooms with terminating status it returns them", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
-		ignoredVersion := "v1.2.3"
+		scheduler := newValidScheduler()
 		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
-			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+			{ID: "first-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusTerminating},
+			{ID: "second-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusTerminating},
 		}
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{}, nil).AnyTimes()
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, gomock.Any()).Return([]string{}, nil).AnyTimes()
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID}, nil)
 
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[1].ID).Return(availableRooms[1], nil)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.NoError(t, err)
 		require.Equal(t, availableRooms, rooms)
 	})
 
 	t.Run("when retrieving rooms with terminating status always includes them", func(t *testing.T) {
 		ctx := context.Background()
-		schedulerName := "test-scheduler"
-		ignoredVersion := "v1.2.3"
+		scheduler := newValidScheduler()
 		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: schedulerName, Status: game_room.GameStatusReady, Version: "v1.1.1"},
-			{ID: "second-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
-			{ID: "third-room", SchedulerID: schedulerName, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+			{ID: "first-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusReady, Version: "v1.1.1"},
+			{ID: "second-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
+			{ID: "third-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusTerminating, Version: "v1.1.1"},
 		}
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, schedulerName, gomock.Any()).Return([]string{}, nil).AnyTimes()
-		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, schedulerName, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID, availableRooms[2].ID}, nil)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, gomock.Any()).Return([]string{}, nil).AnyTimes()
+		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return([]string{availableRooms[0].ID, availableRooms[1].ID, availableRooms[2].ID}, nil)
 
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[0].ID).Return(availableRooms[0], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[1].ID).Return(availableRooms[1], nil)
-		roomStorage.EXPECT().GetRoom(ctx, schedulerName, availableRooms[2].ID).Return(availableRooms[2], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[0].ID).Return(availableRooms[0], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[1].ID).Return(availableRooms[1], nil)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[2].ID).Return(availableRooms[2], nil)
 
-		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, ignoredVersion, 2, roomsBeingReplaced)
+		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.NoError(t, err)
 		require.Equal(t, availableRooms, rooms)
 	})
@@ -749,46 +724,46 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 		eventsService,
 		config,
 	)
-	schedulerName := "scheduler-name"
+	scheduler := newValidScheduler()
 	roomId := "some-unique-room-id"
 
 	t.Run("when room and instance deletions do not return error", func(t *testing.T) {
-		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(nil)
-		instanceStorage.EXPECT().DeleteInstance(context.Background(), schedulerName, roomId).Return(nil)
+		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, roomId).Return(nil)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), scheduler.Name, roomId).Return(nil)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any()).Return(nil)
 
-		err := roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		err := roomManager.CleanRoomState(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
 	})
 
 	t.Run("when room is not found but instance is, returns no error", func(t *testing.T) {
-		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(porterrors.ErrNotFound)
-		instanceStorage.EXPECT().DeleteInstance(context.Background(), schedulerName, roomId).Return(nil)
+		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, roomId).Return(porterrors.ErrNotFound)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), scheduler.Name, roomId).Return(nil)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any()).Return(nil)
 
-		err := roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		err := roomManager.CleanRoomState(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
 	})
 
 	t.Run("when room is present but instance isn't, returns no error", func(t *testing.T) {
-		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(nil)
-		instanceStorage.EXPECT().DeleteInstance(context.Background(), schedulerName, roomId).Return(porterrors.ErrNotFound)
+		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, roomId).Return(nil)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), scheduler.Name, roomId).Return(porterrors.ErrNotFound)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any()).Return(nil)
 
-		err := roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		err := roomManager.CleanRoomState(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
 	})
 
 	t.Run("when deletions returns unexpected error, returns error", func(t *testing.T) {
-		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(porterrors.ErrUnexpected)
+		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, roomId).Return(porterrors.ErrUnexpected)
 
-		err := roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		err := roomManager.CleanRoomState(context.Background(), scheduler.Name, roomId)
 		require.Error(t, err)
 
-		roomStorage.EXPECT().DeleteRoom(context.Background(), schedulerName, roomId).Return(nil)
-		instanceStorage.EXPECT().DeleteInstance(context.Background(), schedulerName, roomId).Return(porterrors.ErrUnexpected)
+		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, roomId).Return(nil)
+		instanceStorage.EXPECT().DeleteInstance(context.Background(), scheduler.Name, roomId).Return(porterrors.ErrUnexpected)
 
-		err = roomManager.CleanRoomState(context.Background(), schedulerName, roomId)
+		err = roomManager.CleanRoomState(context.Background(), scheduler.Name, roomId)
 		require.Error(t, err)
 	})
 }
@@ -1145,122 +1120,122 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 	t.Run("when game room exists and changes states, it should return no error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		roomStorage, instanceStorage, roomManager, _ := setup(mockCtrl)
 
 		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending, Metadata: map[string]interface{}{}}
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
 
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
-		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), scheduler.Name, roomId).Return(instance, nil)
 
-		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), schedulerName, roomId, game_room.GameStatusReady)
+		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), scheduler.Name, roomId, game_room.GameStatusReady)
 
-		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
 	})
 
 	t.Run("when game room exists and there is not state transition, it should not update the room status and return no error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		roomStorage, instanceStorage, roomManager, _ := setup(mockCtrl)
 
 		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusReady}
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
 
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
-		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), scheduler.Name, roomId).Return(instance, nil)
 
-		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
 	})
 
 	t.Run("when game room doesn't exists, it should return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		roomStorage, _, roomManager, _ := setup(mockCtrl)
 
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(nil, porterrors.ErrNotFound)
+		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(nil, porterrors.ErrNotFound)
 
-		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), scheduler.Name, roomId)
 		require.Error(t, err)
 	})
 
 	t.Run("when game room instance doesn't exists, it should return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		roomStorage, instanceStorage, roomManager, _ := setup(mockCtrl)
 
 		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending}
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
 
-		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(nil, porterrors.ErrNotFound)
+		instanceStorage.EXPECT().GetInstance(context.Background(), scheduler.Name, roomId).Return(nil, porterrors.ErrNotFound)
 
-		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), scheduler.Name, roomId)
 		require.Error(t, err)
 	})
 
 	t.Run("when game room exists and state transition is invalid, it should return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		roomStorage, instanceStorage, roomManager, _ := setup(mockCtrl)
 
 		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusTerminating}
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
 
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstancePending}}
-		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), scheduler.Name, roomId).Return(instance, nil)
 
-		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), scheduler.Name, roomId)
 		require.Error(t, err)
 	})
 
 	t.Run("When instance status is terminating, forward ping", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		roomStorage, instanceStorage, roomManager, eventsService := setup(mockCtrl)
 
 		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusTerminating, Status: game_room.GameStatusReady}
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
 
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceTerminating}}
-		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), scheduler.Name, roomId).Return(instance, nil)
 
-		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), schedulerName, roomId, game_room.GameStatusTerminating).Return(nil)
+		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), scheduler.Name, roomId, game_room.GameStatusTerminating).Return(nil)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any()).Return(nil)
 
-		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
 	})
 
 	t.Run("When instance status is terminating, and game room is deleted from storage, forward ping", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		roomStorage, instanceStorage, roomManager, eventsService := setup(mockCtrl)
 
 		room := &game_room.GameRoom{PingStatus: game_room.GameRoomPingStatusTerminating, Status: game_room.GameStatusReady}
-		roomStorage.EXPECT().GetRoom(context.Background(), schedulerName, roomId).Return(room, nil)
+		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
 
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceTerminating}}
-		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), scheduler.Name, roomId).Return(instance, nil)
 
-		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), schedulerName, roomId, game_room.GameStatusTerminating).Return(porterrors.ErrNotFound)
+		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), scheduler.Name, roomId, game_room.GameStatusTerminating).Return(porterrors.ErrNotFound)
 		eventsService.EXPECT().ProduceEvent(context.Background(), gomock.Any()).Return(nil)
 
-		err := roomManager.UpdateGameRoomStatus(context.Background(), schedulerName, roomId)
+		err := roomManager.UpdateGameRoomStatus(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
 	})
 }
@@ -1286,14 +1261,14 @@ func TestRoomManager_GetRoomInstance(t *testing.T) {
 	t.Run("when no error occurs return game room instance and no error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		_, instanceStorage, roomManager, _ := setup(mockCtrl)
 
 		instance := &game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
-		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(instance, nil)
+		instanceStorage.EXPECT().GetInstance(context.Background(), scheduler.Name, roomId).Return(instance, nil)
 
-		address, err := roomManager.GetRoomInstance(context.Background(), schedulerName, roomId)
+		address, err := roomManager.GetRoomInstance(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
 		require.Equal(t, instance, address)
 	})
@@ -1301,13 +1276,13 @@ func TestRoomManager_GetRoomInstance(t *testing.T) {
 	t.Run("when some error occurs in instance storage it returns error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
-		schedulerName := "schedulerName"
+		scheduler := newValidScheduler()
 		roomId := "room-id"
 		_, instanceStorage, roomManager, _ := setup(mockCtrl)
 
-		instanceStorage.EXPECT().GetInstance(context.Background(), schedulerName, roomId).Return(nil, errors.New("some error"))
+		instanceStorage.EXPECT().GetInstance(context.Background(), scheduler.Name, roomId).Return(nil, errors.New("some error"))
 
-		_, err := roomManager.GetRoomInstance(context.Background(), schedulerName, roomId)
+		_, err := roomManager.GetRoomInstance(context.Background(), scheduler.Name, roomId)
 		require.EqualError(t, err, "error getting instance: some error")
 	})
 
@@ -1342,4 +1317,43 @@ func testSetup(t *testing.T) (
 	)
 
 	return roomManager, config, roomStorage, instanceStorage, runtime, eventsService, roomStorageStatusWatcher
+}
+
+func newValidScheduler() *entities.Scheduler {
+	return &entities.Scheduler{
+		Name:            "scheduler",
+		Game:            "game",
+		State:           entities.StateCreating,
+		MaxSurge:        "5",
+		RollbackVersion: "",
+		Spec: game_room.Spec{
+			Version:                "v1.0.0",
+			TerminationGracePeriod: 60,
+			Toleration:             "toleration",
+			Affinity:               "affinity",
+			Containers: []game_room.Container{
+				{
+					Name:            "default",
+					Image:           "some-image:v1",
+					ImagePullPolicy: "IfNotPresent",
+					Command:         []string{"hello"},
+					Ports: []game_room.ContainerPort{
+						{Name: "tcp", Protocol: "tcp", Port: 80},
+					},
+					Requests: game_room.ContainerResources{
+						CPU:    "10m",
+						Memory: "100Mi",
+					},
+					Limits: game_room.ContainerResources{
+						CPU:    "10m",
+						Memory: "100Mi",
+					},
+				},
+			},
+		},
+		PortRange: &port.PortRange{
+			Start: 40000,
+			End:   60000,
+		},
+	}
 }
