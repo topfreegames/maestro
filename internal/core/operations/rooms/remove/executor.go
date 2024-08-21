@@ -26,7 +26,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -35,6 +34,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -110,30 +110,24 @@ func (e *Executor) removeRoomsByIDs(ctx context.Context, schedulerName string, r
 }
 
 func (e *Executor) removeRoomsByAmount(ctx context.Context, logger *zap.Logger, schedulerName string, amount int, op *operation.Operation, reason string) error {
-	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", amount, &sync.Map{})
+	activeScheduler, err := e.schedulerManager.GetActiveScheduler(ctx, schedulerName)
 	if err != nil {
 		return err
 	}
 
-	activeScheduler, err := e.schedulerManager.GetActiveScheduler(ctx, schedulerName)
+	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, activeScheduler, amount)
 	if err != nil {
-		logger.Warn("error getting active scheduler, not sorting by version", zap.Error(err))
-	} else {
-		var activeVersionRooms []*game_room.GameRoom
-		var mostPrioRoomsToBeRemoved []*game_room.GameRoom
-		for _, room := range rooms {
-			if room.Status == game_room.GameStatusOccupied || room.Status == game_room.GameStatusReady || room.Status == game_room.GameStatusPending {
-				if room.Version == activeScheduler.Spec.Version {
-					activeVersionRooms = append(activeVersionRooms, room)
-				} else {
-					mostPrioRoomsToBeRemoved = append(mostPrioRoomsToBeRemoved, room)
-				}
-			} else {
-				mostPrioRoomsToBeRemoved = append(mostPrioRoomsToBeRemoved, room)
-			}
-		}
-		rooms = append(mostPrioRoomsToBeRemoved, activeVersionRooms...)
+		return err
 	}
+
+	logger.Info("removing rooms by amount sorting by version",
+		zap.Array("originalRoomsOrder", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+			for _, room := range rooms {
+				enc.AppendString(fmt.Sprintf("%s-%s-%s", room.ID, room.Version, room.Status.String()))
+			}
+			return nil
+		})),
+	)
 
 	err = e.deleteRooms(ctx, rooms, op, reason)
 	if err != nil {
