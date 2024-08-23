@@ -228,8 +228,10 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 	}
 
 	logger.Info(msgToAppend)
-	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 	ex.setTookAction(def, tookAction)
+	if tookAction {
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
+	}
 	return nil
 }
 

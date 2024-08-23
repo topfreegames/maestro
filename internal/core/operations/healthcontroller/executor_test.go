@@ -110,7 +110,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]string{}, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]*game_room.Instance{}, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 				},
 			},
 		},
@@ -146,7 +145,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -338,7 +336,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -394,7 +391,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -440,7 +436,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -494,7 +489,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find existent game room
 					gameRoom := &game_room.GameRoom{
@@ -504,7 +498,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						LastPingAt:  time.Now(),
 						Version:     genericSchedulerNoAutoscaling.Spec.Version,
 					}
-					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil)
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil).MinTimes(1)
 
 					// Find game room
 					expiredGameRoom := &game_room.GameRoom{
@@ -514,14 +508,11 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						LastPingAt:  time.Now().Add(-time.Minute * 60),
 						Version:     genericSchedulerNoAutoscaling.Spec.Version,
 					}
-					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(expiredGameRoom, nil)
-
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(expiredGameRoom, nil).MinTimes(1)
 					genericSchedulerNoAutoscaling.RoomsReplicas = 1
 					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}, Reason: remove.Expired}).Return(op, nil)
-
-					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 				},
 			},
 		},
@@ -563,7 +554,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 
 					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), genericSchedulerAutoscalingEnabled).Return(1, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 				},
 			},
 		},
@@ -920,8 +910,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						Version:     genericSchedulerAutoscalingEnabled.Spec.Version,
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 				},
 			},
@@ -1376,7 +1364,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					// findAvailableAndExpiredRooms
 					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[0]).Return(gameRoom1, nil)
 					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[1]).Return(gameRoom2, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
 					// GetDesiredNumberOfRooms
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newScheduler, nil)
@@ -2017,7 +2004,9 @@ func TestCompleteRollingUpdate(t *testing.T) {
 				instanceStorage.EXPECT().GetAllInstances(gomock.Any(), schedulerV2.Name).Return(instances, nil).MinTimes(1)
 				schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerV2.Name).Return(schedulerV2, nil).MinTimes(1)
 				autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), schedulerV2).Return(cycle.autoscaleDesiredNumberOfRooms, nil).MinTimes(1)
-				operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+				if cycle.tookAction {
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+				}
 
 				if cycle.currentRoomsInActiveVersion != cycle.currentTotalNumberOfRooms {
 					schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), &filters.SchedulerFilter{
