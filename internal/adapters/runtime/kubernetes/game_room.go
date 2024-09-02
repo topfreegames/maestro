@@ -29,6 +29,8 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,6 +66,7 @@ func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *enti
 }
 
 func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance, reason string) error {
+	k.logger.Debug("deleting game room instance", zap.String("gameRoomID", gameRoomInstance.ID), zap.String("schedulerID", gameRoomInstance.SchedulerID), zap.String("reason", reason))
 	_ = k.createKubernetesEvent(ctx, gameRoomInstance.SchedulerID, gameRoomInstance.ID, reason, "GameRoomDeleted")
 
 	err := k.clientSet.CoreV1().Pods(gameRoomInstance.SchedulerID).Delete(ctx, gameRoomInstance.ID, metav1.DeleteOptions{})
@@ -101,12 +104,25 @@ func (k *kubernetes) createKubernetesEvent(ctx context.Context, schedulerID stri
 		return errors.NewErrUnexpected("error getting game room instance: %s", err)
 	}
 
+	k.logger.Debug("Getting event recorder", zap.String("pod", pod.Name), zap.String("namespace", pod.Namespace))
 	k.getEventRecorder(pod).Event(pod, corev1.EventTypeNormal, reason, message)
 
 	return nil
 }
 
 func (k *kubernetes) getEventRecorder(pod *corev1.Pod) record.EventRecorder {
+	k.logger.Debug(
+		"deleting game room instance",
+		zap.String("pod", pod.Name),
+		zap.String("namespace", pod.Namespace),
+		zap.Array("event recorders", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+			for namespace, recorder := range k.eventRecorders {
+				enc.AppendString(fmt.Sprintf("%s: %v", namespace, recorder))
+			}
+			return nil
+		})),
+	)
+
 	if recorder, ok := k.eventRecorders[pod.Namespace]; ok {
 		return recorder
 	}
