@@ -35,6 +35,10 @@ import (
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
+const (
+	GameRoomDeletionEventID = "GameRoomDeleted"
+)
+
 func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
 	pod, err := convertGameRoomSpec(*scheduler, gameRoomName, gameRoomSpec)
 	if err != nil {
@@ -61,7 +65,7 @@ func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *enti
 }
 
 func (k *kubernetes) DeleteGameRoomInstance(ctx context.Context, gameRoomInstance *game_room.Instance, reason string) error {
-	_ = k.createKubernetesEvent(ctx, gameRoomInstance.SchedulerID, gameRoomInstance.ID, reason, "GameRoomDeleted")
+	_ = k.createKubernetesEvent(ctx, gameRoomInstance.SchedulerID, gameRoomInstance.ID, GameRoomDeletionEventID, reason)
 
 	err := k.clientSet.CoreV1().Pods(gameRoomInstance.SchedulerID).Delete(ctx, gameRoomInstance.ID, metav1.DeleteOptions{})
 	if err != nil {
@@ -88,7 +92,7 @@ func (k *kubernetes) CreateGameRoomName(ctx context.Context, scheduler entities.
 	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength)), nil
 }
 
-func (k *kubernetes) createKubernetesEvent(ctx context.Context, schedulerID string, gameRoomID string, reason string, message string) error {
+func (k *kubernetes) createKubernetesEvent(ctx context.Context, schedulerID, gameRoomID, eventID, reason string) error {
 	pod, err := k.clientSet.CoreV1().Pods(schedulerID).Get(ctx, gameRoomID, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
@@ -98,7 +102,7 @@ func (k *kubernetes) createKubernetesEvent(ctx context.Context, schedulerID stri
 		return errors.NewErrUnexpected("error getting game room instance: %s", err)
 	}
 
-	k.eventRecorder.Event(pod, corev1.EventTypeNormal, reason, message)
+	k.eventRecorder.Event(pod, corev1.EventTypeNormal, eventID, reason)
 
 	return nil
 }
