@@ -426,7 +426,7 @@
         "parameters": [
           {
             "name": "game",
-            "description": "Game name to filter schedulers\n\nMapped to URL query parameter `game`.",
+            "description": "Game name to filter schedulers",
             "in": "query",
             "required": false,
             "type": "string"

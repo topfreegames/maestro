@@ -84,6 +84,10 @@ func (a *Autoscaler) CanDownscale(ctx context.Context, scheduler *entities.Sched
 		return false, errors.New("scheduler does not have autoscaling struct")
 	}
 
+	if !scheduler.Autoscaling.Enabled {
+		return false, errors.New("scheduler does not have autoscaling enabled")
+	}
+
 	if _, ok := a.policyMap[scheduler.Autoscaling.Policy.Type]; !ok {
 		return false, fmt.Errorf("error finding policy to scheduler %s", scheduler.Name)
 	}

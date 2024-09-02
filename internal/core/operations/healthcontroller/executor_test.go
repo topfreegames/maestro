@@ -28,12 +28,15 @@ package healthcontroller_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
+	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 
@@ -45,6 +48,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 )
 
@@ -67,10 +71,11 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 		Parameters: autoscaling.PolicyParameters{},
 	}}
 
-	autoscalingEnabled := autoscaling.Autoscaling{Enabled: true, Min: 1, Max: 10, Cooldown: 60, Policy: autoscaling.Policy{
+	autoscalingEnabled := autoscaling.Autoscaling{Enabled: true, Min: 1, Max: 1000, Cooldown: 60, Policy: autoscaling.Policy{
 		Type: autoscaling.RoomOccupancy,
 		Parameters: autoscaling.PolicyParameters{
 			RoomOccupancy: &autoscaling.RoomOccupancyParams{
+				ReadyTarget:   0.5,
 				DownThreshold: 0.99,
 			},
 		},
@@ -105,7 +110,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]string{}, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return([]*game_room.Instance{}, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 				},
 			},
 		},
@@ -141,7 +145,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -333,7 +336,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -389,7 +391,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), genericSchedulerNoAutoscaling.Name).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -435,7 +436,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -489,7 +489,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetAllRoomIDs(gomock.Any(), gomock.Any()).Return(gameRoomIDs, nil)
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 
 					// Find existent game room
 					gameRoom := &game_room.GameRoom{
@@ -499,7 +498,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						LastPingAt:  time.Now(),
 						Version:     genericSchedulerNoAutoscaling.Spec.Version,
 					}
-					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil)
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil).MinTimes(1)
 
 					// Find game room
 					expiredGameRoom := &game_room.GameRoom{
@@ -509,14 +508,11 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						LastPingAt:  time.Now().Add(-time.Minute * 60),
 						Version:     genericSchedulerNoAutoscaling.Spec.Version,
 					}
-					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(expiredGameRoom, nil)
-
+					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[1]).Return(expiredGameRoom, nil).MinTimes(1)
 					genericSchedulerNoAutoscaling.RoomsReplicas = 1
 					op := operation.New(genericSchedulerNoAutoscaling.Name, definition.Name(), nil)
 					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), genericSchedulerNoAutoscaling.Name, &remove.Definition{RoomsIDs: []string{gameRoomIDs[1]}, Reason: remove.Expired}).Return(op, nil)
-
-					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerNoAutoscaling.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 				},
 			},
 		},
@@ -558,7 +554,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 
 					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), genericSchedulerAutoscalingEnabled).Return(1, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
 				},
 			},
 		},
@@ -762,7 +757,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
 					schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(1)
-					autoscaler.EXPECT().CanDownscale(gomock.Any(), genericSchedulerNoAutoscaling).Return(true, nil)
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -810,7 +804,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerAutoscalingDisabled, nil)
 					schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(1)
-					autoscaler.EXPECT().CanDownscale(gomock.Any(), genericSchedulerAutoscalingDisabled).Return(true, nil)
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -917,8 +910,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						Version:     genericSchedulerAutoscalingEnabled.Spec.Version,
 					}
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any())
-
 					roomStorage.EXPECT().GetRoom(gomock.Any(), genericSchedulerAutoscalingEnabled.Name, gameRoomIDs[0]).Return(gameRoom, nil)
 				},
 			},
@@ -950,7 +941,6 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(genericSchedulerNoAutoscaling, nil)
 					schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(1)
-					autoscaler.EXPECT().CanDownscale(gomock.Any(), genericSchedulerNoAutoscaling).Return(true, nil)
 
 					// Find game room
 					gameRoom := &game_room.GameRoom{
@@ -1338,12 +1328,13 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					newScheduler := newValidScheduler(&autoscaling.Autoscaling{
 						Enabled:  true,
 						Min:      2,
-						Max:      10,
+						Max:      1000,
 						Cooldown: 60,
 						Policy: autoscaling.Policy{
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
 								RoomOccupancy: &autoscaling.RoomOccupancyParams{
+									ReadyTarget:   0.5,
 									DownThreshold: 0.99,
 								},
 							},
@@ -1373,9 +1364,8 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					// findAvailableAndExpiredRooms
 					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[0]).Return(gameRoom1, nil)
 					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[1]).Return(gameRoom2, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
-					// getDesiredNumberOfRooms
+					// GetDesiredNumberOfRooms
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newScheduler, nil)
 					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), newScheduler).Return(2, nil)
 
@@ -1389,16 +1379,15 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 					_ = operation.New(newScheduler.Name, definition.Name(), nil)
 
-					// Do not perform rolling update
+					// Ensure desired amount of instances shouldn't queue new operations as desired == current
 					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), newScheduler.Name, &add.Definition{Amount: 0}).Times(0)
 					roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), newScheduler.Name, game_room.GameStatusOccupied).Times(0)
 					roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), newScheduler.Name, game_room.GameStatusReady).Times(0)
-					operationManager.EXPECT().CreateOperation(gomock.Any(), newScheduler.Name, &remove.Definition{RoomsIDs: gameRoomIDs, Reason: remove.RollingUpdateReplace}).Times(0)
 				},
 			},
 		},
 		{
-			title:      "start rolling update if there are rooms with a major difference in version",
+			title:      "run a complete rolling update if there are rooms with a major difference in version",
 			definition: &healthcontroller.Definition{},
 			executionPlan: executionPlan{
 				tookAction: true,
@@ -1442,7 +1431,7 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 						SchedulerID: genericSchedulerAutoscalingEnabled.Name,
 						Status:      game_room.GameStatusOccupied,
 						LastPingAt:  time.Now(),
-						Version:     genericSchedulerAutoscalingEnabled.Spec.Version,
+						Version:     newScheduler.Spec.Version,
 					}
 
 					// load
@@ -1450,16 +1439,14 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 					instanceStorage.EXPECT().GetAllInstances(gomock.Any(), gomock.Any()).Return(instances, nil)
 
 					// findAvailableAndExpiredRooms
-					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[0]).Return(gameRoom1, nil)
-					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[1]).Return(gameRoom2, nil)
+					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[0]).Return(gameRoom1, nil).MinTimes(1)
+					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[1]).Return(gameRoom2, nil).MinTimes(1)
 
-					// getDesiredNumberOfRooms
+					// GetDesiredNumberOfRooms
 					schedulerStorage.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(newScheduler, nil)
 					autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), newScheduler).Return(2, nil)
 
 					// Check for rolling update
-					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[0]).Return(gameRoom1, nil)
-					roomStorage.EXPECT().GetRoom(gomock.Any(), newScheduler.Name, gameRoomIDs[1]).Return(gameRoom2, nil)
 					schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), &filters.SchedulerFilter{
 						Name:    genericSchedulerAutoscalingEnabled.Name,
 						Version: genericSchedulerAutoscalingEnabled.Spec.Version,
@@ -1467,15 +1454,9 @@ func TestSchedulerHealthController_Execute(t *testing.T) {
 
 					op := operation.New(newScheduler.Name, definition.Name(), nil)
 
-					// Perform rolling update
-					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), newScheduler.Name, &add.Definition{Amount: 0}).Return(op, nil)
-					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(3)
-					roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), newScheduler.Name, game_room.GameStatusOccupied).Return(gameRoomIDs, nil)
-					roomStorage.EXPECT().GetRoomIDsByStatus(gomock.Any(), newScheduler.Name, game_room.GameStatusReady).Return(gameRoomIDs, nil)
-					operationManager.EXPECT().CreateOperation(gomock.Any(), newScheduler.Name, &remove.Definition{RoomsIDs: gameRoomIDs, Reason: remove.RollingUpdateReplace}).Return(op, nil)
-
-					// Shouldn't call autoscale
-					schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(0)
+					// Ensure desired amount of instances
+					operationManager.EXPECT().CreatePriorityOperation(gomock.Any(), newScheduler.Name, &add.Definition{Amount: 1}).Return(op, nil)
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 				},
 			},
 		},
@@ -1565,12 +1546,514 @@ func newValidScheduler(autoscaling *autoscaling.Autoscaling) *entities.Scheduler
 	}
 }
 
-func TestComputeRollingSurgeVariants(t *testing.T) {
+func TestCompleteRollingUpdate(t *testing.T) {
+	// Consider maxSurge 25% and readyTarget 0.5
+	readyTarget := 0.5
+	autoscalingEnabled := autoscaling.Autoscaling{
+		Enabled:  true,
+		Min:      1,
+		Max:      1000,
+		Cooldown: 0,
+		Policy: autoscaling.Policy{
+			Type: autoscaling.RoomOccupancy,
+			Parameters: autoscaling.PolicyParameters{
+				RoomOccupancy: &autoscaling.RoomOccupancyParams{
+					ReadyTarget:   readyTarget,
+					DownThreshold: 0.99,
+				},
+			},
+		},
+	}
+	schedulerV1 := newValidScheduler(&autoscalingEnabled)
+	schedulerV1.MaxSurge = "25%"
+	schedulerV2 := newValidScheduler(&autoscalingEnabled)
+	schedulerV2.MaxSurge = "25%"
+	schedulerV2.Spec.TerminationGracePeriod = schedulerV1.Spec.TerminationGracePeriod + 1
+	schedulerV2.Spec.Version = "v2"
+
+	type RollingUpdateExecutionPlan struct {
+		currentTotalNumberOfRooms     int
+		currentRoomsInActiveVersion   int
+		autoscaleDesiredNumberOfRooms int
+		desiredNumberOfRoomsWithSurge int
+		expectedSurgeAmount           int
+		tookAction                    bool
+	}
+
+	completeRollingUpdatePlan := map[string][]RollingUpdateExecutionPlan{
+		"Occupancy stable during the update": []RollingUpdateExecutionPlan{
+			{
+				// Add 25 rooms on newer version
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   0,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Remove 25 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   25,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 25 rooms
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   25,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Remove 25 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   50,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 25 rooms
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   50,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Remove 25 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   75,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 25 rooms
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   75,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Remove 25 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   100,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 25 rooms
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   100,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    false,
+			},
+		},
+		"Occupancy increased during update": []RollingUpdateExecutionPlan{
+			{
+				// Add 25 rooms on newer version
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   0,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Occupancy changed, autoscale desired to 200, add 125 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   25,
+				autoscaleDesiredNumberOfRooms: 200,
+				desiredNumberOfRoomsWithSurge: 250,
+				expectedSurgeAmount:           50,
+				tookAction:                    true,
+			},
+			{
+				// Remove 50 rooms
+				currentTotalNumberOfRooms:     250,
+				currentRoomsInActiveVersion:   150,
+				autoscaleDesiredNumberOfRooms: 200,
+				desiredNumberOfRoomsWithSurge: 250,
+				expectedSurgeAmount:           50,
+				tookAction:                    true,
+			},
+			{
+				// Occupancy changed, autoscale desired to 400, add 300 rooms
+				currentTotalNumberOfRooms:     200,
+				currentRoomsInActiveVersion:   150,
+				autoscaleDesiredNumberOfRooms: 400,
+				desiredNumberOfRoomsWithSurge: 500,
+				expectedSurgeAmount:           100,
+				tookAction:                    true,
+			},
+			{
+				// Remove 100 rooms
+				currentTotalNumberOfRooms:     500,
+				currentRoomsInActiveVersion:   450,
+				autoscaleDesiredNumberOfRooms: 400,
+				desiredNumberOfRoomsWithSurge: 500,
+				expectedSurgeAmount:           100,
+				tookAction:                    true,
+			},
+			{
+				currentTotalNumberOfRooms:     400,
+				currentRoomsInActiveVersion:   400,
+				autoscaleDesiredNumberOfRooms: 400,
+				desiredNumberOfRoomsWithSurge: 500,
+				expectedSurgeAmount:           100,
+				tookAction:                    false,
+			},
+		},
+		"Occupancy decreased during update": []RollingUpdateExecutionPlan{
+			{
+				// Add 25 rooms on newer version
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   0,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Occupancy changed, autoscale desired to 40, remove 85 rooms (15 old)
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   25,
+				autoscaleDesiredNumberOfRooms: 40,
+				desiredNumberOfRoomsWithSurge: 50,
+				expectedSurgeAmount:           10,
+				tookAction:                    true,
+			},
+			{
+				// Add 10 rooms
+				currentTotalNumberOfRooms:     40,
+				currentRoomsInActiveVersion:   25,
+				autoscaleDesiredNumberOfRooms: 40,
+				desiredNumberOfRoomsWithSurge: 50,
+				expectedSurgeAmount:           10,
+				tookAction:                    true,
+			},
+			{
+				// Remove 10 rooms
+				currentTotalNumberOfRooms:     50,
+				currentRoomsInActiveVersion:   35,
+				autoscaleDesiredNumberOfRooms: 40,
+				desiredNumberOfRoomsWithSurge: 50,
+				expectedSurgeAmount:           10,
+				tookAction:                    true,
+			},
+			{
+				// Add 10 rooms
+				currentTotalNumberOfRooms:     40,
+				currentRoomsInActiveVersion:   35,
+				autoscaleDesiredNumberOfRooms: 40,
+				desiredNumberOfRoomsWithSurge: 50,
+				expectedSurgeAmount:           10,
+				tookAction:                    true,
+			},
+			{
+				// Remove 10 rooms, only 5 left from old versions, so this is the last update iteration
+				currentTotalNumberOfRooms:     50,
+				currentRoomsInActiveVersion:   45,
+				autoscaleDesiredNumberOfRooms: 40,
+				desiredNumberOfRoomsWithSurge: 50,
+				expectedSurgeAmount:           10,
+				tookAction:                    true,
+			},
+			{
+				// All rooms rolled out
+				currentTotalNumberOfRooms:     40,
+				currentRoomsInActiveVersion:   40,
+				autoscaleDesiredNumberOfRooms: 40,
+				desiredNumberOfRoomsWithSurge: 50,
+				expectedSurgeAmount:           10,
+				tookAction:                    false,
+			},
+		},
+		"Occupancy stable but only 75% of new rooms become active": []RollingUpdateExecutionPlan{
+			{
+				// Add 25 rooms on newer version, only 19 will become active
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   0,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 6 rooms, only 5 become active
+				currentTotalNumberOfRooms:     119,
+				currentRoomsInActiveVersion:   19,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 1 rooms, reach limit, start removing on next iteration
+				currentTotalNumberOfRooms:     124,
+				currentRoomsInActiveVersion:   24,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Remove 25 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   25,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 25 rooms on newer version, only 19 will become active
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   25,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 6 rooms, only 5 become active
+				currentTotalNumberOfRooms:     119,
+				currentRoomsInActiveVersion:   44,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 1 rooms, reach limit, start removing on next iteration
+				currentTotalNumberOfRooms:     124,
+				currentRoomsInActiveVersion:   49,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Remove 25 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   50,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 25 rooms on newer version, only 19 will become active
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   50,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 6 rooms, only 5 become active
+				currentTotalNumberOfRooms:     119,
+				currentRoomsInActiveVersion:   69,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 1 rooms, reach limit, start removing on next iteration
+				currentTotalNumberOfRooms:     124,
+				currentRoomsInActiveVersion:   74,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Remove 25 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   75,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 25 rooms on newer version, only 19 will become active
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   75,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 6 rooms, only 5 become active
+				currentTotalNumberOfRooms:     119,
+				currentRoomsInActiveVersion:   94,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Add 1 rooms, reach limit, start removing on next iteration
+				currentTotalNumberOfRooms:     124,
+				currentRoomsInActiveVersion:   99,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				// Remove 25 rooms
+				currentTotalNumberOfRooms:     125,
+				currentRoomsInActiveVersion:   100,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    true,
+			},
+			{
+				currentTotalNumberOfRooms:     100,
+				currentRoomsInActiveVersion:   100,
+				autoscaleDesiredNumberOfRooms: 100,
+				desiredNumberOfRoomsWithSurge: 125,
+				expectedSurgeAmount:           25,
+				tookAction:                    false,
+			},
+		},
+	}
+
+	createRoomMocks := func(roomsStorage *mock.MockRoomStorage, totalRooms, desiredAmount, roomsInOldVersions int) ([]string, []*game_room.Instance, []*game_room.GameRoom) {
+		var roomIDs []string
+		var instances []*game_room.Instance
+		var gameRooms []*game_room.GameRoom
+		occupiedAmount := int(float64(desiredAmount) * (1 - readyTarget))
+		for i := 0; i < totalRooms; i++ {
+			id := fmt.Sprintf("room-%d", i)
+			roomIDs = append(roomIDs, id)
+			instanceStatus := game_room.InstanceStatus{Type: game_room.InstanceReady}
+			grStatus := game_room.GameStatusReady
+			if i < occupiedAmount {
+				grStatus = game_room.GameStatusOccupied
+			}
+			roomVersion := schedulerV1.Spec.Version
+			if i < roomsInOldVersions {
+				roomVersion = "v2"
+			}
+			instances = append(instances, &game_room.Instance{
+				ID:          id,
+				Status:      instanceStatus,
+				SchedulerID: schedulerV1.Name,
+			})
+			gameRooms = append(gameRooms, &game_room.GameRoom{
+				ID:          id,
+				SchedulerID: schedulerV1.Name,
+				Version:     roomVersion,
+				Status:      grStatus,
+				LastPingAt:  time.Now(),
+			})
+			roomsStorage.EXPECT().GetRoom(gomock.Any(), schedulerV1.Name, id).Return(gameRooms[i], nil).MinTimes(1)
+		}
+		return roomIDs, instances, gameRooms
+	}
+
+	for description, executionPlan := range completeRollingUpdatePlan {
+		for id, cycle := range executionPlan {
+			t.Run(fmt.Sprintf("%s %d", description, id+1), func(t *testing.T) {
+				mockCtrl := gomock.NewController(t)
+				roomsStorage := mockports.NewMockRoomStorage(mockCtrl)
+				roomManager := mockports.NewMockRoomManager(mockCtrl)
+				instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
+				schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+				operationManager := mockports.NewMockOperationManager(mockCtrl)
+				autoscaler := mockports.NewMockAutoscaler(mockCtrl)
+				config := healthcontroller.Config{
+					RoomPingTimeout:           2 * time.Minute,
+					RoomInitializationTimeout: 4 * time.Minute,
+					RoomDeletionTimeout:       4 * time.Minute,
+				}
+				executor := healthcontroller.NewExecutor(roomsStorage, roomManager, instanceStorage, schedulerStorage, operationManager, autoscaler, config)
+				definition := &healthcontroller.Definition{}
+				op := operation.New(schedulerV2.Name, definition.Name(), nil)
+
+				roomIDs, instances, gameRooms := createRoomMocks(
+					roomsStorage,
+					cycle.currentTotalNumberOfRooms,
+					cycle.autoscaleDesiredNumberOfRooms,
+					cycle.currentRoomsInActiveVersion,
+				)
+
+				roomsStorage.EXPECT().GetAllRoomIDs(gomock.Any(), schedulerV2.Name).Return(roomIDs, nil).MinTimes(1)
+				instanceStorage.EXPECT().GetAllInstances(gomock.Any(), schedulerV2.Name).Return(instances, nil).MinTimes(1)
+				schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerV2.Name).Return(schedulerV2, nil).MinTimes(1)
+				autoscaler.EXPECT().CalculateDesiredNumberOfRooms(gomock.Any(), schedulerV2).Return(cycle.autoscaleDesiredNumberOfRooms, nil).MinTimes(1)
+				if cycle.tookAction {
+					operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+				}
+
+				if cycle.currentRoomsInActiveVersion != cycle.currentTotalNumberOfRooms {
+					schedulerStorage.EXPECT().GetSchedulerWithFilter(gomock.Any(), &filters.SchedulerFilter{
+						Name:    gameRooms[len(gameRooms)-1].SchedulerID,
+						Version: gameRooms[len(gameRooms)-1].Version,
+					}).Return(schedulerV1, nil).MinTimes(1)
+					if cycle.currentTotalNumberOfRooms < cycle.desiredNumberOfRoomsWithSurge {
+						// Add
+						operationManager.EXPECT().CreatePriorityOperation(
+							gomock.Any(),
+							schedulerV2.Name,
+							&add.Definition{Amount: int32(cycle.desiredNumberOfRoomsWithSurge - cycle.currentTotalNumberOfRooms)},
+						).Return(op, nil)
+					} else {
+						// Remove
+						autoscaler.EXPECT().CanDownscale(gomock.Any(), schedulerV2).Return(true, nil).Times(1)
+						schedulerStorage.EXPECT().UpdateScheduler(gomock.Any(), gomock.Any()).Times(1)
+						reason := remove.ScaleDown
+						if cycle.currentRoomsInActiveVersion < cycle.currentTotalNumberOfRooms {
+							reason = remove.RollingUpdateReplace
+						}
+						operationManager.EXPECT().CreatePriorityOperation(
+							gomock.Any(),
+							schedulerV2.Name,
+							&remove.Definition{
+								Amount: int(cycle.currentTotalNumberOfRooms - cycle.autoscaleDesiredNumberOfRooms),
+								Reason: reason,
+							},
+						).Return(op, nil)
+					}
+				}
+				ctx := context.Background()
+				err := executor.Execute(ctx, op, definition)
+				assert.Nil(t, err)
+				assert.Equal(t, cycle.tookAction, *definition.TookAction)
+			})
+		}
+
+	}
+}
+
+// TODO: Refactor this tests to SchedulerController executor once it's implemented
+func TestComputeMaxSurgeVariants(t *testing.T) {
 	testCases := []struct {
 		name                 string
 		maxSurge             string
 		desiredNumberOfRooms int
-		totalRoomsAmount     int
 		expectedSurgeAmount  int
 		expectError          bool
 	}{
@@ -1578,47 +2061,27 @@ func TestComputeRollingSurgeVariants(t *testing.T) {
 			name:                 "Standard surge calculation",
 			maxSurge:             "10",
 			desiredNumberOfRooms: 20,
-			totalRoomsAmount:     15,
 			expectedSurgeAmount:  10,
 			expectError:          false,
 		},
 		{
-			name:                 "High amount of rooms above 1000",
-			maxSurge:             "30%",
+			name:                 "High amount of rooms",
+			maxSurge:             "500",
 			desiredNumberOfRooms: 1500,
-			totalRoomsAmount:     1000,
-			expectedSurgeAmount:  450, // It can surge up to 950 but we cap to the maxSurge of 450
+			expectedSurgeAmount:  500,
 			expectError:          false,
 		},
 		{
 			name:                 "Relative maxSurge with rooms above 1000",
 			maxSurge:             "25%",
 			desiredNumberOfRooms: 1200,
-			totalRoomsAmount:     1000,
 			expectedSurgeAmount:  300, // 25% of 1200 is 300
-			expectError:          false,
-		},
-		{
-			name:                 "Do not replace rooms during aggressive downscaling",
-			maxSurge:             "25%",
-			desiredNumberOfRooms: 1200,
-			totalRoomsAmount:     1500,
-			expectedSurgeAmount:  0,
-			expectError:          false,
-		},
-		{
-			name:                 "Respect the surge when downscaling",
-			maxSurge:             "25%",
-			desiredNumberOfRooms: 1200,
-			totalRoomsAmount:     1300,
-			expectedSurgeAmount:  200,
 			expectError:          false,
 		},
 		{
 			name:                 "Invalid maxSurge string format",
 			maxSurge:             "twenty%", // Invalid because it's not a number
 			desiredNumberOfRooms: 300,
-			totalRoomsAmount:     250,
 			expectedSurgeAmount:  1, // Expected to be 1 because the function should return an error
 			expectError:          true,
 		},
@@ -1630,7 +2093,7 @@ func TestComputeRollingSurgeVariants(t *testing.T) {
 				MaxSurge: tc.maxSurge,
 			}
 
-			surgeAmount, err := healthcontroller.ComputeRollingSurge(scheduler, tc.desiredNumberOfRooms, tc.totalRoomsAmount)
+			surgeAmount, err := healthcontroller.ComputeMaxSurge(scheduler, tc.desiredNumberOfRooms)
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("expected an error but got none")
@@ -1641,6 +2104,488 @@ func TestComputeRollingSurgeVariants(t *testing.T) {
 				}
 				if surgeAmount != tc.expectedSurgeAmount {
 					t.Errorf("expected surge amount to be %d, but got %d", tc.expectedSurgeAmount, surgeAmount)
+				}
+			}
+		})
+	}
+}
+
+func TestIsRollingUpdate(t *testing.T) {
+	autoscalingEnabled := autoscaling.Autoscaling{Enabled: true, Min: 1, Max: 1000, Cooldown: 60, Policy: autoscaling.Policy{
+		Type: autoscaling.RoomOccupancy,
+		Parameters: autoscaling.PolicyParameters{
+			RoomOccupancy: &autoscaling.RoomOccupancyParams{
+				ReadyTarget:   0.5,
+				DownThreshold: 0.99,
+			},
+		},
+	}}
+	schedulerV1 := newValidScheduler(&autoscalingEnabled)
+	schedulerV1_1 := newValidScheduler(&autoscalingEnabled)
+	schedulerV1_1.RoomsReplicas = schedulerV1.RoomsReplicas + 1
+	schedulerV1_1.Spec.Version = "v1.1"
+	schedulerV2 := newValidScheduler(&autoscalingEnabled)
+	schedulerV2.Spec.TerminationGracePeriod = schedulerV1.Spec.TerminationGracePeriod + 1
+	schedulerV2.Spec.Version = "v2"
+	schedulerV2_1 := newValidScheduler(&autoscalingEnabled)
+	schedulerV2_1.Spec.TerminationGracePeriod = schedulerV2.Spec.TerminationGracePeriod
+	schedulerV2_1.RoomsReplicas = schedulerV2.RoomsReplicas + 1
+	schedulerV2_1.Spec.Version = "v2.1"
+	schedulerMap := map[string]*entities.Scheduler{
+		"v1":   schedulerV1,
+		"v1.1": schedulerV1_1,
+		"v2":   schedulerV2,
+		"v2.1": schedulerV2_1,
+	}
+	testCases := []struct {
+		name              string
+		activeScheduler   *entities.Scheduler
+		availableRoomsIDs []string
+		rooms             map[string]*game_room.GameRoom
+		expectedReturn    bool
+	}{
+		{
+			name:            "No rooms, return false",
+			activeScheduler: schedulerV1,
+			rooms:           map[string]*game_room.GameRoom{},
+			expectedReturn:  false,
+		},
+		{
+			name:              "All rooms with same version, return false",
+			activeScheduler:   schedulerV1,
+			availableRoomsIDs: []string{"room1", "room1_also_on_v1"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1": {
+					ID:          "room1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room1_also_on_v1": {
+					ID:          "room1_also_on_v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+			},
+			expectedReturn: false,
+		},
+		{
+			name:              "Rooms with different minor versions, return false",
+			activeScheduler:   schedulerV1_1,
+			availableRoomsIDs: []string{"room1", "room1.1"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1": {
+					ID:          "room1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room1.1": {
+					ID:          "room1.1",
+					SchedulerID: schedulerV1_1.Name,
+					Version:     schedulerV1_1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+			},
+			expectedReturn: false,
+		},
+		{
+			name:              "Rooms with different major versions, return true",
+			activeScheduler:   schedulerV2,
+			availableRoomsIDs: []string{"room1", "room1.1", "room2"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1": {
+					ID:          "room1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room1.1": {
+					ID:          "room1.1",
+					SchedulerID: schedulerV1_1.Name,
+					Version:     schedulerV1_1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room2": {
+					ID:          "room2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+			},
+			expectedReturn: true,
+		},
+		{
+			name:              "Rooms with different major and minor versions, return true",
+			activeScheduler:   schedulerV2_1,
+			availableRoomsIDs: []string{"room1", "room1.1", "room2", "room2.1"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1": {
+					ID:          "room1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room1.1": {
+					ID:          "room1.1",
+					SchedulerID: schedulerV1_1.Name,
+					Version:     schedulerV1_1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room2": {
+					ID:          "room2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room2.1": {
+					ID:          "room2.1",
+					SchedulerID: schedulerV2_1.Name,
+					Version:     schedulerV2_1.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+			},
+			expectedReturn: true,
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	roomsStorage := mockports.NewMockRoomStorage(mockCtrl)
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			for _, id := range tc.availableRoomsIDs {
+				room := tc.rooms[id]
+				roomsStorage.EXPECT().GetRoom(ctx, tc.activeScheduler.Name, id).Return(room, nil)
+				if room.Version != tc.activeScheduler.Spec.Version {
+					schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+						Name:    room.SchedulerID,
+						Version: room.Version,
+					}).Return(schedulerMap[room.Version], nil)
+					curMajorVersion := strings.Split(room.Version, ".")[0]
+					desiredMajorVersion := strings.Split(tc.activeScheduler.Spec.Version, ".")[0]
+					if curMajorVersion != desiredMajorVersion {
+						break
+					}
+				}
+			}
+			actualReturn := healthcontroller.IsRollingUpdating(
+				ctx,
+				roomsStorage,
+				schedulerStorage,
+				zap.NewNop(),
+				tc.activeScheduler,
+				tc.availableRoomsIDs,
+			)
+			if actualReturn != tc.expectedReturn {
+				t.Errorf("expected IsRollingUpdating to return %v, but got %v", tc.expectedReturn, actualReturn)
+			}
+		})
+	}
+}
+
+func TestGetDesiredNumberOfRooms(t *testing.T) {
+	autoscalingEnabled := autoscaling.Autoscaling{Enabled: true, Min: 1, Max: 1000, Cooldown: 60, Policy: autoscaling.Policy{
+		Type: autoscaling.RoomOccupancy,
+		Parameters: autoscaling.PolicyParameters{
+			RoomOccupancy: &autoscaling.RoomOccupancyParams{
+				ReadyTarget:   0.5,
+				DownThreshold: 0.99,
+			},
+		},
+	}}
+	autoscalerDisabled := autoscalingEnabled
+	autoscalerDisabled.Enabled = false
+	schedulerV1 := newValidScheduler(&autoscalingEnabled)
+	schedulerV1.MaxSurge = "50%"
+	schedulerV2 := newValidScheduler(&autoscalingEnabled)
+	schedulerV2.MaxSurge = "50%"
+	schedulerV2.Spec.TerminationGracePeriod = schedulerV1.Spec.TerminationGracePeriod + 1
+	schedulerV2.Spec.Version = "v2"
+	schedulerWithoutAutoScaling := newValidScheduler(&autoscalerDisabled)
+	schedulerWithoutAutoScaling.RoomsReplicas = 10
+	schedulerInvalidMaxSurge := newValidScheduler(&autoscalingEnabled)
+	schedulerInvalidMaxSurge.MaxSurge = "0"
+	schedulerInvalidMaxSurge.Spec.TerminationGracePeriod = schedulerV1.Spec.TerminationGracePeriod + 1
+	schedulerInvalidMaxSurge.Spec.Version = "v2"
+	schedulerMap := map[string]*entities.Scheduler{
+		"v1": schedulerV1,
+		"v2": schedulerV2,
+	}
+	testCases := []struct {
+		name                string
+		desiredByAutoscaler int
+		activeScheduler     *entities.Scheduler
+		availableRoomsIDs   []string
+		rooms               map[string]*game_room.GameRoom
+		expectedDesired     int
+		expectError         bool
+	}{
+		{
+			name:                "No autoscaling, no rolling update, return rooms replica",
+			activeScheduler:     schedulerWithoutAutoScaling,
+			availableRoomsIDs:   []string{},
+			rooms:               map[string]*game_room.GameRoom{},
+			desiredByAutoscaler: schedulerWithoutAutoScaling.RoomsReplicas,
+			expectedDesired:     schedulerWithoutAutoScaling.RoomsReplicas,
+			expectError:         false,
+		},
+		{
+			name:              "Autoscaling, no rolling update, return desired by autoscaling",
+			activeScheduler:   schedulerV1,
+			availableRoomsIDs: []string{"room1v1", "room2v1", "room3v1"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1v1": {
+					ID:          "room1v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room2v1": {
+					ID:          "room2v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room3v1": {
+					ID:          "room3v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+			},
+			desiredByAutoscaler: 6,
+			expectedDesired:     6,
+			expectError:         false,
+		},
+		{
+			name:              "Autoscaling, rolling update, return desired by autoscaling + maxSurge",
+			activeScheduler:   schedulerV2,
+			availableRoomsIDs: []string{"room1v1", "room2v1", "room3v1", "room4v1"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1v1": {
+					ID:          "room1v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room2v1": {
+					ID:          "room2v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room3v1": {
+					ID:          "room3v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room4v1": {
+					ID:          "room4v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+			},
+			desiredByAutoscaler: 8,
+			expectedDesired:     12, // 8 by autoscale + 4 of maxSurge (50%) and current != desired
+			expectError:         false,
+		},
+		{
+			name:              "Autoscaling, rolling update, invalid surge use default value of 1, return desired by autoscaling + maxSurge",
+			activeScheduler:   schedulerInvalidMaxSurge,
+			availableRoomsIDs: []string{"room1v1", "room2v1"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1v1": {
+					ID:          "room1v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room2v1": {
+					ID:          "room2v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+			},
+			desiredByAutoscaler: 4,
+			expectedDesired:     5, // 4 by autoscale + 1 of default maxSurge (set to 0 on spec)
+			expectError:         false,
+		},
+		{
+			name:              "Autoscaling, rolling update, current already at the limit, set desired to autoscaling",
+			activeScheduler:   schedulerV1,
+			availableRoomsIDs: []string{"room1v1", "room2v1", "room3v1", "room4v1", "room5v2", "room6v2", "room7v2", "room8v2", "room9v2", "room10v2", "room11v2", "room12v2"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1v1": {
+					ID:          "room1v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room2v1": {
+					ID:          "room2v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room3v1": {
+					ID:          "room3v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room4v1": {
+					ID:          "room4v1",
+					SchedulerID: schedulerV1.Name,
+					Version:     schedulerV1.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+				"room5v2": {
+					ID:          "room5v2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room6v2": {
+					ID:          "room6v2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room7v2": {
+					ID:          "room7v2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room8v2": {
+					ID:          "room8v2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room9v2": {
+					ID:          "room9v2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room10v2": {
+					ID:          "room10v2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room11v2": {
+					ID:          "room11v2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+				"room12v2": {
+					ID:          "room12v2",
+					SchedulerID: schedulerV2.Name,
+					Version:     schedulerV2.Spec.Version,
+					Status:      game_room.GameStatusReady,
+					LastPingAt:  time.Now(),
+				},
+			},
+			desiredByAutoscaler: 8,
+			expectedDesired:     8, // We are already at upper limit of 12, so set 8 by autoscale
+			expectError:         false,
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	roomsStorage := mockports.NewMockRoomStorage(mockCtrl)
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+	autoscaler := mockports.NewMockAutoscaler(mockCtrl)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			// Set the expected calls made by IsRollingUpdate
+			for _, id := range tc.availableRoomsIDs {
+				room := tc.rooms[id]
+				roomsStorage.EXPECT().GetRoom(ctx, tc.activeScheduler.Name, id).Return(room, nil)
+				if room.Version != tc.activeScheduler.Spec.Version {
+					schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
+						Name:    room.SchedulerID,
+						Version: room.Version,
+					}).Return(schedulerMap[room.Version], nil)
+					curMajorVersion := strings.Split(room.Version, ".")[0]
+					desiredMajorVersion := strings.Split(tc.activeScheduler.Spec.Version, ".")[0]
+					if curMajorVersion != desiredMajorVersion {
+						break
+					}
+				}
+			}
+
+			if tc.activeScheduler.Autoscaling.Enabled {
+				autoscaler.EXPECT().CalculateDesiredNumberOfRooms(ctx, tc.activeScheduler).Return(tc.desiredByAutoscaler, nil)
+				if tc.expectedDesired < len(tc.availableRoomsIDs) {
+					autoscaler.EXPECT().CanDownscale(ctx, tc.activeScheduler).Return(true, nil)
+					schedulerStorage.EXPECT().UpdateScheduler(ctx, tc.activeScheduler).Times(1)
+				}
+			}
+
+			actualDesiredReturned, _, err := healthcontroller.GetDesiredNumberOfRooms(
+				ctx,
+				autoscaler,
+				roomsStorage,
+				schedulerStorage,
+				zap.NewNop(),
+				tc.activeScheduler,
+				tc.availableRoomsIDs,
+			)
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("expected an error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				if actualDesiredReturned != tc.expectedDesired {
+					t.Errorf("expected GetDesiredNumberOfRooms to return %d, but got %d", tc.expectedDesired, actualDesiredReturned)
 				}
 			}
 		})

@@ -26,24 +26,29 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	kube "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 )
 
 var _ ports.Runtime = (*kubernetes)(nil)
 
 type kubernetes struct {
-	clientSet        kube.Interface
-	logger           *zap.Logger
-	eventBroadcaster record.EventBroadcaster
-	eventRecorders   map[string]record.EventRecorder
+	clientSet     kube.Interface
+	logger        *zap.Logger
+	eventRecorder record.EventRecorder
 }
 
 func New(clientSet kube.Interface) *kubernetes {
-	return &kubernetes{
-		clientSet:        clientSet,
-		logger:           zap.L().With(zap.String(logs.LogFieldRuntime, "kubernetes")),
-		eventBroadcaster: record.NewBroadcaster(),
-		eventRecorders:   make(map[string]record.EventRecorder, 0),
+	k := &kubernetes{
+		clientSet: clientSet,
+		logger:    zap.L().With(zap.String(logs.LogFieldRuntime, "kubernetes")),
 	}
+
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: k.clientSet.CoreV1().Events("")})
+	k.eventRecorder = eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "maestro-next"})
+	return k
 }

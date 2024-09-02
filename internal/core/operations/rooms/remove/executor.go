@@ -26,7 +26,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
@@ -35,6 +34,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/ports"
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -42,16 +42,18 @@ type Executor struct {
 	roomManager      ports.RoomManager
 	roomStorage      ports.RoomStorage
 	operationManager ports.OperationManager
+	schedulerManager ports.SchedulerManager
 }
 
 var _ operations.Executor = (*Executor)(nil)
 
 // NewExecutor creates a new RemoveRoomExecutor
-func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, operationManager ports.OperationManager) *Executor {
+func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, operationManager ports.OperationManager, schedulerManager ports.SchedulerManager) *Executor {
 	return &Executor{
 		roomManager,
 		roomStorage,
 		operationManager,
+		schedulerManager,
 	}
 }
 
@@ -79,7 +81,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 
 	if removeDefinition.Amount > 0 {
 		logger.Info("start removing rooms", zap.Int("amount", removeDefinition.Amount))
-		err := e.removeRoomsByAmount(ctx, op.SchedulerName, removeDefinition.Amount, op, removeDefinition.Reason)
+		err := e.removeRoomsByAmount(ctx, logger, op.SchedulerName, removeDefinition.Amount, op, removeDefinition.Reason)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
 			logger.Warn("error removing rooms", zap.Error(err))
@@ -107,11 +109,25 @@ func (e *Executor) removeRoomsByIDs(ctx context.Context, schedulerName string, r
 	return nil
 }
 
-func (e *Executor) removeRoomsByAmount(ctx context.Context, schedulerName string, amount int, op *operation.Operation, reason string) error {
-	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, schedulerName, "", amount, &sync.Map{})
+func (e *Executor) removeRoomsByAmount(ctx context.Context, logger *zap.Logger, schedulerName string, amount int, op *operation.Operation, reason string) error {
+	activeScheduler, err := e.schedulerManager.GetActiveScheduler(ctx, schedulerName)
 	if err != nil {
 		return err
 	}
+
+	rooms, err := e.roomManager.ListRoomsWithDeletionPriority(ctx, activeScheduler, amount)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("removing rooms by amount sorting by version",
+		zap.Array("originalRoomsOrder", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+			for _, room := range rooms {
+				enc.AppendString(fmt.Sprintf("%s-%s-%s", room.ID, room.Version, room.Status.String()))
+			}
+			return nil
+		})),
+	)
 
 	err = e.deleteRooms(ctx, rooms, op, reason)
 	if err != nil {
