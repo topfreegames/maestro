@@ -33,9 +33,6 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/record"
 )
 
 func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
@@ -101,19 +98,7 @@ func (k *kubernetes) createKubernetesEvent(ctx context.Context, schedulerID stri
 		return errors.NewErrUnexpected("error getting game room instance: %s", err)
 	}
 
-	k.getEventRecorder(pod).Event(pod, corev1.EventTypeNormal, reason, message)
+	k.eventRecorder.Event(pod, corev1.EventTypeNormal, reason, message)
 
 	return nil
-}
-
-func (k *kubernetes) getEventRecorder(pod *corev1.Pod) record.EventRecorder {
-	if recorder, ok := k.eventRecorders[pod.Namespace]; ok {
-		return recorder
-	}
-
-	k.eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: k.clientSet.CoreV1().Events(pod.Namespace)})
-	recorder := k.eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "maestro-next"})
-	k.eventRecorders[pod.Namespace] = recorder
-
-	return recorder
 }
