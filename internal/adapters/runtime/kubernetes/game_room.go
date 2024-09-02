@@ -98,7 +98,7 @@ func (k *kubernetes) createKubernetesEvent(ctx context.Context, schedulerID stri
 		return errors.NewErrUnexpected("error getting game room instance: %s", err)
 	}
 
-	k.eventRecorder.Event(pod, corev1.EventTypeNormal, reason, message)
+	k.eventRecorder.Event(pod, corev1.EventTypeNormal, message, reason)
 
 	return nil
 }
