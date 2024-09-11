@@ -77,6 +77,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 
 			return fmt.Errorf("error removing rooms by ids: %w", err)
 		}
+		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("removed rooms: %v", removeDefinition.RoomsIDs))
 	}
 
 	if removeDefinition.Amount > 0 {
@@ -88,6 +89,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 
 			return fmt.Errorf("error removing rooms by amount: %w", err)
 		}
+		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("removed %d rooms", removeDefinition.Amount))
 	}
 
 	logger.Info("finished deleting rooms")

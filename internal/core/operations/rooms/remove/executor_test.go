@@ -63,7 +63,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("should succeed and sort rooms by active scheduler version", func(t *testing.T) {
-			executor, _, roomsManager, _, schedulerManager := testSetup(t)
+			executor, _, roomsManager, operationManager, schedulerManager := testSetup(t)
 
 			schedulerName := uuid.NewString()
 			schedulerV1 := &entities.Scheduler{
@@ -116,6 +116,7 @@ func TestExecutor_Execute(t *testing.T) {
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), expectedSortedRoomsOrder[5], gomock.Any()).Times(1)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), expectedSortedRoomsOrder[6], gomock.Any()).Times(1)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), expectedSortedRoomsOrder[7], gomock.Any()).Times(1)
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 			err := executor.Execute(ctx, op, definition)
 
 			require.Nil(t, err)
@@ -197,7 +198,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("should succeed - rooms are successfully removed => returns without error", func(t *testing.T) {
-			executor, _, roomsManager, _, _ := testSetup(t)
+			executor, _, roomsManager, operationManager, _ := testSetup(t)
 
 			firstRoomID := "first-room-id"
 			secondRoomID := "second-room-id"
@@ -217,6 +218,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(nil)
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
 
 			err := executor.Execute(context.Background(), op, definition)
 			require.Nil(t, err)
@@ -271,7 +273,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), room, definition.Reason).Return(nil)
 			roomsManager.EXPECT().DeleteRoom(gomock.Any(), secondRoom, definition.Reason).Return(porterrors.NewErrNotFound("not found"))
-			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any())
+			operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any()).Times(2)
 
 			err := executor.Execute(context.Background(), op, definition)
 			require.NoError(t, err)
@@ -318,7 +320,7 @@ func TestExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("should succeed - there are ids and amount => return without error", func(t *testing.T) {
-		executor, _, roomsManager, _, schedulerManager := testSetup(t)
+		executor, _, roomsManager, operationManager, schedulerManager := testSetup(t)
 
 		firstRoomID := "first-room-id"
 		secondRoomID := "second-room-id"
@@ -350,6 +352,7 @@ func TestExecutor_Execute(t *testing.T) {
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), scheduler.Name).Return(scheduler, nil)
 		roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), gomock.Any()).Return(availableRooms, nil)
 		roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), definition.Reason).Return(nil).Times(2)
+		operationManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, gomock.Any()).Times(2)
 
 		err := executor.Execute(context.Background(), op, definition)
 		require.Nil(t, err)
