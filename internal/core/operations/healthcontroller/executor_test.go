@@ -2317,7 +2317,13 @@ func TestGetDesiredNumberOfRooms(t *testing.T) {
 	schedulerV2.Spec.TerminationGracePeriod = schedulerV1.Spec.TerminationGracePeriod + 1
 	schedulerV2.Spec.Version = "v2"
 	schedulerWithoutAutoScaling := newValidScheduler(&autoscalerDisabled)
-	schedulerWithoutAutoScaling.RoomsReplicas = 10
+	schedulerWithoutAutoScaling.RoomsReplicas = 1
+	schedulerWithoutAutoScaling.MaxSurge = "50%"
+	schedulerV2WithoutAutoScaling := newValidScheduler(&autoscalerDisabled)
+	schedulerV2WithoutAutoScaling.RoomsReplicas = 1
+	schedulerV2WithoutAutoScaling.MaxSurge = "50%"
+	schedulerV2WithoutAutoScaling.Spec.TerminationGracePeriod = schedulerWithoutAutoScaling.Spec.TerminationGracePeriod + 1
+	schedulerV2WithoutAutoScaling.Spec.Version = "v2"
 	schedulerInvalidMaxSurge := newValidScheduler(&autoscalingEnabled)
 	schedulerInvalidMaxSurge.MaxSurge = "0"
 	schedulerInvalidMaxSurge.Spec.TerminationGracePeriod = schedulerV1.Spec.TerminationGracePeriod + 1
@@ -2342,6 +2348,23 @@ func TestGetDesiredNumberOfRooms(t *testing.T) {
 			rooms:               map[string]*game_room.GameRoom{},
 			desiredByAutoscaler: schedulerWithoutAutoScaling.RoomsReplicas,
 			expectedDesired:     schedulerWithoutAutoScaling.RoomsReplicas,
+			expectError:         false,
+		},
+		{
+			name:              "No autoscaling, on rolling update, return rooms replica + maxSurge",
+			activeScheduler:   schedulerV2WithoutAutoScaling,
+			availableRoomsIDs: []string{"room1v1"},
+			rooms: map[string]*game_room.GameRoom{
+				"room1v1": {
+					ID:          "room1v1",
+					SchedulerID: schedulerWithoutAutoScaling.Name,
+					Version:     schedulerWithoutAutoScaling.Spec.Version,
+					Status:      game_room.GameStatusOccupied,
+					LastPingAt:  time.Now(),
+				},
+			},
+			desiredByAutoscaler: schedulerV2WithoutAutoScaling.RoomsReplicas,
+			expectedDesired:     schedulerV2WithoutAutoScaling.RoomsReplicas + 1,
 			expectError:         false,
 		},
 		{

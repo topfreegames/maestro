@@ -26,6 +26,7 @@
 package add
 
 import (
+	"fmt"
 	"time"
 
 	clock_mock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
@@ -99,6 +100,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(10)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", definition.Amount))
 
 		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, config)
 		err := executor.Execute(context.Background(), &op, &definition)
@@ -156,6 +158,7 @@ func TestExecutor_Execute(t *testing.T) {
 
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(int(smallDefaultConfig.AmountLimit))
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", smallDefaultConfig.AmountLimit))
 
 		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, smallDefaultConfig)
 		err := executor.Execute(context.Background(), &op, &bigAmountDefinition)

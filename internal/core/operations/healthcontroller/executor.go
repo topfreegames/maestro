@@ -120,7 +120,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 
 	if len(expiredRooms) > 0 {
 		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
-		err = ex.enqueueRemoveRooms(ctx, op, logger, expiredRooms)
+		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
 		if err != nil {
 			logger.Error("could not enqueue operation to delete expired rooms", zap.Error(err))
 		}
@@ -296,7 +296,7 @@ func (ex *Executor) isRoomStatus(room *game_room.GameRoom, status game_room.Game
 	return room.Status == status
 }
 
-func (ex *Executor) enqueueRemoveRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, roomsIDs []string) error {
+func (ex *Executor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation.Operation, logger *zap.Logger, roomsIDs []string) error {
 	removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
 		RoomsIDs: roomsIDs,
 		Reason:   remove.Expired,
@@ -305,7 +305,7 @@ func (ex *Executor) enqueueRemoveRooms(ctx context.Context, op *operation.Operat
 		return err
 	}
 
-	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, len(roomsIDs))
+	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove expired %v rooms.", removeOperation.ID, len(roomsIDs))
 	logger.Info(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 
@@ -412,9 +412,13 @@ func GetDesiredNumberOfRooms(
 			logger.Warn("failed to compute max surge, using default value", zap.Error(err), zap.Int("defaultMaxSurge", defaultMaxSurge))
 			maxSurgeAmount = 1
 		}
-		upperLimitOfRooms := int(math.Min(float64(desiredNumber+maxSurgeAmount), float64(schedulerUpperLimit)))
+		upperLimitOfRooms := desiredNumber + maxSurgeAmount
+		if scheduler.Autoscaling != nil && scheduler.Autoscaling.Enabled {
+			upperLimitOfRooms = int(math.Min(float64(upperLimitOfRooms), float64(schedulerUpperLimit)))
+		}
 		// If we have room to grow, we should grow to the upper limit. If not, set the desired calculated
 		if len(availableRooms) < upperLimitOfRooms {
+			logger.Info("recalculated desired number of rooms based on rolling update", zap.Int("autoscale", desiredNumber), zap.Int("upperLimit", upperLimitOfRooms), zap.Int("maxSurge", maxSurgeAmount))
 			desiredNumber = upperLimitOfRooms
 		}
 	}
@@ -437,7 +441,12 @@ func GetDesiredNumberOfRooms(
 		}
 	}
 
-	logger.Info("desired number of rooms: ", zap.Int("desired", desiredNumber), zap.Int("current", len(availableRooms)))
+	logger.Info(
+		"Finished getting desired number of rooms",
+		zap.Int("desired", desiredNumber),
+		zap.Int("current", len(availableRooms)),
+		zap.Bool("isRollingUpdating", isRollingUpdating),
+	)
 
 	return
 }

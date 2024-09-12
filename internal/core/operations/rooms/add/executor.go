@@ -103,6 +103,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		return executionErr
 	}
 
+	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
 	executionLogger.Info("finished adding rooms")
 	return nil
 }
