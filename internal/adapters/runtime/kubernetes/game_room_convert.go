@@ -87,6 +87,24 @@ func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, game
 			Containers:                    []v1.Container{},
 			Tolerations:                   convertSpecTolerations(gameRoomSpec),
 			Affinity:                      convertSpecAffinity(gameRoomSpec),
+			// TODO: make it configurable
+			// 1. Add to proto/API
+			// 2. Generate message
+			// 3. Read from it
+			// 4. Add to game_room.Spec
+			// 5. Add a conversion function
+			TopologySpreadConstraints: []v1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       "topology.kubernetes.io/zone",
+					WhenUnsatisfiable: v1.ScheduleAnyway,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							schedulerLabelKey: scheduler.Name,
+						},
+					},
+				},
+			},
 		},
 	}
 	for _, container := range gameRoomSpec.Containers {

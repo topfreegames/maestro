@@ -400,6 +400,20 @@ func TestConvertGameSpec(t *testing.T) {
 						safeToEvictAnnotation: safeToEvictValue,
 					},
 				},
+				Spec: v1.PodSpec{
+					TopologySpreadConstraints: []v1.TopologySpreadConstraint{
+						{
+							MaxSkew:           1,
+							TopologyKey:       "topology.kubernetes.io/zone",
+							WhenUnsatisfiable: v1.ScheduleAnyway,
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									schedulerLabelKey: "sample",
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 		"with containers": {
@@ -432,6 +446,18 @@ func TestConvertGameSpec(t *testing.T) {
 						{},
 						{},
 					},
+					TopologySpreadConstraints: []v1.TopologySpreadConstraint{
+						{
+							MaxSkew:           1,
+							TopologyKey:       "topology.kubernetes.io/zone",
+							WhenUnsatisfiable: v1.ScheduleAnyway,
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									schedulerLabelKey: "sample",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -461,6 +487,18 @@ func TestConvertGameSpec(t *testing.T) {
 					Tolerations: []v1.Toleration{
 						{},
 					},
+					TopologySpreadConstraints: []v1.TopologySpreadConstraint{
+						{
+							MaxSkew:           1,
+							TopologyKey:       "topology.kubernetes.io/zone",
+							WhenUnsatisfiable: v1.ScheduleAnyway,
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									schedulerLabelKey: "sample",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -488,6 +526,18 @@ func TestConvertGameSpec(t *testing.T) {
 				},
 				Spec: v1.PodSpec{
 					Affinity: &v1.Affinity{},
+					TopologySpreadConstraints: []v1.TopologySpreadConstraint{
+						{
+							MaxSkew:           1,
+							TopologyKey:       "topology.kubernetes.io/zone",
+							WhenUnsatisfiable: v1.ScheduleAnyway,
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									schedulerLabelKey: "sample",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -519,6 +569,18 @@ func TestConvertGameSpec(t *testing.T) {
 				},
 				Spec: v1.PodSpec{
 					Affinity: &v1.Affinity{},
+					TopologySpreadConstraints: []v1.TopologySpreadConstraint{
+						{
+							MaxSkew:           1,
+							TopologyKey:       "topology.kubernetes.io/zone",
+							WhenUnsatisfiable: v1.ScheduleAnyway,
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									schedulerLabelKey: "sample",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -550,6 +612,18 @@ func TestConvertGameSpec(t *testing.T) {
 				},
 				Spec: v1.PodSpec{
 					Affinity: &v1.Affinity{},
+					TopologySpreadConstraints: []v1.TopologySpreadConstraint{
+						{
+							MaxSkew:           1,
+							TopologyKey:       "topology.kubernetes.io/zone",
+							WhenUnsatisfiable: v1.ScheduleAnyway,
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									schedulerLabelKey: "sample",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -577,6 +651,18 @@ func TestConvertGameSpec(t *testing.T) {
 				},
 				Spec: v1.PodSpec{
 					TerminationGracePeriodSeconds: int64Pointer(10),
+					TopologySpreadConstraints: []v1.TopologySpreadConstraint{
+						{
+							MaxSkew:           1,
+							TopologyKey:       "topology.kubernetes.io/zone",
+							WhenUnsatisfiable: v1.ScheduleAnyway,
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									schedulerLabelKey: "sample",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
