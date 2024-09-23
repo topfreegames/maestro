@@ -48,17 +48,19 @@ type SchedulerManager struct {
 	schedulerCache   ports.SchedulerCache
 	operationManager ports.OperationManager
 	roomStorage      ports.RoomStorage
+	config           SchedulerManagerConfig
 	logger           *zap.Logger
 }
 
 var _ ports.SchedulerManager = (*SchedulerManager)(nil)
 
-func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache ports.SchedulerCache, operationManager ports.OperationManager, roomStorage ports.RoomStorage) *SchedulerManager {
+func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache ports.SchedulerCache, operationManager ports.OperationManager, roomStorage ports.RoomStorage, config SchedulerManagerConfig) *SchedulerManager {
 	return &SchedulerManager{
 		schedulerStorage: schedulerStorage,
 		operationManager: operationManager,
 		schedulerCache:   schedulerCache,
 		roomStorage:      roomStorage,
+		config:           config,
 		logger:           zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "scheduler_manager")),
 	}
 }
@@ -87,6 +89,10 @@ func (s *SchedulerManager) CreateScheduler(ctx context.Context, scheduler *entit
 	err := scheduler.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("failing in creating schedule: %w", err)
+	}
+
+	if scheduler.PdbMaxUnavailable == "" {
+		scheduler.PdbMaxUnavailable = s.config.DefaultPdbMaxUnavailable
 	}
 
 	err = s.schedulerStorage.CreateScheduler(ctx, scheduler)
@@ -158,6 +164,10 @@ func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(c
 		return nil, portsErrors.NewErrInvalidArgument("error patching scheduler: %s", err.Error())
 	}
 
+	if scheduler.PdbMaxUnavailable == "" {
+		scheduler.PdbMaxUnavailable = s.config.DefaultPdbMaxUnavailable
+	}
+
 	if err := scheduler.Validate(); err != nil {
 		return nil, portsErrors.NewErrInvalidArgument("invalid patched scheduler: %s", err.Error())
 	}
@@ -194,6 +204,9 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 	}
 
 	scheduler.Spec.Version = currentScheduler.Spec.Version
+	if scheduler.PdbMaxUnavailable == "" {
+		scheduler.PdbMaxUnavailable = s.config.DefaultPdbMaxUnavailable
+	}
 	err = scheduler.Validate()
 	if err != nil {
 		return nil, err

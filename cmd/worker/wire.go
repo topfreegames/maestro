@@ -70,6 +70,7 @@ func initializeWorker(c config.Config, builder *worker.WorkerBuilder) (*workerss
 		worker.ProvideWorkerOptions,
 		workersservice.NewWorkersManager,
 		service.NewSchedulerManager,
+		service.NewSchedulerManagerConfig,
 	)
 
 	return &workersservice.WorkersManager{}, nil

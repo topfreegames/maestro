@@ -123,10 +123,12 @@ message CreateSchedulerRequest {
   optional Autoscaling autoscaling = 7;
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 8;
+  // PDB MaxUnavailable Specification
+  string pdb_max_unavailable = 9;
   // Add annotations for scheduler
-  map<string, string> annotations = 9;
+  map<string, string> annotations = 10;
   // Add labels for scheduler
-  map<string, string> labels = 10;
+  map<string, string> labels = 11;
 }
 
 // Get Scheduler operation request
@@ -161,10 +163,12 @@ message NewSchedulerVersionRequest {
   optional Autoscaling autoscaling = 7;
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 8;
+  // PDB MaxUnavailable Specification
+  string pdb_max_unavailable = 9;
   // New annotations for scheduler
-  map<string, string> annotations = 9;
+  map<string, string> annotations = 10;
   // New labels for scheduler
-  map<string, string> labels = 10;
+  map<string, string> labels = 11;
 }
 
 // Update schedule operation response payload.
@@ -189,10 +193,12 @@ message PatchSchedulerRequest {
   optional OptionalAutoscaling autoscaling = 6;
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 7;
+  // PDB MaxUnavailable Specification
+  string pdb_max_unavailable = 8;
   // Annotations declaration for the scheduler
-  map<string, string> annotations = 8;
+  map<string, string> annotations = 9;
   // Labels declaration for the scheduler
-  map<string, string> labels = 9;
+  map<string, string> labels = 10;
 }
 
 // PatchSchedulerResponse have the operation response id that represents the operation creted to this change.

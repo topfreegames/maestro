@@ -20,11 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package config
+package schedulers
 
-import "time"
-
-type RuntimeWatcherConfig struct {
-	DisruptionWorkerIntervalSeconds time.Duration
-	DisruptionSafetyPercentage      float64
+type SchedulerManagerConfig struct {
+	DefaultPdbMaxUnavailable string `validate:"required,pdb_max_unavailable"`
 }

@@ -50,7 +50,11 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 	if err != nil {
 		return nil, err
 	}
-	schedulerManager := service.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+	schedulerManagerConfig, err := service.NewSchedulerManagerConfig(conf)
+	if err != nil {
+		return nil, err
+	}
+	schedulerManager := service.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, schedulerManagerConfig)
 	schedulersHandler := handlers.ProvideSchedulersHandler(schedulerManager)
 	operationsHandler := handlers.ProvideOperationsHandler(operationManager)
 	serveMux := provideManagementMux(ctx, schedulersHandler, operationsHandler)

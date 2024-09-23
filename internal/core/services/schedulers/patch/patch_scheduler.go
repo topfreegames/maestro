@@ -49,7 +49,8 @@ const (
 	LabelAutoscaling = "autoscaling"
 	// LabelSchedulerForwarders is the forwarders key in the patch map.
 	LabelSchedulerForwarders = "forwarders"
-
+	// LabelPDBMaxUnavailable is the PDB's maxUnavailable spec key in the patch map.
+	LabelPDBMaxUnavailable = "pdbMaxUnavailable"
 	// LabelSpecTerminationGracePeriod is the termination grace period key in the patch map.
 	LabelSpecTerminationGracePeriod = "termination_grace_period"
 	// LabelSpecContainers is the containers key in the patch map.
@@ -112,6 +113,10 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 		if scheduler.Forwarders, ok = patchMap[LabelSchedulerForwarders].([]*forwarder.Forwarder); !ok {
 			return nil, fmt.Errorf("error parsing scheduler: forwarders malformed")
 		}
+	}
+
+	if _, ok := patchMap[LabelPDBMaxUnavailable]; ok {
+		scheduler.PdbMaxUnavailable = fmt.Sprint(patchMap[LabelPDBMaxUnavailable])
 	}
 
 	if _, ok := patchMap[LabelSchedulerSpec]; ok {
