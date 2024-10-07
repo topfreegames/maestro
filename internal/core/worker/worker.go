@@ -55,7 +55,6 @@ type WorkerOptions struct {
 	RoomStorage           ports.RoomStorage
 	InstanceStorage       ports.GameRoomInstanceStorage
 	MetricsReporterConfig *config.MetricsReporterConfig
-	RuntimeWatcherConfig  *config.RuntimeWatcherConfig
 }
 
 // Configuration holds all worker configuration parameters.

@@ -57,6 +57,7 @@ type schedulerInfo struct {
 	TerminationGracePeriod time.Duration
 	Toleration             string
 	Affinity               string
+	PdbMaxUnavailable      string
 	Containers             []game_room.Container
 	PortRange              *port.PortRange
 	MaxSurge               string
@@ -78,6 +79,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		MaxSurge:               scheduler.MaxSurge,
 		RoomsReplicas:          scheduler.RoomsReplicas,
 		Forwarders:             scheduler.Forwarders,
+		PdbMaxUnavailable:      scheduler.PdbMaxUnavailable,
 		Autoscaling:            scheduler.Autoscaling,
 		Annotations:            scheduler.Annotations,
 		Labels:                 scheduler.Labels,
@@ -113,13 +115,14 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 			Affinity:               info.Affinity,
 			Containers:             info.Containers,
 		},
-		PortRange:       info.PortRange,
-		RollbackVersion: s.RollbackVersion,
-		CreatedAt:       s.CreatedAt.Time,
-		LastDownscaleAt: info.LastDownscaleAt,
-		MaxSurge:        info.MaxSurge,
-		RoomsReplicas:   info.RoomsReplicas,
-		Forwarders:      info.Forwarders,
-		Autoscaling:     info.Autoscaling,
+		PortRange:         info.PortRange,
+		RollbackVersion:   s.RollbackVersion,
+		CreatedAt:         s.CreatedAt.Time,
+		LastDownscaleAt:   info.LastDownscaleAt,
+		MaxSurge:          info.MaxSurge,
+		RoomsReplicas:     info.RoomsReplicas,
+		Forwarders:        info.Forwarders,
+		PdbMaxUnavailable: info.PdbMaxUnavailable,
+		Autoscaling:       info.Autoscaling,
 	}, nil
 }

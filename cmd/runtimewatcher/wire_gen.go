@@ -12,7 +12,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/events"
 	"github.com/topfreegames/maestro/internal/core/services/workers"
 	"github.com/topfreegames/maestro/internal/core/worker"
-	config2 "github.com/topfreegames/maestro/internal/core/worker/config"
 	"github.com/topfreegames/maestro/internal/core/worker/runtimewatcher"
 	"github.com/topfreegames/maestro/internal/service"
 )
@@ -25,7 +24,8 @@ func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) 
 	if err != nil {
 		return nil, err
 	}
-	runtime, err := service.NewRuntimeKubernetes(c)
+	clock := service.NewClockTime()
+	portAllocator, err := service.NewPortAllocatorRandom(c)
 	if err != nil {
 		return nil, err
 	}
@@ -33,12 +33,11 @@ func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) 
 	if err != nil {
 		return nil, err
 	}
-	clock := service.NewClockTime()
-	portAllocator, err := service.NewPortAllocatorRandom(c)
+	gameRoomInstanceStorage, err := service.NewGameRoomInstanceStorageRedis(c)
 	if err != nil {
 		return nil, err
 	}
-	gameRoomInstanceStorage, err := service.NewGameRoomInstanceStorageRedis(c)
+	runtime, err := service.NewRuntimeKubernetes(c)
 	if err != nil {
 		return nil, err
 	}
@@ -60,12 +59,9 @@ func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) 
 		return nil, err
 	}
 	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
-	runtimeWatcherConfig := provideRuntimeWatcherConfig(c)
 	workerOptions := &worker.WorkerOptions{
-		Runtime:              runtime,
-		RoomStorage:          roomStorage,
-		RoomManager:          roomManager,
-		RuntimeWatcherConfig: runtimeWatcherConfig,
+		RoomManager: roomManager,
+		Runtime:     runtime,
 	}
 	workersManager := workers.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
 	return workersManager, nil
@@ -80,14 +76,6 @@ func provideRuntimeWatcherBuilder() *worker.WorkerBuilder {
 	}
 }
 
-func provideRuntimeWatcherConfig(c config.Config) *config2.RuntimeWatcherConfig {
-	return &config2.RuntimeWatcherConfig{
-		DisruptionWorkerIntervalSeconds: c.GetDuration("runtimeWatcher.disruptionWorker.intervalSeconds"),
-		DisruptionSafetyPercentage:      c.GetFloat64("runtimeWatcher.disruptionWorker.safetyPercentage"),
-	}
-}
+var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, RoomManagerSet, wire.Struct(new(worker.WorkerOptions), "RoomManager", "Runtime"))
 
-var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, service.NewRoomStorageRedis, RoomManagerSet,
-	provideRuntimeWatcherConfig, wire.Struct(new(worker.WorkerOptions), "Runtime", "RoomStorage", "RoomManager", "RuntimeWatcherConfig"))
-
-var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, service.NewRoomManagerConfig, service.NewRoomManager, service.NewEventsForwarder, events.NewEventsForwarderService, service.NewEventsForwarderServiceConfig)
+var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, service.NewRoomManagerConfig, service.NewRoomManager, service.NewEventsForwarder, events.NewEventsForwarderService, service.NewEventsForwarderServiceConfig)

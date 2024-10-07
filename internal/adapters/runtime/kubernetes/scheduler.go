@@ -27,19 +27,18 @@ import (
 	"strconv"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	pdbEntity "github.com/topfreegames/maestro/internal/core/entities/pdb"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	v1Policy "k8s.io/api/policy/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
-	DefaultDisruptionSafetyPercentage float64 = 0.05
-	MajorKubeVersionPDB               int     = 1
-	MinorKubeVersionPDB               int     = 21
+	MajorKubeVersionPDB int = 1
+	MinorKubeVersionPDB int = 21
 )
 
 func (k *kubernetes) isPDBSupported() bool {
@@ -96,10 +95,7 @@ func (k *kubernetes) createPDBFromScheduler(ctx context.Context, scheduler *enti
 			},
 		},
 		Spec: v1Policy.PodDisruptionBudgetSpec{
-			MinAvailable: &intstr.IntOrString{
-				Type:   intstr.Int,
-				IntVal: int32(0),
-			},
+			MaxUnavailable: pdbEntity.ConvertStrToSpec(scheduler.PdbMaxUnavailable),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"maestro-scheduler": scheduler.Name,
@@ -173,29 +169,8 @@ func (k *kubernetes) DeleteScheduler(ctx context.Context, scheduler *entities.Sc
 	return nil
 }
 
-func (k *kubernetes) MitigateDisruption(
-	ctx context.Context,
-	scheduler *entities.Scheduler,
-	roomAmount int,
-	safetyPercentage float64,
-) error {
-	if scheduler == nil {
-		return errors.NewErrInvalidArgument("empty pointer received for scheduler, can not mitigate disruptions")
-	}
-
-	incSafetyPercentage := 1.0
-	if safetyPercentage < DefaultDisruptionSafetyPercentage {
-		k.logger.Warn(
-			"invalid safety percentage, using default percentage",
-			zap.Float64("safetyPercentage", safetyPercentage),
-			zap.Float64("DefaultDisruptionSafetyPercentage", DefaultDisruptionSafetyPercentage),
-		)
-		safetyPercentage = DefaultDisruptionSafetyPercentage
-	}
-	incSafetyPercentage += safetyPercentage
-
-	// For kubernetes mitigating disruptions means updating the current PDB
-	// minAvailable to the number of occupied rooms if above a threshold
+func (k *kubernetes) UpdateScheduler(ctx context.Context, scheduler *entities.Scheduler) error {
+	// Check if PDB exists, if not, create it
 	pdb, err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
 	if err != nil && !kerrors.IsNotFound(err) {
 		// Non-recoverable errors
@@ -209,31 +184,8 @@ func (k *kubernetes) MitigateDisruption(
 		}
 	}
 
-	var currentPdbMinAvailable int32
-	// PDB might exist and is based on MaxUnavailable
-	if pdb.Spec.MinAvailable != nil {
-		currentPdbMinAvailable = pdb.Spec.MinAvailable.IntVal
-	}
-
-	if currentPdbMinAvailable == int32(float64(roomAmount)*incSafetyPercentage) {
-		return nil
-	}
-
-	// In theory, the PDB object can be changed in the runtime in the meantime after
-	// fetching initial state/ask for creation (beginning of the function) and before
-	// updating the value. This should never happen in production because there is only
-	// one agent setting this PDB in the namespace and it's the worker. However, on tests
-	// we were seeing intermittent failures running parallel cases, hence why adding this
-	// code it is safer to update the PDB object
-	pdb, err = k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
-	if err != nil || pdb == nil {
-		return errors.NewErrUnexpected("non recoverable error when getting PDB for scheduler '%s': %s", scheduler.Name, err)
-	}
 	pdb.Spec = v1Policy.PodDisruptionBudgetSpec{
-		MinAvailable: &intstr.IntOrString{
-			Type:   intstr.Int,
-			IntVal: int32(float64(roomAmount) * incSafetyPercentage),
-		},
+		MaxUnavailable: pdbEntity.ConvertStrToSpec(scheduler.PdbMaxUnavailable),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"maestro-scheduler": scheduler.Name,
@@ -243,7 +195,7 @@ func (k *kubernetes) MitigateDisruption(
 
 	_, err = k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Update(ctx, pdb, metav1.UpdateOptions{})
 	if err != nil {
-		return errors.NewErrUnexpected("error updating PDB to mitigate disruptions for scheduler '%s': %s", scheduler.Name, err)
+		return errors.NewErrUnexpected("error updating PDB for scheduler '%s': %s", scheduler.Name, err)
 	}
 
 	return nil

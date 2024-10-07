@@ -69,13 +69,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}, {Version: "v1.1.0"}, {Version: "v1.2.0"}}
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
@@ -120,13 +121,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    3,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}, {Version: "v1.1.0"}, {Version: "v1.2.0"}}
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
@@ -174,13 +176,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
@@ -225,13 +228,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.1.0"}, {Version: "v1.2.0"}, {Version: "v1.3.0"}}
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
@@ -276,13 +280,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.1.0"}, {Version: "v1.2.0"}, {Version: "v1.3.0"}}
 		gameRoom := &game_room.GameRoom{ID: "id-1"}
@@ -326,12 +331,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return([]*entities.SchedulerVersion{}, errors.NewErrUnexpected("some_error"))
@@ -358,13 +364,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v-----"}}
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
@@ -391,12 +398,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
 		newSchedulerWithNewVersion := newScheduler
@@ -433,12 +441,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    3,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
 		newSchedulerWithNewVersion := newScheduler
@@ -480,13 +489,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    3,
 		}
 		ctx, cancelFn := context.WithCancel(context.Background())
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}, {Version: "v1.1.0"}, {Version: "v1.2.0"}}
 
@@ -522,12 +532,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
 		newSchedulerWithNewVersion := newScheduler
@@ -566,12 +577,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
 		newSchedulerWithNewVersion := newScheduler
@@ -617,12 +629,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v1.2.0"}}
 
 		newSchedulerWithNewVersion := newScheduler
@@ -663,13 +676,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v3.1.0"}, {Version: "v4.2.0"}}
 
@@ -707,13 +721,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v1.3.0"}, {Version: "v1.5.0"}}
 
@@ -751,13 +766,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v2.0.0"}, {Version: "v2.1.0"}, {Version: "v3.5.0"}}
 
@@ -794,12 +810,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return([]*entities.SchedulerVersion{}, errors.NewErrUnexpected("some_error"))
@@ -825,13 +842,14 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v-----"}}
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
 		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
@@ -857,12 +875,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		newSchedulerWithNewVersion := newScheduler
 		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
@@ -894,12 +913,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		newSchedulerWithNewVersion := newScheduler
 		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
@@ -925,12 +945,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		newSchedulerWithNewVersion := newScheduler
 		newSchedulerWithNewVersion.Spec.Version = "v1.1.0"
 		newSchedulerWithNewVersion.RollbackVersion = "v1.0.0"
@@ -956,12 +977,13 @@ func TestExecutor_Execute(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 
 		// mocks for SchedulerManager GetActiveScheduler method
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
@@ -994,12 +1016,13 @@ func TestExecutor_Rollback(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		executor.AddValidationRoomID(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionRollback).Return(nil)
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(&newScheduler, nil)
@@ -1023,12 +1046,13 @@ func TestExecutor_Rollback(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		executor.AddValidationRoomID(newScheduler.Name, &game_room.GameRoom{ID: "room1"})
 		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionRollback).Return(errors.NewErrUnexpected("some error"))
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
@@ -1050,12 +1074,13 @@ func TestExecutor_Rollback(t *testing.T) {
 		roomManager := mockports.NewMockRoomManager(mockCtrl)
 		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
-		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
 		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(&newScheduler, nil)
 		schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), &newScheduler).Return(nil)
 		result := executor.Rollback(context.Background(), op, operationDef, nil)
@@ -1063,6 +1088,84 @@ func TestExecutor_Rollback(t *testing.T) {
 		require.Nil(t, result)
 	})
 
+	t.Run("should call runtime to update max unavailable if it has changed", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		currentActiveScheduler := newValidSchedulerWithImageVersion("image-v1")
+		currentActiveScheduler.PdbMaxUnavailable = "5%"
+		newScheduler := *newValidSchedulerWithImageVersion("image-v1")
+		newScheduler.PdbMaxUnavailable = "10%"
+		op := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
+		roomManager := mockports.NewMockRoomManager(mockCtrl)
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
+		config := newversion.Config{
+			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationAttempts:    1,
+		}
+		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}}
+
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
+
+		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
+		schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), currentActiveScheduler).Return(nil)
+		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		schedulerManager.EXPECT().CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).Return(switchOpID, nil)
+		runtime.EXPECT().UpdateScheduler(gomock.Any(), &newScheduler).Return(nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+
+		result := executor.Execute(context.Background(), op, operationDef)
+
+		require.Nil(t, result)
+	})
+
+	t.Run("should not call runtime to update max unavailable if it has not changed", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		currentActiveScheduler := newValidSchedulerWithImageVersion("image-v1")
+		currentActiveScheduler.PdbMaxUnavailable = "5%"
+		newScheduler := *newValidSchedulerWithImageVersion("image-v1")
+		newScheduler.PdbMaxUnavailable = "5%"
+		newScheduler.MaxSurge = "42"
+		op := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
+		roomManager := mockports.NewMockRoomManager(mockCtrl)
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		runtime := mockports.NewMockRuntime(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
+		config := newversion.Config{
+			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationAttempts:    1,
+		}
+		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}}
+
+		executor := newversion.NewExecutor(runtime, roomManager, schedulerManager, operationsManager, config)
+
+		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
+		schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), currentActiveScheduler).Return(nil)
+		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		schedulerManager.EXPECT().CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).Return(switchOpID, nil)
+		runtime.EXPECT().UpdateScheduler(gomock.Any(), &newScheduler).Times(0)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+
+		result := executor.Execute(context.Background(), op, operationDef)
+
+		require.Nil(t, result)
+	})
 }
 
 func newValidSchedulerWithImageVersion(imageVersion string) *entities.Scheduler {

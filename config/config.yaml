@@ -74,6 +74,8 @@ operations:
       limit: 1000
 
 services:
+  schedulerManager:
+    defaultPdbMaxUnavailable: "5%"
   roomManager:
     roomPingTimeoutMillis: 240000
     roomInitializationTimeoutMillis: 120000

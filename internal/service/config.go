@@ -25,12 +25,17 @@ package service
 import (
 	"time"
 
+	"github.com/topfreegames/maestro/internal/core/entities/pdb"
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
 	"github.com/topfreegames/maestro/internal/core/services/events"
 	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations"
 	roommanager "github.com/topfreegames/maestro/internal/core/services/rooms"
+	schedulerManager "github.com/topfreegames/maestro/internal/core/services/schedulers"
 	"github.com/topfreegames/maestro/internal/core/services/workers"
+	"github.com/topfreegames/maestro/internal/validations"
+	"go.uber.org/zap"
 
 	"github.com/topfreegames/maestro/internal/core/operations/healthcontroller"
 	"github.com/topfreegames/maestro/internal/core/worker"
@@ -48,6 +53,7 @@ const (
 	operationLeaseTTLMillisConfigPath           = "services.operationManager.operationLeaseTTLMillis"
 	schedulerCacheTTLMillisConfigPath           = "services.eventsForwarder.schedulerCacheTTLMillis"
 	operationsRoomsAddLimitConfigPath           = "operations.rooms.add.limit"
+	schedulerDefaultPdbMaxUnavailablePath       = "services.schedulerManager.defaultPdbMaxUnavailable"
 )
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
@@ -103,6 +109,21 @@ func NewRoomManagerConfig(c config.Config) (roommanager.RoomManagerConfig, error
 	}
 
 	return roomManagerConfig, nil
+}
+
+// NewSchedulerManagerConfig instantiate a new SchedulerManagerConfig to be used by the SchedulerManager to customize its configuration.
+func NewSchedulerManagerConfig(c config.Config) (schedulerManager.SchedulerManagerConfig, error) {
+	schedulerConfig := schedulerManager.SchedulerManagerConfig{
+		DefaultPdbMaxUnavailable: c.GetString(schedulerDefaultPdbMaxUnavailablePath),
+	}
+	if err := validations.Validate.Struct(schedulerConfig); err != nil {
+		zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "config")).Info(
+			"error parsing default pdb max unavailable, using default",
+			zap.String("Default const PDB: ", pdb.DefaultPdbMaxUnavailablePercentage),
+		)
+		schedulerConfig.DefaultPdbMaxUnavailable = pdb.DefaultPdbMaxUnavailablePercentage
+	}
+	return schedulerConfig, nil
 }
 
 // NewWorkersConfig instantiate a new workers Config stucture to be used by the workers to customize them from the config package.
