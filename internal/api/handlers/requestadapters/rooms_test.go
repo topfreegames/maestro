@@ -59,12 +59,12 @@ func TestFromApiUpdateRoomRequestToEntity(t *testing.T) {
 			Title: "receives valid ping request, returns gameRoom entity",
 			Input: Input{
 				PingRequest: &api.UpdateRoomWithPingRequest{
-					SchedulerName: genericString,
-					RoomName:      genericString,
-					Metadata:      nil,
-					Status:        "ready",
-					Timestamp:     int64(genericTime.Second()),
-					OccupiedSlots: int64(occupiedSlots),
+					SchedulerName:  genericString,
+					RoomName:       genericString,
+					Metadata:       nil,
+					Status:         "ready",
+					Timestamp:      int64(genericTime.Second()),
+					RunningMatches: int64(occupiedSlots),
 				},
 			},
 			Output: Output{
@@ -85,12 +85,12 @@ func TestFromApiUpdateRoomRequestToEntity(t *testing.T) {
 			Title: "receives invalid ping request, returns err and gameRoom nil",
 			Input: Input{
 				PingRequest: &api.UpdateRoomWithPingRequest{
-					SchedulerName: genericString,
-					RoomName:      genericString,
-					Metadata:      nil,
-					Status:        "INVALID_PING",
-					Timestamp:     int64(genericTime.Second()),
-					OccupiedSlots: int64(occupiedSlots),
+					SchedulerName:  genericString,
+					RoomName:       genericString,
+					Metadata:       nil,
+					Status:         "INVALID_PING",
+					Timestamp:      int64(genericTime.Second()),
+					RunningMatches: int64(occupiedSlots),
 				},
 			},
 			Output: Output{
