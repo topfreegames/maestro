@@ -41,7 +41,7 @@ func FromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*
 		PingStatus:    status,
 		Metadata:      request.Metadata.AsMap(),
 		LastPingAt:    time.Unix(request.GetTimestamp(), 0),
-		OccupiedSlots: int(request.GetOccupiedSlots()),
+		OccupiedSlots: int(request.GetRunningMatches()),
 	}, nil
 }
 

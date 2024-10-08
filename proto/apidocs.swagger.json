@@ -122,10 +122,10 @@
                   "format": "int64",
                   "description": "Timestamp of the ping event."
                 },
-                "occupiedSlots": {
+                "runningMatches": {
                   "type": "string",
                   "format": "int64",
-                  "description": "The number of occupied slots in the game room."
+                  "description": "The number of running matches in the game room."
                 }
               },
               "description": "The ping request."
@@ -322,10 +322,10 @@
                   "format": "int64",
                   "description": "Timestamp of the status update."
                 },
-                "occupiedSlots": {
+                "runningMatches": {
                   "type": "string",
                   "format": "int64",
-                  "description": "The number of occupied slots in the game room."
+                  "description": "The number of running_matches in the game room."
                 }
               },
               "description": "The player event request."
