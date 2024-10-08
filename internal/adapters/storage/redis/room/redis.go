@@ -74,6 +74,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 	roomHashCmd := r.client.HGetAll(ctx, getRoomRedisKey(room.SchedulerID, room.ID))
 	statusCmd := p.ZScore(ctx, getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
 	pingCmd := p.ZScore(ctx, getRoomPingRedisKey(room.SchedulerID), room.ID)
+	occupancyCmd := p.ZScore(ctx, getRoomOccupancyRedisKey(room.SchedulerID), room.ID)
 	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
 		_, err = p.Exec(ctx)
 		return err
@@ -87,6 +88,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 
 	room.Status = game_room.GameRoomStatus(statusCmd.Val())
 	room.LastPingAt = time.Unix(int64(pingCmd.Val()), 0)
+	room.OccupiedSlots = int(occupancyCmd.Val())
 	err = json.NewDecoder(strings.NewReader(roomHashCmd.Val()[metadataKey])).Decode(&room.Metadata)
 	if err != nil {
 		return nil, errors.NewErrEncoding("error unmarshalling room %s json", roomID).WithError(err)
@@ -126,6 +128,11 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *game_room.Game
 		createdAtKey:        time.Now().Unix(),
 	})
 
+	occupancyCmd := p.ZAddNX(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{
+		Member: room.ID,
+		Score:  float64(room.OccupiedSlots),
+	})
+
 	statusCmd := p.ZAddNX(ctx, getRoomStatusSetRedisKey(room.SchedulerID), &redis.Z{
 		Member: room.ID,
 		Score:  float64(room.Status),
@@ -144,7 +151,7 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *game_room.Game
 		return errors.NewErrUnexpected("error storing room %s on redis", room.ID).WithError(err)
 	}
 
-	if statusCmd.Val() < 1 || pingCmd.Val() < 1 {
+	if statusCmd.Val() < 1 || pingCmd.Val() < 1 || occupancyCmd.Val() < 1 {
 		return errors.NewErrAlreadyExists("room %s already exists in scheduler %s", room.ID, room.SchedulerID)
 	}
 
@@ -173,6 +180,11 @@ func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *game_room.Game
 		Score:  float64(room.LastPingAt.Unix()),
 	})
 
+	p.ZAddXXCh(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{
+		Member: room.ID,
+		Score:  float64(room.OccupiedSlots),
+	})
+
 	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
 		_, err = p.Exec(ctx)
 		return err
@@ -190,6 +202,7 @@ func (r *redisStateStorage) DeleteRoom(ctx context.Context, scheduler, roomID st
 	p.Del(ctx, getRoomRedisKey(scheduler, roomID))
 	p.ZRem(ctx, getRoomStatusSetRedisKey(scheduler), roomID)
 	p.ZRem(ctx, getRoomPingRedisKey(scheduler), roomID)
+	p.ZRem(ctx, getRoomOccupancyRedisKey(scheduler), roomID)
 	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
 		cmders, err = p.Exec(ctx)
 		return err
@@ -398,4 +411,8 @@ func getRoomPingRedisKey(scheduler string) string {
 
 func getRoomStatusUpdateChannel(scheduler, roomID string) string {
 	return fmt.Sprintf("scheduler:%s:rooms:%s:updatechan", scheduler, roomID)
+}
+
+func getRoomOccupancyRedisKey(scheduler string) string {
+	return fmt.Sprintf("scheduler:%s:occupancy", scheduler)
 }

@@ -130,6 +130,7 @@ type GameRoom struct {
 	IsValidationRoom bool
 	LastPingAt       time.Time
 	CreatedAt        time.Time
+	OccupiedSlots    int
 }
 
 // validStatusTransitions this map has all possible status changes for a game
