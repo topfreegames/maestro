@@ -399,3 +399,31 @@ func TestHasValidPortRangeConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestIsSameMajorVersion(t *testing.T) {
+	s := &entities.Scheduler{}
+	s.Spec.Version = "v10.5.0"
+
+	testCases := []struct {
+		name         string
+		otherVersion string
+		expected     bool
+	}{
+		{"Both versions are the same", "v10.5.0", true},
+		{"Only minor version difference", "v10.6.0", true},
+		{"Only bugfix version difference", "v10.5.1", true},
+		{"otherVersion without v prefix", "10.0.0", true},
+		{"Major version difference", "v11.0.0", false},
+		{"Empty otherVersion", "", false},
+		{"otherVersion not semantic", "version10", false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := s.IsSameMajorVersion(tc.otherVersion)
+			if result != tc.expected {
+				t.Errorf("Test %s failed: expected %v, got %v", tc.name, tc.expected, result)
+			}
+		})
+	}
+}
