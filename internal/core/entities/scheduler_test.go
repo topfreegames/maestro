@@ -399,3 +399,35 @@ func TestHasValidPortRangeConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestHasMajorVersionDifference(t *testing.T) {
+	s := &entities.Scheduler{}
+	s.Spec.Version = "v10.5.0"
+
+	testCases := []struct {
+		name         string
+		otherVersion string
+		expected     bool
+	}{
+		{"Major version difference", "v11.0.0", true},
+		{"No major version difference", "v10.6.0", false},
+		{"Empty otherVersion", "", true},
+		{"otherVersion without v prefix", "10.0.0", true},
+		{"otherVersion not semantic", "version10", true},
+		{"otherVersion semantic but not convertible to integer", "vX.5.0", true},
+		{"Both versions are the same", "v10.5.0", false},
+		{"Difference only in bugfix version", "v10.5.1", false},
+		{"Scheduler.Spec.Version without v prefix", "v11.0.0", true},
+		{"Scheduler.Spec.Version not semantic", "v11.0.0", true},
+		{"Scheduler.Spec.Version semantic but not convertible to integer", "v11.0.0", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := s.HasMajorVersionDifference(tc.otherVersion)
+			if result != tc.expected {
+				t.Errorf("Test %s failed: expected %v, got %v", tc.name, tc.expected, result)
+			}
+		})
+	}
+}

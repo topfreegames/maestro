@@ -596,8 +596,11 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.NoError(t, err)
 
-		availableRooms = append(availableRooms, &game_room.GameRoom{ID: notFoundRoomID, SchedulerID: scheduler.Name, Status: game_room.GameStatusError})
-		require.Equal(t, rooms, availableRooms)
+		expectedRooms := []*game_room.GameRoom{
+			{ID: notFoundRoomID, SchedulerID: scheduler.Name, Status: game_room.GameStatusError},
+			{ID: "first-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusReady},
+		}
+		require.Equal(t, rooms, expectedRooms)
 	})
 
 	t.Run("when error happens while fetch a room it returns error", func(t *testing.T) {

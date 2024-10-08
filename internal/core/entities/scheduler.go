@@ -24,6 +24,8 @@ package entities
 
 import (
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
@@ -201,4 +203,26 @@ func (s *Scheduler) HasValidPortRangeConfiguration() error {
 	}
 
 	return nil
+}
+
+func (s *Scheduler) HasMajorVersionDifference(otherVersion string) bool {
+	return extractMajorVersion(otherVersion) != extractMajorVersion(s.Spec.Version)
+}
+
+func extractMajorVersion(version string) int {
+	if version == "" {
+		return -1
+	}
+
+	parts := strings.Split(version[1:], ".")
+	if len(parts) < 1 {
+		return -1
+	}
+
+	majorVersion, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return -1
+	}
+
+	return majorVersion
 }
