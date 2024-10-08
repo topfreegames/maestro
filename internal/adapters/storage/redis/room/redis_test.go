@@ -87,6 +87,10 @@ func assertRedisState(t *testing.T, client *redis.Client, room *game_room.GameRo
 	pingCmd := client.ZScore(context.Background(), getRoomPingRedisKey(room.SchedulerID), room.ID)
 	require.NoError(t, pingCmd.Err())
 	require.Equal(t, float64(room.LastPingAt.Unix()), pingCmd.Val())
+
+	occupancyCmd := client.ZScore(context.Background(), getRoomOccupancyRedisKey(room.SchedulerID), room.ID)
+	require.NoError(t, occupancyCmd.Err())
+	require.Equal(t, float64(room.OccupiedSlots), occupancyCmd.Val())
 }
 
 func assertUpdateStatusEventPublished(t *testing.T, sub *redis.PubSub, room *game_room.GameRoom) {
@@ -114,6 +118,9 @@ func assertRedisStateNonExistent(t *testing.T, client *redis.Client, room *game_
 
 	pingCmd := client.ZScore(context.Background(), getRoomPingRedisKey(room.SchedulerID), room.ID)
 	require.Error(t, pingCmd.Err())
+
+	occupancyCmd := client.ZScore(context.Background(), getRoomOccupancyRedisKey(room.SchedulerID), room.ID)
+	require.Error(t, occupancyCmd.Err())
 }
 
 func requireErrorKind(t *testing.T, expected error, err error) {
@@ -134,6 +141,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			Status:           game_room.GameStatusReady,
 			LastPingAt:       lastPing,
 			IsValidationRoom: false,
+			OccupiedSlots:    10,
 		}
 		require.NoError(t, storage.CreateRoom(ctx, room))
 		assertRedisState(t, client, room)
@@ -150,6 +158,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
+			OccupiedSlots: 10,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -167,6 +176,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
+			OccupiedSlots: 10,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, firstRoom))
@@ -182,6 +192,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
+			OccupiedSlots: 10,
 		}
 
 		requireErrorKind(t, errors.ErrAlreadyExists, storage.CreateRoom(ctx, secondRoom))
@@ -202,6 +213,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			Status:           game_room.GameStatusReady,
 			LastPingAt:       lastPing,
 			IsValidationRoom: false,
+			OccupiedSlots:    20,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -221,6 +233,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
+			OccupiedSlots: 20,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -237,11 +250,12 @@ func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 
 	t.Run("game room exists", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:            "room-1",
+			SchedulerID:   "game",
+			Version:       "1.0",
+			Status:        game_room.GameStatusReady,
+			LastPingAt:    lastPing,
+			OccupiedSlots: 20,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -262,12 +276,13 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 	t.Run("game room without metadata", func(t *testing.T) {
 		createdAt := time.Unix(time.Date(2020, 1, 1, 2, 2, 0, 0, time.UTC).Unix(), 0)
 		expectedRoom := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
-			CreatedAt:   createdAt,
+			ID:            "room-1",
+			SchedulerID:   "game",
+			Version:       "1.0",
+			Status:        game_room.GameStatusReady,
+			LastPingAt:    lastPing,
+			CreatedAt:     createdAt,
+			OccupiedSlots: 30,
 		}
 		metadataJson, _ := json.Marshal(expectedRoom.Metadata)
 
@@ -288,6 +303,11 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 		_ = p.ZAddNX(ctx, getRoomPingRedisKey(expectedRoom.SchedulerID), &redis.Z{
 			Member: expectedRoom.ID,
 			Score:  float64(expectedRoom.LastPingAt.Unix()),
+		})
+
+		_ = p.ZAddNX(ctx, getRoomOccupancyRedisKey(expectedRoom.SchedulerID), &redis.Z{
+			Member: expectedRoom.ID,
+			Score:  float64(expectedRoom.OccupiedSlots),
 		})
 
 		_, _ = p.Exec(ctx)
@@ -310,6 +330,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 			},
 			IsValidationRoom: true,
 			CreatedAt:        createdAt,
+			OccupiedSlots:    30,
 		}
 
 		metadataJson, _ := json.Marshal(expectedRoom.Metadata)
@@ -331,6 +352,11 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 		_ = p.ZAddNX(ctx, getRoomPingRedisKey(expectedRoom.SchedulerID), &redis.Z{
 			Member: expectedRoom.ID,
 			Score:  float64(expectedRoom.LastPingAt.Unix()),
+		})
+
+		_ = p.ZAddNX(ctx, getRoomOccupancyRedisKey(expectedRoom.SchedulerID), &redis.Z{
+			Member: expectedRoom.ID,
+			Score:  float64(expectedRoom.OccupiedSlots),
 		})
 		_, _ = p.Exec(ctx)
 
@@ -605,11 +631,12 @@ func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
 
 	t.Run("game room updates room status", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:            "room-1",
+			SchedulerID:   "game",
+			Version:       "1.0",
+			Status:        game_room.GameStatusReady,
+			LastPingAt:    lastPing,
+			OccupiedSlots: 40,
 		}
 
 		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
@@ -624,11 +651,12 @@ func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
 
 	t.Run("game room doesn't update room status when room doesn't exists", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:          "room-not-found",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  lastPing,
+			ID:            "room-not-found",
+			SchedulerID:   "game",
+			Version:       "1.0",
+			Status:        game_room.GameStatusReady,
+			LastPingAt:    lastPing,
+			OccupiedSlots: 40,
 		}
 
 		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))

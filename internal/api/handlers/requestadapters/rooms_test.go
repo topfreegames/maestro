@@ -48,6 +48,7 @@ func TestFromApiUpdateRoomRequestToEntity(t *testing.T) {
 
 	genericString := "some-value"
 	genericTime := time.Now()
+	occupiedSlots := 10
 
 	testCases := []struct {
 		Title string
@@ -63,6 +64,7 @@ func TestFromApiUpdateRoomRequestToEntity(t *testing.T) {
 					Metadata:      nil,
 					Status:        "ready",
 					Timestamp:     int64(genericTime.Second()),
+					OccupiedSlots: int64(occupiedSlots),
 				},
 			},
 			Output: Output{
@@ -75,6 +77,7 @@ func TestFromApiUpdateRoomRequestToEntity(t *testing.T) {
 					Metadata:         map[string]interface{}{},
 					LastPingAt:       time.Unix(int64(genericTime.Second()), 0),
 					IsValidationRoom: false,
+					OccupiedSlots:    occupiedSlots,
 				},
 			},
 		},
@@ -87,6 +90,7 @@ func TestFromApiUpdateRoomRequestToEntity(t *testing.T) {
 					Metadata:      nil,
 					Status:        "INVALID_PING",
 					Timestamp:     int64(genericTime.Second()),
+					OccupiedSlots: int64(occupiedSlots),
 				},
 			},
 			Output: Output{

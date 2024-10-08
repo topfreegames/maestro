@@ -36,11 +36,12 @@ func FromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*
 	}
 
 	return &game_room.GameRoom{
-		ID:          request.GetRoomName(),
-		SchedulerID: request.GetSchedulerName(),
-		PingStatus:  status,
-		Metadata:    request.Metadata.AsMap(),
-		LastPingAt:  time.Unix(request.GetTimestamp(), 0),
+		ID:            request.GetRoomName(),
+		SchedulerID:   request.GetSchedulerName(),
+		PingStatus:    status,
+		Metadata:      request.Metadata.AsMap(),
+		LastPingAt:    time.Unix(request.GetTimestamp(), 0),
+		OccupiedSlots: int(request.GetOccupiedSlots()),
 	}, nil
 }
 
