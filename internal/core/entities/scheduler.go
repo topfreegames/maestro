@@ -26,6 +26,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
 
@@ -201,4 +202,18 @@ func (s *Scheduler) HasValidPortRangeConfiguration() error {
 	}
 
 	return nil
+}
+
+func (s *Scheduler) IsSameMajorVersion(otherVersion string) bool {
+	otherVer, err := semver.NewVersion(otherVersion)
+	if err != nil {
+		return false
+	}
+
+	schedulerVer, err := semver.NewVersion(s.Spec.Version)
+	if err != nil {
+		return false
+	}
+
+	return otherVer.Major() == schedulerVer.Major()
 }

@@ -580,24 +580,29 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		ctx := context.Background()
 		scheduler := newValidScheduler()
 		availableRooms := []*game_room.GameRoom{
-			{ID: "first-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusReady},
+			{ID: "first-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusReady, Version: scheduler.Spec.Version},
 		}
 
 		notFoundRoomID := "second-room"
 
-		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, gomock.Any()).Return([]string{availableRooms[0].ID}, nil).AnyTimes()
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusError).Return([]string{}, nil).Times(1)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusPending).Return([]string{}, nil).Times(1)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusReady).Return([]string{availableRooms[0].ID}, nil).Times(1)
+		roomStorage.EXPECT().GetRoomIDsByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied).Return([]string{}, nil).Times(1)
 		roomStorage.EXPECT().GetRoomIDsByLastPing(ctx, scheduler.Name, gomock.Any()).Return([]string{notFoundRoomID}, nil)
-
-		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[0].ID).Return(availableRooms[0], nil)
-
 		getRoomErr := porterrors.NewErrNotFound("failed to get")
 		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, notFoundRoomID).Return(nil, getRoomErr)
+		roomStorage.EXPECT().GetRoom(ctx, scheduler.Name, availableRooms[0].ID).Return(availableRooms[0], nil)
 
 		rooms, err := roomManager.ListRoomsWithDeletionPriority(ctx, scheduler, 2)
 		require.NoError(t, err)
 
-		availableRooms = append(availableRooms, &game_room.GameRoom{ID: notFoundRoomID, SchedulerID: scheduler.Name, Status: game_room.GameStatusError})
-		require.Equal(t, rooms, availableRooms)
+		expectedRooms := []*game_room.GameRoom{
+			{ID: notFoundRoomID, SchedulerID: scheduler.Name, Status: game_room.GameStatusError, Version: scheduler.Spec.Version},
+			{ID: "first-room", SchedulerID: scheduler.Name, Status: game_room.GameStatusReady, Version: scheduler.Spec.Version},
+		}
+
+		require.Equal(t, rooms, expectedRooms)
 	})
 
 	t.Run("when error happens while fetch a room it returns error", func(t *testing.T) {
