@@ -24,6 +24,7 @@ package healthcontroller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -41,7 +42,10 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/internal/core/utils"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -127,7 +131,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		ex.setTookAction(def, true)
 	}
 
-	desiredNumberOfRooms, isRollingUpdating, err := GetDesiredNumberOfRooms(ctx, ex.autoscaler, ex.roomStorage, ex.schedulerStorage, logger, scheduler, availableRooms)
+	desiredNumberOfRooms, isRollingUpdating, err := GetDesiredNumberOfRooms(ctx, ex.autoscaler, ex.roomStorage, ex.schedulerStorage, logger, scheduler, ex.config, availableRooms)
 	if err != nil {
 		logger.Error("error getting the desired number of rooms", zap.Error(err))
 		return err
@@ -198,20 +202,20 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 	logger = logger.With(zap.Int("actual", actualAmount), zap.Int("desired", desiredAmount))
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
-		removeAmount := actualAmount - desiredAmount
-		reason := remove.ScaleDown
-		if isRollingUpdating {
-			reason = remove.RollingUpdateReplace
-		}
-		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
-			Amount: removeAmount,
-			Reason: reason,
-		})
-		if err != nil {
-			return err
-		}
-		tookAction = true
-		msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
+		// removeAmount := actualAmount - desiredAmount
+		// reason := remove.ScaleDown
+		// if isRollingUpdating {
+		// 	reason = remove.RollingUpdateReplace
+		// }
+		// removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
+		// 	Amount: removeAmount,
+		// 	Reason: reason,
+		// })
+		// if err != nil {
+		// 	return err
+		// }
+		// tookAction = true
+		// msgToAppend = fmt.Sprintf("created operation (id: %s) to remove %v rooms.", removeOperation.ID, removeAmount)
 	case actualAmount < desiredAmount: // Need to scale up
 		addAmount := desiredAmount - actualAmount
 		addOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &add.Definition{
@@ -345,12 +349,20 @@ func (ex *Executor) setTookAction(def *Definition, tookAction bool) {
 	def.TookAction = &tookAction
 }
 
-func CanPerformDownscale(ctx context.Context, autoscaler ports.Autoscaler, scheduler *entities.Scheduler, logger *zap.Logger) (bool, string) {
+func CanPerformDownscale(ctx context.Context, autoscaler ports.Autoscaler, scheduler *entities.Scheduler, readyRoomsToBeDeleted, occupiedRoomsToBeDeleted int, logger *zap.Logger) (bool, string) {
 	can, err := autoscaler.CanDownscale(ctx, scheduler)
 	if err != nil {
 		logger.Error("error checking if scheduler can downscale", zap.Error(err))
 		return can, err.Error()
 	}
+	logger.Info("using current CanDownscale: ", zap.Bool("can", can))
+
+	can, err = autoscaler.CanDownscaleToNextState(ctx, scheduler, readyRoomsToBeDeleted, occupiedRoomsToBeDeleted)
+	if err != nil {
+		logger.Error("error checking if scheduler can downscale", zap.Error(err))
+		return can, err.Error()
+	}
+	logger.Info("using CanDownscaleToNextState: ", zap.Bool("can", can))
 
 	if !can {
 		message := fmt.Sprintf("scheduler %s can't downscale, occupation is above the threshold", scheduler.Name)
@@ -390,6 +402,7 @@ func GetDesiredNumberOfRooms(
 	schedulerStorage ports.SchedulerStorage,
 	logger *zap.Logger,
 	scheduler *entities.Scheduler,
+	config Config,
 	availableRooms []string,
 ) (desiredNumber int, isRollingUpdating bool, err error) {
 	desiredNumber = scheduler.RoomsReplicas
@@ -424,9 +437,29 @@ func GetDesiredNumberOfRooms(
 	}
 
 	if len(availableRooms) > desiredNumber {
+		// Compute the next state to check if we can perform downscale
+		// 1. Get the rooms with deletion priority
+		// 2. Count how many ready rooms will be deleted
+		// 3. Check if we can delete without offending readyTarget
+		// 4. If we can't, keep the current number of rooms
+		// 5. If we can, update the scheduler.LastDownscaleAt and proceed with the downscale
+		roomsToBeDeleted, err := ListRoomsWithDeletionPriority(ctx, roomStorage, scheduler, len(availableRooms)-desiredNumber, isRollingUpdating, config, logger)
+		if err != nil {
+			logger.Error("error listing rooms with deletion priority, can not compute next state, skipping iteration", zap.Error(err))
+		}
+		readyRoomsToBeDeleted := 0
+		occupiedRoomsToBeDeleted := 0
+		for _, room := range roomsToBeDeleted {
+			if room.Status == game_room.GameStatusReady {
+				readyRoomsToBeDeleted += 1
+			}
+			if room.Status == game_room.GameStatusOccupied {
+				occupiedRoomsToBeDeleted += 1
+			}
+		}
 		willDownscale := true
 		if scheduler.Autoscaling != nil && scheduler.Autoscaling.Enabled {
-			canDownscale, msg := CanPerformDownscale(ctx, autoscaler, scheduler, logger)
+			canDownscale, msg := CanPerformDownscale(ctx, autoscaler, scheduler, readyRoomsToBeDeleted, occupiedRoomsToBeDeleted, logger)
 			if !canDownscale {
 				willDownscale = false
 				desiredNumber = len(availableRooms)
@@ -512,4 +545,100 @@ func ComputeMaxSurge(scheduler *entities.Scheduler, desiredNumberOfRooms int) (m
 	}
 
 	return maxSurgeNum, nil
+}
+
+// TODO: refactor to SchedulerController execute
+// ListRoomsWithDeletionPriority returns a specified number of rooms, following
+// the priority of it being deleted
+//
+// The priority is:
+//
+// - On error rooms;
+// - No ping received for x time rooms;
+// - Pending rooms;
+// - Ready rooms;
+// - Occupied rooms;
+//
+// This function can return less rooms than the `amount` since it might not have
+// enough rooms on the scheduler.
+func ListRoomsWithDeletionPriority(ctx context.Context, storage ports.RoomStorage, activeScheduler *entities.Scheduler, amount int, sortByVersion bool, config Config, logger *zap.Logger) ([]*game_room.GameRoom, error) {
+	var schedulerRoomsIDs []string
+	onErrorRoomIDs, err := storage.GetRoomIDsByStatus(ctx, activeScheduler.Name, game_room.GameStatusError)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms on error: %w", err)
+	}
+
+	oldLastPingRoomIDs, err := storage.GetRoomIDsByLastPing(ctx, activeScheduler.Name, time.Now().Add(config.RoomPingTimeout*-1))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms with old last ping datetime: %w", err)
+	}
+
+	pendingRoomIDs, err := storage.GetRoomIDsByStatus(ctx, activeScheduler.Name, game_room.GameStatusPending)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms on pending status: %w", err)
+	}
+
+	readyRoomIDs, err := storage.GetRoomIDsByStatus(ctx, activeScheduler.Name, game_room.GameStatusReady)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms on ready status: %w", err)
+	}
+
+	occupiedRoomIDs, err := storage.GetRoomIDsByStatus(ctx, activeScheduler.Name, game_room.GameStatusOccupied)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduler rooms on occupied status: %w", err)
+	}
+
+	schedulerRoomsIDs = append(schedulerRoomsIDs, onErrorRoomIDs...)
+	schedulerRoomsIDs = append(schedulerRoomsIDs, oldLastPingRoomIDs...)
+	schedulerRoomsIDs = append(schedulerRoomsIDs, pendingRoomIDs...)
+	schedulerRoomsIDs = append(schedulerRoomsIDs, readyRoomIDs...)
+	schedulerRoomsIDs = append(schedulerRoomsIDs, occupiedRoomIDs...)
+
+	schedulerRoomsIDs = utils.RemoveDuplicates(schedulerRoomsIDs)
+
+	var activeVersionRoomPool []*game_room.GameRoom
+	var toDeleteRooms []*game_room.GameRoom
+	var terminatingRooms []*game_room.GameRoom
+	for _, roomID := range schedulerRoomsIDs {
+		room, err := storage.GetRoom(ctx, activeScheduler.Name, roomID)
+		if err != nil {
+			if !errors.Is(err, porterrors.ErrNotFound) {
+				return nil, fmt.Errorf("failed to fetch room information: %w", err)
+			}
+
+			room = &game_room.GameRoom{ID: roomID, SchedulerID: activeScheduler.Name, Status: game_room.GameStatusError, Version: activeScheduler.Spec.Version}
+		}
+
+		// Select Terminating rooms to be re-deleted. This is useful for fixing any desync state.
+		if room.Status == game_room.GameStatusTerminating {
+			terminatingRooms = append(terminatingRooms, room)
+			continue
+		}
+
+		isRoomActive := room.Status == game_room.GameStatusOccupied || room.Status == game_room.GameStatusReady || room.Status == game_room.GameStatusPending
+		if sortByVersion && isRoomActive && activeScheduler.IsSameMajorVersion(room.Version) {
+			activeVersionRoomPool = append(activeVersionRoomPool, room)
+		} else {
+			toDeleteRooms = append(toDeleteRooms, room)
+		}
+	}
+	toDeleteRooms = append(toDeleteRooms, activeVersionRoomPool...)
+
+	logger.Debug("toDeleteRooms",
+		zap.Array("toDeleteRooms uncapped", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
+			for _, room := range toDeleteRooms {
+				enc.AppendString(fmt.Sprintf("%s-%s-%s", room.ID, room.Version, room.Status.String()))
+			}
+			return nil
+		})),
+		zap.Int("amount", amount),
+	)
+
+	if len(toDeleteRooms) > amount {
+		toDeleteRooms = toDeleteRooms[:amount]
+	}
+
+	result := append(toDeleteRooms, terminatingRooms...)
+
+	return result, nil
 }

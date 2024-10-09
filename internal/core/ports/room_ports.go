@@ -40,20 +40,6 @@ type RoomManager interface {
 	// SchedulerMaxSurge calculates the current scheduler max surge based on
 	// the number of rooms the scheduler has.
 	SchedulerMaxSurge(ctx context.Context, scheduler *entities.Scheduler) (int, error)
-	// ListRoomsWithDeletionPriority returns a specified number of rooms, following
-	// the priority of it being deleted
-	//
-	// The priority is:
-	//
-	// - On error rooms;
-	// - No ping received for x time rooms;
-	// - Pending rooms;
-	// - Ready rooms;
-	// - Occupied rooms;
-	//
-	// This function can return less rooms than the `amount` since it might not have
-	// enough rooms on the scheduler.
-	ListRoomsWithDeletionPriority(ctx context.Context, activeScheduler *entities.Scheduler, amount int) ([]*game_room.GameRoom, error)
 	// CleanRoomState cleans the remaining state of a room. This function is
 	// intended to be used after a `DeleteRoom`, where the room instance is
 	// signaled to terminate.

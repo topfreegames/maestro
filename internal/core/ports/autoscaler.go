@@ -38,6 +38,7 @@ type Autoscaler interface {
 	CalculateDesiredNumberOfRooms(ctx context.Context, scheduler *entities.Scheduler) (int, error)
 	// CanDownscale returns true if the scheduler can downscale, false otherwise.
 	CanDownscale(ctx context.Context, scheduler *entities.Scheduler) (bool, error)
+	CanDownscaleToNextState(ctx context.Context, scheduler *entities.Scheduler, occupiedToBeDeleted, readyToBeDeleted int) (bool, error)
 }
 
 // Secondary ports (output, driven ports)
@@ -52,4 +53,6 @@ type Policy interface {
 	CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (desiredNumberOfRooms int, err error)
 	// CanDownscale returns true if the scheduler can downscale, false otherwise.
 	CanDownscale(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (bool, error)
+	// NextStateBuilder builds and return the next state of the scheduler considering rooms to be deleted.
+	NextStateBuilder(ctx context.Context, scheduler *entities.Scheduler, occupiedToBeDeleted, readyToBeDeleted int) (policies.CurrentState, error)
 }

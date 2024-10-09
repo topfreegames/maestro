@@ -77,6 +77,27 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 	return currentState, nil
 }
 
+func (p *Policy) NextStateBuilder(ctx context.Context, scheduler *entities.Scheduler, occupiedToBeDeleted, readyToBeDeleted int) (policies.CurrentState, error) {
+	occupiedRoomsAmount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
+	}
+	occupiedRoomsAmount -= occupiedToBeDeleted
+
+	readyRoomsAmount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching ready game rooms amount: %w", err)
+	}
+	readyRoomsAmount -= readyToBeDeleted
+
+	currentState := policies.CurrentState{
+		OccupiedRoomsKey: occupiedRoomsAmount,
+		ReadyRoomsKey:    readyRoomsAmount,
+	}
+
+	return currentState, nil
+}
+
 // CalculateDesiredNumberOfRooms executes to knows how many rooms should a scheduler have based on your current state.
 func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (int, error) {
 	if policyParameters.RoomOccupancy == nil {

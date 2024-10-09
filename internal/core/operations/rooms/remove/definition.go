@@ -44,7 +44,7 @@ const (
 const OperationName = "remove_rooms"
 
 type Definition struct {
-	Amount   int      `json:"amount"`
+	// Amount   int      `json:"amount"`
 	RoomsIDs []string `json:"rooms_ids"`
 	Reason   string   `json:"reason"`
 }

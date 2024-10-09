@@ -98,11 +98,43 @@ func (a *Autoscaler) CanDownscale(ctx context.Context, scheduler *entities.Sched
 	if err != nil {
 		return false, fmt.Errorf("error fetching current state to scheduler %s: %w", scheduler.Name, err)
 	}
+	fmt.Println("currentState", currentState)
 
 	canDownscale, err := policy.CanDownscale(scheduler.Autoscaling.Policy.Parameters, currentState)
 	if err != nil {
 		return false, fmt.Errorf("error checking if scheduler %s can downscale: %w", scheduler.Name, err)
 	}
+	fmt.Println("currentState canDownscale", canDownscale)
+
+	return canDownscale, nil
+}
+
+func (a *Autoscaler) CanDownscaleToNextState(ctx context.Context, scheduler *entities.Scheduler, occupiedToBeDeleted, readyToBeDeleted int) (bool, error) {
+	if scheduler.Autoscaling == nil {
+		return false, errors.New("scheduler does not have autoscaling struct")
+	}
+
+	if !scheduler.Autoscaling.Enabled {
+		return false, errors.New("scheduler does not have autoscaling enabled")
+	}
+
+	if _, ok := a.policyMap[scheduler.Autoscaling.Policy.Type]; !ok {
+		return false, fmt.Errorf("error finding policy to scheduler %s", scheduler.Name)
+	}
+
+	policy := a.policyMap[scheduler.Autoscaling.Policy.Type]
+
+	nextState, err := policy.NextStateBuilder(ctx, scheduler, occupiedToBeDeleted, readyToBeDeleted)
+	if err != nil {
+		return false, fmt.Errorf("error fetching current state to scheduler %s: %w", scheduler.Name, err)
+	}
+	fmt.Println("nextState", nextState)
+
+	canDownscale, err := policy.CanDownscale(scheduler.Autoscaling.Policy.Parameters, nextState)
+	if err != nil {
+		return false, fmt.Errorf("error checking if scheduler %s can downscale: %w", scheduler.Name, err)
+	}
+	fmt.Println("nextState canDownscale", canDownscale)
 
 	return canDownscale, nil
 }
