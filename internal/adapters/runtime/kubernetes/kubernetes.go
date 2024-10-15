@@ -35,16 +35,40 @@ import (
 
 var _ ports.Runtime = (*kubernetes)(nil)
 
+const (
+	DefaultMaxSkew     = 5
+	DefaultTopologyKey = "topology.kubernetes.io/zone"
+)
+
+type TopologySpreadConstraintConfig struct {
+	Enabled                         bool
+	MaxSkew                         int
+	TopologyKey                     string
+	WhenUnsatisfiableScheduleAnyway bool
+}
+
+type KubernetesConfig struct {
+	TopologySpreadConstraintConfig TopologySpreadConstraintConfig
+}
+
 type kubernetes struct {
 	clientSet     kube.Interface
 	logger        *zap.Logger
 	eventRecorder record.EventRecorder
+	config        KubernetesConfig
 }
 
-func New(clientSet kube.Interface) *kubernetes {
+func New(clientSet kube.Interface, config KubernetesConfig) *kubernetes {
+	if config.TopologySpreadConstraintConfig.MaxSkew <= 0 {
+		config.TopologySpreadConstraintConfig.MaxSkew = DefaultMaxSkew
+	}
+	if config.TopologySpreadConstraintConfig.TopologyKey == "" {
+		config.TopologySpreadConstraintConfig.TopologyKey = DefaultTopologyKey
+	}
 	k := &kubernetes{
 		clientSet: clientSet,
 		logger:    zap.L().With(zap.String(logs.LogFieldRuntime, "kubernetes")),
+		config:    config,
 	}
 
 	eventBroadcaster := record.NewBroadcaster()

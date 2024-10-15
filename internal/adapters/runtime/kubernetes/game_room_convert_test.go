@@ -675,7 +675,7 @@ func TestConvertGameSpec(t *testing.T) {
 			//	Name:        test.scheduler,
 			//	Annotations: test.expectedPod.ObjectMeta.Annotations,
 			//}
-			res, err := convertGameRoomSpec(test.scheduler, test.roomName, test.gameSpec)
+			res, err := convertGameRoomSpec(test.scheduler, test.roomName, test.gameSpec, KubernetesConfig{})
 			if test.withError {
 				require.Error(t, err)
 				return

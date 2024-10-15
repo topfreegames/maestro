@@ -44,7 +44,7 @@ func TestGameRoomCreation(t *testing.T) {
 	ctx := context.Background()
 	gameRoomName := "some-game-room-name"
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("successfully create a room", func(t *testing.T) {
 		t.Parallel()
@@ -98,7 +98,7 @@ func TestGameRoomDeletion(t *testing.T) {
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
 	gameRoomName := "some-game-room"
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("successfully delete a room", func(t *testing.T) {
 		t.Parallel()
@@ -155,7 +155,7 @@ func TestCreateGameRoomName(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("When scheduler name is greater than max name length minus randomLength", func(t *testing.T) {
 		t.Run("return the name with randomLength", func(t *testing.T) {

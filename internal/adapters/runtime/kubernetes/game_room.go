@@ -40,7 +40,7 @@ const (
 )
 
 func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
-	pod, err := convertGameRoomSpec(*scheduler, gameRoomName, gameRoomSpec)
+	pod, err := convertGameRoomSpec(*scheduler, gameRoomName, gameRoomSpec, k.config)
 	if err != nil {
 		return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
 	}
