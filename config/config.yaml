@@ -49,6 +49,11 @@ adapters:
       inCluster: false
       masterUrl: "https://127.0.0.1:6443"
       kubeconfig: "./kubeconfig/kubeconfig.yaml"
+      topologySpreadConstraint:
+        enabled: true
+        maxSkew: 5
+        topologyKey: "topology.kubernetes.io/zone"
+        whenUnsatisfiableScheduleAnyway: false
   grpc:
     keepAlive:
       time: 30s

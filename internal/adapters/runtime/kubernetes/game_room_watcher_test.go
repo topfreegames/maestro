@@ -45,7 +45,7 @@ func TestGameRoomsWatch(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
-		kubernetesRuntime := New(client)
+		kubernetesRuntime := New(client, KubernetesConfig{})
 
 		scheduler := &entities.Scheduler{Name: "watch-room-addition"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
@@ -96,7 +96,7 @@ func TestGameRoomsWatch(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
-		kubernetesRuntime := New(client)
+		kubernetesRuntime := New(client, KubernetesConfig{})
 
 		scheduler := &entities.Scheduler{Name: "watch-room-ready"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
@@ -158,7 +158,7 @@ func TestGameRoomsWatch(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
-		kubernetesRuntime := New(client)
+		kubernetesRuntime := New(client, KubernetesConfig{})
 
 		scheduler := &entities.Scheduler{Name: "watch-room-error"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
@@ -213,7 +213,7 @@ func TestGameRoomsWatch(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		client := test.GetKubernetesClientSet(t, kubernetesContainer)
-		kubernetesRuntime := New(client)
+		kubernetesRuntime := New(client, KubernetesConfig{})
 
 		scheduler := &entities.Scheduler{Name: "watch-room-delete"}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)

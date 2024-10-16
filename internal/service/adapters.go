@@ -69,11 +69,15 @@ const (
 	grpcKeepAliveTimePath    = "adapters.grpc.keepalive.time"
 	grpcKeepAliveTimeoutPath = "adapters.grpc.keepalive.timeout"
 	// Kubernetes runtime
-	runtimeKubernetesMasterURLPath  = "adapters.runtime.kubernetes.masterUrl"
-	runtimeKubernetesKubeconfigPath = "adapters.runtime.kubernetes.kubeconfig"
-	runtimeKubernetesInClusterPath  = "adapters.runtime.kubernetes.inCluster"
-	runtimeKubernetesQPS            = "adapters.runtime.kubernetes.qps"
-	runtimeKubernetesBurst          = "adapters.runtime.kubernetes.burst"
+	runtimeKubernetesMasterURLPath                                 = "adapters.runtime.kubernetes.masterUrl"
+	runtimeKubernetesKubeconfigPath                                = "adapters.runtime.kubernetes.kubeconfig"
+	runtimeKubernetesInClusterPath                                 = "adapters.runtime.kubernetes.inCluster"
+	runtimeKubernetesQPS                                           = "adapters.runtime.kubernetes.qps"
+	runtimeKubernetesBurst                                         = "adapters.runtime.kubernetes.burst"
+	runtimeKubernetesTopologySpreadEnabled                         = "adapters.runtime.kubernetes.topologySpreadConstraint.enabled"
+	runtimeKubernetesTopologySpreadMaxSkew                         = "adapters.runtime.kubernetes.topologySpreadConstraint.maxSkew"
+	runtimeKubernetesTopologySpreadTopologyKey                     = "adapters.runtime.kubernetes.topologySpreadConstraint.topologyKey"
+	runtimeKubernetesTopologySpreadWhenUnsatisfiableScheduleAnyway = "adapters.runtime.kubernetes.topologySpreadConstraint.whenUnsatisfiableScheduleAnyway"
 	// Redis operation storage
 	operationStorageRedisURLPath      = "adapters.operationStorage.redis.url"
 	operationLeaseStorageRedisURLPath = "adapters.operationLeaseStorage.redis.url"
@@ -146,7 +150,14 @@ func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 		return nil, fmt.Errorf("failed to initialize Kubernetes runtime: %w", err)
 	}
 
-	return kubernetesRuntime.New(clientSet), nil
+	return kubernetesRuntime.New(clientSet, kubernetesRuntime.KubernetesConfig{
+		TopologySpreadConstraintConfig: kubernetesRuntime.TopologySpreadConstraintConfig{
+			Enabled:                         c.GetBool(runtimeKubernetesTopologySpreadEnabled),
+			MaxSkew:                         c.GetInt(runtimeKubernetesTopologySpreadMaxSkew),
+			TopologyKey:                     c.GetString(runtimeKubernetesTopologySpreadTopologyKey),
+			WhenUnsatisfiableScheduleAnyway: c.GetBool(runtimeKubernetesTopologySpreadWhenUnsatisfiableScheduleAnyway),
+		},
+	}), nil
 }
 
 // NewOperationStorageRedis instantiates redis as operation storage.

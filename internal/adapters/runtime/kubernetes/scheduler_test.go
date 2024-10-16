@@ -41,7 +41,7 @@ import (
 func TestSchedulerCreation(t *testing.T) {
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("create single scheduler", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "single-scheduler-test", PdbMaxUnavailable: "5%"}
@@ -66,7 +66,7 @@ func TestSchedulerCreation(t *testing.T) {
 func TestSchedulerDeletion(t *testing.T) {
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("delete scheduler", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "delete-scheduler-test", PdbMaxUnavailable: "5%"}
@@ -92,7 +92,7 @@ func TestSchedulerDeletion(t *testing.T) {
 func TestPDBCreationAndDeletion(t *testing.T) {
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("create pdb from scheduler without autoscaling", func(t *testing.T) {
 		if !kubernetesRuntime.isPDBSupported() {
