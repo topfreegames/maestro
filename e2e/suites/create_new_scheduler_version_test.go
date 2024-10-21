@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	_struct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
@@ -308,7 +307,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 				Address: maestro.ServerMocks.GrpcForwarderAddress,
 				Options: &maestroApiV1.ForwarderOptions{
 					Timeout: 5000,
-					Metadata: &_struct.Struct{
+					Metadata: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"roomType": {
 								Kind: &structpb.Value_StringValue{
@@ -358,7 +357,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 				RoomName:  validationRoomName,
 				Event:     "ready",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"playerId": {
 							Kind: &structpb.Value_StringValue{
@@ -500,7 +499,7 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 				Address: maestro.ServerMocks.GrpcForwarderAddress,
 				Options: &maestroApiV1.ForwarderOptions{
 					Timeout: 5000,
-					Metadata: &_struct.Struct{
+					Metadata: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"roomType": {
 								Kind: &structpb.Value_StringValue{
