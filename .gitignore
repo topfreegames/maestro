@@ -54,3 +54,4 @@ e2e/framework/maestro/kubeconfig.yaml
 
 # MkDocs
 site/
+buf.lock

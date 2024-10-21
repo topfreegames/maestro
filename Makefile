@@ -2,6 +2,8 @@ SOURCES := $(shell \
 	find . -not \( \( -name .git -o -name .go -o -name vendor -o -name '*.pb.go' -o -name '*.pb.gw.go' -o -name '*_gen.go' -o -name '*mock*' \) -prune \) \
 	-name '*.go')
 
+BUF := github.com/bufbuild/buf/cmd/buf@v1.32.1
+
 .PHONY: help
 help: Makefile ## Show list of commands.
 	@echo "Choose a command to run in "$(APP_NAME)":"
@@ -103,7 +105,9 @@ run/metrics-reporter: build ## Runs maestro metrics-reporter.
 
 .PHONY: generate
 generate: ## Execute code generation.
+	@go run $(BUF) dep update && go run $(BUF) generate
 	@go generate ./gen
+
 
 #-------------------------------------------------------------------------------
 #  Migration and database make targets

@@ -28,16 +28,12 @@ import (
 	"testing"
 	"time"
 
-	_struct "github.com/golang/protobuf/ptypes/struct"
-	"google.golang.org/protobuf/types/known/structpb"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
-
-	"github.com/topfreegames/maestro/e2e/framework/maestro"
-
 	"github.com/topfreegames/maestro/e2e/framework"
+	"github.com/topfreegames/maestro/e2e/framework/maestro"
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
+	"google.golang.org/protobuf/types/known/structpb"
 	k8sCoreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,7 +73,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Event:     "playerLeft",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"playerId": {
 							Kind: &structpb.Value_StringValue{
@@ -110,7 +106,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomNameNoForwarder,
 				Event:     "playerLeft",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"playerId": {
 							Kind: &structpb.Value_StringValue{
@@ -136,7 +132,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Event:     "playerLeft",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 
 					Fields: map[string]*structpb.Value{
 						"playerId": {
@@ -175,7 +171,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomNameNoForwarder,
 				Event:     "playerLeft",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"playerId": {
 							Kind: &structpb.Value_StringValue{
@@ -198,7 +194,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Event:     "playerLeft",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"playerId": {
 							Kind: &structpb.Value_StringValue{
@@ -226,7 +222,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Event:     "roomReady",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -259,7 +255,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomNameNoForwarder,
 				Event:     "ready",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -286,7 +282,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Event:     "roomReady",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -323,7 +319,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomNameNoForwarder,
 				Event:     "ready",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -346,7 +342,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Event:     "occupied",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -373,7 +369,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Status:    "ready",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -406,7 +402,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomNameNoForwarder,
 				Status:    "ready",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -433,7 +429,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Status:    "ready",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -466,7 +462,7 @@ func TestEventsForwarding(t *testing.T) {
 				RoomName:  roomsNames[0],
 				Status:    "ready",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -491,7 +487,7 @@ func TestEventsForwarding(t *testing.T) {
 
 			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
 				Status: "ready",
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -540,7 +536,7 @@ func TestEventsForwarding(t *testing.T) {
 
 			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
 				Status: "ready",
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -575,7 +571,7 @@ func TestEventsForwarding(t *testing.T) {
 
 			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
 				Status: "ready",
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -607,7 +603,7 @@ func TestEventsForwarding(t *testing.T) {
 
 			roomStatusEventRequest := &maestroApiV1.UpdateRoomStatusRequest{
 				Status: "ready",
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"mockIdentifier": {
 							Kind: &structpb.Value_StringValue{
@@ -647,7 +643,7 @@ func createSchedulerWithForwarderAndRooms(t *testing.T, maestro *maestro.Maestro
 			Address: forwarderAddress,
 			Options: &maestroApiV1.ForwarderOptions{
 				Timeout: 5000,
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"roomType": {
 							Kind: &structpb.Value_StringValue{

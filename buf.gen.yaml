@@ -1,0 +1,14 @@
+version: v2
+plugins:
+  - remote: buf.build/protocolbuffers/go:v1.35.1
+    out: pkg/
+    opt: paths=source_relative
+  - remote: buf.build/grpc/go:v1.5.1
+    out: pkg/
+    opt: paths=source_relative
+  - remote: buf.build/grpc-ecosystem/gateway:v2.22.0
+    out: pkg/
+    opt: paths=source_relative
+  - remote: buf.build/grpc-ecosystem/openapiv2:v2.22.0
+    out: proto/
+    opt: allow_merge=true

@@ -25,15 +25,13 @@ package events
 import (
 	"context"
 	"fmt"
-
-	"github.com/topfreegames/maestro/internal/core/ports"
-
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"go.uber.org/zap"

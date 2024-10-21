@@ -28,34 +28,34 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type APIClient struct {
 	baseAddr    string
 	httpClient  *http.Client
-	marshaler   *jsonpb.Marshaler
-	unmarshaler *jsonpb.Unmarshaler
+	marshaler   *protojson.MarshalOptions
+	unmarshaler *protojson.UnmarshalOptions
 }
 
 func NewAPIClient(baseAddr string) *APIClient {
 	return &APIClient{
 		httpClient:  &http.Client{},
-		marshaler:   &jsonpb.Marshaler{},
-		unmarshaler: &jsonpb.Unmarshaler{},
+		marshaler:   &protojson.MarshalOptions{},
+		unmarshaler: &protojson.UnmarshalOptions{},
 		baseAddr:    baseAddr,
 	}
 }
 
 func (c *APIClient) Do(verb, path string, request proto.Message, response proto.Message) error {
-	buf := new(bytes.Buffer)
-	err := c.marshaler.Marshal(buf, request)
+	var buf []byte
+	_, err := c.marshaler.MarshalAppend(buf, request)
 	if err != nil {
 		return fmt.Errorf("failed to encode request: %w", err)
 	}
 
-	req, err := http.NewRequest(verb, fmt.Sprintf("%s%s", c.baseAddr, path), buf)
+	req, err := http.NewRequest(verb, fmt.Sprintf("%s%s", c.baseAddr, path), bytes.NewBuffer(buf))
 	if err != nil {
 		return fmt.Errorf("failed to build request: %w", err)
 	}
@@ -75,9 +75,15 @@ func (c *APIClient) Do(verb, path string, request proto.Message, response proto.
 		return fmt.Errorf("failed with status %d", resp.StatusCode)
 	}
 
-	err = c.unmarshaler.Unmarshal(resp.Body, response)
+	var out []byte
+	err = c.unmarshaler.Unmarshal(out, response)
 	if err != nil {
 		return fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	err = resp.Write(bytes.NewBuffer(out))
+	if err != nil {
+		return fmt.Errorf("failed to write response: %w", err)
 	}
 
 	return nil

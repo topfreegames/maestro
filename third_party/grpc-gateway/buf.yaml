@@ -1,8 +1,0 @@
-# TODO(caio.rodrigues): remove this module and include as dependency on proto/buf.yaml
-version: v1
-lint:
-  use:
-    - DEFAULT
-    - COMMENTS
-  ignore:
-    - protoc-gen-openapiv2
