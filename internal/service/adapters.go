@@ -102,8 +102,8 @@ const (
 )
 
 // NewSchedulerManager instantiates a new scheduler manager.
-func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache ports.SchedulerCache, operationManager ports.OperationManager, roomStorage ports.RoomStorage, config schedulers.SchedulerManagerConfig) ports.SchedulerManager {
-	return schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, config)
+func NewSchedulerManager(schedulerStorage ports.SchedulerStorage, schedulerCache ports.SchedulerCache, operationManager ports.OperationManager, roomStorage ports.RoomStorage) ports.SchedulerManager {
+	return schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 }
 
 // NewOperationManager instantiates a new operation manager

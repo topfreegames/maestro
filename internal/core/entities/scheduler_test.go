@@ -93,7 +93,6 @@ func TestNewScheduler(t *testing.T) {
 	forwarders := []*forwarder.Forwarder{fwd}
 	annotations := map[string]string{"imageregistry": "https://hub.docker.com/"}
 	labels := map[string]string{"scheduler": "scheduler-name"}
-	pdbMaxUnavailable := "5%"
 
 	t.Run("with success when create valid scheduler", func(t *testing.T) {
 		scheduler, err := entities.NewScheduler(
@@ -106,23 +105,21 @@ func TestNewScheduler(t *testing.T) {
 			roomsReplicas,
 			nil,
 			forwarders,
-			pdbMaxUnavailable,
 			annotations,
 			labels)
 
 		expectedScheduler := &entities.Scheduler{
-			Name:              name,
-			Game:              game,
-			MaxSurge:          maxSurge,
-			State:             entities.StateCreating,
-			Spec:              spec,
-			PortRange:         portRange,
-			RoomsReplicas:     roomsReplicas,
-			Autoscaling:       nil,
-			Forwarders:        forwarders,
-			PdbMaxUnavailable: pdbMaxUnavailable,
-			Annotations:       annotations,
-			Labels:            labels,
+			Name:          name,
+			Game:          game,
+			MaxSurge:      maxSurge,
+			State:         entities.StateCreating,
+			Spec:          spec,
+			PortRange:     portRange,
+			RoomsReplicas: roomsReplicas,
+			Autoscaling:   nil,
+			Forwarders:    forwarders,
+			Annotations:   annotations,
+			Labels:        labels,
 		}
 
 		require.NoError(t, err)
@@ -139,10 +136,7 @@ func TestNewScheduler(t *testing.T) {
 			portRange,
 			roomsReplicas,
 			nil,
-			forwarders,
-			pdbMaxUnavailable,
-			annotations,
-			labels)
+			forwarders, annotations, labels)
 
 		require.Error(t, err)
 	})
@@ -166,10 +160,7 @@ func TestNewScheduler(t *testing.T) {
 			),
 			0,
 			nil,
-			forwarders,
-			pdbMaxUnavailable,
-			annotations,
-			labels)
+			forwarders, annotations, labels)
 
 		require.Error(t, err)
 	})
@@ -193,10 +184,7 @@ func TestNewScheduler(t *testing.T) {
 			),
 			-1,
 			nil,
-			forwarders,
-			pdbMaxUnavailable,
-			annotations,
-			labels)
+			forwarders, annotations, labels)
 
 		require.Error(t, err)
 	})

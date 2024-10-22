@@ -62,7 +62,8 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 	if !ok {
 		return fmt.Errorf("invalid operation definition for %s operation", e.Name())
 	}
-	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName, PdbMaxUnavailable: opDef.NewScheduler.PdbMaxUnavailable})
+
+	err := e.runtime.CreateScheduler(ctx, &entities.Scheduler{Name: op.SchedulerName})
 	if err != nil {
 		logger.Error("error creating scheduler in runtime", zap.Error(err))
 		createSchedulerErr := fmt.Errorf("error creating scheduler in runtime: %w", err)

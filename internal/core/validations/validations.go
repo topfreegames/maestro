@@ -74,31 +74,6 @@ func IsMaxSurgeValid(maxSurge string) bool {
 	return true
 }
 
-// IsPdbMaxUnavailableValid check if PdbMaxUnavailable is valid. A PdbMaxUnavailable valid is either
-// a string that can be converted to a number greater than 0, or a string with percentage that its
-// value is greater than 0 and less than 100. Empty strigs are valid, we'll use the defualt value on
-// SchedulerManager
-func IsPdbMaxUnavailableValid(pdbMaxUnavailable string) bool {
-	if pdbMaxUnavailable == "" {
-		return true
-	}
-
-	if strings.HasSuffix(pdbMaxUnavailable, "%") {
-		percentageValue, err := strconv.Atoi(strings.TrimSuffix(pdbMaxUnavailable, "%"))
-		if err != nil || percentageValue <= 0 || percentageValue >= 100 {
-			return false
-		}
-		return true
-	}
-
-	numericValue, err := strconv.Atoi(pdbMaxUnavailable)
-	if err != nil || numericValue <= 0 {
-		return false
-	}
-
-	return true
-}
-
 // IsImagePullPolicySupported check if received policy is supported by maestro
 func IsImagePullPolicySupported(policy string) bool {
 	policies := []string{"Always", "Never", "IfNotPresent"}

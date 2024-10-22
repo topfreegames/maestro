@@ -50,7 +50,6 @@ type Config struct {
 
 // Executor holds the dependecies to execute the operation to create a new scheduler version.
 type Executor struct {
-	runtime              ports.Runtime
 	roomManager          ports.RoomManager
 	schedulerManager     ports.SchedulerManager
 	operationManager     ports.OperationManager
@@ -61,9 +60,8 @@ type Executor struct {
 var _ operations.Executor = (*Executor)(nil)
 
 // NewExecutor instantiate a new scheduler version executor.
-func NewExecutor(runtime ports.Runtime, roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, config Config) *Executor {
+func NewExecutor(roomManager ports.RoomManager, schedulerManager ports.SchedulerManager, operationManager ports.OperationManager, config Config) *Executor {
 	return &Executor{
-		runtime:              runtime,
 		roomManager:          roomManager,
 		schedulerManager:     schedulerManager,
 		operationManager:     operationManager,
@@ -124,13 +122,6 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	switchOpID, err := ex.createNewSchedulerVersionAndEnqueueSwitchVersionOp(ctx, newScheduler, logger, isSchedulerMajorVersion)
 	if err != nil {
 		return err
-	}
-
-	if newScheduler.PdbMaxUnavailable != currentActiveScheduler.PdbMaxUnavailable {
-		err = ex.runtime.UpdateScheduler(ctx, newScheduler)
-		if err != nil {
-			logger.Warn("error updating scheduler PDB", zap.Error(err))
-		}
 	}
 
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(enqueuedSwitchVersionMessageTemplate, switchOpID))

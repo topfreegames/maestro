@@ -31,6 +31,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/services/events"
 	"github.com/topfreegames/maestro/internal/core/services/workers"
 	"github.com/topfreegames/maestro/internal/core/worker"
+	workerconfigs "github.com/topfreegames/maestro/internal/core/worker/config"
 	"github.com/topfreegames/maestro/internal/core/worker/runtimewatcher"
 	"github.com/topfreegames/maestro/internal/service"
 )
@@ -42,16 +43,24 @@ func provideRuntimeWatcherBuilder() *worker.WorkerBuilder {
 	}
 }
 
+func provideRuntimeWatcherConfig(c config.Config) *workerconfigs.RuntimeWatcherConfig {
+	return &workerconfigs.RuntimeWatcherConfig{
+		DisruptionWorkerIntervalSeconds: c.GetDuration("runtimeWatcher.disruptionWorker.intervalSeconds"),
+		DisruptionSafetyPercentage:      c.GetFloat64("runtimeWatcher.disruptionWorker.safetyPercentage"),
+	}
+}
+
 var WorkerOptionsSet = wire.NewSet(
 	service.NewRuntimeKubernetes,
+	service.NewRoomStorageRedis,
 	RoomManagerSet,
-	wire.Struct(new(worker.WorkerOptions), "RoomManager", "Runtime"))
+	provideRuntimeWatcherConfig,
+	wire.Struct(new(worker.WorkerOptions), "Runtime", "RoomStorage", "RoomManager", "RuntimeWatcherConfig"))
 
 var RoomManagerSet = wire.NewSet(
 	service.NewSchedulerStoragePg,
 	service.NewClockTime,
 	service.NewPortAllocatorRandom,
-	service.NewRoomStorageRedis,
 	service.NewGameRoomInstanceStorageRedis,
 	service.NewSchedulerCacheRedis,
 	service.NewRoomManagerConfig,

@@ -203,8 +203,7 @@ autoscaling:
                 "metadata": {}
             }
         }
-    ],
-    "pdbMaxUnavailable": "5%",
+    ]
     "autoscaling": {
       "enabled": true,
       "min": 10,
@@ -235,7 +234,6 @@ forwarders: Forwarders
 autoscaling: Autoscaling
 spec: Spec
 annotation: Map
-pdbMaxUnavailable: String
 ```
 
 - **Name**: Scheduler name. This name is unique and will be the same name used for the kubernetes namespace. It's
@@ -256,7 +254,6 @@ pdbMaxUnavailable: String
   used by them, limits and images. More info [here](#spec).
 - **annotations**: Allows annotations for the scheduler's game room. Know more about annotations on
   Kubernetes [here](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations)
-- **pdbMaxUnavailable**: Defines the disruption budget for game rooms. Optional and defaults to 5%. Value can be defined as a string representing the % between 0 and 100, "15%", or a raw number of rooms "100".
 
 ### PortRange
 The **PortRange** is used to select a random port for a GRU between **start** and **end**.
@@ -407,42 +404,3 @@ It is represented as:
 - **protocol**: Port protocol. Can be UDP, TCP or SCTP.;
 - **port**: The port exposed.
 - **hostPortRange**: The [port range](#portrange) for the port to be allocated in the host. Mutually exclusive with the port range configured in the root structure.
-
-#### PDB Max Unavailable
-
-A string value that defines the disruption budget of Game Rooms from a specific scheduler.
-Maestro will create a [PDB Resource](https://kubernetes.io/docs/tasks/run-application/configure-pdb/)
-to prevent evictions drastically impacting availability of the Game Rooms.
-
-By default this value is set to 5%, so at worst runtime can evit 5% of the pods. There is no way to control
-what pods will be evicted - if it prefers ready, pending, etc.
-
-The configuration can be specified with this order of precedence:
-
-1. Value specified in Scheduler's definition
-
-```json
-{
-  "pdbMaxUnavailable": "10%"
-}
-```
-
-2. Value specified in the ENV VAR:
-
-```shell
-MAESTRO_SERVICES_SCHEDULERMANAGER_DEFAULTPDBMAXUNAVAILABLE="10%"
-```
-
-3. Value specified in the [config.yaml](../../config/config.yaml):
-
-```yaml
-services:
-  schedulerManager:
-    defaultPdbMaxUnavailable: "5%"
-```
-
-4. Value specified in [code](../../internal/core/entities/pdb/pdb.go) that defaults to 5%:
-
-```go
-const DefaultPdbMaxUnavailablePercentage = "5%"
-```

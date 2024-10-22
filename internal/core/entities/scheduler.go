@@ -61,21 +61,20 @@ var (
 // Scheduler represents one of the basic maestro structs.
 // It holds GameRooms specifications, as well as optional events forwarders.
 type Scheduler struct {
-	Name              string `validate:"required,kube_resource_name"`
-	Game              string `validate:"required"`
-	State             string `validate:"required"`
-	RollbackVersion   string
-	Spec              game_room.Spec
-	Autoscaling       *autoscaling.Autoscaling
-	PortRange         *port.PortRange
-	RoomsReplicas     int `validate:"min=0"`
-	CreatedAt         time.Time
-	LastDownscaleAt   time.Time
-	MaxSurge          string                 `validate:"required,max_surge"`
-	Forwarders        []*forwarder.Forwarder `validate:"dive"`
-	PdbMaxUnavailable string                 `validate:"pdb_max_unavailable"`
-	Annotations       map[string]string
-	Labels            map[string]string
+	Name            string `validate:"required,kube_resource_name"`
+	Game            string `validate:"required"`
+	State           string `validate:"required"`
+	RollbackVersion string
+	Spec            game_room.Spec
+	Autoscaling     *autoscaling.Autoscaling
+	PortRange       *port.PortRange
+	RoomsReplicas   int `validate:"min=0"`
+	CreatedAt       time.Time
+	LastDownscaleAt time.Time
+	MaxSurge        string                 `validate:"required,max_surge"`
+	Forwarders      []*forwarder.Forwarder `validate:"dive"`
+	Annotations     map[string]string
+	Labels          map[string]string
 }
 
 // NewScheduler instantiate a new scheduler struct.
@@ -89,23 +88,21 @@ func NewScheduler(
 	roomsReplicas int,
 	autoscaling *autoscaling.Autoscaling,
 	forwarders []*forwarder.Forwarder,
-	pdbMaxUnavailable string,
 	annotations map[string]string,
 	labels map[string]string,
 ) (*Scheduler, error) {
 	scheduler := &Scheduler{
-		Name:              name,
-		Game:              game,
-		State:             state,
-		Spec:              spec,
-		PortRange:         portRange,
-		MaxSurge:          maxSurge,
-		RoomsReplicas:     roomsReplicas,
-		Autoscaling:       autoscaling,
-		Forwarders:        forwarders,
-		PdbMaxUnavailable: pdbMaxUnavailable,
-		Annotations:       annotations,
-		Labels:            labels,
+		Name:          name,
+		Game:          game,
+		State:         state,
+		Spec:          spec,
+		PortRange:     portRange,
+		MaxSurge:      maxSurge,
+		RoomsReplicas: roomsReplicas,
+		Autoscaling:   autoscaling,
+		Forwarders:    forwarders,
+		Annotations:   annotations,
+		Labels:        labels,
 	}
 	return scheduler, scheduler.Validate()
 }
@@ -163,7 +160,6 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"MaxSurge",
 			"RoomsReplicas",
 			"Autoscaling",
-			"PdbMaxUnavailable",
 		),
 	)
 }

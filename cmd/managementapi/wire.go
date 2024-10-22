@@ -53,7 +53,6 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		providers.ProvideDefinitionConstructors,
 
 		// services
-		service.NewSchedulerManagerConfig,
 		service.NewSchedulerManager,
 		service.NewOperationManager,
 
