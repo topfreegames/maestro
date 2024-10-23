@@ -77,7 +77,6 @@
         }
       }
     ],
-    "pdbMaxUnavailable": "10%",
     "annotations": {
       "imageregistry": "https://docker.hub.com/"
     },

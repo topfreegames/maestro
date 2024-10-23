@@ -72,10 +72,6 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch.LabelSchedulerForwarders] = fromApiForwarders(request.GetForwarders())
 	}
 
-	if request.PdbMaxUnavailable != "" {
-		patchMap[patch.LabelPDBMaxUnavailable] = request.GetPdbMaxUnavailable()
-	}
-
 	if request.Annotations != nil {
 		patchMap[patch.LabelAnnotations] = request.GetAnnotations()
 	}
@@ -130,7 +126,6 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
-		request.GetPdbMaxUnavailable(),
 		request.GetAnnotations(),
 		request.GetLabels(),
 	)
@@ -168,7 +163,6 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		int(request.GetRoomsReplicas()),
 		schedulerAutoscaling,
 		fromApiForwarders(request.GetForwarders()),
-		request.GetPdbMaxUnavailable(),
 		request.GetAnnotations(),
 		request.GetLabels(),
 	)
@@ -182,19 +176,18 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 	}
 
 	return &api.Scheduler{
-		Name:              entity.Name,
-		Game:              entity.Game,
-		State:             entity.State,
-		PortRange:         getPortRange(entity.PortRange),
-		CreatedAt:         timestamppb.New(entity.CreatedAt),
-		MaxSurge:          entity.MaxSurge,
-		RoomsReplicas:     int32(entity.RoomsReplicas),
-		Spec:              getSpec(entity.Spec),
-		Autoscaling:       getAutoscaling(entity.Autoscaling),
-		Forwarders:        forwarders,
-		PdbMaxUnavailable: entity.PdbMaxUnavailable,
-		Annotations:       entity.Annotations,
-		Labels:            entity.Labels,
+		Name:          entity.Name,
+		Game:          entity.Game,
+		State:         entity.State,
+		PortRange:     getPortRange(entity.PortRange),
+		CreatedAt:     timestamppb.New(entity.CreatedAt),
+		MaxSurge:      entity.MaxSurge,
+		RoomsReplicas: int32(entity.RoomsReplicas),
+		Spec:          getSpec(entity.Spec),
+		Autoscaling:   getAutoscaling(entity.Autoscaling),
+		Forwarders:    forwarders,
+		Annotations:   entity.Annotations,
+		Labels:        entity.Labels,
 	}, nil
 }
 

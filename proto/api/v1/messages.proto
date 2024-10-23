@@ -179,12 +179,10 @@ message Scheduler {
   optional Autoscaling autoscaling = 9;
   // List of Scheduler forwarders
   repeated Forwarder forwarders = 10;
-  // PDB MaxUnavailable Specification
-  string pdb_max_unavailable = 11;
   // List with annotations
-  map<string, string> annotations = 12;
+  map<string, string> annotations = 11;
   // List with labels
-  map<string, string> labels = 13;
+  map<string, string> labels = 12;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented

@@ -503,10 +503,6 @@
                   },
                   "title": "List of Scheduler forwarders"
                 },
-                "pdbMaxUnavailable": {
-                  "type": "string",
-                  "title": "PDB MaxUnavailable Specification"
-                },
                 "annotations": {
                   "type": "object",
                   "additionalProperties": {
@@ -590,10 +586,6 @@
                     "$ref": "#/definitions/v1Forwarder"
                   },
                   "title": "List of Scheduler forwarders"
-                },
-                "pdbMaxUnavailable": {
-                  "type": "string",
-                  "title": "PDB MaxUnavailable Specification"
                 },
                 "annotations": {
                   "type": "object",
@@ -1249,10 +1241,6 @@
           },
           "title": "List of Scheduler forwarders"
         },
-        "pdbMaxUnavailable": {
-          "type": "string",
-          "title": "PDB MaxUnavailable Specification"
-        },
         "annotations": {
           "type": "object",
           "additionalProperties": {
@@ -1752,10 +1740,6 @@
             "$ref": "#/definitions/v1Forwarder"
           },
           "title": "List of Scheduler forwarders"
-        },
-        "pdbMaxUnavailable": {
-          "type": "string",
-          "title": "PDB MaxUnavailable Specification"
         },
         "annotations": {
           "type": "object",

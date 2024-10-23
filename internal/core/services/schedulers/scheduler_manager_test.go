@@ -69,7 +69,7 @@ func TestCreateScheduler(t *testing.T) {
 	operationManager := mock.NewMockOperationManager(mockCtrl)
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 	t.Run("with valid scheduler it returns no error when creating it", func(t *testing.T) {
 		scheduler := newValidScheduler()
@@ -128,7 +128,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 	operationManager := mock.NewMockOperationManager(mockCtrl)
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 	t.Run("with valid scheduler it returns no error when creating it", func(t *testing.T) {
 		scheduler := newValidScheduler()
@@ -174,7 +174,7 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(&operation.Operation{}, nil)
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
@@ -195,7 +195,7 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 
@@ -213,7 +213,7 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.NewErrUnexpected("some_error"))
 
@@ -230,7 +230,7 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
@@ -262,7 +262,7 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(&operation.Operation{}, nil)
 
@@ -285,7 +285,7 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
 
@@ -314,7 +314,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, opDef).Return(&operation.Operation{}, nil)
 		schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
@@ -335,7 +335,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, opDef).Return(&operation.Operation{}, nil)
 		schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.ErrNotFound)
@@ -357,7 +357,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, opDef).Return(nil, errors.NewErrUnexpected("storage offline"))
 		schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
@@ -377,7 +377,7 @@ func TestDeleteSchedulerOperation(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerCache.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.ErrNotFound)
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.ErrNotFound)
@@ -401,7 +401,7 @@ func TestGetSchedulerVersions(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerVersions(ctx, scheduler.Name).Return(schedulerVersionList, nil)
 
@@ -419,7 +419,7 @@ func TestGetSchedulerVersions(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerVersions(ctx, scheduler.Name).Return(nil, errors.NewErrNotFound("scheduler not found"))
 
@@ -440,7 +440,7 @@ func TestGetSchedulerByVersion(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
 			Name:    scheduler.Name,
@@ -460,7 +460,7 @@ func TestGetSchedulerByVersion(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulerWithFilter(ctx, &filters.SchedulerFilter{
 			Name:    scheduler.Name,
@@ -484,7 +484,7 @@ func TestGetScheduler(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerFilter := &filters.SchedulerFilter{
 			Name:    scheduler.Name,
@@ -506,7 +506,7 @@ func TestGetScheduler(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerFilter := &filters.SchedulerFilter{
 			Name:    scheduler.Name,
@@ -533,7 +533,7 @@ func TestGetSchedulersWithFilter(t *testing.T) {
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulers := []*entities.Scheduler{scheduler}
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(ctx, gomock.Any()).Return(schedulers, nil)
 
@@ -550,7 +550,7 @@ func TestGetSchedulersWithFilter(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(ctx, gomock.Any()).Return(nil, errors.NewErrUnexpected("some error"))
 
@@ -576,7 +576,7 @@ func TestUpdateScheduler(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().UpdateScheduler(ctx, scheduler).Return(nil)
 		schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name).Return(nil)
@@ -594,7 +594,7 @@ func TestUpdateScheduler(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().UpdateScheduler(ctx, scheduler).Return(nil)
 		schedulerCache.EXPECT().DeleteScheduler(ctx, scheduler.Name).Return(errors.NewErrUnexpected("error"))
@@ -612,7 +612,7 @@ func TestUpdateScheduler(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		schedulerStorage.EXPECT().UpdateScheduler(ctx, scheduler).Return(errors.NewErrUnexpected("error"))
 
@@ -627,7 +627,7 @@ func TestUpdateScheduler(t *testing.T) {
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
 		err := schedulerManager.CreateNewSchedulerVersion(ctx, scheduler)
 
@@ -641,7 +641,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 		schedulerFilter := filters.SchedulerFilter{Game: "Tennis-Clash"}
 		scheduler := newValidScheduler()
 		schedulers := []*entities.Scheduler{scheduler}
@@ -666,7 +666,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 		schedulerFilter := filters.SchedulerFilter{Game: "Tennis-Clash"}
 		schedulerStorage.EXPECT().GetSchedulersWithFilter(gomock.Any(), gomock.Any()).Return(nil, errors.NewErrNotFound("err"))
 
@@ -682,7 +682,7 @@ func TestGetSchedulersInfo(t *testing.T) {
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 		schedulerFilter := filters.SchedulerFilter{Game: "Tennis-Clash"}
 		scheduler := newValidScheduler()
 		schedulers := []*entities.Scheduler{scheduler}
@@ -701,7 +701,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("with valid request it returns a scheduler and game rooms information (no autoscaling)", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(10, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(15, nil)
@@ -721,7 +721,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("with valid request it returns a scheduler and game rooms information and autoscaling", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(10, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(15, nil)
@@ -750,7 +750,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("it returns with error when couldn't get game rooms information in ready state", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
 		scheduler := newValidScheduler()
 
@@ -763,7 +763,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("it returns with error when couldn't get game rooms information in pending state", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
 		scheduler := newValidScheduler()
@@ -777,7 +777,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("it returns with error when couldn't get game rooms information in occupied state", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, errors.NewErrUnexpected("err"))
@@ -792,7 +792,7 @@ func TestNewSchedulerInfo(t *testing.T) {
 	t.Run("it returns with error when couldn't get game rooms information in terminating state", func(t *testing.T) {
 		ctx := context.Background()
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(nil, nil, nil, roomStorage)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(5, nil)
@@ -813,7 +813,7 @@ func TestDeleteScheduler(t *testing.T) {
 		scheduler := newValidScheduler()
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(scheduler, nil)
 		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), ports.TransactionID(""), scheduler).Return(nil)
 
@@ -826,7 +826,7 @@ func TestDeleteScheduler(t *testing.T) {
 		schedulerName := "scheduler-name"
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(nil, errors.NewErrNotFound("err"))
 
 		err := schedulerManager.DeleteScheduler(ctx, schedulerName)
@@ -841,7 +841,7 @@ func TestDeleteScheduler(t *testing.T) {
 		scheduler := newValidScheduler()
 		ctx := context.Background()
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+		schedulerManager := NewSchedulerManager(schedulerStorage, nil, nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), schedulerName).Return(scheduler, nil)
 		schedulerStorage.EXPECT().DeleteScheduler(gomock.Any(), ports.TransactionID(""), scheduler).Return(errors.NewErrUnexpected("err"))
 
@@ -887,7 +887,6 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 				GetSchedulerError: nil,
 				ChangedSchedulerFunction: func() *entities.Scheduler {
 					scheduler.MaxSurge = "12%"
-					scheduler.PdbMaxUnavailable = "5%"
 					return scheduler
 				},
 				CreateOperationReturn: &operation.Operation{ID: "some-id"},
@@ -972,7 +971,6 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 				GetSchedulerError: nil,
 				ChangedSchedulerFunction: func() *entities.Scheduler {
 					scheduler.MaxSurge = "17%"
-					scheduler.PdbMaxUnavailable = "5%"
 					return scheduler
 				},
 				CreateOperationReturn: nil,
@@ -1015,7 +1013,7 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			mockOperationManager := mock.NewMockOperationManager(mockCtrl)
 			mockSchedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-			schedulerManager := NewSchedulerManager(mockSchedulerStorage, nil, mockOperationManager, nil, SchedulerManagerConfig{DefaultPdbMaxUnavailable: "5%"})
+			schedulerManager := NewSchedulerManager(mockSchedulerStorage, nil, mockOperationManager, nil)
 
 			mockSchedulerStorage.EXPECT().GetScheduler(gomock.Any(), scheduler.Name).Return(scheduler, testCase.ExpectedMock.GetSchedulerError)
 			mockOperationManager.EXPECT().
