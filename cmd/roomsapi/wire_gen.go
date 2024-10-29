@@ -28,6 +28,10 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 	if err != nil {
 		return nil, err
 	}
+	schedulerStorage, err := service.NewSchedulerStoragePg(conf)
+	if err != nil {
+		return nil, err
+	}
 	gameRoomInstanceStorage, err := service.NewGameRoomInstanceStorageRedis(conf)
 	if err != nil {
 		return nil, err
@@ -37,10 +41,6 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 		return nil, err
 	}
 	eventsForwarder, err := service.NewEventsForwarder(conf)
-	if err != nil {
-		return nil, err
-	}
-	schedulerStorage, err := service.NewSchedulerStoragePg(conf)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 	if err != nil {
 		return nil, err
 	}
-	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, gameRoomInstanceStorage, portsRuntime, eventsService, roomManagerConfig)
+	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, schedulerStorage, gameRoomInstanceStorage, portsRuntime, eventsService, roomManagerConfig)
 	roomsHandler := handlers.ProvideRoomsHandler(roomManager, eventsService)
 	serveMux := provideRoomsMux(ctx, roomsHandler)
 	return serveMux, nil

@@ -271,6 +271,10 @@ func TestGetScheduler(t *testing.T) {
 			},
 			Annotations: map[string]string{},
 			Labels:      map[string]string{},
+			MatchAllocation: allocation.MatchAllocation{
+				MaxMatches:   1,
+				MinFreeSlots: 1,
+			},
 		}
 
 		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(scheduler, nil)
@@ -541,6 +545,10 @@ func TestCreateScheduler(t *testing.T) {
 			},
 			Annotations: map[string]string{"imageregistry": "https://docker.hub.com/"},
 			Labels:      map[string]string{"scheduler": "scheduler-name"},
+			MatchAllocation: allocation.MatchAllocation{
+				MaxMatches:   1,
+				MinFreeSlots: 1,
+			},
 		}
 
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Do(

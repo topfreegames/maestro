@@ -108,8 +108,8 @@ func NewOperationManager(flow ports.OperationFlow, storage ports.OperationStorag
 }
 
 // NewRoomManager instantiates a room manager.
-func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config rooms.RoomManagerConfig) ports.RoomManager {
-	return rooms.New(clock, portAllocator, roomStorage, instanceStorage, runtime, eventsService, config)
+func NewRoomManager(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, schedulerStorage ports.SchedulerStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config rooms.RoomManagerConfig) ports.RoomManager {
+	return rooms.New(clock, portAllocator, roomStorage, schedulerStorage, instanceStorage, runtime, eventsService, config)
 }
 
 // NewEventsForwarder instantiates GRPC as events forwarder.

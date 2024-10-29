@@ -78,6 +78,10 @@
       }
     ],
     "annotations": {},
-    "labels": {}
+    "labels": {},
+    "matchAllocation": {
+      "maxMatches": 1,
+      "minFreeSlots": 1
+    }
   }
 }
