@@ -75,7 +75,7 @@ func (om *OperationManager) CreateOperation(ctx context.Context, schedulerName s
 		om.Logger.Error(fmt.Sprintf("failed to enqueue %s operation to be executed", op.DefinitionName), zap.Error(err), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
 		return nil, fmt.Errorf("failed to insert operation on flow: %w", err)
 	}
-	om.Logger.Info(fmt.Sprintf("operation %s created and enqueued to be executed", op.DefinitionName), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
+	om.Logger.Debug(fmt.Sprintf("operation %s created and enqueued to be executed", op.DefinitionName), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
 	return op, nil
 }
 
@@ -92,7 +92,7 @@ func (om *OperationManager) CreatePriorityOperation(ctx context.Context, schedul
 		om.Logger.Error(fmt.Sprintf("failed to enqueue (priority) %s operation to be executed", op.DefinitionName), zap.Error(err), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
 		return nil, fmt.Errorf("failed to insert operation on flow: %w", err)
 	}
-	om.Logger.Info(fmt.Sprintf("operation (priority) %s created and enqueued on the top to be executed", op.DefinitionName), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
+	om.Logger.Debug(fmt.Sprintf("operation (priority) %s created and enqueued on the top to be executed", op.DefinitionName), zap.String(logs.LogFieldOperationID, op.ID), zap.String(logs.LogFieldSchedulerName, op.SchedulerName))
 	return op, nil
 }
 

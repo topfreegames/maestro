@@ -60,7 +60,7 @@ func ProvideSchedulersHandler(schedulerManager ports.SchedulerManager) *Schedule
 
 func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.ListSchedulersRequest) (*api.ListSchedulersResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldGame, message.GetGame()), zap.String(logs.LogFieldSchedulerName, message.GetName()))
-	handlerLogger.Info("handling list schedulers request")
+	handlerLogger.Debug("handling list schedulers request")
 	schedulerFilter := &filters.SchedulerFilter{
 		Name:    message.GetName(),
 		Game:    message.GetGame(),
@@ -77,14 +77,14 @@ func (h *SchedulersHandler) ListSchedulers(ctx context.Context, message *api.Lis
 		schedulers[i] = requestadapters.FromEntitySchedulerToListResponse(entity)
 	}
 
-	handlerLogger.Info("finish handling list schedulers request")
+	handlerLogger.Debug("finish handling list schedulers request")
 
 	return &api.ListSchedulersResponse{Schedulers: schedulers}, nil
 }
 
 func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSchedulerRequest) (*api.GetSchedulerResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
-	handlerLogger.Info(fmt.Sprintf("handling get scheduler request, scheduler version: %s", request.GetVersion()))
+	handlerLogger.Debug(fmt.Sprintf("handling get scheduler request, scheduler version: %s", request.GetVersion()))
 	var scheduler *entities.Scheduler
 	var err error
 
@@ -103,7 +103,7 @@ func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSc
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	handlerLogger.Info("finish handling get scheduler request")
+	handlerLogger.Debug("finish handling get scheduler request")
 
 	returnScheduler, err := requestadapters.FromEntitySchedulerToResponse(scheduler)
 	if err != nil {
@@ -116,7 +116,7 @@ func (h *SchedulersHandler) GetScheduler(ctx context.Context, request *api.GetSc
 
 func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *api.GetSchedulerVersionsRequest) (*api.GetSchedulerVersionsResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
-	handlerLogger.Info("handling get scheduler versions request")
+	handlerLogger.Debug("handling get scheduler versions request")
 	versions, err := h.schedulerManager.GetSchedulerVersions(ctx, request.GetSchedulerName())
 
 	if err != nil {
@@ -126,14 +126,14 @@ func (h *SchedulersHandler) GetSchedulerVersions(ctx context.Context, request *a
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	handlerLogger.Info("finish handling get scheduler versions request")
+	handlerLogger.Debug("finish handling get scheduler versions request")
 
 	return &api.GetSchedulerVersionsResponse{Versions: requestadapters.FromEntitySchedulerVersionListToResponse(versions)}, nil
 }
 
 func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.CreateSchedulerRequest) (*api.CreateSchedulerResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
-	handlerLogger.Info("handling create scheduler request")
+	handlerLogger.Debug("handling create scheduler request")
 	scheduler, err := requestadapters.FromApiCreateSchedulerRequestToEntity(request)
 	if err != nil {
 		apiValidationError := parseValidationError(err)
@@ -149,7 +149,7 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	handlerLogger.Info("finish handling create scheduler request")
+	handlerLogger.Debug("finish handling create scheduler request")
 
 	returnScheduler, err := requestadapters.FromEntitySchedulerToResponse(scheduler)
 	if err != nil {
@@ -161,7 +161,7 @@ func (h *SchedulersHandler) CreateScheduler(ctx context.Context, request *api.Cr
 
 func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *api.NewSchedulerVersionRequest) (*api.NewSchedulerVersionResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()), zap.String(logs.LogFieldGame, request.GetGame()))
-	handlerLogger.Info("handling new scheduler version request")
+	handlerLogger.Debug("handling new scheduler version request")
 	scheduler, err := requestadapters.FromApiNewSchedulerVersionRequestToEntity(request)
 	if err != nil {
 		apiValidationError := parseValidationError(err)
@@ -178,14 +178,14 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	handlerLogger.Info("finish handling new scheduler version request")
+	handlerLogger.Debug("finish handling new scheduler version request")
 
 	return &api.NewSchedulerVersionResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.PatchSchedulerRequest) (*api.PatchSchedulerResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetName()))
-	handlerLogger.Info("handling patch scheduler request")
+	handlerLogger.Debug("handling patch scheduler request")
 
 	patchMap := requestadapters.FromApiPatchSchedulerRequestToChangeMap(request)
 	if len(patchMap) == 0 {
@@ -205,14 +205,14 @@ func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.Pat
 
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	handlerLogger.Info("finish handling patch scheduler request")
+	handlerLogger.Debug("finish handling patch scheduler request")
 
 	return &api.PatchSchedulerResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *api.SwitchActiveVersionRequest) (*api.SwitchActiveVersionResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()))
-	handlerLogger.Info("handling switch active version request")
+	handlerLogger.Debug("handling switch active version request")
 	operation, err := h.schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, request.GetSchedulerName(), request.GetVersion())
 
 	if err != nil {
@@ -220,13 +220,13 @@ func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *ap
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	handlerLogger.Info("finish handling switch active version request")
+	handlerLogger.Debug("finish handling switch active version request")
 	return &api.SwitchActiveVersionResponse{OperationId: operation.ID}, nil
 }
 
 func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.GetSchedulersInfoRequest) (*api.GetSchedulersInfoResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldGame, request.GetGame()))
-	handlerLogger.Info("handling get schedulers info request")
+	handlerLogger.Debug("handling get schedulers info request")
 	filter := filters.SchedulerFilter{Game: request.GetGame()}
 	schedulers, err := h.schedulerManager.GetSchedulersInfo(ctx, &filter)
 
@@ -242,7 +242,7 @@ func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.
 	for i, scheduler := range schedulers {
 		schedulersResponse[i] = requestadapters.FromEntitySchedulerInfoToListResponse(scheduler)
 	}
-	handlerLogger.Info("finish handling get schedulers info request")
+	handlerLogger.Debug("finish handling get schedulers info request")
 
 	return &api.GetSchedulersInfoResponse{
 		Schedulers: schedulersResponse,
@@ -252,7 +252,7 @@ func (h *SchedulersHandler) GetSchedulersInfo(ctx context.Context, request *api.
 func (h *SchedulersHandler) DeleteScheduler(ctx context.Context, request *api.DeleteSchedulerRequest) (*api.DeleteSchedulerResponse, error) {
 	schedulerName := request.GetSchedulerName()
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, schedulerName))
-	handlerLogger.Info("handling delete scheduler request")
+	handlerLogger.Debug("handling delete scheduler request")
 	op, err := h.schedulerManager.EnqueueDeleteSchedulerOperation(ctx, schedulerName)
 
 	if err != nil {
@@ -262,6 +262,6 @@ func (h *SchedulersHandler) DeleteScheduler(ctx context.Context, request *api.De
 		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
-	handlerLogger.Info("finish handling delete scheduler request")
+	handlerLogger.Debug("finish handling delete scheduler request")
 	return &api.DeleteSchedulerResponse{OperationId: op.ID}, nil
 }
