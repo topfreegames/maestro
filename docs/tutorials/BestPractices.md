@@ -25,18 +25,22 @@ As a rule of thumb, the lower the maxSurge, the safer the rollout. Maestro creat
 
 Once the rollout has finished, you can rollback the ready target and/or minimum number of rooms to their standard levels.
 
-**Zooba:**
-- US east: 115 min rooms;
-- AP: 60 min rooms;
 
-**WM:**
-- EU: 250 min rooms;
-- AP: 50 min rooms;
+## Recommended defaults for games
 
-**Sniper:**
-- US east: 8 min rooms;
+This section outlines a few recommended defaults games that uses Maestro.These are only recommendations, and they can definitely change if your game's requirements change. Use them as a guideline to define what works best for you.
 
-**Sky Warriors:**
-- US east: 37 min rooms;
-- EU: 35 min rooms;
-- AP: 28 min rooms;
+###  Minimum number of rooms
+
+They were defined by getting the minimum number of rooms that each region had during a 1 week avaliation window.
+
+| Game         | Region | Min |
+|--------------|--------|-----|
+| Zooba        | US     | 115 |
+| Zooba        | AP     | 60  |
+| War Machines | EU     | 250 |
+| War Machines | AP     | 50  |
+| Sniper3d     | US     | 8   |
+| Sky Warriors | US     | 37  |
+| Sky Warriors | EU     | 35  |
+| Sky Warriors | AP     | 28  |
