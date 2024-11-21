@@ -158,3 +158,18 @@ maestro/down: ## Delete Maestro and all of its dependencies.
 	@echo "Deleting maestro..."
 	@cd ./e2e/framework/maestro; docker-compose down
 	@echo "Maestro was deleted with success!"
+
+.PHONY: maestro/tilt
+maestro/tilt: ## Start Maestro with all of its dependencies using Tilt.
+	@echo "Starting maestro with Tilt..."
+	@kind create cluster --config ./kind-config.yaml
+	@kubectx kind-maestro
+	@tilt up
+	@echo "Maestro is up and running with Tilt!"
+
+.PHONY: maestro/tilt/down
+maestro/tilt/down: ## Delete Maestro and all of its dependencies using Tilt.
+	@echo "Deleting maestro with Tilt..."
+	@tilt down
+	@kind delete cluster --name maestro
+	@echo "Maestro was deleted with success using Tilt!"
