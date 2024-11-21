@@ -76,26 +76,6 @@ func TestMultipleMatchStatusCalculator_CalculateRoomStatus(t *testing.T) {
 			expectedStatus: game_room.GameStatusOccupied,
 		},
 		{
-			name: "room cooling with less than max running matches",
-			room: game_room.GameRoom{
-				Status:         game_room.GameStatusOccupied,
-				PingStatus:     game_room.GameRoomPingStatusOccupied,
-				RunningMatches: 2,
-			},
-			instance:       game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}},
-			expectedStatus: game_room.GameStatusCooling,
-		},
-		{
-			name: "room active with running matches less than max but more than min free slots",
-			room: game_room.GameRoom{
-				Status:         game_room.GameStatusCooling,
-				PingStatus:     game_room.GameRoomPingStatusReady,
-				RunningMatches: 1,
-			},
-			instance:       game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}},
-			expectedStatus: game_room.GameStatusActive,
-		},
-		{
 			name: "room pending with instance pending",
 			room: game_room.GameRoom{
 				Status:         game_room.GameStatusPending,

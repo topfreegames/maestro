@@ -94,13 +94,5 @@ func (mm *MultipleMatchStatusCalculator) CalculateRoomStatus(room game_room.Game
 		return game_room.GameStatusOccupied, nil
 	}
 
-	if room.Status == game_room.GameStatusOccupied && room.RunningMatches < mm.scheduler.MatchAllocation.MaxMatches {
-		return game_room.GameStatusCooling, nil
-	}
-
-	if room.Status == game_room.GameStatusCooling && (mm.scheduler.MatchAllocation.MaxMatches-room.RunningMatches) <= mm.scheduler.MatchAllocation.MinFreeSlots {
-		return game_room.GameStatusCooling, nil
-	}
-
 	return game_room.GameStatusActive, nil
 }

@@ -98,7 +98,7 @@ func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.Poli
 
 	maxMatches := currentState[MaxMatchesKey].(int)
 
-	occupiedRooms := runningMatches / maxMatches
+	occupiedRooms := math.Ceil(float64(runningMatches) / float64(maxMatches))
 	desiredNumberOfRoom := int(math.Ceil(float64(occupiedRooms) / (float64(1) - readyTarget)))
 
 	return desiredNumberOfRoom, nil

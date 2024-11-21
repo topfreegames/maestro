@@ -50,8 +50,6 @@ const (
 	GameStatusTerminated
 	// GameStatusActive room is partially occupied, when hosting multiple matches
 	GameStatusActive
-	// GameStatusCooling room is cooling down after being fully occupied running multiple matches
-	GameStatusCooling
 )
 
 func (status GameRoomStatus) String() string {
@@ -66,8 +64,6 @@ func (status GameRoomStatus) String() string {
 		return "active"
 	case GameStatusOccupied:
 		return "occupied"
-	case GameStatusCooling:
-		return "cooling"
 	case GameStatusTerminating:
 		return "terminating"
 	case GameStatusError:
@@ -174,13 +170,6 @@ var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{
 	},
 	GameStatusOccupied: {
 		GameStatusReady:       struct{}{},
-		GameStatusTerminating: struct{}{},
-		GameStatusUnready:     struct{}{},
-		GameStatusError:       struct{}{},
-		GameStatusCooling:     struct{}{},
-	},
-	GameStatusCooling: {
-		GameStatusActive:      struct{}{},
 		GameStatusTerminating: struct{}{},
 		GameStatusUnready:     struct{}{},
 		GameStatusError:       struct{}{},
