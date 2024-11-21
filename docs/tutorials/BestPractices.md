@@ -32,15 +32,18 @@ This section outlines a few recommended defaults games that uses Maestro.These a
 
 ###  Minimum number of rooms
 
-They were defined by getting the minimum number of rooms that each region had during a 1 week avaliation window.
+When defining the minimum number of rooms for a scheduler, one good rule of thumb, is checking the rooms variation over the course of a week, and setting it as the local minimum of this eval window. Ex.: let's say, that during the span of a week, the scheduler had the following amount of rooms:
 
-| Game         | Region | Min |
-|--------------|--------|-----|
-| Zooba        | US     | 115 |
-| Zooba        | AP     | 60  |
-| War Machines | EU     | 250 |
-| War Machines | AP     | 50  |
-| Sniper3d     | US     | 8   |
-| Sky Warriors | US     | 37  |
-| Sky Warriors | EU     | 35  |
-| Sky Warriors | AP     | 28  |
+| Day         | Rooms |
+|--------------|--------|
+| day 1        | 100 rooms     |
+| day 2        | 50 rooms     | 
+| day 3 |  25 rooms |
+| day 4 | 50 rooms  |
+| day 5        | 100 rooms   |
+| day 6 |  100 rooms  |
+| day 7 | 50 rooms  |
+
+Min rooms should be 25, since it was the smallest value during the evaluation window.
+
+They were defined by getting the minimum number of rooms that each region had during a 1 week avaliation window.
