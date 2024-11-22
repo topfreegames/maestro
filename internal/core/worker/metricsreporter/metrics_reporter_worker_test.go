@@ -74,6 +74,10 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 			Return(55, nil).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).
 			Return(66, nil).MinTimes(3)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).
+			Return(77, nil).MinTimes(3)
+		roomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).
+			Return(88, nil).MinTimes(3)
 		instanceStorage.EXPECT().GetAllInstances(gomock.Any(), scheduler.Name).Return(instances, nil).MinTimes(3)
 
 		go func() {
@@ -93,12 +97,15 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 		assert.Equal(t, float64(44), testutil.ToFloat64(gameRoomOccupiedGaugeMetric))
 		assert.Equal(t, float64(55), testutil.ToFloat64(gameRoomUnreadyGaugeMetric))
 		assert.Equal(t, float64(66), testutil.ToFloat64(gameRoomErrorGaugeMetric))
+		assert.Equal(t, float64(77), testutil.ToFloat64(gameRoomActiveGaugeMetric))
 
 		assert.Equal(t, float64(8), testutil.ToFloat64(instanceReadyGaugeMetric))
 		assert.Equal(t, float64(8), testutil.ToFloat64(instancePendingGaugeMetric))
 		assert.Equal(t, float64(8), testutil.ToFloat64(instanceUnknownGaugeMetric))
 		assert.Equal(t, float64(8), testutil.ToFloat64(instanceTerminatingGaugeMetric))
 		assert.Equal(t, float64(8), testutil.ToFloat64(instanceErrorGaugeMetric))
+
+		assert.Equal(t, float64(88), testutil.ToFloat64(runningMatchesGaugeMetric))
 	})
 }
 
@@ -131,6 +138,10 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusUnready).
 			Return(0, errors.New("some_error")).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).
+			Return(0, errors.New("some_error")).MinTimes(3)
+		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).
+			Return(0, errors.New("some_error")).MinTimes(3)
+		roomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).
 			Return(0, errors.New("some_error")).MinTimes(3)
 		instanceStorage.EXPECT().GetAllInstances(gomock.Any(), scheduler.Name).
 			Return([]*game_room.Instance{}, errors.New("some_error")).MinTimes(3)
