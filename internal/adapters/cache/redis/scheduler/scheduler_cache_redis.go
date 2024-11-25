@@ -28,9 +28,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/adapters/metrics"
-
 	"github.com/go-redis/redis/v8"
+	"github.com/topfreegames/maestro/internal/adapters/metrics"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/ports"
 )

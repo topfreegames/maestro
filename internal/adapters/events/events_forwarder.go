@@ -26,15 +26,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/topfreegames/maestro/internal/core/entities/events"
 	entities "github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
-
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type eventsForwarder struct {

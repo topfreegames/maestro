@@ -31,28 +31,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
-	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
-
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"github.com/topfreegames/maestro/internal/core/operations/schedulers/delete"
-
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/operations"
-	"github.com/topfreegames/maestro/internal/core/ports"
-	"github.com/topfreegames/maestro/internal/core/ports/mock"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/filters"
+	"github.com/topfreegames/maestro/internal/core/operations"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/delete"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
 	"github.com/topfreegames/maestro/internal/validations"
 )
 
@@ -1075,6 +1072,10 @@ func newValidScheduler() *entities.Scheduler {
 		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
+		},
+		MatchAllocation: allocation.MatchAllocation{
+			MaxMatches:   1,
+			MinFreeSlots: 1,
 		},
 	}
 }

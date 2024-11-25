@@ -244,7 +244,7 @@ func (k *kubernetes) WatchGameRoomInstances(ctx context.Context, scheduler *enti
 		}),
 	).Core().V1().Pods().Informer()
 
-	podsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = podsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    watcher.addFunc,
 		UpdateFunc: watcher.updateFunc,
 		DeleteFunc: watcher.deleteFunc,

@@ -9,7 +9,9 @@ import "google/api/annotations.proto";
 import "api/v1/messages.proto";
 import "google/protobuf/descriptor.proto";
 
+// FieldOptions extension to validate the field
 extend google.protobuf.FieldOptions {
+  // Validator for the field
   optional string validator = 51234;
 }
 
@@ -127,6 +129,8 @@ message CreateSchedulerRequest {
   map<string, string> annotations = 9;
   // Add labels for scheduler
   map<string, string> labels = 10;
+  // Configuration for matches allocation in the Game Rooms
+  optional MatchAllocation match_allocation = 11;
 }
 
 // Get Scheduler operation request
@@ -165,6 +169,8 @@ message NewSchedulerVersionRequest {
   map<string, string> annotations = 9;
   // New labels for scheduler
   map<string, string> labels = 10;
+  // Configuration for matches allocation in the Game Rooms
+  optional MatchAllocation match_allocation = 11;
 }
 
 // Update schedule operation response payload.
@@ -193,6 +199,8 @@ message PatchSchedulerRequest {
   map<string, string> annotations = 8;
   // Labels declaration for the scheduler
   map<string, string> labels = 9;
+  // Configuration for matches allocation in the Game Rooms
+  optional MatchAllocation match_allocation = 10;
 }
 
 // PatchSchedulerResponse have the operation response id that represents the operation creted to this change.

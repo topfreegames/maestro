@@ -103,6 +103,8 @@ type RoomStorage interface {
 	UpdateRoomStatus(ctx context.Context, scheduler, roomId string, status game_room.GameRoomStatus) error
 	// WatchRoomStatus watch for status changes on the storage.
 	WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (RoomStorageStatusWatcher, error)
+	// GetRunningMatchesCount returns the current amount of running matches in a scheduler.
+	GetRunningMatchesCount(ctx context.Context, scheduler string) (int, error)
 }
 
 // RoomStorageStatusWatcher defines a process of watcher, it will have a chan

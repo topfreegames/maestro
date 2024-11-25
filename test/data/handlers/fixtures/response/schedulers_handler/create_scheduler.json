@@ -82,6 +82,10 @@
     },
     "labels": {
       "scheduler": "scheduler-name"
+    },
+    "matchAllocation": {
+      "maxMatches": 1,
+      "minFreeSlots": 1
     }
   }
 }

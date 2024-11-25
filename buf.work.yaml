@@ -1,6 +1,0 @@
-# TODO(caio.rodrigues): remove third_party directories and include them as deps
-version: v1
-directories:
-  - proto/
-  - third_party/googleapis
-  - third_party/grpc-gateway
