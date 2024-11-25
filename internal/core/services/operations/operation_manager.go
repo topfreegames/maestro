@@ -175,14 +175,14 @@ func (om *OperationManager) ListSchedulerPendingOperations(ctx context.Context, 
 func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error) {
 	ops, err := om.Storage.ListSchedulerActiveOperations(ctx, schedulerName)
 	if err != nil {
-		return nil, fmt.Errorf("failed get active operations list fort scheduler %s : %w", schedulerName, err)
+		return nil, fmt.Errorf("failed get active operations list for scheduler %s : %w", schedulerName, err)
 	}
 	if len(ops) == 0 {
 		return []*operation.Operation{}, err
 	}
 	err = om.addOperationsLeaseData(ctx, schedulerName, ops)
 	if err != nil {
-		return nil, err
+		om.Logger.With(zap.String(logs.LogFieldSchedulerName, schedulerName), zap.Error(err)).Warn("failed to add operations lease data")
 	}
 	return ops, nil
 }
