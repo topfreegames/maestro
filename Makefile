@@ -38,7 +38,7 @@ lint/go: ## Execute golangci-lint.
 
 .PHONY: lint/protobuf
 lint/protobuf: ## Execute buf linter.
-	@go run $(BUF) lint
+	@go run $(BUF) dep update && go run $(BUF) lint
 
 .PHONY: run/tests
 run/tests: run/unit-tests run/integration-tests ## Execute all unit and integration tests
