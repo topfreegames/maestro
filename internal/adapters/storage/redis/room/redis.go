@@ -88,7 +88,7 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 
 	room.Status = game_room.GameRoomStatus(statusCmd.Val())
 	room.LastPingAt = time.Unix(int64(pingCmd.Val()), 0)
-	room.OccupiedSlots = int(occupancyCmd.Val())
+	room.RunningMatches = int(occupancyCmd.Val())
 	err = json.NewDecoder(strings.NewReader(roomHashCmd.Val()[metadataKey])).Decode(&room.Metadata)
 	if err != nil {
 		return nil, errors.NewErrEncoding("error unmarshalling room %s json", roomID).WithError(err)
@@ -130,7 +130,7 @@ func (r *redisStateStorage) CreateRoom(ctx context.Context, room *game_room.Game
 
 	occupancyCmd := p.ZAddNX(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{
 		Member: room.ID,
-		Score:  float64(room.OccupiedSlots),
+		Score:  float64(room.RunningMatches),
 	})
 
 	statusCmd := p.ZAddNX(ctx, getRoomStatusSetRedisKey(room.SchedulerID), &redis.Z{
@@ -182,7 +182,7 @@ func (r *redisStateStorage) UpdateRoom(ctx context.Context, room *game_room.Game
 
 	p.ZAddXXCh(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{
 		Member: room.ID,
-		Score:  float64(room.OccupiedSlots),
+		Score:  float64(room.RunningMatches),
 	})
 
 	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
@@ -325,6 +325,28 @@ func (r *redisStateStorage) UpdateRoomStatus(ctx context.Context, scheduler, roo
 	}
 
 	return nil
+}
+
+func (r *redisStateStorage) GetRunningMatchesCount(ctx context.Context, scheduler string) (count int, err error) {
+	client := r.client
+	var rooms []redis.Z
+	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+		rooms, err = client.ZRangeByScoreWithScores(ctx, getRoomOccupancyRedisKey(scheduler), &redis.ZRangeBy{
+			Min: "-inf",
+			Max: "+inf",
+		}).Result()
+		return err
+	})
+	if err != nil {
+		return 0, errors.NewErrUnexpected("error getting running matches scores from redis").WithError(err)
+	}
+
+	sum := 0
+	for _, room := range rooms {
+		sum += int(room.Score)
+	}
+
+	return sum, nil
 }
 
 func (r *redisStateStorage) WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {

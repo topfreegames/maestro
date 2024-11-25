@@ -36,10 +36,12 @@ import (
 )
 
 const (
-	// OccupiedRoomsKey is the key to occupied rooms in the CurrentState map.
-	OccupiedRoomsKey = "RoomsOccupancyOccupiedRooms"
 	// ReadyRoomsKey is the key to total rooms in the CurrentState map.
 	ReadyRoomsKey = "RoomsOccupancyTotalRooms"
+	// RunningMatchesKey is the key to running matches in the CurrentState map.
+	RunningMatchesKey = "RoomsOccupancyRunningMatches"
+	// MaxMatchesKey is the key to max matches in the CurrentState map.
+	MaxMatchesKey = "RoomsOccupancyMaxMatches"
 )
 
 // Policy holds the requirements to build the current state of
@@ -59,19 +61,20 @@ func NewPolicy(roomStorage ports.RoomStorage) *Policy {
 
 // CurrentStateBuilder fill the fields that should be considered during the autoscaling policy.
 func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Scheduler) (policies.CurrentState, error) {
-	occupiedRoomsAmount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
-	}
-
 	readyRoomsAmount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching ready game rooms amount: %w", err)
 	}
 
+	runningMatchesAmount, err := p.roomStorage.GetRunningMatchesCount(ctx, scheduler.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching running matches amount: %w", err)
+	}
+
 	currentState := policies.CurrentState{
-		OccupiedRoomsKey: occupiedRoomsAmount,
-		ReadyRoomsKey:    readyRoomsAmount,
+		ReadyRoomsKey:     readyRoomsAmount,
+		RunningMatchesKey: runningMatchesAmount,
+		MaxMatchesKey:     scheduler.MatchAllocation.MaxMatches,
 	}
 
 	return currentState, nil
@@ -88,11 +91,14 @@ func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.Poli
 		return -1, errors.New("ready target must be greater than 0 and less than 1")
 	}
 
-	if _, ok := currentState[OccupiedRoomsKey].(int); !ok {
-		return -1, errors.New("There are no occupiedRooms in the currentState")
+	runningMatches, ok := currentState[RunningMatchesKey].(int)
+	if !ok {
+		return -1, errors.New("There are no runningMatches in the currentState")
 	}
 
-	occupiedRooms := currentState[OccupiedRoomsKey].(int)
+	maxMatches := currentState[MaxMatchesKey].(int)
+
+	occupiedRooms := math.Ceil(float64(runningMatches) / float64(maxMatches))
 	desiredNumberOfRoom := int(math.Ceil(float64(occupiedRooms) / (float64(1) - readyTarget)))
 
 	return desiredNumberOfRoom, nil

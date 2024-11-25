@@ -90,7 +90,7 @@ func assertRedisState(t *testing.T, client *redis.Client, room *game_room.GameRo
 
 	occupancyCmd := client.ZScore(context.Background(), getRoomOccupancyRedisKey(room.SchedulerID), room.ID)
 	require.NoError(t, occupancyCmd.Err())
-	require.Equal(t, float64(room.OccupiedSlots), occupancyCmd.Val())
+	require.Equal(t, float64(room.RunningMatches), occupancyCmd.Val())
 }
 
 func assertUpdateStatusEventPublished(t *testing.T, sub *redis.PubSub, room *game_room.GameRoom) {
@@ -141,7 +141,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			Status:           game_room.GameStatusReady,
 			LastPingAt:       lastPing,
 			IsValidationRoom: false,
-			OccupiedSlots:    10,
+			RunningMatches:   10,
 		}
 		require.NoError(t, storage.CreateRoom(ctx, room))
 		assertRedisState(t, client, room)
@@ -158,7 +158,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
-			OccupiedSlots: 10,
+			RunningMatches: 10,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -176,7 +176,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
-			OccupiedSlots: 10,
+			RunningMatches: 10,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, firstRoom))
@@ -192,7 +192,7 @@ func TestRedisStateStorage_CreateRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
-			OccupiedSlots: 10,
+			RunningMatches: 10,
 		}
 
 		requireErrorKind(t, errors.ErrAlreadyExists, storage.CreateRoom(ctx, secondRoom))
@@ -213,7 +213,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			Status:           game_room.GameStatusReady,
 			LastPingAt:       lastPing,
 			IsValidationRoom: false,
-			OccupiedSlots:    20,
+			RunningMatches:   20,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -233,7 +233,7 @@ func TestRedisStateStorage_UpdateRoom(t *testing.T) {
 			Metadata: map[string]interface{}{
 				"region": "us",
 			},
-			OccupiedSlots: 20,
+			RunningMatches: 20,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -250,12 +250,12 @@ func TestRedisStateStorage_DeleteRoom(t *testing.T) {
 
 	t.Run("game room exists", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:            "room-1",
-			SchedulerID:   "game",
-			Version:       "1.0",
-			Status:        game_room.GameStatusReady,
-			LastPingAt:    lastPing,
-			OccupiedSlots: 20,
+			ID:             "room-1",
+			SchedulerID:    "game",
+			Version:        "1.0",
+			Status:         game_room.GameStatusReady,
+			LastPingAt:     lastPing,
+			RunningMatches: 20,
 		}
 
 		require.NoError(t, storage.CreateRoom(ctx, room))
@@ -276,13 +276,13 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 	t.Run("game room without metadata", func(t *testing.T) {
 		createdAt := time.Unix(time.Date(2020, 1, 1, 2, 2, 0, 0, time.UTC).Unix(), 0)
 		expectedRoom := &game_room.GameRoom{
-			ID:            "room-1",
-			SchedulerID:   "game",
-			Version:       "1.0",
-			Status:        game_room.GameStatusReady,
-			LastPingAt:    lastPing,
-			CreatedAt:     createdAt,
-			OccupiedSlots: 30,
+			ID:             "room-1",
+			SchedulerID:    "game",
+			Version:        "1.0",
+			Status:         game_room.GameStatusReady,
+			LastPingAt:     lastPing,
+			CreatedAt:      createdAt,
+			RunningMatches: 30,
 		}
 		metadataJson, _ := json.Marshal(expectedRoom.Metadata)
 
@@ -307,7 +307,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 
 		_ = p.ZAddNX(ctx, getRoomOccupancyRedisKey(expectedRoom.SchedulerID), &redis.Z{
 			Member: expectedRoom.ID,
-			Score:  float64(expectedRoom.OccupiedSlots),
+			Score:  float64(expectedRoom.RunningMatches),
 		})
 
 		_, _ = p.Exec(ctx)
@@ -330,7 +330,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 			},
 			IsValidationRoom: true,
 			CreatedAt:        createdAt,
-			OccupiedSlots:    30,
+			RunningMatches:   30,
 		}
 
 		metadataJson, _ := json.Marshal(expectedRoom.Metadata)
@@ -356,7 +356,7 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 
 		_ = p.ZAddNX(ctx, getRoomOccupancyRedisKey(expectedRoom.SchedulerID), &redis.Z{
 			Member: expectedRoom.ID,
-			Score:  float64(expectedRoom.OccupiedSlots),
+			Score:  float64(expectedRoom.RunningMatches),
 		})
 		_, _ = p.Exec(ctx)
 
@@ -631,12 +631,12 @@ func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
 
 	t.Run("game room updates room status", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:            "room-1",
-			SchedulerID:   "game",
-			Version:       "1.0",
-			Status:        game_room.GameStatusReady,
-			LastPingAt:    lastPing,
-			OccupiedSlots: 40,
+			ID:             "room-1",
+			SchedulerID:    "game",
+			Version:        "1.0",
+			Status:         game_room.GameStatusReady,
+			LastPingAt:     lastPing,
+			RunningMatches: 40,
 		}
 
 		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
@@ -651,12 +651,12 @@ func TestRedisStateStorage_UpdateRoomStatus(t *testing.T) {
 
 	t.Run("game room doesn't update room status when room doesn't exists", func(t *testing.T) {
 		room := &game_room.GameRoom{
-			ID:            "room-not-found",
-			SchedulerID:   "game",
-			Version:       "1.0",
-			Status:        game_room.GameStatusReady,
-			LastPingAt:    lastPing,
-			OccupiedSlots: 40,
+			ID:             "room-not-found",
+			SchedulerID:    "game",
+			Version:        "1.0",
+			Status:         game_room.GameStatusReady,
+			LastPingAt:     lastPing,
+			RunningMatches: 40,
 		}
 
 		sub := client.Subscribe(context.Background(), getRoomStatusUpdateChannel(room.SchedulerID, room.ID))
@@ -734,4 +734,51 @@ func TestRedisStateStorage_GetRoomIDsByStatus(t *testing.T) {
 	terminatingRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusTerminating)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"room-5"}, terminatingRooms)
+}
+
+func TestRedisStateStorage_GetRunningMatchesCount(t *testing.T) {
+	ctx := context.Background()
+	client := test.GetRedisConnection(t, redisAddress)
+	storage := NewRedisStateStorage(client)
+
+	t.Run("no running matches", func(t *testing.T) {
+		count, err := storage.GetRunningMatchesCount(ctx, "game")
+		require.NoError(t, err)
+		require.Equal(t, 0, count)
+	})
+
+	t.Run("single running match", func(t *testing.T) {
+		room := &game_room.GameRoom{
+			ID:             "room-1",
+			SchedulerID:    "game",
+			RunningMatches: 1,
+		}
+		client.ZAdd(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{
+			Member: room.ID,
+			Score:  float64(room.RunningMatches),
+		})
+
+		count, err := storage.GetRunningMatchesCount(ctx, room.SchedulerID)
+		require.NoError(t, err)
+		require.Equal(t, 1, count)
+	})
+
+	t.Run("multiple running matches", func(t *testing.T) {
+		rooms := []*game_room.GameRoom{
+			{ID: "room-1", SchedulerID: "game", RunningMatches: 1},
+			{ID: "room-2", SchedulerID: "game", RunningMatches: 2},
+			{ID: "room-3", SchedulerID: "game", RunningMatches: 3},
+		}
+
+		for _, room := range rooms {
+			client.ZAdd(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{
+				Member: room.ID,
+				Score:  float64(room.RunningMatches),
+			})
+		}
+
+		count, err := storage.GetRunningMatchesCount(ctx, "game")
+		require.NoError(t, err)
+		require.Equal(t, 6, count)
+	})
 }

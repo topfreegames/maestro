@@ -134,6 +134,8 @@ func (w *MetricsReporterWorker) reportGameRoomMetrics() {
 	w.reportOccupiedRooms()
 	w.reportTerminatingRooms()
 	w.reportUnreadyRooms()
+	w.reportActiveRooms()
+	w.reportTotalRunningMatches()
 }
 
 func (w *MetricsReporterWorker) reportPendingRooms() {
@@ -188,4 +190,24 @@ func (w *MetricsReporterWorker) reportUnreadyRooms() {
 		return
 	}
 	reportGameRoomUnreadyNumber(w.scheduler.Game, w.scheduler.Name, unreadyRooms)
+}
+
+func (w *MetricsReporterWorker) reportActiveRooms() {
+	activeRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusActive)
+	if err != nil {
+		w.logger.Error("Error getting active pods", zap.Error(err))
+		return
+	}
+
+	reportGameRoomActiveNumber(w.scheduler.Game, w.scheduler.Name, activeRooms)
+}
+
+func (w *MetricsReporterWorker) reportTotalRunningMatches() {
+	runningMatches, err := w.roomStorage.GetRunningMatchesCount(w.workerContext, w.scheduler.Name)
+	if err != nil {
+		w.logger.Error("Error getting running matches", zap.Error(err))
+		return
+	}
+
+	reportTotalRunningMatches(w.scheduler.Game, w.scheduler.Name, runningMatches)
 }

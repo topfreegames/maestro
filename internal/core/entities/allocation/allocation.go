@@ -20,18 +20,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//go:build tools
-// +build tools
+package allocation
 
-package tools
+// MatchAllocation is the struct that defines the configuration for the match
+// allocation in the Game Rooms.
+type MatchAllocation struct {
+	// MaxMatches defined the maximum number of matches that a room can host.
+	MaxMatches int `validate:"required,min=1,max=30"`
+	// MinFreeSlots defines the minimum number of free slots that a room must
+	// have to become available for allocation.
+	MinFreeSlots int `validate:"required,min=1,max=30"`
+}
 
-import (
-	_ "github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/cmd/migrate"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang/mock/mockgen"
-	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
-	_ "github.com/google/addlicense"
-	_ "github.com/google/wire/cmd/wire"
-	_ "golang.org/x/tools/cmd/goimports"
-)
+func NewDefaultMatchAllocation() *MatchAllocation {
+	return &MatchAllocation{
+		MaxMatches:   1,
+		MinFreeSlots: 1,
+	}
+}
