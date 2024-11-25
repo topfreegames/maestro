@@ -9,7 +9,9 @@ import "google/api/annotations.proto";
 import "api/v1/messages.proto";
 import "google/protobuf/descriptor.proto";
 
+// FieldOptions extension to validate the field
 extend google.protobuf.FieldOptions {
+  // Validator for the field
   optional string validator = 51234;
 }
 

@@ -28,6 +28,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/go-pg/pg/v10"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -62,6 +63,7 @@ type schedulerInfo struct {
 	Annotations            map[string]string
 	Labels                 map[string]string
 	LastDownscaleAt        time.Time
+	MatchAllocation        allocation.MatchAllocation
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -78,6 +80,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		Annotations:            scheduler.Annotations,
 		Labels:                 scheduler.Labels,
 		LastDownscaleAt:        scheduler.LastDownscaleAt,
+		MatchAllocation:        scheduler.MatchAllocation,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -117,5 +120,6 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		RoomsReplicas:   info.RoomsReplicas,
 		Forwarders:      info.Forwarders,
 		Autoscaling:     info.Autoscaling,
+		MatchAllocation: info.MatchAllocation,
 	}, nil
 }

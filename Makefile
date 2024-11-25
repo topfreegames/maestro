@@ -38,7 +38,7 @@ lint/go: ## Execute golangci-lint.
 
 .PHONY: lint/protobuf
 lint/protobuf: ## Execute buf linter.
-	@go run github.com/bufbuild/buf/cmd/buf lint
+	@go run $(BUF) dep update && go run $(BUF) lint
 
 .PHONY: run/tests
 run/tests: run/unit-tests run/integration-tests ## Execute all unit and integration tests
@@ -152,13 +152,13 @@ deps/down: ## Delete containers dependencies.
 .PHONY: maestro/start
 maestro/start: build-linux-x86_64 ## Start Maestro with all of its dependencies.
 	@echo "Starting maestro..."
-	@cd ./e2e/framework/maestro; docker-compose up --build -d
+	@cd ./e2e/framework/maestro; docker compose up --build -d
 	@MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate;
-	@cd ./e2e/framework/maestro; docker-compose up --build -d worker runtime-watcher #Worker and watcher do not work before migration, so we start them after it.
+	@cd ./e2e/framework/maestro; docker compose up --build -d worker runtime-watcher #Worker and watcher do not work before migration, so we start them after it.
 	@echo "Maestro is up and running!"
 
 .PHONY: maestro/down
 maestro/down: ## Delete Maestro and all of its dependencies.
 	@echo "Deleting maestro..."
-	@cd ./e2e/framework/maestro; docker-compose down
+	@cd ./e2e/framework/maestro; docker compose down
 	@echo "Maestro was deleted with success!"
