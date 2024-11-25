@@ -29,7 +29,7 @@ type MatchAllocation struct {
 	MaxMatches int `validate:"required,min=1,max=30"`
 	// MinFreeSlots defines the minimum number of free slots that a room must
 	// have to become available for allocation.
-	MinFreeSlots int `validate:"required,min=1"`
+	MinFreeSlots int `validate:"required,min=1,max=30"`
 }
 
 func NewDefaultMatchAllocation() *MatchAllocation {
