@@ -592,7 +592,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		require.Error(t, err, fmt.Errorf("failed get active operations list fort scheduler %s : %w", schedulerName, errors.New("some error")))
 	})
 
-	t.Run("it returns error when some error occurs in operation lease storage", func(t *testing.T) {
+	t.Run("it does not return error when some error occurs in operation lease storage", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		operationFlow := mockports.NewMockOperationFlow(mockCtrl)
@@ -613,7 +613,7 @@ func TestListSchedulerActiveOperations(t *testing.T) {
 		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(operationsResult, nil)
 		operationLeaseStorage.EXPECT().FetchOperationsLease(ctx, schedulerName, operationsResult[0].ID, operationsResult[1].ID, operationsResult[2].ID).Return([]*operation.OperationLease{}, errors.New("some error"))
 		_, err := opManager.ListSchedulerActiveOperations(ctx, schedulerName)
-		require.Error(t, err, fmt.Errorf("failed to fetch operations lease for scheduler %s: %w", schedulerName, errors.New("some error")))
+		require.NoError(t, err)
 	})
 
 }

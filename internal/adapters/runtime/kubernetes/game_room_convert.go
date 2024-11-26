@@ -67,14 +67,13 @@ var invalidPodWaitingStates = []string{
 	"RunContainerError",
 }
 
-func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*v1.Pod, error) {
+func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec, config KubernetesConfig) (*v1.Pod, error) {
 	defaultAnnotations := map[string]string{safeToEvictAnnotation: safeToEvictValue}
 	defaultLabels := map[string]string{
 		maestroLabelKey:   maestroLabelValue,
 		schedulerLabelKey: scheduler.Name,
 		versionLabelKey:   gameRoomSpec.Version,
 	}
-
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        gameRoomName,
@@ -87,25 +86,31 @@ func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, game
 			Containers:                    []v1.Container{},
 			Tolerations:                   convertSpecTolerations(gameRoomSpec),
 			Affinity:                      convertSpecAffinity(gameRoomSpec),
-			// TODO: make it configurable
-			// 1. Add to proto/API
-			// 2. Generate message
-			// 3. Read from it
-			// 4. Add to game_room.Spec
-			// 5. Add a conversion function
-			TopologySpreadConstraints: []v1.TopologySpreadConstraint{
-				{
-					MaxSkew:           1,
-					TopologyKey:       "topology.kubernetes.io/zone",
-					WhenUnsatisfiable: v1.ScheduleAnyway,
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							schedulerLabelKey: scheduler.Name,
-						},
+		},
+	}
+	if config.TopologySpreadConstraintConfig.Enabled {
+		whenUnsatisfiable := v1.DoNotSchedule
+		if config.TopologySpreadConstraintConfig.WhenUnsatisfiableScheduleAnyway {
+			whenUnsatisfiable = v1.ScheduleAnyway
+		}
+		// TODO: make it configurable on scheduler
+		// 1. Add to proto/API
+		// 2. Generate message
+		// 3. Read from it
+		// 4. Add to game_room.Spec
+		// 5. Add a conversion function
+		pod.Spec.TopologySpreadConstraints = []v1.TopologySpreadConstraint{
+			{
+				MaxSkew:           int32(config.TopologySpreadConstraintConfig.MaxSkew),
+				TopologyKey:       config.TopologySpreadConstraintConfig.TopologyKey,
+				WhenUnsatisfiable: whenUnsatisfiable,
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						schedulerLabelKey: scheduler.Name,
 					},
 				},
 			},
-		},
+		}
 	}
 	for _, container := range gameRoomSpec.Containers {
 		podContainer, err := convertContainer(container, scheduler.Name, pod.Name)

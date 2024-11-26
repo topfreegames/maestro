@@ -45,7 +45,7 @@ import (
 func TestSchedulerCreation(t *testing.T) {
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("create single scheduler", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "single-scheduler-test"}
@@ -70,7 +70,7 @@ func TestSchedulerCreation(t *testing.T) {
 func TestSchedulerDeletion(t *testing.T) {
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("delete scheduler", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: "delete-scheduler-test"}
@@ -96,7 +96,7 @@ func TestSchedulerDeletion(t *testing.T) {
 func TestPDBCreationAndDeletion(t *testing.T) {
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("create pdb from scheduler without autoscaling", func(t *testing.T) {
 		if !kubernetesRuntime.isPDBSupported() {
@@ -202,7 +202,7 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 func TestMitigateDisruption(t *testing.T) {
 	ctx := context.Background()
 	client := test.GetKubernetesClientSet(t, kubernetesContainer)
-	kubernetesRuntime := New(client)
+	kubernetesRuntime := New(client, KubernetesConfig{})
 
 	t.Run("should not mitigate disruption if scheduler is nil", func(t *testing.T) {
 		err := kubernetesRuntime.MitigateDisruption(ctx, nil, 0, 0.0)

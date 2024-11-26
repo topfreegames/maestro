@@ -79,6 +79,7 @@ func (w *MetricsReporterWorker) Start(ctx context.Context) error {
 		case <-ticker.C:
 			w.reportInstanceMetrics()
 			w.reportGameRoomMetrics()
+			w.reportSchedulerMetrics()
 		}
 	}
 }
@@ -136,6 +137,20 @@ func (w *MetricsReporterWorker) reportGameRoomMetrics() {
 	w.reportUnreadyRooms()
 	w.reportActiveRooms()
 	w.reportTotalRunningMatches()
+}
+
+func (w *MetricsReporterWorker) reportSchedulerMetrics() {
+	w.logger.Info("Reporting scheduler metrics")
+	w.reportSchedulerAutoscale()
+}
+
+func (w *MetricsReporterWorker) reportSchedulerAutoscale() {
+	if w.scheduler.Autoscaling == nil {
+		return
+	}
+	if w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy != nil {
+		reportSchedulerPolicyReadyTarget(w.scheduler.Game, w.scheduler.Name, w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy.ReadyTarget)
+	}
 }
 
 func (w *MetricsReporterWorker) reportPendingRooms() {

@@ -249,7 +249,7 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, activeS
 				return nil, fmt.Errorf("failed to fetch room information: %w", err)
 			}
 
-			room = &game_room.GameRoom{ID: roomID, SchedulerID: activeScheduler.Name, Status: game_room.GameStatusError}
+			room = &game_room.GameRoom{ID: roomID, SchedulerID: activeScheduler.Name, Status: game_room.GameStatusError, Version: activeScheduler.Spec.Version}
 		}
 
 		// Select Terminating rooms to be re-deleted. This is useful for fixing any desync state.
@@ -259,7 +259,7 @@ func (m *RoomManager) ListRoomsWithDeletionPriority(ctx context.Context, activeS
 		}
 
 		isRoomActive := room.Status == game_room.GameStatusOccupied || room.Status == game_room.GameStatusReady || room.Status == game_room.GameStatusPending
-		if isRoomActive && room.Version == activeScheduler.Spec.Version {
+		if isRoomActive && activeScheduler.IsSameMajorVersion(room.Version) {
 			activeVersionRoomPool = append(activeVersionRoomPool, room)
 		} else {
 			toDeleteRooms = append(toDeleteRooms, room)
