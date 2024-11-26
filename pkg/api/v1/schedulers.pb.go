@@ -1179,6 +1179,8 @@ var file_api_v1_schedulers_proto_extTypes = []protoimpl.ExtensionInfo{
 
 // Extension fields to descriptorpb.FieldOptions.
 var (
+	// Validator for the field
+	//
 	// optional string validator = 51234;
 	E_Validator = &file_api_v1_schedulers_proto_extTypes[0]
 )

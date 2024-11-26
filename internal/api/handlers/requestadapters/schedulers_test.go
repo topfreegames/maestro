@@ -675,8 +675,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
 					MatchAllocation: allocation.MatchAllocation{
-						MaxMatches:   1,
-						MinFreeSlots: 1,
+						MaxMatches: 1,
 					},
 				},
 			},
@@ -853,8 +852,7 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
 					MatchAllocation: allocation.MatchAllocation{
-						MaxMatches:   1,
-						MinFreeSlots: 1,
+						MaxMatches: 1,
 					},
 				},
 			},
@@ -891,8 +889,7 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 	genericStringList := []string{"some-value", "another-value"}
 	genericTime := time.Now()
 	matchAllocation := &api.MatchAllocation{
-		MaxMatches:   0,
-		MinFreeSlots: 0,
+		MaxMatches: 0,
 	}
 
 	testCases := []struct {
@@ -1344,8 +1341,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
 					MatchAllocation: allocation.MatchAllocation{
-						MaxMatches:   1,
-						MinFreeSlots: 1,
+						MaxMatches: 1,
 					},
 				},
 			},
@@ -1582,8 +1578,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
 					MatchAllocation: &api.MatchAllocation{
-						MaxMatches:   0,
-						MinFreeSlots: 0,
+						MaxMatches: 0,
 					},
 				},
 			},
@@ -1753,8 +1748,7 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
 					MatchAllocation: &api.MatchAllocation{
-						MaxMatches:   0,
-						MinFreeSlots: 0,
+						MaxMatches: 0,
 					},
 				},
 			},

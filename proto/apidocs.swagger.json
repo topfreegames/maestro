@@ -1558,11 +1558,6 @@
           "type": "integer",
           "format": "int32",
           "description": "The max number of matches that can be allocated in a Game Room."
-        },
-        "minFreeSlots": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The number of free slots for the Game Room to become active again."
         }
       },
       "description": "MatchAllocation is the struct that defines the configuration for the match\nallocation in the Game Rooms."

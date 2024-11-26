@@ -135,8 +135,6 @@ message PortRange {
 message MatchAllocation {
   // The max number of matches that can be allocated in a Game Room.
   int32 max_matches = 1;
-  // The number of free slots for the Game Room to become active again.
-  int32 min_free_slots = 2;
 }
 
 // Spec is the specifications of the scheduler, with relevant info about what is being used.

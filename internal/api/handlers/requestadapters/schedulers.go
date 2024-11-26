@@ -337,10 +337,7 @@ func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderO
 }
 
 func fromEntityMatchAllocationToResponse(entity *allocation.MatchAllocation) *api.MatchAllocation {
-	return &api.MatchAllocation{
-		MaxMatches:   int32(entity.MaxMatches),
-		MinFreeSlots: int32(entity.MinFreeSlots),
-	}
+	return &api.MatchAllocation{MaxMatches: int32(entity.MaxMatches)}
 }
 
 func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
@@ -507,20 +504,11 @@ func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
 
 func fromApiMatchAllocation(matchAllocation *api.MatchAllocation) *allocation.MatchAllocation {
 	maxMatches := int(matchAllocation.GetMaxMatches())
-	minFreeSlots := int(matchAllocation.GetMinFreeSlots())
-
 	if maxMatches == 0 {
 		maxMatches = 1
 	}
 
-	if minFreeSlots == 0 {
-		minFreeSlots = 1
-	}
-
-	return &allocation.MatchAllocation{
-		MaxMatches:   maxMatches,
-		MinFreeSlots: minFreeSlots,
-	}
+	return &allocation.MatchAllocation{MaxMatches: maxMatches}
 }
 
 func getPortRange(portRange *port.PortRange) *api.PortRange {

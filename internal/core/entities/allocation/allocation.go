@@ -27,14 +27,8 @@ package allocation
 type MatchAllocation struct {
 	// MaxMatches defined the maximum number of matches that a room can host.
 	MaxMatches int `validate:"required,min=1,max=30"`
-	// MinFreeSlots defines the minimum number of free slots that a room must
-	// have to become available for allocation.
-	MinFreeSlots int `validate:"required,min=1,max=30"`
 }
 
 func NewDefaultMatchAllocation() *MatchAllocation {
-	return &MatchAllocation{
-		MaxMatches:   1,
-		MinFreeSlots: 1,
-	}
+	return &MatchAllocation{MaxMatches: 1}
 }

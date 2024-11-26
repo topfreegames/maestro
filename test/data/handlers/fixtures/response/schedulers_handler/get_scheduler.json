@@ -80,8 +80,7 @@
     "annotations": {},
     "labels": {},
     "matchAllocation": {
-      "maxMatches": 1,
-      "minFreeSlots": 1
+      "maxMatches": 1
     }
   }
 }

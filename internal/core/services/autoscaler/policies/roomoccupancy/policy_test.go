@@ -51,8 +51,7 @@ func TestCurrentStateBuilder(t *testing.T) {
 	scheduler := &entities.Scheduler{
 		Name: "some-name",
 		MatchAllocation: allocation.MatchAllocation{
-			MaxMatches:   1,
-			MinFreeSlots: 1,
+			MaxMatches: 1,
 		},
 	}
 

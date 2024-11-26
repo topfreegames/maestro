@@ -39,8 +39,7 @@ func TestMultipleMatchStatusCalculator_CalculateRoomStatus(t *testing.T) {
 	logger := zap.NewNop()
 	scheduler := entities.Scheduler{
 		MatchAllocation: allocation.MatchAllocation{
-			MaxMatches:   3,
-			MinFreeSlots: 1,
+			MaxMatches: 3,
 		},
 	}
 
