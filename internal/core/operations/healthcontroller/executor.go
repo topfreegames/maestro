@@ -134,7 +134,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	}
 	reportDesiredNumberOfRooms(scheduler.Game, scheduler.Name, desiredNumberOfRooms)
 
-	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, scheduler, logger, len(availableRooms), desiredNumberOfRooms, isRollingUpdating)
+	err = ex.ensureDesiredAmountOfInstances(ctx, op, def, scheduler, logger, availableRooms, desiredNumberOfRooms, isRollingUpdating)
 	if err != nil {
 		logger.Error("cannot ensure desired amount of instances", zap.Error(err))
 		return err
@@ -191,10 +191,10 @@ func (ex *Executor) tryEnsureCorrectRoomsOnStorage(ctx context.Context, op *oper
 	}
 }
 
-func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *Definition, scheduler *entities.Scheduler, logger *zap.Logger, actualAmount, desiredAmount int, isRollingUpdating bool) error {
+func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *operation.Operation, def *Definition, scheduler *entities.Scheduler, logger *zap.Logger, availableRooms []string, desiredAmount int, isRollingUpdating bool) error {
 	var msgToAppend string
 	var tookAction bool
-
+	actualAmount := len(availableRooms)
 	logger = logger.With(zap.Int("actual", actualAmount), zap.Int("desired", desiredAmount))
 	switch {
 	case actualAmount > desiredAmount: // Need to scale down
@@ -202,6 +202,7 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 		reason := remove.ScaleDown
 		if isRollingUpdating {
 			reason = remove.RollingUpdateReplace
+			removeAmount = CapRollingUpdateDownscaleAmount(ctx, availableRooms, removeAmount, ex.roomStorage, scheduler, logger)
 		}
 		removeOperation, err := ex.operationManager.CreatePriorityOperation(ctx, op.SchedulerName, &remove.Definition{
 			Amount: removeAmount,
@@ -449,6 +450,32 @@ func GetDesiredNumberOfRooms(
 	)
 
 	return
+}
+
+func CapRollingUpdateDownscaleAmount(ctx context.Context, availableRooms []string, amountToBeDeleted int, roomStorage ports.RoomStorage, scheduler *entities.Scheduler, logger *zap.Logger) (downscaleAmount int) {
+	roomAmountWithInactiveVersion := 0
+	// Get downscale amount based on the number of rooms with inactive versions
+	for _, roomID := range availableRooms {
+		room, err := roomStorage.GetRoom(ctx, scheduler.Name, roomID)
+		if err != nil {
+			logger.Warn("error getting room while downscaling to check delete cap", zap.Error(err))
+			continue
+		}
+		if room.Version != scheduler.Spec.Version {
+			roomAmountWithInactiveVersion += 1
+		}
+		if roomAmountWithInactiveVersion >= amountToBeDeleted {
+			return roomAmountWithInactiveVersion
+		}
+	}
+	logger.Info(
+		"readjusting desired number of rooms",
+		zap.Int("roomAmountWithInactiveVersion", roomAmountWithInactiveVersion),
+		zap.Int("originalDesiredNumberOfRooms", len(availableRooms)-amountToBeDeleted),
+		zap.Int("originalAmountToBeDeleted", amountToBeDeleted),
+		zap.Int("desiredNumberAfterAdjusting", len(availableRooms)-roomAmountWithInactiveVersion),
+	)
+	return roomAmountWithInactiveVersion
 }
 
 // TODO: refactor to SchedulerController execute

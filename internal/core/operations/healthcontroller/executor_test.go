@@ -1581,7 +1581,7 @@ func TestCompleteRollingUpdate(t *testing.T) {
 	}
 
 	completeRollingUpdatePlan := map[string][]RollingUpdateExecutionPlan{
-		"Occupancy stable during the update": []RollingUpdateExecutionPlan{
+		"Occupancy stable during the update": {
 			{
 				// Add 25 rooms on newer version
 				currentTotalNumberOfRooms:     100,
@@ -1664,7 +1664,7 @@ func TestCompleteRollingUpdate(t *testing.T) {
 				tookAction:                    false,
 			},
 		},
-		"Occupancy increased during update": []RollingUpdateExecutionPlan{
+		"Occupancy increased during update": {
 			{
 				// Add 25 rooms on newer version
 				currentTotalNumberOfRooms:     100,
@@ -1719,7 +1719,7 @@ func TestCompleteRollingUpdate(t *testing.T) {
 				tookAction:                    false,
 			},
 		},
-		"Occupancy decreased during update": []RollingUpdateExecutionPlan{
+		"Occupancy decreased during update": {
 			{
 				// Add 25 rooms on newer version
 				currentTotalNumberOfRooms:     100,
@@ -1766,7 +1766,7 @@ func TestCompleteRollingUpdate(t *testing.T) {
 				tookAction:                    true,
 			},
 			{
-				// Remove 10 rooms, only 5 left from old versions, so this is the last update iteration
+				// Remove 5 rooms, only 5 left from old versions, so this is the last update iteration
 				currentTotalNumberOfRooms:     50,
 				currentRoomsInActiveVersion:   45,
 				autoscaleDesiredNumberOfRooms: 40,
@@ -1784,7 +1784,7 @@ func TestCompleteRollingUpdate(t *testing.T) {
 				tookAction:                    false,
 			},
 		},
-		"Occupancy stable but only 75% of new rooms become active": []RollingUpdateExecutionPlan{
+		"Occupancy stable but only 75% of new rooms become active": {
 			{
 				// Add 25 rooms on newer version, only 19 will become active
 				currentTotalNumberOfRooms:     100,
@@ -2028,11 +2028,16 @@ func TestCompleteRollingUpdate(t *testing.T) {
 						if cycle.currentRoomsInActiveVersion < cycle.currentTotalNumberOfRooms {
 							reason = remove.RollingUpdateReplace
 						}
+						removeAmount := int(cycle.currentTotalNumberOfRooms - cycle.autoscaleDesiredNumberOfRooms)
+						rommsLeft := cycle.currentTotalNumberOfRooms - cycle.currentRoomsInActiveVersion
+						if rommsLeft < removeAmount {
+							removeAmount = rommsLeft
+						}
 						operationManager.EXPECT().CreatePriorityOperation(
 							gomock.Any(),
 							schedulerV2.Name,
 							&remove.Definition{
-								Amount: int(cycle.currentTotalNumberOfRooms - cycle.autoscaleDesiredNumberOfRooms),
+								Amount: removeAmount,
 								Reason: reason,
 							},
 						).Return(op, nil)
