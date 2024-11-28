@@ -28,6 +28,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -89,6 +90,18 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 		actualScheduler, err := storage.GetScheduler(context.Background(), "scheduler")
 		require.NoError(t, err)
 		assertSchedulers(t, []*entities.Scheduler{expectedScheduler}, []*entities.Scheduler{actualScheduler})
+	})
+
+	t.Run("scheduler exists and was created before multiple matches", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		err := storage.CreateScheduler(context.Background(), expectedScheduler)
+		require.NoError(t, err)
+
+		actualScheduler, err := storage.GetScheduler(context.Background(), "scheduler")
+		require.NoError(t, err)
+		assert.NotNil(t, actualScheduler.MatchAllocation)
 	})
 
 	t.Run("scheduler does not exists", func(t *testing.T) {

@@ -212,7 +212,7 @@ func TestCanDownscale(t *testing.T) {
 				},
 			},
 		},
-		MatchAllocation: allocation.MatchAllocation{MaxMatches: 1},
+		MatchAllocation: &allocation.MatchAllocation{MaxMatches: 1},
 	}
 
 	t.Run("Success cases", func(t *testing.T) {

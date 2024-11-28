@@ -78,6 +78,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 		patchMap[patch.LabelLabels] = request.GetLabels()
 	}
 
+	if request.MatchAllocation != nil {
+		patchMap[patch.LabelMatchAllocation] = fromApiMatchAllocation(request.GetMatchAllocation())
+	}
+
 	return patchMap
 }
 
@@ -126,7 +130,7 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		fromApiForwarders(request.GetForwarders()),
 		request.GetAnnotations(),
 		request.GetLabels(),
-		*fromApiMatchAllocation(request.GetMatchAllocation()),
+		fromApiMatchAllocation(request.GetMatchAllocation()),
 	)
 }
 
@@ -140,7 +144,7 @@ func FromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.Schedule
 		CreatedAt:       timestamppb.New(entity.CreatedAt),
 		MaxSurge:        entity.MaxSurge,
 		RoomsReplicas:   int32(entity.RoomsReplicas),
-		MatchAllocation: fromEntityMatchAllocationToResponse(&entity.MatchAllocation),
+		MatchAllocation: fromEntityMatchAllocationToResponse(entity.MatchAllocation),
 	}
 }
 
@@ -165,7 +169,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		fromApiForwarders(request.GetForwarders()),
 		request.GetAnnotations(),
 		request.GetLabels(),
-		*fromApiMatchAllocation(request.GetMatchAllocation()),
+		fromApiMatchAllocation(request.GetMatchAllocation()),
 	)
 }
 
@@ -189,7 +193,7 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 		Forwarders:      forwarders,
 		Annotations:     entity.Annotations,
 		Labels:          entity.Labels,
-		MatchAllocation: fromEntityMatchAllocationToResponse(&entity.MatchAllocation),
+		MatchAllocation: fromEntityMatchAllocationToResponse(entity.MatchAllocation),
 	}, nil
 }
 
@@ -337,7 +341,11 @@ func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderO
 }
 
 func fromEntityMatchAllocationToResponse(entity *allocation.MatchAllocation) *api.MatchAllocation {
-	return &api.MatchAllocation{MaxMatches: int32(entity.MaxMatches)}
+	if entity != nil {
+		return &api.MatchAllocation{MaxMatches: int32(entity.MaxMatches)}
+	}
+
+	return nil
 }
 
 func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
@@ -503,12 +511,13 @@ func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
 }
 
 func fromApiMatchAllocation(matchAllocation *api.MatchAllocation) *allocation.MatchAllocation {
-	maxMatches := int(matchAllocation.GetMaxMatches())
-	if maxMatches == 0 {
-		maxMatches = 1
+	if matchAllocation != nil {
+		return &allocation.MatchAllocation{
+			MaxMatches: int(matchAllocation.GetMaxMatches()),
+		}
 	}
 
-	return &allocation.MatchAllocation{MaxMatches: maxMatches}
+	return nil
 }
 
 func getPortRange(portRange *port.PortRange) *api.PortRange {

@@ -92,7 +92,7 @@ func TestNewScheduler(t *testing.T) {
 	forwarders := []*forwarder.Forwarder{fwd}
 	annotations := map[string]string{"imageregistry": "https://hub.docker.com/"}
 	labels := map[string]string{"scheduler": "scheduler-name"}
-	matchAllocation := allocation.MatchAllocation{MaxMatches: 1}
+	matchAllocation := &allocation.MatchAllocation{MaxMatches: 1}
 
 	t.Run("with success when create valid scheduler", func(t *testing.T) {
 		scheduler, err := entities.NewScheduler(
@@ -204,7 +204,7 @@ func TestNewScheduler(t *testing.T) {
 			forwarders,
 			annotations,
 			labels,
-			allocation.MatchAllocation{})
+			nil)
 
 		require.Error(t, err)
 	})

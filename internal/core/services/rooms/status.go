@@ -35,7 +35,7 @@ type StatusCalculator interface {
 }
 
 func NewStatusCalculator(scheduler entities.Scheduler, logger *zap.Logger) StatusCalculator {
-	if scheduler.MatchAllocation.MaxMatches > 1 {
+	if scheduler.MatchAllocation != nil && scheduler.MatchAllocation.MaxMatches > 1 {
 		return &MultipleMatchStatusCalculator{
 			scheduler: scheduler,
 			logger:    logger,

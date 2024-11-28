@@ -1073,7 +1073,7 @@ func newValidScheduler() *entities.Scheduler {
 			Start: 40000,
 			End:   60000,
 		},
-		MatchAllocation: allocation.MatchAllocation{
+		MatchAllocation: &allocation.MatchAllocation{
 			MaxMatches: 1,
 		},
 	}

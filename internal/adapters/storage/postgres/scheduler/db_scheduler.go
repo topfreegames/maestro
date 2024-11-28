@@ -63,7 +63,7 @@ type schedulerInfo struct {
 	Annotations            map[string]string
 	Labels                 map[string]string
 	LastDownscaleAt        time.Time
-	MatchAllocation        allocation.MatchAllocation
+	MatchAllocation        *allocation.MatchAllocation
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -99,6 +99,12 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Backward compatibility with schedulers that don't have MatchAllocation
+	if info.MatchAllocation == nil {
+		info.MatchAllocation = &allocation.MatchAllocation{MaxMatches: 1}
+	}
+
 	return &entities.Scheduler{
 		Name:        s.Name,
 		Game:        s.Game,

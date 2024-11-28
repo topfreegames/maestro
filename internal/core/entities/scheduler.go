@@ -74,7 +74,7 @@ type Scheduler struct {
 	Forwarders      []*forwarder.Forwarder `validate:"dive"`
 	Annotations     map[string]string
 	Labels          map[string]string
-	MatchAllocation allocation.MatchAllocation
+	MatchAllocation *allocation.MatchAllocation `validate:"required"`
 }
 
 // NewScheduler instantiate a new scheduler struct.
@@ -90,7 +90,7 @@ func NewScheduler(
 	forwarders []*forwarder.Forwarder,
 	annotations map[string]string,
 	labels map[string]string,
-	matchAllocation allocation.MatchAllocation,
+	matchAllocation *allocation.MatchAllocation,
 ) (*Scheduler, error) {
 	scheduler := &Scheduler{
 		Name:            name,

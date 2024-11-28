@@ -573,6 +573,9 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &api.MatchAllocation{
+						MaxMatches: 2,
+					},
 				},
 			},
 			Output: Output{
@@ -674,8 +677,8 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
-					MatchAllocation: allocation.MatchAllocation{
-						MaxMatches: 1,
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 2,
 					},
 				},
 			},
@@ -764,6 +767,9 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &api.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
@@ -851,8 +857,8 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
-					MatchAllocation: allocation.MatchAllocation{
-						MaxMatches: 1,
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
 					},
 				},
 			},
@@ -980,6 +986,9 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 							},
 						},
 					},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
@@ -1084,6 +1093,9 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
@@ -1239,6 +1251,9 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &api.MatchAllocation{
+						MaxMatches: 1,
+					},
 				},
 			},
 			Output: Output{
@@ -1340,7 +1355,7 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
-					MatchAllocation: allocation.MatchAllocation{
+					MatchAllocation: &allocation.MatchAllocation{
 						MaxMatches: 1,
 					},
 				},
@@ -1477,6 +1492,9 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
@@ -1661,6 +1679,9 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{

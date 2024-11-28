@@ -65,7 +65,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Affinity:               "affinity",
 				},
 				RoomsReplicas: 0,
-				MatchAllocation: allocation.MatchAllocation{
+				MatchAllocation: &allocation.MatchAllocation{
 					MaxMatches: 1,
 				},
 			},
@@ -85,7 +85,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					End:   60000,
 				},
 				RoomsReplicas: 1,
-				MatchAllocation: allocation.MatchAllocation{
+				MatchAllocation: &allocation.MatchAllocation{
 					MaxMatches: 2,
 				},
 			},
@@ -133,7 +133,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					TerminationGracePeriod: 60,
 				},
 				RoomsReplicas: 2,
-				MatchAllocation: allocation.MatchAllocation{
+				MatchAllocation: &allocation.MatchAllocation{
 					MaxMatches: 3,
 				},
 			},
@@ -185,7 +185,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					End:   60000,
 				},
 				RoomsReplicas: 3,
-				MatchAllocation: allocation.MatchAllocation{
+				MatchAllocation: &allocation.MatchAllocation{
 					MaxMatches: 4,
 				},
 			},
@@ -216,7 +216,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
 				Labels:      map[string]string{"scheduler": "scheduler-name"},
-				MatchAllocation: allocation.MatchAllocation{
+				MatchAllocation: &allocation.MatchAllocation{
 					MaxMatches: 5,
 				},
 			},
@@ -247,7 +247,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					},
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
-				MatchAllocation: allocation.MatchAllocation{
+				MatchAllocation: &allocation.MatchAllocation{
 					MaxMatches: 6,
 				},
 			},
@@ -279,7 +279,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					},
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
-				MatchAllocation: allocation.MatchAllocation{
+				MatchAllocation: &allocation.MatchAllocation{
 					MaxMatches: 7,
 				},
 			},
@@ -310,7 +310,7 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					},
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
-				MatchAllocation: allocation.MatchAllocation{
+				MatchAllocation: &allocation.MatchAllocation{
 					MaxMatches: 8,
 				},
 			},

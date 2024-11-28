@@ -28,7 +28,3 @@ type MatchAllocation struct {
 	// MaxMatches defined the maximum number of matches that a room can host.
 	MaxMatches int `validate:"required,min=1,max=30"`
 }
-
-func NewDefaultMatchAllocation() *MatchAllocation {
-	return &MatchAllocation{MaxMatches: 1}
-}
