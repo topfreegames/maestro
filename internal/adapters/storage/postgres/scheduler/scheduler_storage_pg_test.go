@@ -28,26 +28,21 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
-
+	"github.com/go-pg/pg/v10"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
-
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/filters"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/go-pg/pg/v10"
+	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
 type dbSchedulerVersion struct {
