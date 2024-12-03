@@ -517,7 +517,7 @@ func fromApiMatchAllocation(matchAllocation *api.MatchAllocation) *allocation.Ma
 		}
 	}
 
-	return nil
+	return &allocation.MatchAllocation{MaxMatches: 1}
 }
 
 func getPortRange(portRange *port.PortRange) *api.PortRange {
