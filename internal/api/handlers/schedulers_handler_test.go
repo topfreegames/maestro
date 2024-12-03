@@ -36,26 +36,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/schedulers"
-
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-
-	"github.com/topfreegames/maestro/internal/core/entities/operation"
-	"github.com/topfreegames/maestro/internal/core/entities/port"
-	"github.com/topfreegames/maestro/internal/core/filters"
-	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-	"github.com/topfreegames/maestro/internal/core/ports/mock"
-
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
-
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
+	"github.com/topfreegames/maestro/internal/core/filters"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers"
 	"github.com/topfreegames/maestro/internal/validations"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
@@ -272,8 +269,9 @@ func TestGetScheduler(t *testing.T) {
 					},
 				},
 			},
-			Annotations: map[string]string{},
-			Labels:      map[string]string{},
+			Annotations:     map[string]string{},
+			Labels:          map[string]string{},
+			MatchAllocation: &allocation.MatchAllocation{MaxMatches: 1},
 		}
 
 		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(scheduler, nil)
@@ -542,8 +540,9 @@ func TestCreateScheduler(t *testing.T) {
 					},
 				},
 			},
-			Annotations: map[string]string{"imageregistry": "https://docker.hub.com/"},
-			Labels:      map[string]string{"scheduler": "scheduler-name"},
+			Annotations:     map[string]string{"imageregistry": "https://docker.hub.com/"},
+			Labels:          map[string]string{"scheduler": "scheduler-name"},
+			MatchAllocation: &allocation.MatchAllocation{MaxMatches: 1},
 		}
 
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Do(
@@ -563,6 +562,7 @@ func TestCreateScheduler(t *testing.T) {
 				}
 				assert.Equal(t, scheduler.Annotations, arg.Annotations)
 				assert.Equal(t, scheduler.Labels, arg.Labels)
+				assert.Equal(t, scheduler.MatchAllocation, arg.MatchAllocation)
 			},
 		).Return(nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
@@ -1078,6 +1078,27 @@ func TestPatchScheduler(t *testing.T) {
 				Status:   http.StatusInternalServerError,
 			},
 		},
+		{
+			Title: "When the scheduler was created before the MatchAllocation return 200",
+			Input: Input{
+				Request: &api.PatchSchedulerRequest{
+					RoomsReplicas: &roomsReplicas,
+				},
+			},
+			Mocks: Mocks{
+				RequestFile:        "scheduler-patch.json",
+				GetSchedulerReturn: newValidScheduler(),
+				GetSchedulerError:  nil,
+				CreateOperationReturn: &operation.Operation{
+					ID: "some-id",
+				},
+				CreateOperationError: nil,
+			},
+			Output: Output{
+				Response: nil,
+				Status:   http.StatusOK,
+			},
+		},
 	}
 
 	err := validations.RegisterValidations()
@@ -1274,6 +1295,9 @@ func newValidScheduler() *entities.Scheduler {
 					},
 				},
 			},
+		},
+		MatchAllocation: &allocation.MatchAllocation{
+			MaxMatches: 1,
 		},
 		PortRange: &port.PortRange{
 			Start: 40000,
