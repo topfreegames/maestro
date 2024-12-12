@@ -50,12 +50,12 @@ func NewAPIClient(baseAddr string) *APIClient {
 
 func (c *APIClient) Do(verb, path string, request proto.Message, response proto.Message) error {
 	var buf []byte
-	_, err := c.marshaler.MarshalAppend(buf, request)
+	marshalled, err := c.marshaler.MarshalAppend(buf, request)
 	if err != nil {
 		return fmt.Errorf("failed to encode request: %w", err)
 	}
 
-	req, err := http.NewRequest(verb, fmt.Sprintf("%s%s", c.baseAddr, path), bytes.NewBuffer(buf))
+	req, err := http.NewRequest(verb, fmt.Sprintf("%s%s", c.baseAddr, path), bytes.NewBuffer(marshalled))
 	if err != nil {
 		return fmt.Errorf("failed to build request: %w", err)
 	}
@@ -67,23 +67,18 @@ func (c *APIClient) Do(verb, path string, request proto.Message, response proto.
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		if body, err := io.ReadAll(resp.Body); err == nil {
-			return fmt.Errorf("failed with status %d, response body: %s", resp.StatusCode, string(body))
-		}
-
-		return fmt.Errorf("failed with status %d", resp.StatusCode)
+	var body []byte
+	if body, err = io.ReadAll(resp.Body); err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var out []byte
-	err = c.unmarshaler.Unmarshal(out, response)
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("failed with status: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	err = c.unmarshaler.Unmarshal(body, response)
 	if err != nil {
 		return fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	err = resp.Write(bytes.NewBuffer(out))
-	if err != nil {
-		return fmt.Errorf("failed to write response: %w", err)
 	}
 
 	return nil

@@ -36,10 +36,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pg/pg/v10"
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/adapters/storage/postgres/scheduler"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/allocation"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
@@ -171,7 +173,6 @@ func TestListSchedulers(t *testing.T) {
 	})
 
 	t.Run("with invalid request method", func(t *testing.T) {
-
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(nil))
 		require.NoError(t, err)
@@ -202,7 +203,7 @@ func TestGetScheduler(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := schedulers.NewSchedulerManager(nil, schedulerCache, nil, nil)
 
-		scheduler := &entities.Scheduler{
+		currentScheduler := &entities.Scheduler{
 			Name:            "zooba-us",
 			Game:            "zooba",
 			State:           entities.StateInSync,
@@ -269,12 +270,17 @@ func TestGetScheduler(t *testing.T) {
 					},
 				},
 			},
-			Annotations:     map[string]string{},
-			Labels:          map[string]string{},
-			MatchAllocation: &allocation.MatchAllocation{MaxMatches: 1},
+			Annotations: map[string]string{},
+			Labels:      map[string]string{},
 		}
 
-		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(scheduler, nil)
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, name string) (*entities.Scheduler, error) {
+			require.Equal(t, currentScheduler.Name, name)
+			dbScheduler := scheduler.NewDBScheduler(currentScheduler)
+			dbScheduler.CreatedAt = pg.NullTime{Time: currentScheduler.CreatedAt}
+
+			return dbScheduler.ToScheduler()
+		})
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -475,7 +481,7 @@ func TestCreateScheduler(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		scheduler := &entities.Scheduler{
+		currentScheduler := &entities.Scheduler{
 			Name:          "scheduler-name-1",
 			Game:          "game-name",
 			State:         entities.StateCreating,
@@ -540,33 +546,37 @@ func TestCreateScheduler(t *testing.T) {
 					},
 				},
 			},
-			Annotations:     map[string]string{"imageregistry": "https://docker.hub.com/"},
-			Labels:          map[string]string{"scheduler": "scheduler-name"},
-			MatchAllocation: &allocation.MatchAllocation{MaxMatches: 1},
+			Annotations: map[string]string{"imageregistry": "https://docker.hub.com/"},
+			Labels:      map[string]string{"scheduler": "scheduler-name"},
 		}
 
 		schedulerStorage.EXPECT().CreateScheduler(gomock.Any(), gomock.Any()).Do(
 			func(_ interface{}, arg *entities.Scheduler) {
-				assert.Equal(t, scheduler.Name, arg.Name)
-				assert.Equal(t, scheduler.Game, arg.Game)
-				assert.Equal(t, scheduler.State, arg.State)
-				assert.Equal(t, scheduler.MaxSurge, arg.MaxSurge)
-				assert.Equal(t, scheduler.RoomsReplicas, arg.RoomsReplicas)
-				assert.Equal(t, scheduler.Spec, arg.Spec)
-				assert.Equal(t, scheduler.PortRange, arg.PortRange)
+				assert.Equal(t, currentScheduler.Name, arg.Name)
+				assert.Equal(t, currentScheduler.Game, arg.Game)
+				assert.Equal(t, currentScheduler.State, arg.State)
+				assert.Equal(t, currentScheduler.MaxSurge, arg.MaxSurge)
+				assert.Equal(t, currentScheduler.RoomsReplicas, arg.RoomsReplicas)
+				assert.Equal(t, currentScheduler.Spec, arg.Spec)
+				assert.Equal(t, currentScheduler.PortRange, arg.PortRange)
 				for i, forwarder := range arg.Forwarders {
-					assert.Equal(t, scheduler.Forwarders[i].Name, forwarder.Name)
-					assert.Equal(t, scheduler.Forwarders[i].Enabled, forwarder.Enabled)
-					assert.Equal(t, scheduler.Forwarders[i].Address, forwarder.Address)
-					assert.Equal(t, scheduler.Forwarders[i].Options.Timeout, forwarder.Options.Timeout)
+					assert.Equal(t, currentScheduler.Forwarders[i].Name, forwarder.Name)
+					assert.Equal(t, currentScheduler.Forwarders[i].Enabled, forwarder.Enabled)
+					assert.Equal(t, currentScheduler.Forwarders[i].Address, forwarder.Address)
+					assert.Equal(t, currentScheduler.Forwarders[i].Options.Timeout, forwarder.Options.Timeout)
 				}
-				assert.Equal(t, scheduler.Annotations, arg.Annotations)
-				assert.Equal(t, scheduler.Labels, arg.Labels)
-				assert.Equal(t, scheduler.MatchAllocation, arg.MatchAllocation)
+				assert.Equal(t, currentScheduler.Annotations, arg.Annotations)
+				assert.Equal(t, currentScheduler.Labels, arg.Labels)
+				assert.NotNil(t, arg.MatchAllocation)
 			},
 		).Return(nil)
-		operationManager.EXPECT().CreateOperation(gomock.Any(), scheduler.Name, gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
-		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(scheduler, nil)
+		operationManager.EXPECT().CreateOperation(gomock.Any(), currentScheduler.Name, gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").DoAndReturn(func(_ context.Context, name string) (*entities.Scheduler, error) {
+			require.Equal(t, currentScheduler.Name, name)
+			dbScheduler := scheduler.NewDBScheduler(currentScheduler)
+
+			return dbScheduler.ToScheduler()
+		})
 
 		mux := runtime.NewServeMux()
 		err = api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
@@ -690,6 +700,47 @@ func TestNewSchedulerVersion(t *testing.T) {
 		require.NoError(t, err)
 
 		request, err := os.ReadFile(fixturesRelativePath + "/request/scheduler-config.json")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, 200, rr.Code)
+		bodyString := rr.Body.String()
+		var body map[string]interface{}
+		err = json.Unmarshal([]byte(bodyString), &body)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, body["operationId"])
+	})
+
+	t.Run("succeed for scheduler without match allocation configuration", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		currentScheduler := newValidScheduler()
+		currentScheduler.PortRange = &port.PortRange{Start: 1, End: 2}
+		currentScheduler.MatchAllocation = nil
+
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
+		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").DoAndReturn(func(_ context.Context, _ string) (*entities.Scheduler, error) {
+			dbScheduler := scheduler.NewDBScheduler(currentScheduler)
+			return dbScheduler.ToScheduler()
+		})
+
+		mux := runtime.NewServeMux()
+		err := api.RegisterSchedulersServiceHandlerServer(context.Background(), mux, ProvideSchedulersHandler(schedulerManager))
+		require.NoError(t, err)
+
+		request, err := os.ReadFile(fixturesRelativePath + "/request/scheduler-config-no-match-allocation.json")
 		require.NoError(t, err)
 
 		req, err := http.NewRequest(http.MethodPost, "/schedulers/scheduler-name-1", bytes.NewReader(request))

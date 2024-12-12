@@ -23,39 +23,37 @@
 package components
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/topfreegames/maestro/e2e/framework/maestro/exec"
+	"github.com/docker/compose/v2/pkg/api"
+	"github.com/docker/docker/api/types/network"
+	docker "github.com/docker/docker/client"
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
-
-	"strings"
-
-	tc "github.com/testcontainers/testcontainers-go"
 )
 
 type RoomsApiServer struct {
 	Address                  string
 	ContainerInternalAddress string
-	compose                  tc.DockerCompose
 }
 
-func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
+func ProvideRoomsApi(ctx context.Context, compose tc.ComposeStack) (*RoomsApiServer, error) {
 	address := "http://localhost:8070"
 	client := &http.Client{}
 
-	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("e2e-test")
+	services := compose.Services()
+	services = append(services, "rooms-api")
 
-	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "rooms-api"}).Invoke()
-
-	if composeErr.Error != nil {
-		return nil, fmt.Errorf("failed to start rooms API: %s", composeErr.Error)
+	err := compose.Up(ctx, tc.RunServices(services...), tc.Recreate(api.RecreateNever), tc.RecreateDependencies(api.RecreateNever), tc.Wait(true))
+	if err != nil {
+		return nil, fmt.Errorf("failed to start rooms-api: %w", err)
 	}
 
-	err := helpers.TimedRetry(func() error {
+	err = helpers.TimedRetry(func() error {
 		res, err := client.Get("http://localhost:8071/healthz")
 		if err != nil {
 			return err
@@ -72,28 +70,29 @@ func ProvideRoomsApi(maestroPath string) (*RoomsApiServer, error) {
 		return nil, fmt.Errorf("unable to reach rooms API: %s", err)
 	}
 
-	cmd, err := exec.ExecSysCmd(
-		maestroPath,
-		"docker",
-		"inspect", "-f", "'{{range .IPAM.Config}}{{.Gateway}}{{end}}'", "e2e-test_default",
-	)
-
+	container, err := compose.ServiceContainer(ctx, "rooms-api")
 	if err != nil {
-		return nil, fmt.Errorf("unable to run docker inspect command: %s", err)
+		return nil, fmt.Errorf("unable to get rooms api container: %s", err)
 	}
 
-	output, err := cmd.ReadOutput()
-
+	networks, err := container.Networks(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get rooms api container internal address: %s", err)
+		return nil, fmt.Errorf("failed to get rooms-api container networks: %w", err)
 	}
 
-	roomsApiIP := strings.Trim(strings.TrimSuffix(string(output), "\n"), "'")
+	cli, err := docker.NewClientWithOpts()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
+	}
+
+	networkInspect, err := cli.NetworkInspect(ctx, networks[0], network.InspectOptions{Verbose: true, Scope: ""})
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect rooms-api network: %w", err)
+	}
+
+	output := networkInspect.IPAM.Config[0].Gateway
+	roomsApiIP := strings.Trim(strings.TrimSuffix(output, "\n"), "'")
 	internalAddress := fmt.Sprintf("%s:8070", roomsApiIP)
 
-	return &RoomsApiServer{compose: compose, Address: address, ContainerInternalAddress: internalAddress}, nil
-}
-
-func (ms *RoomsApiServer) Teardown() {
-	ms.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "rooms-api"}).Invoke()
+	return &RoomsApiServer{Address: address, ContainerInternalAddress: internalAddress}, nil
 }
