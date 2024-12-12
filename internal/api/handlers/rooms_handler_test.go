@@ -32,22 +32,18 @@ import (
 	"os"
 	"testing"
 
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
-	_struct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/stretchr/testify/assert"
-	"github.com/topfreegames/maestro/internal/core/entities/events"
-	"github.com/topfreegames/maestro/internal/core/ports"
-	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/structpb"
-
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
-
 	"github.com/golang/mock/gomock"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/topfreegames/maestro/internal/core/entities/events"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
+	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const fixturesRelativePath = "../../../test/data/handlers/fixtures"
@@ -342,7 +338,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 				message: &api.UpdateRoomStatusRequest{
 					SchedulerName: "scheduler-name",
 					RoomName:      "room-name",
-					Metadata: &_struct.Struct{
+					Metadata: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"roomType": {
 								Kind: &structpb.Value_StringValue{
@@ -351,8 +347,9 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 							},
 						},
 					},
-					Status:    "ready",
-					Timestamp: 0,
+					Status:         "ready",
+					Timestamp:      0,
+					RunningMatches: 20,
 				},
 			},
 			&api.UpdateRoomStatusResponse{Success: true},
@@ -381,7 +378,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 				message: &api.UpdateRoomStatusRequest{
 					SchedulerName: "scheduler-name",
 					RoomName:      "room-name",
-					Metadata: &_struct.Struct{
+					Metadata: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"roomType": {
 								Kind: &structpb.Value_StringValue{

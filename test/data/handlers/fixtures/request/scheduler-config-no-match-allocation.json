@@ -55,14 +55,14 @@
   },
   "forwarders": [
     {
-	  "name": "forwarder-1",
-	  "enable": true,
-	  "type": "gRPC",
-	  "address": "127.0.0.1:9090",
-	  "options": {
-	    "timeout": 1000,
+      "name": "forwarder-1",
+      "enable": true,
+      "type": "gRPC",
+      "address": "127.0.0.1:9090",
+      "options": {
+        "timeout": 1000,
         "metadata": {}
-	  }
+      }
     }
   ],
   "annotations": {
@@ -70,8 +70,5 @@
   },
   "labels": {
     "scheduler": "scheduler-name"
-  },
-  "matchAllocation": {
-    "maxMatches": 1
   }
 }

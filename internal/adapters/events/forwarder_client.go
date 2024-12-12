@@ -25,15 +25,13 @@ package events
 import (
 	"context"
 	"fmt"
-
-	"github.com/topfreegames/maestro/internal/core/ports"
-
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/opentracing/opentracing-go"
 	"github.com/patrickmn/go-cache"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"go.uber.org/zap"
@@ -192,6 +190,7 @@ func (f *ForwarderClient) createGRPCConnection(address string) (*grpc.ClientConn
 
 	tracer := opentracing.GlobalTracer()
 	dialOption := grpc.WithInsecure() //nolint:staticcheck // I want to use deprecated method.
+	//nolint:staticcheck
 	conn, err := grpc.Dial(
 		address,
 		dialOption,

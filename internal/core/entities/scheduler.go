@@ -27,14 +27,13 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"github.com/topfreegames/maestro/internal/core/entities/port"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/validations"
 )
 
@@ -75,6 +74,7 @@ type Scheduler struct {
 	Forwarders      []*forwarder.Forwarder `validate:"dive"`
 	Annotations     map[string]string
 	Labels          map[string]string
+	MatchAllocation *allocation.MatchAllocation `validate:"required"`
 }
 
 // NewScheduler instantiate a new scheduler struct.
@@ -90,19 +90,21 @@ func NewScheduler(
 	forwarders []*forwarder.Forwarder,
 	annotations map[string]string,
 	labels map[string]string,
+	matchAllocation *allocation.MatchAllocation,
 ) (*Scheduler, error) {
 	scheduler := &Scheduler{
-		Name:          name,
-		Game:          game,
-		State:         state,
-		Spec:          spec,
-		PortRange:     portRange,
-		MaxSurge:      maxSurge,
-		RoomsReplicas: roomsReplicas,
-		Autoscaling:   autoscaling,
-		Forwarders:    forwarders,
-		Annotations:   annotations,
-		Labels:        labels,
+		Name:            name,
+		Game:            game,
+		State:           state,
+		Spec:            spec,
+		PortRange:       portRange,
+		MaxSurge:        maxSurge,
+		RoomsReplicas:   roomsReplicas,
+		Autoscaling:     autoscaling,
+		Forwarders:      forwarders,
+		Annotations:     annotations,
+		Labels:          labels,
+		MatchAllocation: matchAllocation,
 	}
 	return scheduler, scheduler.Validate()
 }
@@ -160,6 +162,7 @@ func (s *Scheduler) IsMajorVersion(newScheduler *Scheduler) bool {
 			"MaxSurge",
 			"RoomsReplicas",
 			"Autoscaling",
+			"MatchAllocation",
 		),
 	)
 }

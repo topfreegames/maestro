@@ -22,9 +22,6 @@
 
 package gen
 
-// Protobuf
-//go:generate go run github.com/bufbuild/buf/cmd/buf generate --template ../proto/api/buf.gen.yaml --output ../ --path ../proto/api/ ../
-
 // Wire
 //go:generate go run github.com/google/wire/cmd/wire ./../...
 
