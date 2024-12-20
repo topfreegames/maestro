@@ -28,19 +28,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/stretchr/testify/assert"
+	"github.com/topfreegames/maestro/e2e/framework"
+	"github.com/topfreegames/maestro/e2e/framework/maestro"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/create"
-
-	"github.com/stretchr/testify/assert"
-
-	"github.com/go-redis/redis/v8"
-	"google.golang.org/protobuf/types/known/durationpb"
-
-	"github.com/topfreegames/maestro/e2e/framework/maestro"
-
-	"github.com/topfreegames/maestro/e2e/framework"
 	maestroApiV1 "github.com/topfreegames/maestro/pkg/api/v1"
 	maestrov1 "github.com/topfreegames/maestro/pkg/api/v1"
+	"google.golang.org/protobuf/types/known/durationpb"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -214,7 +210,7 @@ func TestCreateScheduler(t *testing.T) {
 			getSchedulerResponse := &maestrov1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", schedulerName), getSchedulerRequest, getSchedulerResponse)
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "status 404")
+			assert.Contains(t, err.Error(), "status: 404")
 			assert.Nil(t, getSchedulerResponse.Scheduler)
 		})
 	})

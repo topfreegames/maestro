@@ -20,6 +20,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
   rooms-api:
     build:
@@ -42,6 +44,8 @@ services:
     command: [start, rooms-api, -l, development]
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   runtime-watcher:
@@ -86,6 +90,8 @@ services:
     command: [start, worker, -l, development]
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   k3s_server:

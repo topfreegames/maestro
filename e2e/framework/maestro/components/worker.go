@@ -23,34 +23,30 @@
 package components
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
-	tc "github.com/testcontainers/testcontainers-go"
-
+	"github.com/docker/compose/v2/pkg/api"
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
 )
 
-type WorkerServer struct {
-	compose tc.DockerCompose
-}
+type WorkerServer struct{}
 
-func ProvideWorker(maestroPath string) (*WorkerServer, error) {
+func ProvideWorker(ctx context.Context, compose tc.ComposeStack) (*WorkerServer, error) {
 	client := &http.Client{}
 
-	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("e2e-test")
+	services := compose.Services()
+	services = append(services, "worker")
 
-	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "worker"}).Invoke()
-
-	if composeErr.Error != nil {
-		return nil, fmt.Errorf("failed to start worker %s", composeErr.Error)
+	err := compose.Up(ctx, tc.RunServices(services...), tc.Recreate(api.RecreateNever), tc.RecreateDependencies(api.RecreateNever), tc.Wait(true))
+	if err != nil {
+		return nil, fmt.Errorf("failed to start worker: %w", err)
 	}
 
-	err := helpers.TimedRetry(func() error {
+	err = helpers.TimedRetry(func() error {
 		res, err := client.Get("http://127.0.0.1:8051/healthz")
 		if err != nil {
 			return err
@@ -67,9 +63,5 @@ func ProvideWorker(maestroPath string) (*WorkerServer, error) {
 		return nil, fmt.Errorf("unable to reach worker %s", err)
 	}
 
-	return &WorkerServer{compose: compose}, nil
-}
-
-func (ws *WorkerServer) Teardown() {
-	ws.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "runtime-watcher"}).Invoke()
+	return &WorkerServer{}, nil
 }

@@ -1,0 +1,74 @@
+{
+  "name": "scheduler-name-1",
+  "game": "game-name",
+  "maxSurge": "10%",
+  "roomsReplicas": 6,
+  "portRange": {
+    "start": 1,
+    "end": 1000
+  },
+  "spec": {
+    "version": "v1.0.0",
+    "terminationGracePeriod": "100s",
+    "containers": [{
+      "name": "game-room-container-name",
+      "image": "game-room-container-image",
+      "imagePullPolicy": "IfNotPresent",
+      "command": ["./run"],
+      "environment": [{
+        "name": "env-var-name",
+        "value": "env-var-value"
+      },
+        {
+          "name": "env-var-field-ref",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "metadata.name"
+            }
+          }
+        },
+        {
+          "name": "env-var-secret-ref",
+          "valueFrom": {
+            "secretKeyRef": {
+              "name": "secret_name",
+              "key": "secret_key"
+            }
+          }
+        }
+      ],
+      "requests": {
+        "memory": "100mi",
+        "cpu": "100m"
+      },
+      "limits": {
+        "memory": "200mi",
+        "cpu": "200m"
+      },
+      "ports": [{
+        "name": "port-name",
+        "protocol": "tcp",
+        "port": 12345,
+        "hostPort": 54321
+      }]
+    }]
+  },
+  "forwarders": [
+    {
+      "name": "forwarder-1",
+      "enable": true,
+      "type": "gRPC",
+      "address": "127.0.0.1:9090",
+      "options": {
+        "timeout": 1000,
+        "metadata": {}
+      }
+    }
+  ],
+  "annotations": {
+    "imageregistry": "https://docker.hub.com/"
+  },
+  "labels": {
+    "scheduler": "scheduler-name"
+  }
+}

@@ -28,34 +28,34 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type APIClient struct {
 	baseAddr    string
 	httpClient  *http.Client
-	marshaler   *jsonpb.Marshaler
-	unmarshaler *jsonpb.Unmarshaler
+	marshaler   *protojson.MarshalOptions
+	unmarshaler *protojson.UnmarshalOptions
 }
 
 func NewAPIClient(baseAddr string) *APIClient {
 	return &APIClient{
 		httpClient:  &http.Client{},
-		marshaler:   &jsonpb.Marshaler{},
-		unmarshaler: &jsonpb.Unmarshaler{},
+		marshaler:   &protojson.MarshalOptions{},
+		unmarshaler: &protojson.UnmarshalOptions{},
 		baseAddr:    baseAddr,
 	}
 }
 
 func (c *APIClient) Do(verb, path string, request proto.Message, response proto.Message) error {
-	buf := new(bytes.Buffer)
-	err := c.marshaler.Marshal(buf, request)
+	var buf []byte
+	marshalled, err := c.marshaler.MarshalAppend(buf, request)
 	if err != nil {
 		return fmt.Errorf("failed to encode request: %w", err)
 	}
 
-	req, err := http.NewRequest(verb, fmt.Sprintf("%s%s", c.baseAddr, path), buf)
+	req, err := http.NewRequest(verb, fmt.Sprintf("%s%s", c.baseAddr, path), bytes.NewBuffer(marshalled))
 	if err != nil {
 		return fmt.Errorf("failed to build request: %w", err)
 	}
@@ -67,15 +67,16 @@ func (c *APIClient) Do(verb, path string, request proto.Message, response proto.
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		if body, err := io.ReadAll(resp.Body); err == nil {
-			return fmt.Errorf("failed with status %d, response body: %s", resp.StatusCode, string(body))
-		}
-
-		return fmt.Errorf("failed with status %d", resp.StatusCode)
+	var body []byte
+	if body, err = io.ReadAll(resp.Body); err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	err = c.unmarshaler.Unmarshal(resp.Body, response)
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("failed with status: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	err = c.unmarshaler.Unmarshal(body, response)
 	if err != nil {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}

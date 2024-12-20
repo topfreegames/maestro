@@ -23,35 +23,27 @@
 package servermocks
 
 import (
+	"context"
 	"fmt"
-	"strings"
 
-	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/docker/compose/v2/pkg/api"
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 )
 
 type ServerMocks struct {
 	GrpcForwarderAddress string
-	compose              tc.DockerCompose
 }
 
-func ProvideServerMocks(maestroPath string) (*ServerMocks, error) {
-	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("e2e-test")
+func ProvideServerMocks(ctx context.Context, compose tc.ComposeStack) (*ServerMocks, error) {
+	services := compose.Services()
+	services = append(services, "grpc-mock")
 
-	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "grpc-mock"}).Invoke()
-
-	if composeErr.Error != nil {
-		return nil, fmt.Errorf("failed to start server mocks: %s", composeErr.Error)
+	err := compose.Up(ctx, tc.RunServices(services...), tc.Recreate(api.RecreateNever))
+	if err != nil {
+		return nil, fmt.Errorf("failed to start grpc-mock: %w", err)
 	}
 
 	return &ServerMocks{
 		GrpcForwarderAddress: "grpc-mock:4770",
-		compose:              compose,
 	}, nil
-}
-
-func (s *ServerMocks) Teardown() {
-	s.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "grpc-mock"}).Invoke()
-
 }

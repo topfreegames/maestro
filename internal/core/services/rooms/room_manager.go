@@ -51,28 +51,30 @@ const (
 )
 
 type RoomManager struct {
-	Clock           ports.Clock
-	PortAllocator   ports.PortAllocator
-	RoomStorage     ports.RoomStorage
-	InstanceStorage ports.GameRoomInstanceStorage
-	Runtime         ports.Runtime
-	EventsService   ports.EventsService
-	Config          RoomManagerConfig
-	Logger          *zap.Logger
+	Clock            ports.Clock
+	PortAllocator    ports.PortAllocator
+	RoomStorage      ports.RoomStorage
+	SchedulerStorage ports.SchedulerStorage
+	InstanceStorage  ports.GameRoomInstanceStorage
+	Runtime          ports.Runtime
+	EventsService    ports.EventsService
+	Config           RoomManagerConfig
+	Logger           *zap.Logger
 }
 
 var _ ports.RoomManager = (*RoomManager)(nil)
 
-func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config RoomManagerConfig) ports.RoomManager {
+func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, schedulerStorage ports.SchedulerStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config RoomManagerConfig) ports.RoomManager {
 	return &RoomManager{
-		Clock:           clock,
-		PortAllocator:   portAllocator,
-		RoomStorage:     roomStorage,
-		InstanceStorage: instanceStorage,
-		Runtime:         runtime,
-		EventsService:   eventsService,
-		Config:          config,
-		Logger:          zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "room_manager")),
+		Clock:            clock,
+		PortAllocator:    portAllocator,
+		RoomStorage:      roomStorage,
+		SchedulerStorage: schedulerStorage,
+		InstanceStorage:  instanceStorage,
+		Runtime:          runtime,
+		EventsService:    eventsService,
+		Config:           config,
+		Logger:           zap.L().With(zap.String(logs.LogFieldComponent, "service"), zap.String(logs.LogFieldServiceName, "room_manager")),
 	}
 }
 
@@ -313,26 +315,33 @@ func (m *RoomManager) SchedulerMaxSurge(ctx context.Context, scheduler *entities
 	return int(math.Max(minSchedulerMaxSurge, absoluteNum)), nil
 }
 
-func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) error {
-	if _, err := m.updateGameRoomStatus(ctx, schedulerId, gameRoomId); err != nil {
+func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerID, gameRoomId string) error {
+	if _, err := m.updateGameRoomStatus(ctx, schedulerID, gameRoomId); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *RoomManager) updateGameRoomStatus(ctx context.Context, schedulerId, gameRoomId string) (bool, error) {
-	gameRoom, err := m.RoomStorage.GetRoom(ctx, schedulerId, gameRoomId)
+func (m *RoomManager) updateGameRoomStatus(ctx context.Context, schedulerID, gameRoomId string) (bool, error) {
+	scheduler, err := m.SchedulerStorage.GetScheduler(ctx, schedulerID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get scheduler from storage: %w", err)
+	}
+
+	gameRoom, err := m.RoomStorage.GetRoom(ctx, scheduler.Name, gameRoomId)
 	if err != nil {
 		return false, fmt.Errorf("failed to get game room: %w", err)
 	}
 
-	instance, err := m.InstanceStorage.GetInstance(ctx, schedulerId, gameRoomId)
+	instance, err := m.InstanceStorage.GetInstance(ctx, gameRoom.SchedulerID, gameRoomId)
 	if err != nil {
 		return false, fmt.Errorf("failed to get game room instance: %w", err)
 	}
 
-	newStatus, err := gameRoom.RoomComposedStatus(instance.Status.Type)
+	calculator := NewStatusCalculator(*scheduler, m.Logger)
+	newStatus, err := calculator.CalculateRoomStatus(*gameRoom, *instance)
+	//newStatus, err := gameRoom.RoomComposedStatus(instance.Status.Type)
 	if err != nil {
 		return false, fmt.Errorf("failed to generate new game room status: %w", err)
 	}
@@ -346,7 +355,7 @@ func (m *RoomManager) updateGameRoomStatus(ctx context.Context, schedulerId, gam
 		return false, fmt.Errorf("state transition is invalid: %w", err)
 	}
 
-	err = m.RoomStorage.UpdateRoomStatus(ctx, schedulerId, gameRoomId, newStatus)
+	err = m.RoomStorage.UpdateRoomStatus(ctx, gameRoom.SchedulerID, gameRoomId, newStatus)
 	if err != nil {
 		if !errors.Is(err, porterrors.ErrNotFound) && instance.Status.Type != game_room.InstanceTerminating {
 			return false, fmt.Errorf("failed to update game room status: %w", err)
@@ -356,7 +365,7 @@ func (m *RoomManager) updateGameRoomStatus(ctx context.Context, schedulerId, gam
 	if instance.Status.Type == game_room.InstanceTerminating {
 		m.forwardStatusTerminatingEvent(ctx, &game_room.GameRoom{
 			ID:          gameRoomId,
-			SchedulerID: schedulerId,
+			SchedulerID: gameRoom.SchedulerID,
 		})
 
 		return false, nil // event already sent, prevent to send again

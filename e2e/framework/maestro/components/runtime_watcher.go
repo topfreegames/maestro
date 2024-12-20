@@ -23,34 +23,30 @@
 package components
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
-	tc "github.com/testcontainers/testcontainers-go"
-
+	"github.com/docker/compose/v2/pkg/api"
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
 )
 
-type RuntimeWatcherServer struct {
-	compose tc.DockerCompose
-}
+type RuntimeWatcherServer struct{}
 
-func ProvideRuntimeWatcher(maestroPath string) (*RuntimeWatcherServer, error) {
+func ProvideRuntimeWatcher(ctx context.Context, compose tc.ComposeStack) (*RuntimeWatcherServer, error) {
 	client := &http.Client{}
 
-	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("e2e-test")
+	services := compose.Services()
+	services = append(services, "runtime-watcher")
 
-	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "runtime-watcher"}).Invoke()
-
-	if composeErr.Error != nil {
-		return nil, fmt.Errorf("failed to start runtime watcher API: %s", composeErr.Error)
+	err := compose.Up(ctx, tc.RunServices(services...), tc.Recreate(api.RecreateNever), tc.RecreateDependencies(api.RecreateNever), tc.Wait(true))
+	if err != nil {
+		return nil, fmt.Errorf("failed to start runtime-watcher: %w", err)
 	}
 
-	err := helpers.TimedRetry(func() error {
+	err = helpers.TimedRetry(func() error {
 		res, err := client.Get("http://localhost:8061/healthz")
 		if err != nil {
 			return err
@@ -67,9 +63,5 @@ func ProvideRuntimeWatcher(maestroPath string) (*RuntimeWatcherServer, error) {
 		return nil, fmt.Errorf("unable to reach runtime watcher API: %s", err)
 	}
 
-	return &RuntimeWatcherServer{compose: compose}, nil
-}
-
-func (ws *RuntimeWatcherServer) Teardown() {
-	ws.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "runtime-watcher"}).Invoke()
+	return &RuntimeWatcherServer{}, nil
 }
