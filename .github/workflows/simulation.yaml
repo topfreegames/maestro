@@ -1,6 +1,6 @@
 name: Publish Simulation Service
 on:
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   build-and-push:
