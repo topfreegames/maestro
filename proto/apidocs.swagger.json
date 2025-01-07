@@ -800,7 +800,7 @@
         "runningMatches": {
           "type": "string",
           "format": "int64",
-          "description": "The number of running_matches in the game room."
+          "description": "The number of running matches in the game room."
         }
       },
       "description": "The player event request."
