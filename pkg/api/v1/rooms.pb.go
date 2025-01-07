@@ -228,7 +228,7 @@ type UpdateRoomStatusRequest struct {
 	Status string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
 	// Timestamp of the status update.
 	Timestamp int64 `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	// The number of running_matches in the game room.
+	// The number of running matches in the game room.
 	RunningMatches int64 `protobuf:"varint,7,opt,name=running_matches,json=runningMatches,proto3" json:"running_matches,omitempty"`
 }
 

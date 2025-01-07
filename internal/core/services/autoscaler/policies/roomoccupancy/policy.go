@@ -96,12 +96,12 @@ func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.Poli
 		return -1, errors.New("There are no runningMatches in the currentState")
 	}
 
-	maxMatches := currentState[MaxMatchesKey].(int)
+	maxMatchesPerRoom := currentState[MaxMatchesKey].(int)
 
-	occupiedRooms := math.Ceil(float64(runningMatches) / float64(maxMatches))
-	desiredNumberOfRoom := int(math.Ceil(float64(occupiedRooms) / (float64(1) - readyTarget)))
+	desiredNumberOfMatches := math.Ceil(float64(runningMatches) / (float64(1) - readyTarget))
+	desiredNumberOfRooms := int(math.Ceil(desiredNumberOfMatches / float64(maxMatchesPerRoom)))
 
-	return desiredNumberOfRoom, nil
+	return desiredNumberOfRooms, nil
 }
 
 func (p *Policy) CanDownscale(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (bool, error) {
