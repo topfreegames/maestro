@@ -26,5 +26,5 @@ package allocation
 // allocation in the Game Rooms.
 type MatchAllocation struct {
 	// MaxMatches defined the maximum number of matches that a room can host.
-	MaxMatches int `validate:"required,min=1,max=30"`
+	MaxMatches int `validate:"required,min=1,max=35"`
 }
