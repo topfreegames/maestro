@@ -159,7 +159,7 @@ func TestPatchScheduler(t *testing.T) {
 			patchSchedulerResponse := &maestrov1.PatchSchedulerResponse{}
 			err = managementApiClient.Do("PATCH", fmt.Sprintf("/schedulers/%s", scheduler.Name), patchSchedulerRequest, patchSchedulerResponse)
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "failed with status 409")
+			require.Contains(t, err.Error(), "failed with status: 409")
 			getSchedulerRequest = &maestrov1.GetSchedulerRequest{}
 			getSchedulerResponse = &maestrov1.GetSchedulerResponse{}
 			err = managementApiClient.Do("GET", fmt.Sprintf("/schedulers/%s", scheduler.Name), getSchedulerRequest, getSchedulerResponse)

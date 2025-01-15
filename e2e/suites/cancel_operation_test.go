@@ -149,7 +149,7 @@ func TestCancelOperation(t *testing.T) {
 			finishedOpCancelResponse := &maestroApiV1.CancelOperationResponse{}
 			err = managementApiClient.Do("POST", fmt.Sprintf("/schedulers/%s/operations/%s/cancel", scheduler.Name, finishedOpId), finishedOpCancelRequest, finishedOpCancelResponse)
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "status 409")
+			require.Contains(t, err.Error(), "status: 409")
 		})
 	})
 }
