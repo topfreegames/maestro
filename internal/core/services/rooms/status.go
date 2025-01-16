@@ -86,11 +86,11 @@ func (mm *MultipleMatchStatusCalculator) CalculateRoomStatus(room game_room.Game
 		return composedStatus, nil
 	}
 
-	if room.RunningMatches == 0 {
+	if room.RunningMatches < 1 {
 		return game_room.GameStatusReady, nil
 	}
 
-	if room.RunningMatches == mm.scheduler.MatchAllocation.MaxMatches {
+	if room.RunningMatches >= mm.scheduler.MatchAllocation.MaxMatches {
 		return game_room.GameStatusOccupied, nil
 	}
 
