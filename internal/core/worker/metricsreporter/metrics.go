@@ -169,6 +169,17 @@ var (
 		},
 	})
 
+	schedulerMaxMatchesGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "max_matches",
+		Help:      "The max number of matches that each Game Room can handle",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
+
 	schedulerAutoscalePolicyReadyTargetGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
@@ -230,6 +241,10 @@ func reportInstanceErrorNumber(game, schedulerName string, numberOfInstances int
 
 func reportTotalRunningMatches(game, schedulerName string, runningMatches int) {
 	runningMatchesGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(runningMatches))
+}
+
+func reportSchedulerMaxMatches(game, schedulerName string, availableSlots int) {
+	schedulerMaxMatchesGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(availableSlots))
 }
 
 func reportSchedulerPolicyReadyTarget(game, schedulerName string, readyTarget float64) {

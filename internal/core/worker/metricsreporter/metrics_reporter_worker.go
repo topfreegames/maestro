@@ -142,6 +142,7 @@ func (w *MetricsReporterWorker) reportGameRoomMetrics() {
 func (w *MetricsReporterWorker) reportSchedulerMetrics() {
 	w.logger.Info("Reporting scheduler metrics")
 	w.reportSchedulerAutoscale()
+	w.reportSchedulerMaxMatches()
 }
 
 func (w *MetricsReporterWorker) reportSchedulerAutoscale() {
@@ -151,6 +152,13 @@ func (w *MetricsReporterWorker) reportSchedulerAutoscale() {
 	if w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy != nil {
 		reportSchedulerPolicyReadyTarget(w.scheduler.Game, w.scheduler.Name, w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy.ReadyTarget)
 	}
+}
+
+func (w *MetricsReporterWorker) reportSchedulerMaxMatches() {
+	if w.scheduler.MatchAllocation == nil {
+		return
+	}
+	reportSchedulerMaxMatches(w.scheduler.Game, w.scheduler.Name, w.scheduler.MatchAllocation.MaxMatches)
 }
 
 func (w *MetricsReporterWorker) reportPendingRooms() {
