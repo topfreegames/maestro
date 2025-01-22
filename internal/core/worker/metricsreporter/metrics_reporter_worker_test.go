@@ -50,6 +50,7 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 		mockCtl := gomock.NewController(t)
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
 		instanceStorage := mock.NewMockGameRoomInstanceStorage(mockCtl)
+		schedulerCache := mock.NewMockSchedulerCache(mockCtl)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		instances := newInstancesList(40)
@@ -58,6 +59,7 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 			RoomStorage:           roomStorage,
 			InstanceStorage:       instanceStorage,
 			MetricsReporterConfig: &config.MetricsReporterConfig{MetricsReporterIntervalMillis: 500},
+			SchedulerCache:        schedulerCache,
 		}
 
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
@@ -79,6 +81,7 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 		roomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).
 			Return(88, nil).MinTimes(3)
 		instanceStorage.EXPECT().GetAllInstances(gomock.Any(), scheduler.Name).Return(instances, nil).MinTimes(3)
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), scheduler.Name).Return(scheduler, nil).MinTimes(3)
 
 		go func() {
 			err := worker.Start(ctx)
@@ -116,6 +119,7 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 		mockCtl := gomock.NewController(t)
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
 		instanceStorage := mock.NewMockGameRoomInstanceStorage(mockCtl)
+		schedulerCache := mock.NewMockSchedulerCache(mockCtl)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 
 		scheduler := &entities.Scheduler{Name: "random-scheduler-2"}
@@ -124,6 +128,7 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 			RoomStorage:           roomStorage,
 			InstanceStorage:       instanceStorage,
 			MetricsReporterConfig: &config.MetricsReporterConfig{MetricsReporterIntervalMillis: 500},
+			SchedulerCache:        schedulerCache,
 		}
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
@@ -145,6 +150,8 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 			Return(0, errors.New("some_error")).MinTimes(3)
 		instanceStorage.EXPECT().GetAllInstances(gomock.Any(), scheduler.Name).
 			Return([]*game_room.Instance{}, errors.New("some_error")).MinTimes(3)
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), scheduler.Name).
+			Return(scheduler, errors.New("some_error")).MinTimes(3)
 
 		go func() {
 			err := worker.Start(ctx)

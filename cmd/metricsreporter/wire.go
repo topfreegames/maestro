@@ -50,8 +50,9 @@ func provideMetricsReporterConfig(c config.Config) *workerconfigs.MetricsReporte
 var WorkerOptionsSet = wire.NewSet(
 	service.NewRoomStorageRedis,
 	service.NewGameRoomInstanceStorageRedis,
+	service.NewSchedulerCacheRedis,
 	provideMetricsReporterConfig,
-	wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))
+	wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "SchedulerCache", "MetricsReporterConfig"))
 
 func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error) {
 	wire.Build(

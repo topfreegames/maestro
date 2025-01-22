@@ -45,6 +45,7 @@ const WorkerName = "metrics_reporter"
 // MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
 	scheduler           *entities.Scheduler
+	schedulerCache      ports.SchedulerCache
 	config              *config.MetricsReporterConfig
 	roomStorage         ports.RoomStorage
 	instanceStorage     ports.GameRoomInstanceStorage
@@ -56,6 +57,7 @@ type MetricsReporterWorker struct {
 func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &MetricsReporterWorker{
 		scheduler:       scheduler,
+		schedulerCache:  opts.SchedulerCache,
 		config:          opts.MetricsReporterConfig,
 		roomStorage:     opts.RoomStorage,
 		instanceStorage: opts.InstanceStorage,
@@ -77,6 +79,7 @@ func (w *MetricsReporterWorker) Start(ctx context.Context) error {
 			w.Stop(w.workerContext)
 			return nil
 		case <-ticker.C:
+			w.syncScheduler(w.workerContext)
 			w.reportInstanceMetrics()
 			w.reportGameRoomMetrics()
 			w.reportSchedulerMetrics()
@@ -94,6 +97,18 @@ func (w *MetricsReporterWorker) Stop(_ context.Context) {
 
 func (w *MetricsReporterWorker) IsRunning() bool {
 	return w.workerContext != nil && w.workerContext.Err() == nil
+}
+
+func (w *MetricsReporterWorker) syncScheduler(ctx context.Context) {
+	scheduler, err := w.schedulerCache.GetScheduler(ctx, w.scheduler.Name)
+	if err != nil {
+		w.logger.Error("Error loading scheduler", zap.Error(err))
+		return
+	}
+
+	if w.scheduler.Spec.Version != scheduler.Spec.Version {
+		w.scheduler = scheduler
+	}
 }
 
 func (w *MetricsReporterWorker) reportInstanceMetrics() {
