@@ -29,12 +29,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
-
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
 )
@@ -66,6 +65,9 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					Affinity:               "affinity",
 				},
 				RoomsReplicas: 0,
+				MatchAllocation: &allocation.MatchAllocation{
+					MaxMatches: 1,
+				},
 			},
 			{
 				Name:            "scheduler-2",
@@ -83,6 +85,9 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					End:   60000,
 				},
 				RoomsReplicas: 1,
+				MatchAllocation: &allocation.MatchAllocation{
+					MaxMatches: 2,
+				},
 			},
 			{
 				Name:            "scheduler-3",
@@ -128,6 +133,9 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					TerminationGracePeriod: 60,
 				},
 				RoomsReplicas: 2,
+				MatchAllocation: &allocation.MatchAllocation{
+					MaxMatches: 3,
+				},
 			},
 			{
 				Name:            "scheduler-3",
@@ -177,6 +185,9 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					End:   60000,
 				},
 				RoomsReplicas: 3,
+				MatchAllocation: &allocation.MatchAllocation{
+					MaxMatches: 4,
+				},
 			},
 			{
 				Name:            "scheduler-5",
@@ -205,6 +216,9 @@ func TestScheduler_ToScheduler(t *testing.T) {
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
 				Labels:      map[string]string{"scheduler": "scheduler-name"},
+				MatchAllocation: &allocation.MatchAllocation{
+					MaxMatches: 5,
+				},
 			},
 			{
 				Name:            "scheduler-6",
@@ -233,6 +247,9 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					},
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
+				MatchAllocation: &allocation.MatchAllocation{
+					MaxMatches: 6,
+				},
 			},
 			{
 				Name:            "scheduler-7",
@@ -262,6 +279,9 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					},
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
+				MatchAllocation: &allocation.MatchAllocation{
+					MaxMatches: 7,
+				},
 			},
 			{
 				Name:            "scheduler-8",
@@ -290,6 +310,9 @@ func TestScheduler_ToScheduler(t *testing.T) {
 					},
 				},
 				Annotations: map[string]string{"imageregistry": "https://hub.docker.com/"},
+				MatchAllocation: &allocation.MatchAllocation{
+					MaxMatches: 8,
+				},
 			},
 		}
 

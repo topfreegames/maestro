@@ -29,22 +29,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
-
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"google.golang.org/protobuf/types/known/durationpb"
-
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/stretchr/testify/assert"
+	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
 	"github.com/topfreegames/maestro/internal/validations"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/topfreegames/maestro/internal/api/handlers/requestadapters"
 	api "github.com/topfreegames/maestro/pkg/api/v1"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestFromApiPatchSchedulerRequestToChangeMap(t *testing.T) {
@@ -575,6 +573,9 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &api.MatchAllocation{
+						MaxMatches: 2,
+					},
 				},
 			},
 			Output: Output{
@@ -676,6 +677,9 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 2,
+					},
 				},
 			},
 		},
@@ -763,6 +767,9 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &api.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
@@ -850,6 +857,9 @@ func TestFromApiCreateSchedulerRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 		},
@@ -884,6 +894,9 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 	genericValidVersion := "v1.0.0"
 	genericStringList := []string{"some-value", "another-value"}
 	genericTime := time.Now()
+	matchAllocation := &api.MatchAllocation{
+		MaxMatches: 0,
+	}
 
 	testCases := []struct {
 		Title string
@@ -973,18 +986,22 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 							},
 						},
 					},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
 				SchedulerWithoutSpec: &api.SchedulerWithoutSpec{
-					Name:          genericString,
-					Game:          genericString,
-					State:         "creating",
-					Version:       genericValidVersion,
-					PortRange:     nil,
-					CreatedAt:     timestamppb.New(genericTime),
-					MaxSurge:      maxSurgeValue,
-					RoomsReplicas: roomsReplicasValue,
+					Name:            genericString,
+					Game:            genericString,
+					State:           "creating",
+					Version:         genericValidVersion,
+					PortRange:       nil,
+					CreatedAt:       timestamppb.New(genericTime),
+					MaxSurge:        maxSurgeValue,
+					RoomsReplicas:   roomsReplicasValue,
+					MatchAllocation: matchAllocation,
 				},
 			},
 		},
@@ -1076,6 +1093,9 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
@@ -1088,9 +1108,10 @@ func TestFromEntitySchedulerToListResponse(t *testing.T) {
 						Start: 10000,
 						End:   60000,
 					},
-					CreatedAt:     timestamppb.New(genericTime),
-					MaxSurge:      maxSurgeValue,
-					RoomsReplicas: roomsReplicasValue,
+					CreatedAt:       timestamppb.New(genericTime),
+					MaxSurge:        maxSurgeValue,
+					RoomsReplicas:   roomsReplicasValue,
+					MatchAllocation: matchAllocation,
 				},
 			},
 		},
@@ -1230,6 +1251,9 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &api.MatchAllocation{
+						MaxMatches: 1,
+					},
 				},
 			},
 			Output: Output{
@@ -1331,6 +1355,9 @@ func TestFromApiNewSchedulerVersionRequestToEntity(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 1,
+					},
 				},
 			},
 		},
@@ -1465,6 +1492,9 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
@@ -1565,6 +1595,9 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &api.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 		},
@@ -1646,6 +1679,9 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &allocation.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 			Output: Output{
@@ -1732,6 +1768,9 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					},
 					Annotations: map[string]string{},
 					Labels:      map[string]string{},
+					MatchAllocation: &api.MatchAllocation{
+						MaxMatches: 0,
+					},
 				},
 			},
 		},

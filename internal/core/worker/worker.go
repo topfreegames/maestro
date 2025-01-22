@@ -56,6 +56,7 @@ type WorkerOptions struct {
 	InstanceStorage       ports.GameRoomInstanceStorage
 	MetricsReporterConfig *config.MetricsReporterConfig
 	RuntimeWatcherConfig  *config.RuntimeWatcherConfig
+	SchedulerCache        ports.SchedulerCache
 }
 
 // Configuration holds all worker configuration parameters.

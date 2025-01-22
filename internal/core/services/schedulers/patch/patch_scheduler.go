@@ -26,12 +26,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"github.com/topfreegames/maestro/internal/core/entities/port"
-
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 )
 
 const (
@@ -90,6 +90,8 @@ const (
 	LabelAnnotations = "annotations"
 	// LabelLabels is the labels key in the patch map
 	LabelLabels = "labels"
+	// LabelMatchAllocation is the match allocation key in the patch map.
+	LabelMatchAllocation = "match_allocation"
 )
 
 // PatchScheduler function applies the patchMap in the scheduler, returning the patched Scheduler.
@@ -148,6 +150,12 @@ func PatchScheduler(scheduler entities.Scheduler, patchMap map[string]interface{
 	if _, ok := patchMap[LabelLabels]; ok {
 		if scheduler.Labels, ok = patchMap[LabelLabels].(map[string]string); !ok {
 			return nil, fmt.Errorf("error parsing scheduler: labels malformed")
+		}
+	}
+
+	if _, ok := patchMap[LabelMatchAllocation]; ok {
+		if scheduler.MatchAllocation, ok = patchMap[LabelMatchAllocation].(*allocation.MatchAllocation); !ok {
+			return nil, fmt.Errorf("error parsing scheduler: match allocation malformed")
 		}
 	}
 

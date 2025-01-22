@@ -23,36 +23,33 @@
 package components
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
-	tc "github.com/testcontainers/testcontainers-go"
-
+	"github.com/docker/compose/v2/pkg/api"
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
 )
 
 type ManagementApiServer struct {
 	Address string
-	compose tc.DockerCompose
 }
 
-func ProvideManagementApi(maestroPath string) (*ManagementApiServer, error) {
+func ProvideManagementApi(ctx context.Context, compose tc.ComposeStack) (*ManagementApiServer, error) {
 	address := "http://localhost:8080"
 	client := &http.Client{}
 
-	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("e2e-test")
+	services := compose.Services()
+	services = append(services, "management-api")
 
-	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	composeErr := compose.WithCommand([]string{"up", "-d", "--build", "management-api"}).Invoke()
-
-	if composeErr.Error != nil {
-		return nil, fmt.Errorf("failed to start management API: %s", composeErr.Error)
+	err := compose.Up(ctx, tc.RunServices(services...), tc.Recreate(api.RecreateNever), tc.RecreateDependencies(api.RecreateNever), tc.Wait(true))
+	if err != nil {
+		return nil, fmt.Errorf("failed to start management-api: %w", err)
 	}
 
-	err := helpers.TimedRetry(func() error {
+	err = helpers.TimedRetry(func() error {
 		res, err := client.Get("http://localhost:8081/healthz")
 		if err != nil {
 			return err
@@ -69,12 +66,5 @@ func ProvideManagementApi(maestroPath string) (*ManagementApiServer, error) {
 		return nil, fmt.Errorf("unable to reach management API: %s", err)
 	}
 
-	return &ManagementApiServer{
-		Address: address,
-		compose: compose,
-	}, nil
-}
-
-func (ms *ManagementApiServer) Teardown() {
-	ms.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "management-api"}).Invoke()
+	return &ManagementApiServer{Address: address}, nil
 }

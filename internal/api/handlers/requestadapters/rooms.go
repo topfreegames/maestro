@@ -35,12 +35,18 @@ func FromApiUpdateRoomRequestToEntity(request *api.UpdateRoomWithPingRequest) (*
 		return nil, err
 	}
 
+	runningMatches := request.GetRunningMatches()
+	if status == game_room.GameRoomPingStatusOccupied && runningMatches == 0 {
+		runningMatches = 1
+	}
+
 	return &game_room.GameRoom{
-		ID:          request.GetRoomName(),
-		SchedulerID: request.GetSchedulerName(),
-		PingStatus:  status,
-		Metadata:    request.Metadata.AsMap(),
-		LastPingAt:  time.Unix(request.GetTimestamp(), 0),
+		ID:             request.GetRoomName(),
+		SchedulerID:    request.GetSchedulerName(),
+		PingStatus:     status,
+		Metadata:       request.Metadata.AsMap(),
+		LastPingAt:     time.Unix(request.GetTimestamp(), 0),
+		RunningMatches: int(runningMatches),
 	}, nil
 }
 

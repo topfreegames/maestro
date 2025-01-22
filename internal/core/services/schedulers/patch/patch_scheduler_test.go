@@ -30,16 +30,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
-
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"github.com/topfreegames/maestro/internal/validations"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
+	"github.com/topfreegames/maestro/internal/validations"
 )
 
 func TestPatchScheduler(t *testing.T) {
@@ -1033,6 +1032,9 @@ func basicSchedulerToPatchSchedulerTests() *entities.Scheduler {
 		PortRange: &port.PortRange{
 			Start: 40000,
 			End:   60000,
+		},
+		MatchAllocation: &allocation.MatchAllocation{
+			MaxMatches: 1,
 		},
 	}
 }

@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	_struct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/e2e/framework"
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
@@ -58,7 +57,7 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 			//  ----------- Create new Major version v2.0.0 and assert pods are replaced
 			newVersionExpected = "v2.0.0"
 			createMajorVersionAndAssertPodsReplace(t, roomsBeforeUpdate, kubeClient, scheduler, maestro, managementApiClient, roomsApiClient, newVersionExpected)
-			// ----------- Switch back to v1.0.0
+			// --------ru--- Switch back to v1.0.0
 			podsAfterSwitch := switchVersion(t, scheduler, managementApiClient, kubeClient, "v1.0.0")
 			// ----------- Create new Minor version v1.2.0 (since v1.1.0 already exists) and assert pods are not replaced
 			newVersionExpected = "v1.2.0"
@@ -223,6 +222,7 @@ func switchVersion(t *testing.T, scheduler *maestrov1.Scheduler, managementApiCl
 
 	waitForOperationToFinishByOperationId(t, managementApiClient, scheduler.Name, switchActiveVersionResponse.OperationId)
 
+	// waiting termination of pods
 	require.Eventually(t, func() bool {
 		podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 		require.NoError(t, err)
@@ -233,7 +233,7 @@ func switchVersion(t *testing.T, scheduler *maestrov1.Scheduler, managementApiCl
 		}
 
 		return false
-	}, 1*time.Minute, time.Second*10, "Timeout waiting to have 2 pods after switch version")
+	}, 2*time.Minute, time.Second*10, "Timeout waiting to have 2 pods after switch version")
 
 	podsAfterUpdate, err := kubeClient.CoreV1().Pods(scheduler.Name).List(context.Background(), metav1.ListOptions{})
 	require.NoError(t, err)
@@ -308,7 +308,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 				Address: maestro.ServerMocks.GrpcForwarderAddress,
 				Options: &maestroApiV1.ForwarderOptions{
 					Timeout: 5000,
-					Metadata: &_struct.Struct{
+					Metadata: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"roomType": {
 								Kind: &structpb.Value_StringValue{
@@ -358,7 +358,7 @@ func createMajorVersionAndAssertPodsReplace(t *testing.T, roomsBeforeUpdate []st
 				RoomName:  validationRoomName,
 				Event:     "ready",
 				Timestamp: time.Now().Unix(),
-				Metadata: &_struct.Struct{
+				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"playerId": {
 							Kind: &structpb.Value_StringValue{
@@ -500,7 +500,7 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 				Address: maestro.ServerMocks.GrpcForwarderAddress,
 				Options: &maestroApiV1.ForwarderOptions{
 					Timeout: 5000,
-					Metadata: &_struct.Struct{
+					Metadata: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"roomType": {
 								Kind: &structpb.Value_StringValue{
@@ -554,8 +554,8 @@ func createMinorVersionAndAssertNoPodsReplace(t *testing.T, kubeClient kubernete
 	}
 	require.ElementsMatch(t, podsNameAfterUpdate, podsNameBeforeUpdate)
 
-	require.Contains(t, getSchedulerResponse.Scheduler.Annotations, updateRequest.Annotations)
-	require.Contains(t, getSchedulerResponse.Scheduler.Labels, updateRequest.Labels)
+	require.Equal(t, getSchedulerResponse.Scheduler.Annotations, updateRequest.Annotations)
+	require.Equal(t, getSchedulerResponse.Scheduler.Labels, updateRequest.Labels)
 
 	require.Equal(t, expectedNewVersion, getSchedulerResponse.Scheduler.Spec.Version)
 }

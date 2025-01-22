@@ -23,15 +23,18 @@
 package maestro
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
-	"github.com/topfreegames/maestro/e2e/framework/maestro/servermocks"
-
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/components"
+	"github.com/topfreegames/maestro/e2e/framework/maestro/servermocks"
 )
 
 type MaestroInstance struct {
 	path                 string
+	compose              tc.ComposeStack
 	Deps                 *dependencies
 	ServerMocks          *servermocks.ServerMocks
 	WorkerServer         *components.WorkerServer
@@ -48,38 +51,49 @@ func ProvideMaestro() (*MaestroInstance, error) {
 		return nil, err
 	}
 
-	dependencies, err := provideDependencies(path)
+	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", path)}
+	identifier := strings.ToLower("e2e-test")
+
+	compose, err := tc.NewDockerComposeWith(tc.WithStackFiles(composeFilePaths...), tc.StackIdentifier(identifier))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker compose instance: %w", err)
+	}
+
+	ctx := context.Background()
+
+	dependencies, err := provideDependencies(ctx, path, compose)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start dependencies: %s", err)
 	}
 
-	serverMocks, err := servermocks.ProvideServerMocks(path)
+	serverMocks, err := servermocks.ProvideServerMocks(ctx, compose)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start server mocks: %s", err)
 	}
 
-	roomsApiInstance, err := components.ProvideRoomsApi(path)
+	roomsApiInstance, err := components.ProvideRoomsApi(ctx, compose)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start rooms api: %s", err)
 	}
 
-	managementApiInstance, err := components.ProvideManagementApi(path)
+	managementApiInstance, err := components.ProvideManagementApi(ctx, compose)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start worker: %s", err)
 	}
 
-	workerInstance, err := components.ProvideWorker(path)
+	workerInstance, err := components.ProvideWorker(ctx, compose)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start worker: %s", err)
 	}
 
-	runtimeWatcherInstance, err := components.ProvideRuntimeWatcher(path)
+	runtimeWatcherInstance, err := components.ProvideRuntimeWatcher(ctx, compose)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start runtime watcher: %s", err)
 	}
 
 	return &MaestroInstance{
 		"",
+		compose,
 		dependencies,
 		serverMocks,
 		workerInstance,
@@ -90,13 +104,5 @@ func ProvideMaestro() (*MaestroInstance, error) {
 }
 
 func (mi *MaestroInstance) Teardown() {
-	mi.ManagementApiServer.Teardown()
-	mi.WorkerServer.Teardown()
-	mi.RoomsApiServer.Teardown()
-	mi.RuntimeWatcherServer.Teardown()
-	mi.ServerMocks.Teardown()
-
-	// TODO(gabrielcorado): add a flag to not stop dependencies during
-	// development (this will make the e2e run way faster).
-	mi.Deps.Teardown()
+	_ = mi.compose.Down(context.Background(), tc.RemoveOrphans(true), tc.RemoveVolumes(true))
 }

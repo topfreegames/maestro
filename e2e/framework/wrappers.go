@@ -26,9 +26,7 @@ import (
 	"testing"
 
 	"github.com/go-redis/redis/v8"
-
 	"github.com/topfreegames/maestro/e2e/framework/maestro"
-
 	"k8s.io/client-go/kubernetes"
 )
 

@@ -29,15 +29,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"github.com/topfreegames/maestro/internal/core/entities/port"
-
 	"github.com/stretchr/testify/require"
-	"github.com/topfreegames/maestro/internal/validations"
-
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
+	"github.com/topfreegames/maestro/internal/validations"
 )
 
 func TestNewScheduler(t *testing.T) {
@@ -93,6 +92,7 @@ func TestNewScheduler(t *testing.T) {
 	forwarders := []*forwarder.Forwarder{fwd}
 	annotations := map[string]string{"imageregistry": "https://hub.docker.com/"}
 	labels := map[string]string{"scheduler": "scheduler-name"}
+	matchAllocation := &allocation.MatchAllocation{MaxMatches: 1}
 
 	t.Run("with success when create valid scheduler", func(t *testing.T) {
 		scheduler, err := entities.NewScheduler(
@@ -106,20 +106,22 @@ func TestNewScheduler(t *testing.T) {
 			nil,
 			forwarders,
 			annotations,
-			labels)
+			labels,
+			matchAllocation)
 
 		expectedScheduler := &entities.Scheduler{
-			Name:          name,
-			Game:          game,
-			MaxSurge:      maxSurge,
-			State:         entities.StateCreating,
-			Spec:          spec,
-			PortRange:     portRange,
-			RoomsReplicas: roomsReplicas,
-			Autoscaling:   nil,
-			Forwarders:    forwarders,
-			Annotations:   annotations,
-			Labels:        labels,
+			Name:            name,
+			Game:            game,
+			MaxSurge:        maxSurge,
+			State:           entities.StateCreating,
+			Spec:            spec,
+			PortRange:       portRange,
+			RoomsReplicas:   roomsReplicas,
+			Autoscaling:     nil,
+			Forwarders:      forwarders,
+			Annotations:     annotations,
+			Labels:          labels,
+			MatchAllocation: matchAllocation,
 		}
 
 		require.NoError(t, err)
@@ -136,7 +138,7 @@ func TestNewScheduler(t *testing.T) {
 			portRange,
 			roomsReplicas,
 			nil,
-			forwarders, annotations, labels)
+			forwarders, annotations, labels, matchAllocation)
 
 		require.Error(t, err)
 	})
@@ -160,7 +162,7 @@ func TestNewScheduler(t *testing.T) {
 			),
 			0,
 			nil,
-			forwarders, annotations, labels)
+			forwarders, annotations, labels, matchAllocation)
 
 		require.Error(t, err)
 	})
@@ -184,7 +186,25 @@ func TestNewScheduler(t *testing.T) {
 			),
 			-1,
 			nil,
-			forwarders, annotations, labels)
+			forwarders, annotations, labels, matchAllocation)
+
+		require.Error(t, err)
+	})
+
+	t.Run("fails when try to create scheduler with invalid MatchAllocation", func(t *testing.T) {
+		_, err := entities.NewScheduler(
+			name,
+			game,
+			entities.StateCreating,
+			maxSurge,
+			spec,
+			portRange,
+			roomsReplicas,
+			nil,
+			forwarders,
+			annotations,
+			labels,
+			nil)
 
 		require.Error(t, err)
 	})

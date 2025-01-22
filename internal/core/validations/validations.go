@@ -27,9 +27,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
-
-	"github.com/Masterminds/semver"
 )
 
 func RequiredIfTypeRoomOccupancy(isParameterNil bool, policyType string) bool {

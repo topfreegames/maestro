@@ -32,21 +32,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/ports"
-
+	"github.com/go-pg/pg/v10"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-
-	"github.com/topfreegames/maestro/internal/core/ports/errors"
-
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
 	"github.com/topfreegames/maestro/internal/core/filters"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/go-pg/pg/v10"
+	"github.com/topfreegames/maestro/internal/core/ports"
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 )
 
 type dbSchedulerVersion struct {
@@ -89,6 +85,18 @@ func TestSchedulerStorage_GetScheduler(t *testing.T) {
 		actualScheduler, err := storage.GetScheduler(context.Background(), "scheduler")
 		require.NoError(t, err)
 		assertSchedulers(t, []*entities.Scheduler{expectedScheduler}, []*entities.Scheduler{actualScheduler})
+	})
+
+	t.Run("scheduler exists and was created before multiple matches", func(t *testing.T) {
+		db := getPostgresDB(t)
+		storage := NewSchedulerStorage(db.Options())
+
+		err := storage.CreateScheduler(context.Background(), expectedScheduler)
+		require.NoError(t, err)
+
+		actualScheduler, err := storage.GetScheduler(context.Background(), "scheduler")
+		require.NoError(t, err)
+		assert.NotNil(t, actualScheduler.MatchAllocation)
 	})
 
 	t.Run("scheduler does not exists", func(t *testing.T) {

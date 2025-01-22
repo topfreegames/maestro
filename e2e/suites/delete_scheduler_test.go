@@ -124,7 +124,7 @@ func TestDeleteScheduler(t *testing.T) {
 			err := managementApiClient.Do("DELETE", fmt.Sprintf("/schedulers/%s", schedulerName), deleteSchedulerRequest, deleteSchedulerResponse)
 
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "failed with status 404")
+			assert.Contains(t, err.Error(), "failed with status: 404")
 		})
 	})
 }

@@ -25,17 +25,14 @@ package scheduler
 import (
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
-	"github.com/topfreegames/maestro/internal/core/entities/port"
-
 	"github.com/ghodss/yaml"
-
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-
 	"github.com/go-pg/pg/v10"
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/port"
 )
 
 type Scheduler struct {
@@ -66,6 +63,7 @@ type schedulerInfo struct {
 	Annotations            map[string]string
 	Labels                 map[string]string
 	LastDownscaleAt        time.Time
+	MatchAllocation        *allocation.MatchAllocation
 }
 
 func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
@@ -82,6 +80,7 @@ func NewDBScheduler(scheduler *entities.Scheduler) *Scheduler {
 		Annotations:            scheduler.Annotations,
 		Labels:                 scheduler.Labels,
 		LastDownscaleAt:        scheduler.LastDownscaleAt,
+		MatchAllocation:        scheduler.MatchAllocation,
 	}
 	yamlBytes, _ := yaml.Marshal(info)
 	return &Scheduler{
@@ -100,6 +99,12 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Backward compatibility with schedulers that don't have MatchAllocation
+	if info.MatchAllocation == nil {
+		info.MatchAllocation = &allocation.MatchAllocation{MaxMatches: 1}
+	}
+
 	return &entities.Scheduler{
 		Name:        s.Name,
 		Game:        s.Game,
@@ -121,5 +126,6 @@ func (s *Scheduler) ToScheduler() (*entities.Scheduler, error) {
 		RoomsReplicas:   info.RoomsReplicas,
 		Forwarders:      info.Forwarders,
 		Autoscaling:     info.Autoscaling,
+		MatchAllocation: info.MatchAllocation,
 	}, nil
 }

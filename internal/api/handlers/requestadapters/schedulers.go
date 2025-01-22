@@ -26,19 +26,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
-
+	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/entities/allocation"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
+	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
-
+	"github.com/topfreegames/maestro/internal/core/services/schedulers/patch"
+	api "github.com/topfreegames/maestro/pkg/api/v1"
 	"google.golang.org/protobuf/types/known/durationpb"
 	_struct "google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/topfreegames/maestro/internal/core/entities"
-	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
-	"github.com/topfreegames/maestro/internal/core/entities/game_room"
-	api "github.com/topfreegames/maestro/pkg/api/v1"
 )
 
 func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest) map[string]interface{} {
@@ -78,6 +76,10 @@ func FromApiPatchSchedulerRequestToChangeMap(request *api.PatchSchedulerRequest)
 
 	if request.Labels != nil {
 		patchMap[patch.LabelLabels] = request.GetLabels()
+	}
+
+	if request.MatchAllocation != nil {
+		patchMap[patch.LabelMatchAllocation] = fromApiMatchAllocation(request.GetMatchAllocation())
 	}
 
 	return patchMap
@@ -128,19 +130,21 @@ func FromApiCreateSchedulerRequestToEntity(request *api.CreateSchedulerRequest) 
 		fromApiForwarders(request.GetForwarders()),
 		request.GetAnnotations(),
 		request.GetLabels(),
+		fromApiMatchAllocation(request.GetMatchAllocation()),
 	)
 }
 
 func FromEntitySchedulerToListResponse(entity *entities.Scheduler) *api.SchedulerWithoutSpec {
 	return &api.SchedulerWithoutSpec{
-		Name:          entity.Name,
-		Game:          entity.Game,
-		State:         entity.State,
-		Version:       entity.Spec.Version,
-		PortRange:     getPortRange(entity.PortRange),
-		CreatedAt:     timestamppb.New(entity.CreatedAt),
-		MaxSurge:      entity.MaxSurge,
-		RoomsReplicas: int32(entity.RoomsReplicas),
+		Name:            entity.Name,
+		Game:            entity.Game,
+		State:           entity.State,
+		Version:         entity.Spec.Version,
+		PortRange:       getPortRange(entity.PortRange),
+		CreatedAt:       timestamppb.New(entity.CreatedAt),
+		MaxSurge:        entity.MaxSurge,
+		RoomsReplicas:   int32(entity.RoomsReplicas),
+		MatchAllocation: fromEntityMatchAllocationToResponse(entity.MatchAllocation),
 	}
 }
 
@@ -165,6 +169,7 @@ func FromApiNewSchedulerVersionRequestToEntity(request *api.NewSchedulerVersionR
 		fromApiForwarders(request.GetForwarders()),
 		request.GetAnnotations(),
 		request.GetLabels(),
+		fromApiMatchAllocation(request.GetMatchAllocation()),
 	)
 }
 
@@ -176,18 +181,19 @@ func FromEntitySchedulerToResponse(entity *entities.Scheduler) (*api.Scheduler, 
 	}
 
 	return &api.Scheduler{
-		Name:          entity.Name,
-		Game:          entity.Game,
-		State:         entity.State,
-		PortRange:     getPortRange(entity.PortRange),
-		CreatedAt:     timestamppb.New(entity.CreatedAt),
-		MaxSurge:      entity.MaxSurge,
-		RoomsReplicas: int32(entity.RoomsReplicas),
-		Spec:          getSpec(entity.Spec),
-		Autoscaling:   getAutoscaling(entity.Autoscaling),
-		Forwarders:    forwarders,
-		Annotations:   entity.Annotations,
-		Labels:        entity.Labels,
+		Name:            entity.Name,
+		Game:            entity.Game,
+		State:           entity.State,
+		PortRange:       getPortRange(entity.PortRange),
+		CreatedAt:       timestamppb.New(entity.CreatedAt),
+		MaxSurge:        entity.MaxSurge,
+		RoomsReplicas:   int32(entity.RoomsReplicas),
+		Spec:            getSpec(entity.Spec),
+		Autoscaling:     getAutoscaling(entity.Autoscaling),
+		Forwarders:      forwarders,
+		Annotations:     entity.Annotations,
+		Labels:          entity.Labels,
+		MatchAllocation: fromEntityMatchAllocationToResponse(entity.MatchAllocation),
 	}, nil
 }
 
@@ -332,6 +338,14 @@ func fromEntityForwardOptions(entity *forwarder.ForwardOptions) (*api.ForwarderO
 		Timeout:  int64(entity.Timeout),
 		Metadata: protoStruct,
 	}, nil
+}
+
+func fromEntityMatchAllocationToResponse(entity *allocation.MatchAllocation) *api.MatchAllocation {
+	if entity != nil {
+		return &api.MatchAllocation{MaxMatches: int32(entity.MaxMatches)}
+	}
+
+	return nil
 }
 
 func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
@@ -494,6 +508,16 @@ func fromApiForwarders(apiForwarders []*api.Forwarder) []*forwarder.Forwarder {
 		forwarders = append(forwarders, forwarderStruct)
 	}
 	return forwarders
+}
+
+func fromApiMatchAllocation(matchAllocation *api.MatchAllocation) *allocation.MatchAllocation {
+	if matchAllocation != nil {
+		return &allocation.MatchAllocation{
+			MaxMatches: int(matchAllocation.GetMaxMatches()),
+		}
+	}
+
+	return &allocation.MatchAllocation{MaxMatches: 1}
 }
 
 func getPortRange(portRange *port.PortRange) *api.PortRange {

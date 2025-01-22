@@ -98,6 +98,8 @@ message UpdateRoomStatusRequest {
   string status = 4;
   // Timestamp of the status update.
   int64 timestamp = 6;
+  // The number of running matches in the game room.
+  int64 running_matches = 7;
 }
 
 // The player event response.
@@ -168,6 +170,8 @@ message UpdateRoomWithPingRequest {
   string status = 4;
   // Timestamp of the ping event.
   int64 timestamp = 5;
+  // The number of running matches in the game room.
+  int64 running_matches = 6;
 }
 
 // The ping response.

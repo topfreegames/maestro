@@ -78,6 +78,9 @@
       }
     ],
     "annotations": {},
-    "labels": {}
+    "labels": {},
+    "matchAllocation": {
+      "maxMatches": 1
+    }
   }
 }

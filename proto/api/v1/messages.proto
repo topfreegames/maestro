@@ -24,7 +24,6 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 
 // Container is the struct that defines a game room container configuration.
 message Container {
-
   // Name of the container.
   string name = 1;
   // Image address .
@@ -41,7 +40,6 @@ message Container {
   ContainerResources limits = 7;
   // Container exposed ports definitions.
   repeated ContainerPort ports = 8;
-
 }
 
 // OptionalContainer is the struct that defines a game room container configuration.
@@ -74,6 +72,7 @@ message ContainerEnvironment {
   // Source for the environment variable's value. Cannot be used if value is not empty.
   optional ContainerEnvironmentValueFrom value_from = 3;
 }
+
 // Container environment ValueFrom possible values
 message ContainerEnvironmentValueFrom {
   // Container environment variable name using field reference, supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
@@ -97,6 +96,7 @@ message ContainerEnvironmentValueFromSecretKeyRef {
   // Secret key.
   string key = 2;
 }
+
 // Container resources (cpu/memory) (request and limits).
 message ContainerResources {
   // Container memory amount.
@@ -115,7 +115,8 @@ message ContainerPort {
   int32 port = 3;
   // Optional container host port.
   int32 host_port = 4;
-  // The host port range object describes what is the port range used to allocate game rooms.
+  // The host port range object describes what is the port range used to
+  // allocate game rooms.
   optional PortRange host_port_range = 5;
 }
 
@@ -127,6 +128,13 @@ message PortRange {
   int32 start = 1;
   // Range end, it is exclusive.
 	int32 end = 2;
+}
+
+// MatchAllocation is the struct that defines the configuration for the match
+// allocation in the Game Rooms.
+message MatchAllocation {
+  // The max number of matches that can be allocated in a Game Room.
+  int32 max_matches = 1;
 }
 
 // Spec is the specifications of the scheduler, with relevant info about what is being used.
@@ -183,6 +191,8 @@ message Scheduler {
   map<string, string> annotations = 11;
   // List with labels
   map<string, string> labels = 12;
+  // Configuration for matches allocation in the Game Rooms
+  optional MatchAllocation match_allocation = 13;
 }
 
 // Scheduler message used in the "ListScheduler version" definition. The "spec" is not implemented
@@ -205,6 +215,8 @@ message SchedulerWithoutSpec {
   string max_surge = 7;
   // Rooms Replicas is the desired number that a Scheduler maintains.
   int32 rooms_replicas = 8;
+  // Configuration for matches allocation in the Game Rooms
+  optional MatchAllocation match_allocation = 9;
 }
 
 // The List Operation Item object representation.
@@ -374,4 +386,6 @@ message SchedulerInfo {
   int32 rooms_terminating = 8;
   // Autoscaling info (min, max, enabled)
   AutoscalingInfo autoscaling = 9;
+  // Configuration for matches allocation in the Game Rooms
+  optional MatchAllocation match_allocation = 10;
 }

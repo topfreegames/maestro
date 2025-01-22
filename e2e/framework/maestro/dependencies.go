@@ -23,12 +23,13 @@
 package maestro
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	tc "github.com/testcontainers/testcontainers-go"
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/exec"
 	"github.com/topfreegames/maestro/e2e/framework/maestro/helpers"
 )
@@ -37,22 +38,20 @@ type dependencies struct {
 	KubeconfigPath string
 	RedisAddress   string
 	KubeAddress    string
-	compose        tc.DockerCompose
 }
 
 // TODO(gabrielcorado): spin up the dependencies using different ports from dev
 // environment to avoid conflicts.
-func provideDependencies(maestroPath string) (*dependencies, error) {
-	composeFilePaths := []string{fmt.Sprintf("%s/e2e/framework/maestro/docker-compose.yml", maestroPath)}
-	identifier := strings.ToLower("e2e-test")
+func provideDependencies(ctx context.Context, maestroPath string, compose tc.ComposeStack) (*dependencies, error) {
+	err := compose.Down(ctx, tc.RemoveOrphans(true), tc.RemoveVolumes(true), tc.RemoveImagesAll)
+	if err != nil {
+		return nil, fmt.Errorf("failed to tear down running containers: %w", err)
+	}
 
-	compose := tc.NewLocalDockerCompose(composeFilePaths, identifier)
-	_ = compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
-
-	composeErr := compose.WithCommand([]string{"up", "-d", "postgres", "redis", "k3s_agent", "k3s_server"}).Invoke()
-
-	if composeErr.Error != nil {
-		return nil, fmt.Errorf("failed to start dependencies: %s", composeErr.Error)
+	services := []string{"postgres", "redis", "k3s_agent", "k3s_server"}
+	err = compose.Up(context.Background(), tc.RunServices(services...), tc.RemoveOrphans(true), tc.Wait(true))
+	if err != nil {
+		return nil, fmt.Errorf("failed to start dependencies: %w", err)
 	}
 
 	migrateErr := helpers.TimedRetry(func() error {
@@ -79,7 +78,6 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 	}, time.Second, 2*time.Minute)
 
 	if migrateErr != nil {
-		compose.WithCommand([]string{"down", "--remove-orphans", "--volumes"}).Invoke()
 		return nil, fmt.Errorf("failed to migrate database: %s", migrateErr)
 	}
 
@@ -87,15 +85,5 @@ func provideDependencies(maestroPath string) (*dependencies, error) {
 		KubeconfigPath: fmt.Sprintf("%s/kubeconfig/kubeconfig.yaml", maestroPath),
 		KubeAddress:    "https://127.0.0.1:6443",
 		RedisAddress:   "redis://127.0.0.1:6379/0",
-		compose:        compose,
 	}, nil
-}
-
-func (d *dependencies) Teardown() {
-	d.compose.WithCommand([]string{"rm", "-s", "-v", "-f", "postgres", "redis", "k3s_agent", "k3s_server"}).Invoke()
-	exec.ExecSysCmd(
-		maestroPath,
-		"docker",
-		"volume ", "rm", "e2e-test_eventsproto", "e2e-test_kubeconfig",
-	)
 }

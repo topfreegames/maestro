@@ -70,5 +70,8 @@
   },
   "labels": {
     "scheduler": "scheduler-name"
+  },
+  "matchAllocation": {
+    "maxMatches": 1
   }
 }

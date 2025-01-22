@@ -45,6 +45,7 @@ const WorkerName = "metrics_reporter"
 // MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
 	scheduler           *entities.Scheduler
+	schedulerCache      ports.SchedulerCache
 	config              *config.MetricsReporterConfig
 	roomStorage         ports.RoomStorage
 	instanceStorage     ports.GameRoomInstanceStorage
@@ -56,6 +57,7 @@ type MetricsReporterWorker struct {
 func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &MetricsReporterWorker{
 		scheduler:       scheduler,
+		schedulerCache:  opts.SchedulerCache,
 		config:          opts.MetricsReporterConfig,
 		roomStorage:     opts.RoomStorage,
 		instanceStorage: opts.InstanceStorage,
@@ -77,6 +79,7 @@ func (w *MetricsReporterWorker) Start(ctx context.Context) error {
 			w.Stop(w.workerContext)
 			return nil
 		case <-ticker.C:
+			w.syncScheduler(w.workerContext)
 			w.reportInstanceMetrics()
 			w.reportGameRoomMetrics()
 			w.reportSchedulerMetrics()
@@ -94,6 +97,18 @@ func (w *MetricsReporterWorker) Stop(_ context.Context) {
 
 func (w *MetricsReporterWorker) IsRunning() bool {
 	return w.workerContext != nil && w.workerContext.Err() == nil
+}
+
+func (w *MetricsReporterWorker) syncScheduler(ctx context.Context) {
+	scheduler, err := w.schedulerCache.GetScheduler(ctx, w.scheduler.Name)
+	if err != nil {
+		w.logger.Error("Error loading scheduler", zap.Error(err))
+		return
+	}
+
+	if w.scheduler.Spec.Version != scheduler.Spec.Version {
+		w.scheduler = scheduler
+	}
 }
 
 func (w *MetricsReporterWorker) reportInstanceMetrics() {
@@ -135,11 +150,14 @@ func (w *MetricsReporterWorker) reportGameRoomMetrics() {
 	w.reportOccupiedRooms()
 	w.reportTerminatingRooms()
 	w.reportUnreadyRooms()
+	w.reportActiveRooms()
+	w.reportTotalRunningMatches()
 }
 
 func (w *MetricsReporterWorker) reportSchedulerMetrics() {
 	w.logger.Info("Reporting scheduler metrics")
 	w.reportSchedulerAutoscale()
+	w.reportSchedulerMaxMatches()
 }
 
 func (w *MetricsReporterWorker) reportSchedulerAutoscale() {
@@ -149,6 +167,13 @@ func (w *MetricsReporterWorker) reportSchedulerAutoscale() {
 	if w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy != nil {
 		reportSchedulerPolicyReadyTarget(w.scheduler.Game, w.scheduler.Name, w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy.ReadyTarget)
 	}
+}
+
+func (w *MetricsReporterWorker) reportSchedulerMaxMatches() {
+	if w.scheduler.MatchAllocation == nil {
+		return
+	}
+	reportSchedulerMaxMatches(w.scheduler.Game, w.scheduler.Name, w.scheduler.MatchAllocation.MaxMatches)
 }
 
 func (w *MetricsReporterWorker) reportPendingRooms() {
@@ -203,4 +228,24 @@ func (w *MetricsReporterWorker) reportUnreadyRooms() {
 		return
 	}
 	reportGameRoomUnreadyNumber(w.scheduler.Game, w.scheduler.Name, unreadyRooms)
+}
+
+func (w *MetricsReporterWorker) reportActiveRooms() {
+	activeRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusActive)
+	if err != nil {
+		w.logger.Error("Error getting active pods", zap.Error(err))
+		return
+	}
+
+	reportGameRoomActiveNumber(w.scheduler.Game, w.scheduler.Name, activeRooms)
+}
+
+func (w *MetricsReporterWorker) reportTotalRunningMatches() {
+	runningMatches, err := w.roomStorage.GetRunningMatchesCount(w.workerContext, w.scheduler.Name)
+	if err != nil {
+		w.logger.Error("Error getting running matches", zap.Error(err))
+		return
+	}
+
+	reportTotalRunningMatches(w.scheduler.Game, w.scheduler.Name, runningMatches)
 }

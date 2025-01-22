@@ -107,23 +107,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "metadata": {
-                  "type": "object",
-                  "description": "Target room metadata."
-                },
-                "status": {
-                  "type": "string",
-                  "description": "Indicates the room status."
-                },
-                "timestamp": {
-                  "type": "string",
-                  "format": "int64",
-                  "description": "Timestamp of the ping event."
-                }
-              },
-              "description": "The ping request."
+              "$ref": "#/definitions/RoomsServiceUpdateRoomWithPingBody"
             }
           }
         ],
@@ -172,23 +156,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "metadata": {
-                  "type": "object",
-                  "description": "Player event metadata."
-                },
-                "event": {
-                  "type": "string",
-                  "description": "The player event name."
-                },
-                "timestamp": {
-                  "type": "string",
-                  "format": "int64",
-                  "description": "Timestamp of the player event."
-                }
-              },
-              "description": "The player event request."
+              "$ref": "#/definitions/RoomsServiceForwardPlayerEventBody"
             }
           }
         ],
@@ -237,23 +205,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "metadata": {
-                  "type": "object",
-                  "description": "Room event metadata."
-                },
-                "event": {
-                  "type": "string",
-                  "description": "The room event name."
-                },
-                "timestamp": {
-                  "type": "string",
-                  "format": "int64",
-                  "description": "Timestamp of the room event."
-                }
-              },
-              "description": "The room event request."
+              "$ref": "#/definitions/RoomsServiceForwardRoomEventBody"
             }
           }
         ],
@@ -302,23 +254,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "metadata": {
-                  "type": "object",
-                  "description": "Status update metadata."
-                },
-                "status": {
-                  "type": "string",
-                  "description": "The room status."
-                },
-                "timestamp": {
-                  "type": "string",
-                  "format": "int64",
-                  "description": "Timestamp of the status update."
-                }
-              },
-              "description": "The player event request."
+              "$ref": "#/definitions/RoomsServiceUpdateRoomStatusBody"
             }
           }
         ],
@@ -426,7 +362,7 @@
         "parameters": [
           {
             "name": "game",
-            "description": "Game name to filter schedulers",
+            "description": "Game name to filter schedulers\n\nMapped to URL query parameter `game`.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -469,56 +405,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "game": {
-                  "type": "string",
-                  "description": "Game the new scheduler will be part of."
-                },
-                "spec": {
-                  "$ref": "#/definitions/v1Spec",
-                  "description": "The spec object defines all the game room container configurations and spec."
-                },
-                "portRange": {
-                  "$ref": "#/definitions/v1PortRange",
-                  "description": "The port range object describes what is the port range used to allocate game rooms."
-                },
-                "maxSurge": {
-                  "type": "string",
-                  "title": "The max surge of new rooms, used to scale and update"
-                },
-                "roomsReplicas": {
-                  "type": "integer",
-                  "format": "int32",
-                  "description": "The rooms replicas is the desired number of rooms that maestro should keep available."
-                },
-                "autoscaling": {
-                  "$ref": "#/definitions/v1Autoscaling",
-                  "title": "The autoscaling defines the autoscaling and its policy to be followed"
-                },
-                "forwarders": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/v1Forwarder"
-                  },
-                  "title": "List of Scheduler forwarders"
-                },
-                "annotations": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "New annotations for scheduler"
-                },
-                "labels": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "New labels for scheduler"
-                }
-              },
-              "description": "Scheduler is the struct that defines a maestro scheduler."
+              "$ref": "#/definitions/SchedulersServiceNewSchedulerVersionBody"
             }
           }
         ],
@@ -557,52 +444,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "spec": {
-                  "$ref": "#/definitions/v1OptionalSpec",
-                  "description": "The spec object defines all the game room container configurations and spec."
-                },
-                "portRange": {
-                  "$ref": "#/definitions/v1PortRange",
-                  "description": "The port range object describes what is the port range used to allocate game rooms."
-                },
-                "maxSurge": {
-                  "type": "string",
-                  "title": "The max surge of new rooms, used to scale and update"
-                },
-                "roomsReplicas": {
-                  "type": "integer",
-                  "format": "int32",
-                  "title": "Rooms Replicas is the desired number of rooms"
-                },
-                "autoscaling": {
-                  "$ref": "#/definitions/v1OptionalAutoscaling",
-                  "title": "Autoscaling rules to the scheduler"
-                },
-                "forwarders": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/v1Forwarder"
-                  },
-                  "title": "List of Scheduler forwarders"
-                },
-                "annotations": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Annotations declaration for the scheduler"
-                },
-                "labels": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Labels declaration for the scheduler"
-                }
-              },
-              "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
+              "$ref": "#/definitions/SchedulersServicePatchSchedulerBody"
             }
           }
         ],
@@ -712,14 +554,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "string",
-                  "title": "Version that will be activate in Scheduler"
-                }
-              },
-              "title": "Switch Active Version Request"
+              "$ref": "#/definitions/SchedulersServiceSwitchActiveVersionBody"
             }
           }
         ],
@@ -908,6 +743,212 @@
     }
   },
   "definitions": {
+    "RoomsServiceForwardPlayerEventBody": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "Player event metadata."
+        },
+        "event": {
+          "type": "string",
+          "description": "The player event name."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the player event."
+        }
+      },
+      "description": "The player event request."
+    },
+    "RoomsServiceForwardRoomEventBody": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "Room event metadata."
+        },
+        "event": {
+          "type": "string",
+          "description": "The room event name."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the room event."
+        }
+      },
+      "description": "The room event request."
+    },
+    "RoomsServiceUpdateRoomStatusBody": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "Status update metadata."
+        },
+        "status": {
+          "type": "string",
+          "description": "The room status."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the status update."
+        },
+        "runningMatches": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of running matches in the game room."
+        }
+      },
+      "description": "The player event request."
+    },
+    "RoomsServiceUpdateRoomWithPingBody": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "Target room metadata."
+        },
+        "status": {
+          "type": "string",
+          "description": "Indicates the room status."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Timestamp of the ping event."
+        },
+        "runningMatches": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of running matches in the game room."
+        }
+      },
+      "description": "The ping request."
+    },
+    "SchedulersServiceNewSchedulerVersionBody": {
+      "type": "object",
+      "properties": {
+        "game": {
+          "type": "string",
+          "description": "Game the new scheduler will be part of."
+        },
+        "spec": {
+          "$ref": "#/definitions/v1Spec",
+          "description": "The spec object defines all the game room container configurations and spec."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "The port range object describes what is the port range used to allocate game rooms."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "The max surge of new rooms, used to scale and update"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The rooms replicas is the desired number of rooms that maestro should keep available."
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1Autoscaling",
+          "title": "The autoscaling defines the autoscaling and its policy to be followed"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "New annotations for scheduler"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "New labels for scheduler"
+        },
+        "matchAllocation": {
+          "$ref": "#/definitions/v1MatchAllocation",
+          "title": "Configuration for matches allocation in the Game Rooms"
+        }
+      },
+      "description": "Scheduler is the struct that defines a maestro scheduler."
+    },
+    "SchedulersServicePatchSchedulerBody": {
+      "type": "object",
+      "properties": {
+        "spec": {
+          "$ref": "#/definitions/v1OptionalSpec",
+          "description": "The spec object defines all the game room container configurations and spec."
+        },
+        "portRange": {
+          "$ref": "#/definitions/v1PortRange",
+          "description": "The port range object describes what is the port range used to allocate game rooms."
+        },
+        "maxSurge": {
+          "type": "string",
+          "title": "The max surge of new rooms, used to scale and update"
+        },
+        "roomsReplicas": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Rooms Replicas is the desired number of rooms"
+        },
+        "autoscaling": {
+          "$ref": "#/definitions/v1OptionalAutoscaling",
+          "title": "Autoscaling rules to the scheduler"
+        },
+        "forwarders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Forwarder"
+          },
+          "title": "List of Scheduler forwarders"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Annotations declaration for the scheduler"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels declaration for the scheduler"
+        },
+        "matchAllocation": {
+          "$ref": "#/definitions/v1MatchAllocation",
+          "title": "Configuration for matches allocation in the Game Rooms"
+        }
+      },
+      "description": "PatchSchedulerRequest is the struct that defines a partial update of a maestro scheduler."
+    },
+    "SchedulersServiceSwitchActiveVersionBody": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "title": "Version that will be activate in Scheduler"
+        }
+      },
+      "title": "Switch Active Version Request"
+    },
     "apiv1Operation": {
       "type": "object",
       "properties": {
@@ -943,6 +984,7 @@
         "executionHistory": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1OperationEvent"
           },
           "description": "ExecutionHistory is the execution details filled by Maestro."
@@ -965,7 +1007,7 @@
         "NULL_VALUE"
       ],
       "default": "NULL_VALUE",
-      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\nThe JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
     },
     "rpcStatus": {
       "type": "object",
@@ -980,6 +1022,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
@@ -1082,6 +1125,7 @@
         "environment": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ContainerEnvironment"
           },
           "description": "Container environment variables."
@@ -1097,6 +1141,7 @@
         "ports": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ContainerPort"
           },
           "description": "Container exposed ports definitions."
@@ -1183,7 +1228,7 @@
         },
         "hostPortRange": {
           "$ref": "#/definitions/v1PortRange",
-          "description": "The host port range object describes what is the port range used to allocate game rooms."
+          "description": "The host port range object describes what is the port range used to\nallocate game rooms."
         }
       },
       "description": "Container exposed port definition."
@@ -1237,6 +1282,7 @@
         "forwarders": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Forwarder"
           },
           "title": "List of Scheduler forwarders"
@@ -1254,6 +1300,10 @@
             "type": "string"
           },
           "title": "Add labels for scheduler"
+        },
+        "matchAllocation": {
+          "$ref": "#/definitions/v1MatchAllocation",
+          "title": "Configuration for matches allocation in the Game Rooms"
         }
       },
       "description": "Scheduler is the struct that defines a maestro scheduler."
@@ -1363,6 +1413,7 @@
         "ports": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Port"
           },
           "description": "List of game room ports."
@@ -1394,6 +1445,7 @@
         "versions": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1SchedulerVersion"
           },
           "title": "List of versions for an scheduler"
@@ -1407,6 +1459,7 @@
         "schedulers": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1SchedulerInfo"
           },
           "description": "List of schedulers fetched."
@@ -1476,6 +1529,7 @@
         "operations": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ListOperationItem"
           },
           "description": "List of the scheduler finished (with error or not) operations."
@@ -1489,12 +1543,24 @@
         "schedulers": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1SchedulerWithoutSpec"
           },
           "description": "List of schedulers fetched."
         }
       },
       "description": "The list schedulers response message."
+    },
+    "v1MatchAllocation": {
+      "type": "object",
+      "properties": {
+        "maxMatches": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The max number of matches that can be allocated in a Game Room."
+        }
+      },
+      "description": "MatchAllocation is the struct that defines the configuration for the match\nallocation in the Game Rooms."
     },
     "v1NewSchedulerVersionResponse": {
       "type": "object",
@@ -1575,6 +1641,7 @@
         "environment": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ContainerEnvironment"
           },
           "description": "Container environment variables."
@@ -1590,6 +1657,7 @@
         "ports": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ContainerPort"
           },
           "description": "Container exposed ports definitions."
@@ -1607,6 +1675,7 @@
         "containers": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1OptionalContainer"
           },
           "description": "The container object array defines all the game room container configurations."
@@ -1737,6 +1806,7 @@
         "forwarders": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Forwarder"
           },
           "title": "List of Scheduler forwarders"
@@ -1754,6 +1824,10 @@
             "type": "string"
           },
           "title": "List with labels"
+        },
+        "matchAllocation": {
+          "$ref": "#/definitions/v1MatchAllocation",
+          "title": "Configuration for matches allocation in the Game Rooms"
         }
       },
       "description": "Scheduler definition."
@@ -1801,6 +1875,10 @@
         "autoscaling": {
           "$ref": "#/definitions/v1AutoscalingInfo",
           "title": "Autoscaling info (min, max, enabled)"
+        },
+        "matchAllocation": {
+          "$ref": "#/definitions/v1MatchAllocation",
+          "title": "Configuration for matches allocation in the Game Rooms"
         }
       },
       "title": "Scheduler Info"
@@ -1860,6 +1938,10 @@
           "type": "integer",
           "format": "int32",
           "description": "Rooms Replicas is the desired number that a Scheduler maintains."
+        },
+        "matchAllocation": {
+          "$ref": "#/definitions/v1MatchAllocation",
+          "title": "Configuration for matches allocation in the Game Rooms"
         }
       },
       "title": "Scheduler message used in the \"ListScheduler version\" definition. The \"spec\" is not implemented\non this message since it's unnecessary for the list function"
@@ -1878,6 +1960,7 @@
         "containers": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Container"
           },
           "description": "The container object array defines all the game room container configurations."

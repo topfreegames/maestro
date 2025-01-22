@@ -228,6 +228,8 @@ func createSchedulerWithForwardersAndWaitForIt(
 		RoomsReplicas: 2,
 		MaxSurge:      "10%",
 		Forwarders:    forwarders,
+		Annotations:   map[string]string{"annotation-key": "annotation-value"},
+		Labels:        map[string]string{"label-key": "label-value"},
 	}
 
 	createResponse := &maestroApiV1.CreateSchedulerResponse{}

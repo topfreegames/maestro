@@ -32,10 +32,15 @@ func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error)
 	if err != nil {
 		return nil, err
 	}
+	schedulerCache, err := service.NewSchedulerCacheRedis(c)
+	if err != nil {
+		return nil, err
+	}
 	metricsReporterConfig := provideMetricsReporterConfig(c)
 	workerOptions := &worker.WorkerOptions{
 		RoomStorage:           roomStorage,
 		InstanceStorage:       gameRoomInstanceStorage,
+		SchedulerCache:        schedulerCache,
 		MetricsReporterConfig: metricsReporterConfig,
 	}
 	workersManager := workers.NewWorkersManager(workerBuilder, c, schedulerStorage, workerOptions)
@@ -56,4 +61,4 @@ func provideMetricsReporterConfig(c config.Config) *config2.MetricsReporterConfi
 
 }
 
-var WorkerOptionsSet = wire.NewSet(service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, provideMetricsReporterConfig, wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "MetricsReporterConfig"))
+var WorkerOptionsSet = wire.NewSet(service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, provideMetricsReporterConfig, wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "SchedulerCache", "MetricsReporterConfig"))

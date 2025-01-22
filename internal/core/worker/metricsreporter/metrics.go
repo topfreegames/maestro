@@ -92,6 +92,16 @@ var (
 			monitoring.LabelScheduler,
 		},
 	})
+	gameRoomActiveGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "gru_active",
+		Help:      "The number of game rooms with status active, with running matches but not fully occupied",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
 
 	instanceReadyGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
@@ -148,6 +158,28 @@ var (
 		},
 	})
 
+	runningMatchesGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "running_matches",
+		Help:      "The total number of running matches",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
+
+	schedulerMaxMatchesGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "max_matches",
+		Help:      "The max number of matches that each Game Room can handle",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
+
 	schedulerAutoscalePolicyReadyTargetGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
@@ -183,6 +215,9 @@ func reportGameRoomErrorNumber(game, schedulerName string, numberOfGameRooms int
 func reportGameRoomOccupiedNumber(game, schedulerName string, numberOfGameRooms int) {
 	gameRoomOccupiedGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
 }
+func reportGameRoomActiveNumber(game, schedulerName string, numberOfGameRooms int) {
+	gameRoomActiveGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
+}
 
 func reportInstanceReadyNumber(game, schedulerName string, numberOfInstances int) {
 	instanceReadyGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfInstances))
@@ -202,6 +237,14 @@ func reportInstanceTerminatingNumber(game, schedulerName string, numberOfInstanc
 
 func reportInstanceErrorNumber(game, schedulerName string, numberOfInstances int) {
 	instanceErrorGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfInstances))
+}
+
+func reportTotalRunningMatches(game, schedulerName string, runningMatches int) {
+	runningMatchesGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(runningMatches))
+}
+
+func reportSchedulerMaxMatches(game, schedulerName string, availableSlots int) {
+	schedulerMaxMatchesGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(availableSlots))
 }
 
 func reportSchedulerPolicyReadyTarget(game, schedulerName string, readyTarget float64) {
