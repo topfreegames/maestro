@@ -33,7 +33,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 )
 
-// PolicyMap is a type that corelates a policy type with an autoscaling policy.
+// PolicyMap is a map that relates a policy type with an autoscaling policy.
 type PolicyMap map[autoscaling.PolicyType]autoscalerPorts.Policy
 
 // Autoscaler is a service that holds dependencies to execute autoscaling feature.
