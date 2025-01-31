@@ -156,7 +156,7 @@ func TestCalculateDesiredNumberOfRooms(t *testing.T) {
 			assert.ErrorContains(t, err, "scheduler does not have autoscaling struct")
 		})
 
-		t.Run("When policyMap does not have policy retun in error", func(t *testing.T) {
+		t.Run("When policyMap does not have policy return an error", func(t *testing.T) {
 			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{})
 
 			_, err := autoscaler.CalculateDesiredNumberOfRooms(context.Background(), scheduler)
@@ -220,6 +220,8 @@ func TestCanDownscale(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(4, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(0, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(1, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
@@ -235,6 +237,8 @@ func TestCanDownscale(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(2, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(0, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(3, nil)
 			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(3, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
@@ -249,8 +253,10 @@ func TestCanDownscale(t *testing.T) {
 		t.Run("When the occupation rate is equal the threshold", func(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
-			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(26, nil)
-			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(14, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(70, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(0, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(30, nil)
+			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(30, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
 			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: policy})
@@ -265,7 +271,9 @@ func TestCanDownscale(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(500, nil)
-			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(330, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(0, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(80, nil)
+			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(80, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
 			autoscaler := autoscaler.NewAutoscaler(autoscaler.PolicyMap{policyType: policy})

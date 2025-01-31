@@ -43,6 +43,7 @@ _testmain.go
 .history
 .idea
 .tool-versions
+go_ls.log
 
 # Python
 __pycache__

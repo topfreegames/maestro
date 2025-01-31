@@ -36,12 +36,12 @@ import (
 )
 
 const (
-	// ReadyRoomsKey is the key to total rooms in the CurrentState map.
-	ReadyRoomsKey = "RoomsOccupancyTotalRooms"
 	// RunningMatchesKey is the key to running matches in the CurrentState map.
 	RunningMatchesKey = "RoomsOccupancyRunningMatches"
 	// MaxMatchesKey is the key to max matches in the CurrentState map.
 	MaxMatchesKey = "RoomsOccupancyMaxMatches"
+	// CurrentAvailableSlotsKey is the key to Current available slots in the CurrentState map.
+	CurrentFreeSlotsKey = "RoomsOccupancyCurrentFreeSlots"
 )
 
 // Policy holds the requirements to build the current state of
@@ -61,10 +61,22 @@ func NewPolicy(roomStorage ports.RoomStorage) *Policy {
 
 // CurrentStateBuilder fill the fields that should be considered during the autoscaling policy.
 func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Scheduler) (policies.CurrentState, error) {
-	readyRoomsAmount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
+	readyCount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusReady)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching ready game rooms amount: %w", err)
 	}
+
+	activeCount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusActive)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching active game rooms amount: %w", err)
+	}
+
+	occupiedCount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusOccupied)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
+	}
+
+	totalFreeSlots := (readyCount + activeCount + occupiedCount) * scheduler.MatchAllocation.MaxMatches
 
 	runningMatchesAmount, err := p.roomStorage.GetRunningMatchesCount(ctx, scheduler.Name)
 	if err != nil {
@@ -72,9 +84,9 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 	}
 
 	currentState := policies.CurrentState{
-		ReadyRoomsKey:     readyRoomsAmount,
-		RunningMatchesKey: runningMatchesAmount,
-		MaxMatchesKey:     scheduler.MatchAllocation.MaxMatches,
+		CurrentFreeSlotsKey: totalFreeSlots - runningMatchesAmount,
+		RunningMatchesKey:   runningMatchesAmount,
+		MaxMatchesKey:       scheduler.MatchAllocation.MaxMatches,
 	}
 
 	return currentState, nil
@@ -82,54 +94,65 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 
 // CalculateDesiredNumberOfRooms executes to knows how many rooms should a scheduler have based on your current state.
 func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (int, error) {
-	if policyParameters.RoomOccupancy == nil {
-		return -1, errors.New("RoomOccupancy parameters is empty")
-	}
-
-	readyTarget := policyParameters.RoomOccupancy.ReadyTarget
-	if readyTarget >= float64(1) || readyTarget <= 0 {
-		return -1, errors.New("ready target must be greater than 0 and less than 1")
+	if err := validateParams(policyParameters.RoomOccupancy); err != nil {
+		return -1, err
 	}
 
 	runningMatches, ok := currentState[RunningMatchesKey].(int)
 	if !ok {
-		return -1, errors.New("There are no runningMatches in the currentState")
+		return -1, errors.New("there are no runningMatches in the currentState")
 	}
 
-	maxMatchesPerRoom := currentState[MaxMatchesKey].(int)
+	maxMatchesPerRoom, ok := currentState[MaxMatchesKey].(int)
+	if !ok {
+		return -1, errors.New("could not get maxMatchesPerRoom from the currentState")
+	}
 
-	desiredNumberOfMatches := math.Ceil(float64(runningMatches) / (float64(1) - readyTarget))
+	desiredNumberOfMatches := math.Ceil(float64(runningMatches) / (float64(1) - policyParameters.RoomOccupancy.ReadyTarget))
 	desiredNumberOfRooms := int(math.Ceil(desiredNumberOfMatches / float64(maxMatchesPerRoom)))
 
 	return desiredNumberOfRooms, nil
 }
 
+// CanDownscale determines if downscaling is safe based on current occupancy and policy parameters.
 func (p *Policy) CanDownscale(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (bool, error) {
-	if policyParameters.RoomOccupancy == nil {
-		return false, errors.New("RoomOccupancy parameters is empty")
-	}
-
-	downThreshold := policyParameters.RoomOccupancy.DownThreshold
-	if downThreshold >= float64(1) || downThreshold <= 0 {
-		return false, errors.New("downscale threshold must be greater than 0 and less than 1")
-	}
-
-	readyTarget := policyParameters.RoomOccupancy.ReadyTarget
-	if readyTarget >= float64(1) || readyTarget <= 0 {
-		return false, errors.New("ready target must be greater than 0 and less than 1")
-	}
-
-	readyRooms, ok := currentState[ReadyRoomsKey].(int)
-	if !ok {
-		return false, errors.New("There are no readyRooms in the currentState")
+	if err := validateParams(policyParameters.RoomOccupancy); err != nil {
+		return false, err
 	}
 
 	desiredNumberOfRooms, err := p.CalculateDesiredNumberOfRooms(policyParameters, currentState)
 	if err != nil {
-		return false, fmt.Errorf("Error calculating the desired number of rooms: %w", err)
+		return false, fmt.Errorf("error calculating the desired number of rooms: %w", err)
 	}
 
-	desiredNumberOfReadyRooms := math.Ceil(float64(desiredNumberOfRooms) * readyTarget)
+	maxMatchesPerRoom, ok := currentState[MaxMatchesKey].(int)
+	if !ok {
+		return false, errors.New("could not get maxMatchesPerRoom from the currentState")
+	}
 
-	return (desiredNumberOfReadyRooms / float64(readyRooms)) <= downThreshold, nil
+	freeSlots, ok := currentState[CurrentFreeSlotsKey].(int)
+	if !ok {
+		return false, errors.New("could not get freeSlots from the currentState")
+	}
+
+	desiredNumberOfMatches := desiredNumberOfRooms * maxMatchesPerRoom
+	desiredFreeSlots := math.Ceil(float64(desiredNumberOfMatches) * policyParameters.RoomOccupancy.ReadyTarget)
+
+	return (desiredFreeSlots / float64(freeSlots)) <= policyParameters.RoomOccupancy.DownThreshold, nil
+}
+
+func validateParams(params *autoscaling.RoomOccupancyParams) error {
+	if params == nil {
+		return errors.New("roomOccupancy parameters is empty")
+	}
+
+	if params.ReadyTarget >= float64(1) || params.ReadyTarget <= 0 {
+		return errors.New("ready target must be greater than 0 and less than 1")
+	}
+
+	if params.DownThreshold >= float64(1) || params.DownThreshold <= 0 {
+		return errors.New("downscale threshold must be greater than 0 and less than 1")
+	}
+
+	return nil
 }
