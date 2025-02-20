@@ -287,5 +287,5 @@ func patchAutoscaling(scheduler *entities.Scheduler, patchMap map[string]interfa
 		}
 		scheduler.Autoscaling.Policy = patchPolicy
 	}
-	return scheduler.Validate()
+	return nil
 }
