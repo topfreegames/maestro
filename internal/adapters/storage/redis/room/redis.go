@@ -70,8 +70,10 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 		SchedulerID: scheduler,
 	}
 
-	p := r.client.Pipeline()
 	roomHashCmd := r.client.HGetAll(ctx, getRoomRedisKey(room.SchedulerID, room.ID))
+
+	p := r.client.Pipeline()
+	_ = p.ZAddNX(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{Member: room.ID, Score: float64(room.RunningMatches)})
 	statusCmd := p.ZScore(ctx, getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
 	pingCmd := p.ZScore(ctx, getRoomPingRedisKey(room.SchedulerID), room.ID)
 	occupancyCmd := p.ZScore(ctx, getRoomOccupancyRedisKey(room.SchedulerID), room.ID)
