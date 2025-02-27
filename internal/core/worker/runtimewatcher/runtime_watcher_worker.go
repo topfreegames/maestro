@@ -89,6 +89,7 @@ func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room
 				case event, ok := <-resultChan:
 					if !ok {
 						w.logger.Warn("resultChan closed, finishing worker goroutine")
+						w.Stop(w.ctx)
 						return
 					}
 					err := w.processEvent(w.ctx, event)
@@ -115,7 +116,7 @@ func (w *runtimeWatcherWorker) mitigateDisruptions() error {
 			zap.String("scheduler", w.scheduler.Name),
 			zap.Error(err),
 		)
-		return nil
+		return err
 	}
 	mitigationQuota := 0
 	if totalRoomsAmount >= MinRoomsToApplyDisruption {
@@ -126,14 +127,14 @@ func (w *runtimeWatcherWorker) mitigateDisruptions() error {
 				zap.String("scheduler", w.scheduler.Name),
 				zap.Error(err),
 			)
-			return nil
+			return err
 		}
 	}
 	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, mitigationQuota, w.config.DisruptionSafetyPercentage)
 	if err != nil {
 		return err
 	}
-	w.logger.Debug(
+	w.logger.Info(
 		"mitigated disruption for occupied rooms",
 		zap.String("scheduler", w.scheduler.Name),
 		zap.Int("mitigationQuota", mitigationQuota),
@@ -160,14 +161,12 @@ func (w *runtimeWatcherWorker) spawnDisruptionWatcher() {
 						zap.String("scheduler", w.scheduler.Name),
 						zap.Error(err),
 					)
-					return
 				}
 			case <-w.ctx.Done():
 				w.logger.Info("context closed, exiting disruption watcher")
 				return
 			}
 		}
-
 	}()
 }
 
@@ -198,9 +197,13 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 }
 
 func (w *runtimeWatcherWorker) Stop(_ context.Context) {
-	w.logger.Info("stopping runtime watcher", zap.String("scheduler", w.scheduler.Name))
 	if w.cancelFunc != nil {
-		w.cancelFunc()
+		w.logger.Info("stopping runtime watcher", zap.String("scheduler", w.scheduler.Name))
+		// To make this function idempotent, we need to set the cancelFunc to nil
+		// before calling it.
+		cancelFunc := w.cancelFunc
+		w.cancelFunc = nil
+		cancelFunc()
 	}
 }
 
