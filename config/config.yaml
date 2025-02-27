@@ -70,7 +70,7 @@ reporter:
     intervalMillis: 10000
 runtimeWatcher:
   disruptionWorker:
-    intervalSeconds: 5
+    intervalSeconds: 60
     safetyPercentage: 0.05
 
 operations:
