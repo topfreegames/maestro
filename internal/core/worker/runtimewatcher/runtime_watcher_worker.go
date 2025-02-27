@@ -160,14 +160,12 @@ func (w *runtimeWatcherWorker) spawnDisruptionWatcher() {
 						zap.String("scheduler", w.scheduler.Name),
 						zap.Error(err),
 					)
-					return
 				}
 			case <-w.ctx.Done():
 				w.logger.Info("context closed, exiting disruption watcher")
 				return
 			}
 		}
-
 	}()
 }
 
