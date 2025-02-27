@@ -133,7 +133,7 @@ func (w *runtimeWatcherWorker) mitigateDisruptions() error {
 	if err != nil {
 		return err
 	}
-	w.logger.Debug(
+	w.logger.Info(
 		"mitigated disruption for occupied rooms",
 		zap.String("scheduler", w.scheduler.Name),
 		zap.Int("mitigationQuota", mitigationQuota),
