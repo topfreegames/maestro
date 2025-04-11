@@ -641,8 +641,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		page := int64(0)
 		pageSize := int64(10)
 
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize).Return(operationsResult, int64(3), nil)
-		operations, total, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize, "").Return(operationsResult, int64(3), nil)
+		operations, total, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize, "")
 		require.NoError(t, err)
 		assert.Equal(t, int64(3), total)
 		require.ElementsMatch(t, operationsResult, operations)
@@ -664,8 +664,8 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 		page := int64(0)
 		pageSize := int64(10)
 
-		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize).Return(nil, int64(0), errors.New("some error"))
-		_, _, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize)
+		operationStorage.EXPECT().ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize, "").Return(nil, int64(0), errors.New("some error"))
+		_, _, err := opManager.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize, "")
 		require.ErrorContains(t, err, "failed to list finished operations for scheduler test-scheduler : some error")
 	})
 }

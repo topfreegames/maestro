@@ -52,7 +52,7 @@ type OperationManager interface {
 	// ListSchedulerActiveOperations returns a list of operations with active status for the given scheduler.
 	ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 	// ListSchedulerFinishedOperations returns a list of operations with finished status for the given scheduler.
-	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) ([]*operation.Operation, int64, error)
+	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64, order string) ([]*operation.Operation, int64, error)
 	// EnqueueOperationCancellationRequest enqueues a cancellation request for the given operation.
 	EnqueueOperationCancellationRequest(ctx context.Context, schedulerName, operationID string) error
 	// WatchOperationCancellationRequests starts an async process to watch for cancellation requests for the given operation and cancels it.
@@ -92,7 +92,7 @@ type OperationStorage interface {
 	// ListSchedulerActiveOperations list scheduler active operations.
 	ListSchedulerActiveOperations(ctx context.Context, schedulerName string) ([]*operation.Operation, error)
 	// ListSchedulerFinishedOperations list scheduler finished operations.
-	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) ([]*operation.Operation, int64, error)
+	ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64, order string) ([]*operation.Operation, int64, error)
 	// UpdateOperationStatus only updates the operation status for the given
 	// operation ID.
 	UpdateOperationStatus(ctx context.Context, schedulerName, operationID string, status operation.Status) error

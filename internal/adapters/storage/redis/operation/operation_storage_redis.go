@@ -224,7 +224,7 @@ func (r *redisOperationStorage) ListSchedulerActiveOperations(ctx context.Contex
 	return operations, nil
 }
 
-func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) (operations []*operation.Operation, total int64, err error) {
+func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64, order string) (operations []*operation.Operation, total int64, err error) {
 	if err := r.CleanExpiredOperations(ctx, schedulerName); err != nil {
 		return nil, -1, fmt.Errorf("failed to clean scheduler expired operations: %w", err)
 	}
@@ -234,7 +234,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 		return nil, -1, fmt.Errorf("failed to count finished operations: %w", err)
 	}
 
-	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, page, pageSize)
+	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, page, pageSize, order)
 	operations = make([]*operation.Operation, len(operationsIDs))
 	executions := make([]redis.Cmder, len(operationsIDs))
 
@@ -275,7 +275,7 @@ func (r *redisOperationStorage) ListSchedulerFinishedOperations(ctx context.Cont
 }
 
 func (r *redisOperationStorage) CleanOperationsHistory(ctx context.Context, schedulerName string) error {
-	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, 0, -1)
+	operationsIDs, err := r.getFinishedOperationsFromHistory(ctx, schedulerName, 0, -1, "")
 	if err != nil {
 		return err
 	}
@@ -381,13 +381,15 @@ func (r *redisOperationStorage) getAllFinishedOperationIDs(ctx context.Context, 
 	return append(operationsIDs, noActionOpIDs...), nil
 }
 
-func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string, page, pageSize int64) (operationsIDs []string, err error) {
+func (r *redisOperationStorage) getFinishedOperationsFromHistory(ctx context.Context, schedulerName string, page, pageSize int64, order string) (operationsIDs []string, err error) {
 	metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-		operationsIDs, err = r.client.ZRevRangeByScore(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.ZRangeBy{
-			Min:    "-inf",
-			Max:    "+inf",
+		operationsIDs, err = r.client.Sort(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), &redis.Sort{
+			By:     createdAtRedisKey,
 			Offset: page * pageSize,
 			Count:  pageSize,
+			Get:    nil,
+			Order:  order,
+			Alpha:  false,
 		}).Result()
 		return err
 	})

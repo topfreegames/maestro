@@ -384,7 +384,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize, "desc")
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
 			assert.Equal(t, expectedOperations, operationsReturned)
@@ -424,7 +424,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize, "desc")
 			assert.NoError(t, err)
 			assert.NotEmptyf(t, operationsReturned, "expected at least one operation")
 			assert.Equal(t, expectedOperations, operationsReturned)
@@ -463,7 +463,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, page, pageSize, "")
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned, "expected result to be empty")
 			assert.Equal(t, int64(4), total)
@@ -476,7 +476,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			definitionProvider, _ := createOperationDefinitionProvider(t)
 			storage := NewRedisOperationStorage(client, clock, operationsTTLMap, definitionProvider)
 
-			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10, "")
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned, "expected result to be empty")
 			assert.Equal(t, int64(0), total)
@@ -497,7 +497,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			operationsReturned, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10, "")
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned)
 			ids, _ := client.ZRange(context.Background(), storage.buildSchedulerHistoryOperationsKey(schedulerName), 0, -1).Result()
@@ -557,7 +557,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			_, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			_, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10, "")
 			assert.ErrorContains(t, err, "failed to build operation from the hash: failed to parse operation status: strconv.Atoi: parsing \"\": invalid syntax")
 		})
 
@@ -568,7 +568,7 @@ func TestListSchedulerFinishedOperations(t *testing.T) {
 			definitionProvider, _ := createOperationDefinitionProvider(t)
 			storage := NewRedisOperationStorage(client, clock, operationsTTLMap, definitionProvider)
 			client.Close()
-			_, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			_, _, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10, "")
 			assert.ErrorContains(t, err, "failed to clean scheduler expired operations: failed to list operations for \"test-scheduler\" when trying to clean expired operations")
 		})
 	})
@@ -1113,7 +1113,7 @@ func TestCleanOperationsHistory(t *testing.T) {
 			definitionProvider, _ := createOperationDefinitionProvider(t)
 			storage := NewRedisOperationStorage(client, clock, operationsTTLMap, definitionProvider)
 
-			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10)
+			operationsReturned, total, err := storage.ListSchedulerFinishedOperations(context.Background(), schedulerName, 0, 10, "")
 			assert.NoError(t, err)
 			assert.Empty(t, operationsReturned)
 			assert.Equal(t, total, int64(0))
