@@ -154,9 +154,9 @@ func (mr *MockOperationManagerMockRecorder) ListSchedulerActiveOperations(ctx, s
 }
 
 // ListSchedulerFinishedOperations mocks base method.
-func (m *MockOperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) ([]*operation.Operation, int64, error) {
+func (m *MockOperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64, order string) ([]*operation.Operation, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSchedulerFinishedOperations", ctx, schedulerName, page, pageSize)
+	ret := m.ctrl.Call(m, "ListSchedulerFinishedOperations", ctx, schedulerName, page, pageSize, order)
 	ret0, _ := ret[0].([]*operation.Operation)
 	ret1, _ := ret[1].(int64)
 	ret2, _ := ret[2].(error)
@@ -164,9 +164,9 @@ func (m *MockOperationManager) ListSchedulerFinishedOperations(ctx context.Conte
 }
 
 // ListSchedulerFinishedOperations indicates an expected call of ListSchedulerFinishedOperations.
-func (mr *MockOperationManagerMockRecorder) ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize interface{}) *gomock.Call {
+func (mr *MockOperationManagerMockRecorder) ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize, order interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerFinishedOperations", reflect.TypeOf((*MockOperationManager)(nil).ListSchedulerFinishedOperations), ctx, schedulerName, page, pageSize)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerFinishedOperations", reflect.TypeOf((*MockOperationManager)(nil).ListSchedulerFinishedOperations), ctx, schedulerName, page, pageSize, order)
 }
 
 // ListSchedulerPendingOperations mocks base method.
@@ -471,9 +471,9 @@ func (mr *MockOperationStorageMockRecorder) ListSchedulerActiveOperations(ctx, s
 }
 
 // ListSchedulerFinishedOperations mocks base method.
-func (m *MockOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) ([]*operation.Operation, int64, error) {
+func (m *MockOperationStorage) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64, order string) ([]*operation.Operation, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSchedulerFinishedOperations", ctx, schedulerName, page, pageSize)
+	ret := m.ctrl.Call(m, "ListSchedulerFinishedOperations", ctx, schedulerName, page, pageSize, order)
 	ret0, _ := ret[0].([]*operation.Operation)
 	ret1, _ := ret[1].(int64)
 	ret2, _ := ret[2].(error)
@@ -481,9 +481,9 @@ func (m *MockOperationStorage) ListSchedulerFinishedOperations(ctx context.Conte
 }
 
 // ListSchedulerFinishedOperations indicates an expected call of ListSchedulerFinishedOperations.
-func (mr *MockOperationStorageMockRecorder) ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize interface{}) *gomock.Call {
+func (mr *MockOperationStorageMockRecorder) ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize, order interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerFinishedOperations", reflect.TypeOf((*MockOperationStorage)(nil).ListSchedulerFinishedOperations), ctx, schedulerName, page, pageSize)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSchedulerFinishedOperations", reflect.TypeOf((*MockOperationStorage)(nil).ListSchedulerFinishedOperations), ctx, schedulerName, page, pageSize, order)
 }
 
 // UpdateOperationDefinition mocks base method.

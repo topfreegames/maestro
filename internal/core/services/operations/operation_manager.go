@@ -187,8 +187,8 @@ func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, s
 	return ops, nil
 }
 
-func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64) (result []*operation.Operation, total int64, err error) {
-	result, total, err = om.Storage.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize)
+func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64, order string) (result []*operation.Operation, total int64, err error) {
+	result, total, err = om.Storage.ListSchedulerFinishedOperations(ctx, schedulerName, page, pageSize, order)
 	if err != nil {
 		return nil, -1, fmt.Errorf("failed to list finished operations for scheduler %s : %w", schedulerName, err)
 	}

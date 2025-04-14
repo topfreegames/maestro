@@ -176,7 +176,7 @@ func (h *OperationsHandler) queryActiveOperations(ctx context.Context, scheduler
 }
 
 func (h *OperationsHandler) queryFinishedOperations(ctx context.Context, schedulerName, sortingOrder string, page, pageSize int64) ([]*operation.Operation, uint32, error) {
-	finishedOperationEntities, total, err := h.operationManager.ListSchedulerFinishedOperations(ctx, schedulerName, page-1, pageSize)
+	finishedOperationEntities, total, err := h.operationManager.ListSchedulerFinishedOperations(ctx, schedulerName, page-1, pageSize, sortingOrder)
 	if err != nil {
 		h.logger.Error("error listing finished operations", zap.Error(err))
 		return nil, uint32(0), status.Error(codes.Unknown, err.Error())

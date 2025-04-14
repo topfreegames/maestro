@@ -196,7 +196,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15), "desc").Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -218,7 +218,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15), "asc").Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -241,7 +241,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15), "desc").Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -358,7 +358,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(finishedOperations, int64(3), nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15), "desc").Return(finishedOperations, int64(3), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -380,7 +380,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(10)).Return(finishedOperations, int64(13), nil)
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(10), "desc").Return(finishedOperations, int64(13), nil)
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
@@ -485,7 +485,7 @@ func TestListOperations(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		operationManager := mock.NewMockOperationManager(mockCtrl)
 
-		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15)).Return(nil, int64(0), errors.NewErrUnexpected("error listing finished operations"))
+		operationManager.EXPECT().ListSchedulerFinishedOperations(gomock.Any(), schedulerName, int64(0), int64(15), "desc").Return(nil, int64(0), errors.NewErrUnexpected("error listing finished operations"))
 
 		mux := runtime.NewServeMux()
 		err := api.RegisterOperationsServiceHandlerServer(context.Background(), mux, ProvideOperationsHandler(operationManager))
