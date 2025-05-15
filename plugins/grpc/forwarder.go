@@ -264,7 +264,7 @@ func (g *GRPCForwarder) RoomEvent(ctx context.Context, infos, fwdMetadata map[st
 	return g.sendRoomEvent(ctx, infos, eventType)
 }
 
-//Forward send room or player status to specified server
+// Forward send room or player status to specified server
 func (g *GRPCForwarder) Forward(ctx context.Context, event string, infos, fwdMetadata map[string]interface{}) (status int32, message string, err error) {
 
 	// Add forwarder metadata (from maestro config) to request
@@ -314,11 +314,24 @@ func (g *GRPCForwarder) configure() error {
 		return fmt.Errorf("no grpc server address informed")
 	}
 	l.Infof("connecting to grpc server at: %s", g.serverAddress)
+	keepAliveCheckTime := g.config.GetDuration("keepAliveCheckTime")
+	if keepAliveCheckTime == 0 {
+		keepAliveCheckTime = 10 * time.Second
+	}
+	keepAliveTimeout := g.config.GetDuration("keepAliveTimeout")
+	if keepAliveTimeout == 0 {
+		keepAliveTimeout = 3 * time.Second
+	}
+
 	tracer := opentracing.GlobalTracer()
 	conn, err := grpc.Dial(
 		g.serverAddress,
 		grpc.WithInsecure(),
-		grpc.WithKeepaliveParams(keepalive.ClientParameters{Time: 30 * time.Second, Timeout: 10 * time.Second, PermitWithoutStream: true}),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                keepAliveCheckTime,
+			Timeout:             keepAliveTimeout,
+			PermitWithoutStream: true,
+		}),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 	)
 	if err != nil {
@@ -388,4 +401,4 @@ func NewForwarder(config *viper.Viper, logger log.FieldLogger) (eventforwarder.E
 	return g, nil
 }
 
-func main(){}
+func main() {}
