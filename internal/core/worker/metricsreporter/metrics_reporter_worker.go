@@ -112,7 +112,7 @@ func (w *MetricsReporterWorker) syncScheduler(ctx context.Context) {
 }
 
 func (w *MetricsReporterWorker) reportInstanceMetrics() {
-	w.logger.Info("Reporting instance metrics")
+	w.logger.Debug("Reporting instance metrics")
 
 	instances, err := w.instanceStorage.GetAllInstances(w.workerContext, w.scheduler.Name)
 	if err != nil {
@@ -143,7 +143,7 @@ func (w *MetricsReporterWorker) reportInstanceMetrics() {
 }
 
 func (w *MetricsReporterWorker) reportGameRoomMetrics() {
-	w.logger.Info("Reporting game room metrics")
+	w.logger.Debug("Reporting game room metrics")
 	w.reportReadyRooms()
 	w.reportPendingRooms()
 	w.reportErrorRooms()
@@ -155,7 +155,7 @@ func (w *MetricsReporterWorker) reportGameRoomMetrics() {
 }
 
 func (w *MetricsReporterWorker) reportSchedulerMetrics() {
-	w.logger.Info("Reporting scheduler metrics")
+	w.logger.Debug("Reporting scheduler metrics")
 	w.reportSchedulerAutoscale()
 	w.reportSchedulerMaxMatches()
 }

@@ -146,7 +146,7 @@ func (m *RoomManager) UpdateRoom(ctx context.Context, gameRoom *game_room.GameRo
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 
-	m.Logger.Info("Updating room success")
+	m.Logger.Debug("Updating room success")
 
 	if shouldForwardEvent {
 		gameRoom.Metadata["eventType"] = events.FromRoomEventTypeToString(events.Ping)
