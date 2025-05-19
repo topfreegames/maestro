@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 	"github.com/topfreegames/maestro/test"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
@@ -53,6 +54,8 @@ func TestMain(m *testing.M) {
 	test.WithGrpcMockContainer(func(grpcAddress, httpInputAddress string) {
 		grpcMockAddress = grpcAddress
 		httpInputMockAddress = httpInputAddress
+		fmt.Printf("Using gRPC mock address: %s\n", grpcMockAddress)
+		fmt.Printf("Using HTTP input mock address: %s\n", httpInputMockAddress)
 		code = m.Run()
 	})
 	os.Exit(code)
@@ -65,13 +68,10 @@ func TestSendRoomEvent(t *testing.T) {
 			"../../../test/data/events_mock/events-forwarder-grpc-send-room-event-success.json",
 		)
 		require.NoError(t, err)
-
 		basicArrangeForwarderClient(t)
 		event := newRoomEvent("cbfef643-4fed-4ca9-94f8-9ad424fd5624")
-
-		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(grpcMockAddress), &event)
+		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(grpcMockAddress), &event, grpc.WaitForReady(true))
 		require.NoError(t, err)
-
 		assert.EqualValues(t, 200, response.Code)
 		assert.Equal(t, "Event received with success", response.Message)
 	})
@@ -82,13 +82,10 @@ func TestSendRoomEvent(t *testing.T) {
 			"../../../test/data/events_mock/events-forwarder-grpc-send-room-event-failure.json",
 		)
 		require.NoError(t, err)
-
 		basicArrangeForwarderClient(t)
 		event := newRoomEvent("d85b0160-2522-494d-9efe-79a6a3612849")
-
-		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(grpcMockAddress), &event)
+		response, err := forwarderClientAdapter.SendRoomEvent(context.Background(), newForwarder(grpcMockAddress), &event, grpc.WaitForReady(true))
 		require.NoError(t, err)
-
 		assert.EqualValues(t, 500, response.Code)
 		assert.Equal(t, "Internal server error from matchmaker", response.Message)
 	})
@@ -101,13 +98,10 @@ func TestSendRoomReSync(t *testing.T) {
 			"../../../test/data/events_mock/events-forwarder-grpc-send-room-resync-success.json",
 		)
 		require.NoError(t, err)
-
 		basicArrangeForwarderClient(t)
 		event := newRoomStatusEvent("65e810a0-bb81-4633-93c9-826414a0062d")
-
-		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(grpcMockAddress), &event)
+		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(grpcMockAddress), &event, grpc.WaitForReady(true))
 		require.NoError(t, err)
-
 		assert.EqualValues(t, 200, response.Code)
 		assert.Equal(t, "Event received with success", response.Message)
 	})
@@ -118,13 +112,10 @@ func TestSendRoomReSync(t *testing.T) {
 			"../../../test/data/events_mock/events-forwarder-grpc-send-room-resync-failure.json",
 		)
 		require.NoError(t, err)
-
 		basicArrangeForwarderClient(t)
 		event := newRoomStatusEvent("f7415c97-5c28-418b-b19b-87380e2d0113")
-
-		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(grpcMockAddress), &event)
+		response, err := forwarderClientAdapter.SendRoomReSync(context.Background(), newForwarder(grpcMockAddress), &event, grpc.WaitForReady(true))
 		require.NoError(t, err)
-
 		assert.EqualValues(t, 500, response.Code)
 		assert.Equal(t, "Internal server error from matchmaker", response.Message)
 	})
@@ -176,7 +167,7 @@ func TestForwarderClient_SendRoomStatus(t *testing.T) {
 			requestStubFile: "",
 			args: args{
 				ctx:       context.Background(),
-				forwarder: newForwarder(""),
+				forwarder: newForwarder("invalid-address:123"),
 				in:        newRoomStatusEvent(""),
 			},
 			wantErr: assert.Error,
@@ -191,12 +182,22 @@ func TestForwarderClient_SendRoomStatus(t *testing.T) {
 				)
 				require.NoError(t, err)
 			}
-			f := NewForwarderClient(keepalive.ClientParameters{})
-			got, err := f.SendRoomStatus(tt.args.ctx, tt.args.forwarder, &tt.args.in)
+
+			kac := keepalive.ClientParameters{}
+			var dialOptions []grpc.DialOption
+			if tt.name != "return error when connection establishment fails" {
+				dialOptions = append(dialOptions, grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: 5 * time.Second}))
+			}
+			f := NewForwarderClient(kac, dialOptions...)
+
+			got, err := f.SendRoomStatus(tt.args.ctx, tt.args.forwarder, &tt.args.in, grpc.WaitForReady(true))
+
 			if !tt.wantErr(t, err, fmt.Sprintf("SendRoomStatus(%v, %v, %v)", tt.args.ctx, tt.args.forwarder, tt.args.in)) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "SendRoomStatus(%v, %v, %v)", tt.args.ctx, tt.args.forwarder, tt.args.in)
+			if err == nil {
+				assert.Equalf(t, tt.want, got, "SendRoomStatus(%v, %v, %v)", tt.args.ctx, tt.args.forwarder, tt.args.in)
+			}
 		})
 	}
 }
@@ -208,13 +209,10 @@ func TestSendPlayerEvent(t *testing.T) {
 			"../../../test/data/events_mock/events-forwarder-grpc-send-player-event-success.json",
 		)
 		require.NoError(t, err)
-
 		basicArrangeForwarderClient(t)
 		event := newPlayerEvent("c50acc91-4d88-46fa-aa56-48d63c5b5311")
-
-		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(grpcMockAddress), &event)
+		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(grpcMockAddress), &event, grpc.WaitForReady(true))
 		require.NoError(t, err)
-
 		assert.EqualValues(t, 200, response.Code)
 		assert.Equal(t, "Event received with success", response.Message)
 	})
@@ -225,20 +223,18 @@ func TestSendPlayerEvent(t *testing.T) {
 			"../../../test/data/events_mock/events-forwarder-grpc-send-player-event-failure.json",
 		)
 		require.NoError(t, err)
-
 		basicArrangeForwarderClient(t)
 		event := newPlayerEvent("446bb3d0-0334-4468-a4e7-8068a97caa53")
-
-		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(grpcMockAddress), &event)
+		response, err := forwarderClientAdapter.SendPlayerEvent(context.Background(), newForwarder(grpcMockAddress), &event, grpc.WaitForReady(true))
 		require.NoError(t, err)
-
 		assert.EqualValues(t, 500, response.Code)
 		assert.Equal(t, "Internal server error from matchmaker", response.Message)
 	})
 }
 
 func basicArrangeForwarderClient(t *testing.T) {
-	forwarderClientAdapter = NewForwarderClient(keepalive.ClientParameters{})
+	kac := keepalive.ClientParameters{}
+	forwarderClientAdapter = NewForwarderClient(kac, grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: 5 * time.Second}))
 }
 
 func newRoomEvent(mockIdentifier string) pb.RoomEvent {

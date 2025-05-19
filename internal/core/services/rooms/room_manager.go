@@ -185,12 +185,12 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 func (m *RoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId string) error {
 	m.Logger.Sugar().Infof("Cleaning room \"%v\", scheduler \"%v\"", roomId, schedulerName)
 	err := m.RoomStorage.DeleteRoom(ctx, schedulerName, roomId)
-	if err != nil && !errors.Is(porterrors.ErrNotFound, err) {
+	if err != nil && !errors.Is(err, porterrors.ErrNotFound) {
 		return fmt.Errorf("failed to delete room state: %w", err)
 	}
 
 	err = m.InstanceStorage.DeleteInstance(ctx, schedulerName, roomId)
-	if err != nil && !errors.Is(porterrors.ErrNotFound, err) {
+	if err != nil && !errors.Is(err, porterrors.ErrNotFound) {
 		return fmt.Errorf("failed to delete room state: %w", err)
 	}
 

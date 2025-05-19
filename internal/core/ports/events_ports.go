@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/topfreegames/maestro/internal/core/entities/events"
+	"google.golang.org/grpc"
 )
 
 // Primary ports (input, driving ports)
@@ -51,10 +52,10 @@ type EventsForwarder interface {
 }
 
 type ForwarderClient interface {
-	SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent) (*pb.Response, error)
-	SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error)
-	SendRoomStatus(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error)
-	SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent) (*pb.Response, error)
+	SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error)
+	SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error)
+	SendRoomStatus(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error)
+	SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error)
 	CacheFlush()
 	CacheDelete(forwarderAddress string) error
 }

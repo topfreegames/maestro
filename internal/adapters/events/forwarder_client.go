@@ -36,6 +36,7 @@ import (
 	pb "github.com/topfreegames/protos/maestro/grpc/generated"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -94,7 +95,7 @@ func NewForwarderClient(keepAliveCfg keepalive.ClientParameters, extraDialOption
 }
 
 // SendRoomEvent fetch or create a grpc client and send a room event to forwarder.
-func (f *ForwarderClient) SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent) (*pb.Response, error) {
+func (f *ForwarderClient) SendRoomEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomEvent, opts ...grpc.CallOption) (*pb.Response, error) {
 	client, err := f.getGrpcClient(Address(forwarder.Address))
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
@@ -104,12 +105,12 @@ func (f *ForwarderClient) SendRoomEvent(ctx context.Context, forwarder forwarder
 	defer cancel()
 
 	return runReportingLatencyMetrics("SendRoomEvent", func() (*pb.Response, error) {
-		return client.SendRoomEvent(ctx, in)
+		return client.SendRoomEvent(ctx, in, opts...)
 	})
 }
 
 // SendRoomReSync fetch or create a grpc client and send a room resync to forwarder.
-func (f *ForwarderClient) SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error) {
+func (f *ForwarderClient) SendRoomReSync(ctx context.Context, forwarder forwarder.Forwarder, resyncEvent *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error) {
 	client, err := f.getGrpcClient(Address(forwarder.Address))
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
@@ -118,12 +119,12 @@ func (f *ForwarderClient) SendRoomReSync(ctx context.Context, forwarder forwarde
 	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
 	return runReportingLatencyMetrics("SendRoomResync", func() (*pb.Response, error) {
-		return client.SendRoomResync(ctx, in)
+		return client.SendRoomResync(ctx, resyncEvent, opts...)
 	})
 }
 
 // SendRoomStatus fetch or create a grpc client and send a room status event to forwarder.
-func (f *ForwarderClient) SendRoomStatus(ctx context.Context, forwarder forwarder.Forwarder, in *pb.RoomStatus) (*pb.Response, error) {
+func (f *ForwarderClient) SendRoomStatus(ctx context.Context, forwarder forwarder.Forwarder, statusEvent *pb.RoomStatus, opts ...grpc.CallOption) (*pb.Response, error) {
 	client, err := f.getGrpcClient(Address(forwarder.Address))
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
@@ -132,12 +133,12 @@ func (f *ForwarderClient) SendRoomStatus(ctx context.Context, forwarder forwarde
 	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
 	return runReportingLatencyMetrics("SendRoomStatus", func() (*pb.Response, error) {
-		return client.SendRoomStatus(ctx, in)
+		return client.SendRoomStatus(ctx, statusEvent, opts...)
 	})
 }
 
 // SendPlayerEvent fetch or create a grpc client and send a player event to forwarder.
-func (f *ForwarderClient) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, in *pb.PlayerEvent) (*pb.Response, error) {
+func (f *ForwarderClient) SendPlayerEvent(ctx context.Context, forwarder forwarder.Forwarder, playerEvent *pb.PlayerEvent, opts ...grpc.CallOption) (*pb.Response, error) {
 	client, err := f.getGrpcClient(Address(forwarder.Address))
 	if err != nil {
 		return nil, errors.NewErrUnexpected("failed to connect at %s", forwarder.Address).WithError(err)
@@ -146,7 +147,7 @@ func (f *ForwarderClient) SendPlayerEvent(ctx context.Context, forwarder forward
 	ctx, cancel := context.WithTimeout(ctx, forwarder.Options.Timeout*time.Millisecond)
 	defer cancel()
 	return runReportingLatencyMetrics("SendPlayerEvent", func() (*pb.Response, error) {
-		return client.SendPlayerEvent(ctx, in)
+		return client.SendPlayerEvent(ctx, playerEvent, opts...)
 	})
 }
 
@@ -199,7 +200,7 @@ func (f *ForwarderClient) createGRPCConnection(address string, opts ...grpc.Dial
 
 	// Base dial options that are always applied
 	baseOptions := []grpc.DialOption{
-		grpc.WithInsecure(), //nolint:staticcheck
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithKeepaliveParams(f.config.KeepAlive),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
 	}
@@ -207,7 +208,7 @@ func (f *ForwarderClient) createGRPCConnection(address string, opts ...grpc.Dial
 	// Append any additionally provided options (e.g., grpc.WithBlock() for tests)
 	allDialOptions := append(baseOptions, opts...)
 
-	conn, err := grpc.DialContext(context.Background(), address, allDialOptions...)
+	conn, err := grpc.NewClient(address, allDialOptions...)
 	if err != nil {
 		zap.L().Error(fmt.Sprintf("grpc.DialContext failed for %s: %v", address, err))
 		return nil, err

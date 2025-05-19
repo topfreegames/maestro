@@ -30,8 +30,7 @@ services:
     environment:
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL=redis://redis:6379/0
-      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/kubeconfig.yaml
-      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=https://k3s_server:6443
+      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/config
       - MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
       - MAESTRO_INTERNALAPI_PORT=8071
@@ -40,7 +39,7 @@ services:
       - "8070:8070"
       - "8071:8071"
     volumes:
-      - ../../../kubeconfig:/kubeconfig
+      - ./.k3d-kubeconfig.yaml:/kubeconfig/config:ro
     command: [start, rooms-api, -l, development]
     depends_on:
       postgres:
@@ -56,14 +55,13 @@ services:
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL=redis://redis:6379/0
-      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/kubeconfig.yaml
-      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=https://k3s_server:6443
+      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/config
       - MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_INTERNALAPI_PORT=8061
     ports:
       - "8061:8061"
     volumes:
-      - ../../../kubeconfig:/kubeconfig
+      - ./.k3d-kubeconfig.yaml:/kubeconfig/config:ro
     command: [start, runtime-watcher, -l, development]
 
   worker:
@@ -77,8 +75,7 @@ services:
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_OPERATIONLEASESTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL=redis://redis:6379/0
-      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/kubeconfig.yaml
-      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=https://k3s_server:6443
+      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/config
       - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_TOPOLOGYSPREADCONSTRAINT_ENABLED=false
       - MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_INTERNALAPI_PORT=8051
@@ -87,52 +84,13 @@ services:
     ports:
       - "8051:8051"
     volumes:
-      - ../../../kubeconfig:/kubeconfig
+      - ./.k3d-kubeconfig.yaml:/kubeconfig/config:ro
     command: [start, worker, -l, development]
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-
-  k3s_server:
-    image: "rancher/k3s:v1.22.7-k3s1"
-    command: server --bind-address k3s_server --node-name control-plane
-    tmpfs:
-    - /run
-    - /var/run
-    ulimits:
-      nproc: 65535
-      nofile:
-        soft: 65535
-        hard: 65535
-    privileged: true
-    restart: always
-    environment:
-    - K3S_TOKEN=maestro
-    - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
-    - K3S_KUBECONFIG_MODE=666
-    volumes:
-    # This is just so that we get the kubeconfig file out
-      - ../../../kubeconfig:/output
-    ports:
-    - "6443:6443"  # Kubernetes API Server
-
-  k3s_agent:
-    image: "rancher/k3s:v1.22.7-k3s1"
-    tmpfs:
-    - /run
-    - /var/run
-    ulimits:
-      nproc: 65535
-      nofile:
-        soft: 65535
-        hard: 65535
-    privileged: true
-    restart: always
-    environment:
-    - K3S_URL=https://k3s_server:6443
-    - K3S_TOKEN=maestro
 
   postgres:
     image: postgres:9.6.9
@@ -158,15 +116,5 @@ services:
       timeout: 10s
       retries: 5
 
-  grpc-mock:
-    image: tkpd/gripmock:v1.12.1
-    command: /proto/events.proto
-    ports: 
-    - "4770:4770"
-    - "4771:4771"
-    volumes:
-     - ../../../test/data/:/proto
-
 volumes:
-  kubeconfig: {}
   eventsproto: {}

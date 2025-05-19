@@ -1,16 +1,17 @@
+version: "2"
 run:
   timeout: 5m
   build-tags:
     - unit
     - integration
     - wireinject
-  skip-dirs:
-    - ".*/mock/.*"
-  skip-files:
+
+linters:
+  exclusions:
+    paths:
+    - "mock"
     - "_gen.go$"
     - "pb.go$"
     - "pb.gw.go$"
-
-linters:
   enable:
     - goimports

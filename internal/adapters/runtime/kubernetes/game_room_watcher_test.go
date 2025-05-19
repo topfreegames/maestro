@@ -27,10 +27,9 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
-
-	"github.com/topfreegames/maestro/test"
 
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -44,12 +43,16 @@ func TestGameRoomsWatch(t *testing.T) {
 	t.Run("watch pod addition", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		client := test.GetKubernetesClientSet(t, kubernetesContainer)
-		kubernetesRuntime := New(client, KubernetesConfig{})
 
-		scheduler := &entities.Scheduler{Name: "watch-room-addition"}
+		kubernetesRuntime := New(clientset, KubernetesConfig{})
+
+		schedulerName := fmt.Sprintf("watch-room-addition-%s", randomStr(6))
+		scheduler := &entities.Scheduler{Name: schedulerName}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			kubernetesRuntime.DeleteScheduler(ctx, scheduler) //nolint:errcheck
+		})
 
 		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
 		defer watcher.Stop()
@@ -95,12 +98,16 @@ func TestGameRoomsWatch(t *testing.T) {
 	t.Run("watch pod becoming ready", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		client := test.GetKubernetesClientSet(t, kubernetesContainer)
-		kubernetesRuntime := New(client, KubernetesConfig{})
 
-		scheduler := &entities.Scheduler{Name: "watch-room-ready"}
+		kubernetesRuntime := New(clientset, KubernetesConfig{})
+
+		schedulerName := fmt.Sprintf("watch-room-ready-%s", randomStr(6))
+		scheduler := &entities.Scheduler{Name: schedulerName}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			kubernetesRuntime.DeleteScheduler(ctx, scheduler) //nolint:errcheck
+		})
 
 		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
 		defer watcher.Stop()
@@ -157,12 +164,16 @@ func TestGameRoomsWatch(t *testing.T) {
 	t.Run("watch pod with error", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		client := test.GetKubernetesClientSet(t, kubernetesContainer)
-		kubernetesRuntime := New(client, KubernetesConfig{})
 
-		scheduler := &entities.Scheduler{Name: "watch-room-error"}
+		kubernetesRuntime := New(clientset, KubernetesConfig{})
+
+		schedulerName := fmt.Sprintf("watch-room-error-%s", randomStr(6))
+		scheduler := &entities.Scheduler{Name: schedulerName}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			kubernetesRuntime.DeleteScheduler(ctx, scheduler) //nolint:errcheck
+		})
 
 		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
 		defer watcher.Stop()
@@ -212,12 +223,16 @@ func TestGameRoomsWatch(t *testing.T) {
 	t.Run("watch pod deletion", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		client := test.GetKubernetesClientSet(t, kubernetesContainer)
-		kubernetesRuntime := New(client, KubernetesConfig{})
 
-		scheduler := &entities.Scheduler{Name: "watch-room-delete"}
+		kubernetesRuntime := New(clientset, KubernetesConfig{})
+
+		schedulerName := fmt.Sprintf("watch-room-delete-%s", randomStr(6))
+		scheduler := &entities.Scheduler{Name: schedulerName}
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			kubernetesRuntime.DeleteScheduler(ctx, scheduler) //nolint:errcheck
+		})
 
 		watcher, err := kubernetesRuntime.WatchGameRoomInstances(ctx, scheduler)
 		defer watcher.Stop()

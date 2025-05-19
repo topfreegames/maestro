@@ -59,7 +59,7 @@ func TestStorageCleanUpOperation(t *testing.T) {
 					"--data-raw '{\"status\": \"ready\",\"timestamp\": \"12312312313\"}' && sleep 1; done"})
 			require.NoError(t, err)
 
-			operations, _, err := operationStorage.ListSchedulerFinishedOperations(context.Background(), scheduler.Name, 0, -1)
+			operations, _, err := operationStorage.ListSchedulerFinishedOperations(context.Background(), scheduler.Name, 0, -1, "desc")
 			require.NoError(t, err)
 
 			// Delete operations
@@ -73,7 +73,7 @@ func TestStorageCleanUpOperation(t *testing.T) {
 
 			// Ensure storagecleanup ran
 			require.Eventually(t, func() bool {
-				newOperations, _, err := operationStorage.ListSchedulerFinishedOperations(context.Background(), scheduler.Name, 0, -1)
+				newOperations, _, err := operationStorage.ListSchedulerFinishedOperations(context.Background(), scheduler.Name, 0, -1, "desc")
 				require.NoError(t, err)
 
 				for _, op := range newOperations {
