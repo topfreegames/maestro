@@ -42,7 +42,8 @@ jobs:
         node_image: kindest/node:v1.27.3
     - name: Run tests
       run: |
-        make run/integration-tests
+        echo "INFO: Running integration tests (using KUBECONFIG from kind-action)..."
+        go test -tags=integration -count=1 -timeout 20m -coverprofile=coverage.out -covermode=atomic ./...
     - name: Upload coverage to Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
@@ -71,4 +72,5 @@ jobs:
         node_image: kindest/node:${{ matrix.k8s-version }}
     - name: Run tests
       run: |
-        make run/runtime-integration-tests
+        echo "INFO: Running runtime integration tests (using KUBECONFIG from kind-action for k8s ${{ matrix.k8s-version }} )..."
+        go test -tags=integration -count=1 -timeout 20m ./internal/adapters/runtime/kubernetes/...
