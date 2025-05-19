@@ -1,8 +1,10 @@
 module github.com/topfreegames/maestro/e2e
 
-go 1.22.0
+go 1.23.0
 
 require (
+	github.com/docker/compose/v2 v2.28.1
+	github.com/docker/docker v27.1.1+incompatible
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.9.0
@@ -59,9 +61,7 @@ require (
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/buildx v0.15.1 // indirect
 	github.com/docker/cli v27.0.3+incompatible // indirect
-	github.com/docker/compose/v2 v2.28.1 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
-	github.com/docker/docker v27.1.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.0 // indirect
 	github.com/docker/go v1.5.1-1.0.20160303222718-d30aec9fd63c // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
