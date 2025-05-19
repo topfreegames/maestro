@@ -21,6 +21,10 @@
 
 FROM golang:1.23-alpine AS build-env
 
+# TARGETARCH and TARGETOS are automatically set by buildx
+ARG TARGETARCH
+ARG TARGETOS
+
 WORKDIR /build
 
 COPY go.mod go.sum ./
@@ -30,13 +34,12 @@ COPY . /build
 
 RUN mkdir -p /app
 
-RUN apk add --update make
-
-RUN cd /build && \
-    make build && \
-    mv ./bin/maestro /app/maestro && \
-    mv internal/service/migrations /app/migrations && \
-    mv ./config /app/config
+# Instead of 'make build', compile directly for the target platform
+# Output the binary directly to /app/maestro
+RUN echo "Building for $TARGETOS/$TARGETARCH" && \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -a -installsuffix cgo -o /app/maestro ./ && \
+    mv /build/internal/service/migrations /app/migrations && \
+    mv /build/config /app/config
 
 
 FROM alpine
@@ -49,4 +52,4 @@ COPY --from=build-env /app/config /app/config
 
 EXPOSE 8080 8081
 
-CMD /app/maestro
+CMD ["/app/maestro"]
