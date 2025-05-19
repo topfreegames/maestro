@@ -33,8 +33,8 @@ RUN mkdir -p /app
 RUN apk add --update make
 
 RUN cd /build && \
-    make build-linux-x86_64 && \
-    mv ./bin/maestro-linux-x86_64 /app/maestro && \
+    make build && \
+    mv ./bin/maestro /app/maestro && \
     mv internal/service/migrations /app/migrations && \
     mv ./config /app/config
 

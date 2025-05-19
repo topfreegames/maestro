@@ -68,15 +68,27 @@ run/e2e-tests: build-linux-x86_64 setup/e2e deps/stop ## Execute end-to-end test
 #-------------------------------------------------------------------------------
 
 .PHONY: build
-build: build-linux-x86_64 ## Build the project and generates a binary.
-	@rm -f ./bin/maestro || true
-	@go build -o ./bin/maestro ./
+build: ## Build the project and generates a binary.
+ifeq ($(shell go env GOARCH),amd64)
+	@$(MAKE) build-linux-x86_64
+	@ln -sf ./bin/maestro-linux-x86_64 ./bin/maestro
+else ifeq ($(shell go env GOARCH),arm64)
+	@$(MAKE) build-linux-arm64
+	@ln -sf ./bin/maestro-linux-arm64 ./bin/maestro
+else
+	@echo "Unsupported architecture: $(shell go env GOARCH)"
+	@exit 1
+endif
 
 .PHONY: build-linux-x86_64
 build-linux-x86_64: ## Build the project and generates a binary for x86_64 architecture.
 	@rm -f ./bin/maestro-linux-x86_64 || true
 	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o ./bin/maestro-linux-x86_64 ./
 
+.PHONY: build-linux-arm64
+build-linux-arm64: ## Build the project and generates a binary for arm64 architecture.
+	@rm -f ./bin/maestro-linux-arm64 || true
+	@env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o ./bin/maestro-linux-arm64 ./
 
 .PHONY: run/worker
 run/worker: ## Runs maestro worker.
