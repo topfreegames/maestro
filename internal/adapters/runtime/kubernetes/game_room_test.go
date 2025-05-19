@@ -36,6 +36,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -136,10 +137,16 @@ func TestGameRoomDeletion(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			pods, err := clientset.CoreV1().Pods(scheduler.Name).List(ctx, metav1.ListOptions{})
-			require.NoError(t, err)
-			return len(pods.Items) == 0
-		}, 30*time.Second, time.Second)
+			pod, err := clientset.CoreV1().Pods(scheduler.Name).Get(ctx, instance.ID, metav1.GetOptions{})
+			if err != nil {
+				if k8serrors.IsNotFound(err) {
+					return true
+				}
+				t.Logf("Error getting pod %s: %v", instance.ID, err)
+				return false
+			}
+			return pod.ObjectMeta.DeletionTimestamp != nil
+		}, 30*time.Second, time.Second, "Pod %s should be terminating (DeletionTimestamp set) or not found", instance.ID)
 	})
 
 	t.Run("fail to delete inexistent game room", func(t *testing.T) {
