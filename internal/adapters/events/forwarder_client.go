@@ -170,23 +170,35 @@ func (f *ForwarderClient) CacheDelete(forwarderAddress string) error {
 }
 
 func (f *ForwarderClient) getGrpcClient(address Address) (pb.GRPCForwarderClient, error) {
-	// Attempt to get an existing client (which is pb.GRPCForwarderClient) from cache
 	clientFromCacheInterface, found := f.c.Get(string(address))
 	if found {
-		return clientFromCacheInterface.(pb.GRPCForwarderClient), nil
+		// Item found in cache IS a *grpc.ClientConn
+		conn, ok := clientFromCacheInterface.(*grpc.ClientConn)
+		if !ok {
+			// This should ideally not happen if we always store *grpc.ClientConn
+			// But as a safeguard, or if something else could put an invalid type in cache:
+			f.c.Delete(string(address))                   // Remove bad entry
+			return f.createNewGrpcClientAndCache(address) // Create a new one
+		}
+		// Create the client from the cached connection
+		return pb.NewGRPCForwarderClient(conn), nil
 	}
 
-	// Client not in cache or expired, create a new connection and then the gRPC client
-	// Pass the stored ExtraDialOptions to createGRPCConnection
+	// Client not in cache, create a new connection, client, and cache it.
+	return f.createNewGrpcClientAndCache(address)
+}
+
+// Helper function to avoid code duplication for cache miss path
+func (f *ForwarderClient) createNewGrpcClientAndCache(address Address) (pb.GRPCForwarderClient, error) {
 	conn, err := f.createGRPCConnection(string(address), f.config.ExtraDialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC connection for %s: %w", address, err)
 	}
 
-	// grpcClient := pb.NewGRPCForwarderClient(conn) // This line was unused if we cache conn and create client on demand.
-	// Store the *grpc.ClientConn in the cache, as suggested by OnEvicted logic.
+	// Store the *grpc.ClientConn in the cache
 	f.c.Set(string(address), conn, cache.DefaultExpiration)
-	return pb.NewGRPCForwarderClient(conn), nil // Return a new client created from this connection
+	// Return a new client created from this connection
+	return pb.NewGRPCForwarderClient(conn), nil
 }
 
 func (f *ForwarderClient) createGRPCConnection(address string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
