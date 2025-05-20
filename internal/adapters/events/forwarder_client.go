@@ -47,11 +47,9 @@ var (
 	_ ports.ForwarderClient = (*ForwarderClient)(nil)
 )
 
-// Default values for keep alive parameters.
 const (
-	DefaultKeepAliveTime                = 15 * time.Second
-	DefaultKeepAliveTimeout             = 5 * time.Second
-	DefaultKeepAlivePermitWithoutStream = true
+	DefaultKeepAliveTime    = 15 * time.Second
+	DefaultKeepAliveTimeout = 5 * time.Second
 )
 
 type ForwarderClientConfig struct {
@@ -74,17 +72,12 @@ func NewForwarderClient(keepAliveCfg keepalive.ClientParameters, extraDialOption
 			grpcClientConn.Close()
 		}
 	})
-
-	// Apply our defaults if not provided by the user
 	if keepAliveCfg.Time == 0 {
 		keepAliveCfg.Time = DefaultKeepAliveTime
 	}
 	if keepAliveCfg.Timeout == 0 {
 		keepAliveCfg.Timeout = DefaultKeepAliveTimeout
 	}
-	// Note: PermitWithoutStream defaults to false in grpc/keepalive.ClientParameters.
-	// If DefaultKeepAlivePermitWithoutStream is true, the caller must explicitly set it in keepAliveCfg.
-
 	return &ForwarderClient{
 		c: clientCache,
 		config: ForwarderClientConfig{

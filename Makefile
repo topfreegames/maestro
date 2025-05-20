@@ -48,29 +48,27 @@ run/unit-tests: ## Execute unit tests.
 	@go test -count=1 -tags=unit -coverprofile=coverage.out -covermode=atomic $(OPTS) ./...
 
 .PHONY: run/integration-tests
-run/integration-tests: k3d/up k3d/kubeconfig ## Execute integration tests.
+run/integration-tests: k3d/up ## Execute integration tests.
 	@KUBECONFIG_PATH="$(shell pwd)/e2e/framework/maestro/.k3d-kubeconfig.yaml"; \
 	echo "INFO: Checking for Kubeconfig at $$KUBECONFIG_PATH for integration tests..."; \
 	if [ -f "$$KUBECONFIG_PATH" ] && [ -s "$$KUBECONFIG_PATH" ]; then \
 		echo "INFO: Using kubeconfig from $$KUBECONFIG_PATH for integration tests..."; \
 		KUBECONFIG="$$KUBECONFIG_PATH" go test -tags=integration -count=1 -timeout 20m -coverprofile=coverage.out -covermode=atomic $(OPTS) ./... ; \
 	else \
-		echo "WARNING: Kubeconfig $$KUBECONFIG_PATH not found or is empty. Please ensure 'make k3d/up' and 'make k3d/kubeconfig' completed successfully."; \
-		echo "INFO: Attempting to run integration tests with default kubeconfig (this might fail if not configured for a K8s cluster)..."; \
-		go test -tags=integration -count=1 -timeout 20m -coverprofile=coverage.out -covermode=atomic $(OPTS) ./... ; \
+		echo "ERROR: Kubeconfig $$KUBECONFIG_PATH not found or is empty. Please ensure 'make k3d/up' completed successfully before running integration tests."; \
+		exit 1; \
 	fi
 
 .PHONY: run/runtime-integration-tests
-run/runtime-integration-tests: k3d/up k3d/kubeconfig ## Execute runtime integration tests.
+run/runtime-integration-tests: k3d/up ## Execute runtime integration tests.
 	@KUBECONFIG_PATH="$(shell pwd)/e2e/framework/maestro/.k3d-kubeconfig.yaml"; \
 	echo "INFO: Checking for Kubeconfig at $$KUBECONFIG_PATH for runtime integration tests..."; \
 	if [ -f "$$KUBECONFIG_PATH" ] && [ -s "$$KUBECONFIG_PATH" ]; then \
 		echo "INFO: Using kubeconfig from $$KUBECONFIG_PATH for runtime integration tests..."; \
 		KUBECONFIG="$$KUBECONFIG_PATH" go test -tags=integration -count=1 -timeout 20m ./internal/adapters/runtime/kubernetes/... ; \
 	else \
-		echo "WARNING: Kubeconfig $$KUBECONFIG_PATH not found or is empty. Please ensure 'make k3d/up' and 'make k3d/kubeconfig' completed successfully."; \
-		echo "INFO: Attempting to run runtime integration tests with default kubeconfig (this might fail if not configured for a K8s cluster)..."; \
-		go test -tags=integration -count=1 -timeout 20m ./internal/adapters/runtime/kubernetes/... ; \
+		echo "ERROR: Kubeconfig $$KUBECONFIG_PATH not found or is empty. Please ensure 'make k3d/up' completed successfully before running runtime integration tests."; \
+		exit 1; \
 	fi
 
 .PHONY: license-check
@@ -78,7 +76,7 @@ license-check: ## Execute license check.
 	@go run github.com/google/addlicense -skip yaml -skip yml -skip proto -check .
 
 .PHONY: run/e2e-tests
-run/e2e-tests: k3d/up k3d/kubeconfig build setup/e2e deps/stop ## Execute end-to-end tests.
+run/e2e-tests: k3d/up build setup/e2e deps/stop ## Execute end-to-end tests.
 	@cd e2e; go test -count=1 -v $(OPTS) ./suites/...
 
 #-------------------------------------------------------------------------------
@@ -180,7 +178,7 @@ deps/down: ## Delete containers dependencies.
 #  Easily start Maestro
 #-------------------------------------------------------------------------------
 .PHONY: maestro/start
-maestro/start: k3d/up k3d/kubeconfig build ## Start Maestro with all of its dependencies.
+maestro/start: k3d/up build ## Start Maestro with all of its dependencies.
 	@echo "Starting maestro..."
 	@cd ./e2e/framework/maestro; docker compose up --build -d
 	@MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate;
@@ -233,23 +231,3 @@ k3d/down: ## Delete the local k3d cluster and stop the k3d docker-compose servic
 	@echo "INFO: Removing k3d kubeconfig file..."
 	@rm -f ./e2e/framework/maestro/.k3d-kubeconfig.yaml
 	@echo "INFO: k3d cluster and service are down."
-
-.PHONY: k3d/kubeconfig
-k3d/kubeconfig: ## Ensures the k3d kubeconfig file exists, refreshing it if the k3d service is running.
-	@KUBECONFIG_FILE_PATH="./e2e/framework/maestro/.k3d-kubeconfig.yaml"; \
-	echo "INFO: Checking for kubeconfig file at $$KUBECONFIG_FILE_PATH..."; \
-	if docker-compose ps k3d | grep -q "k3d"; then \
-		echo "INFO: k3d service is running. Ensuring kubeconfig is exported..."; \
-		docker-compose exec k3d sh -c "mkdir -p /kubeconfig-out && k3d kubeconfig get $(K3D_CLUSTER_NAME) > /kubeconfig-out/.k3d-kubeconfig.yaml"; \
-		if [ ! -f "$$KUBECONFIG_FILE_PATH" ] || [ ! -s "$$KUBECONFIG_FILE_PATH" ]; then \
-		    echo "ERROR: Failed to create or populate kubeconfig file via k3d service."; \
-		    exit 1; \
-		fi; \
-		echo "INFO: Kubeconfig is present at $$KUBECONFIG_FILE_PATH."; \
-	elif [ -f "$$KUBECONFIG_FILE_PATH" ] && [ -s "$$KUBECONFIG_FILE_PATH" ]; then \
-	    echo "INFO: k3d service is not running, but kubeconfig file exists. Using existing file."; \
-	else \
-	    echo "ERROR: k3d service is not running and kubeconfig file $$KUBECONFIG_FILE_PATH does not exist or is empty. Run 'make k3d/up' first."; \
-	    exit 1; \
-	fi
-	@echo "Kubeconfig available at $$KUBECONFIG_FILE_PATH."

@@ -51,7 +51,6 @@ env
 
 # K3S files
 kubeconfig.yaml
-e2e/framework/maestro/kubeconfig.yaml
 e2e/framework/maestro/.k3d-kubeconfig.yaml
 
 # MkDocs

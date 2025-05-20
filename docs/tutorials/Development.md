@@ -84,7 +84,7 @@ Use the command below to create a new scheduler:
 > Be aware to change the {{ROOMS_API_ADDRESS}} for the one found above.
 ```shell
 curl --request POST \
-  --url http://localhost:38080/schedulers \
+  --url http://localhost:8080/schedulers \
   --header 'Content-Type: application/json' \
   --data '{
 	"name": "scheduler-run-local",

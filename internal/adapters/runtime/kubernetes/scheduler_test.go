@@ -35,7 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
-	"github.com/topfreegames/maestro/internal/core/ports/errors" // Import for random string
+	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	v1 "k8s.io/api/core/v1"
 	v1Policy "k8s.io/api/policy/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -172,9 +172,6 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 		})
 
 		err := kubernetesRuntime.CreateScheduler(ctx, scheduler)
-		// This can race if another PDB test runs with the same name structure before this one cleans up.
-		// However, CreateScheduler also creates PDB. If it already exists from a failed previous run, this will be an issue.
-		// For now, let's assume CreateScheduler handles its own PDB creation idempotently or cleans up first.
 		require.NoError(t, err, "failed to create scheduler for PDB test (no autoscaling)")
 
 		pdb, err := clientset.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
@@ -189,10 +186,8 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 		require.Contains(t, pdb.Labels, "app.kubernetes.io/managed-by")
 		require.Contains(t, pdb.Labels["app.kubernetes.io/managed-by"], "maestro")
 
-		// We are testing PDB creation with scheduler. Deletion of PDB is tied to scheduler deletion.
-		// The t.Cleanup will handle deleting the scheduler, which should delete the PDB.
-		// We then check if the PDB is gone.
-		kubernetesRuntime.DeleteScheduler(ctx, scheduler) //nolint:errcheck
+		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
+		require.NoError(t, err)
 		require.Eventually(t, func() bool {
 			_, errPDB := clientset.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
 			return kerrors.IsNotFound(errPDB)
@@ -238,7 +233,8 @@ func TestPDBCreationAndDeletion(t *testing.T) {
 		require.Equal(t, pdb.Name, scheduler.Name)
 		require.Equal(t, pdb.Spec.MinAvailable.IntVal, int32(0))
 
-		kubernetesRuntime.DeleteScheduler(ctx, scheduler) //nolint:errcheck
+		err = kubernetesRuntime.DeleteScheduler(ctx, scheduler)
+		require.NoError(t, err)
 		require.Eventually(t, func() bool {
 			_, errPDB := clientset.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
 			return kerrors.IsNotFound(errPDB)
@@ -330,7 +326,7 @@ func TestMitigateDisruption(t *testing.T) {
 	})
 
 	t.Run("should update PDB on mitigation if not equal to current value", func(t *testing.T) {
-		t.Parallel() // Ensure parallel execution
+		t.Parallel()
 		if !kubernetesRuntime.isPDBSupported() {
 			t.Log("Kubernetes version does not support PDB, skipping")
 			t.SkipNow()
