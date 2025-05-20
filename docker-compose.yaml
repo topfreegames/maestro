@@ -1,52 +1,7 @@
-# to run define K3S_TOKEN, K3S_VERSION is optional, eg:
-#   K3S_TOKEN=${RANDOM}${RANDOM}${RANDOM} docker-compose up
-version: '3'
 name: maestro
 services:
-  k3s_server:
-    image: "rancher/k3s:v1.19.11-k3s1"
-    command: server --node-name control-plane
-    tmpfs:
-    - /run
-    - /var/run
-    ulimits:
-      nproc: 65535
-      nofile:
-        soft: 65535
-        hard: 65535
-    privileged: true
-    restart: always
-    environment:
-    - K3S_TOKEN=maestro
-    - K3S_KUBECONFIG_OUTPUT=/output/kubeconfig.yaml
-    - K3S_KUBECONFIG_MODE=666
-    volumes:
-    - k3s-server:/var/lib/rancher/k3s
-    # This is just so that we get the kubeconfig file out
-    - ./kubeconfig:/output
-    ports:
-    - 6443:6443  # Kubernetes API Server
-    - 80:80      # Ingress controller port 80
-    - 443:443    # Ingress controller port 443
-
-  k3s_agent:
-    image: "rancher/k3s:v1.19.11-k3s1"
-    tmpfs:
-    - /run
-    - /var/run
-    ulimits:
-      nproc: 65535
-      nofile:
-        soft: 65535
-        hard: 65535
-    privileged: true
-    restart: always
-    environment:
-    - K3S_URL=https://k3s_server:6443
-    - K3S_TOKEN=maestro
-
   postgres:
-    image: postgres:9.6.9
+    image: postgres:17-alpine
     ports:
     - "5432:5432"
     volumes:
@@ -62,7 +17,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:6.2.0-alpine
+    image: redis:8-alpine
     ports:
     - "6379:6379"
     healthcheck:
@@ -70,6 +25,44 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+
+  k3d:
+    image: rancher/k3d:5.3.0
+    command: >
+      sh -c "
+        K3D_CLUSTER_NAME=$${K3D_CLUSTER_NAME:-maestro-dev};
+        if ! k3d cluster get $$K3D_CLUSTER_NAME > /dev/null 2>&1; then
+          echo 'INFO: k3d cluster '$$K3D_CLUSTER_NAME' not found. Creating it now...';
+          k3d cluster create $$K3D_CLUSTER_NAME \\
+            --agents 1 \\
+            --port '38080:80@loadbalancer' \\
+            --api-port '127.0.0.1:6443' \\
+            --wait;
+          echo 'INFO: k3d cluster '$$K3D_CLUSTER_NAME' created successfully.';
+        else
+          # Check if running, start if not
+          # Redirecting stderr for grep to avoid issues if cluster doesn't exist during check
+          if ! k3d cluster get $$K3D_CLUSTER_NAME --no-headers 2>/dev/null | grep -q 'running'; then
+            echo 'INFO: k3d cluster '$$K3D_CLUSTER_NAME' exists but is not running. Starting it...';
+            k3d cluster start $$K3D_CLUSTER_NAME --wait;
+          else
+            echo 'INFO: k3d cluster '$$K3D_CLUSTER_NAME' already exists and is running.';
+          fi
+        fi &&
+        echo 'INFO: Exporting kubeconfig for cluster '$$K3D_CLUSTER_NAME'...';
+        mkdir -p /kubeconfig-out &&
+        k3d kubeconfig get $$K3D_CLUSTER_NAME > /kubeconfig-out/.k3d-kubeconfig.yaml &&
+        echo 'INFO: Kubeconfig exported. k3d service ready and will keep running.' &&
+        echo ' ---- KUBECONFIG START ---- ' &&
+        cat /kubeconfig-out/.k3d-kubeconfig.yaml &&
+        echo ' ---- KUBECONFIG END ---- ' &&
+        tail -f /dev/null
+      "
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./e2e/framework/maestro:/kubeconfig-out
+    environment:
+      - K3D_CLUSTER_NAME=maestro-dev
 
 volumes:
   k3s-server: {}

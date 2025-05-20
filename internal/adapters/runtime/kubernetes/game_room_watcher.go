@@ -143,6 +143,9 @@ func (kw *kubernetesWatcher) convertInstance(pod *v1.Pod) (*game_room.Instance, 
 }
 
 func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType, obj interface{}) {
+	kw.mu.Lock()
+	defer kw.mu.Unlock()
+
 	if kw.stopped {
 		return
 	}
@@ -189,7 +192,15 @@ func (kw *kubernetesWatcher) processEvent(eventType game_room.InstanceEventType,
 		Type:     eventType,
 	}
 
-	kw.resultsChan <- instanceEvent
+	select {
+	case kw.resultsChan <- instanceEvent:
+		kw.logger.Debug("event sent to results chan", zap.String("pod", pod.Name), zap.String("scheduler", kw.schedulerName), zap.Any("event_type", eventType))
+	case <-kw.ctx.Done():
+		kw.logger.Warn("context done while trying to send event to results chan", zap.Error(kw.ctx.Err()), zap.String("pod", pod.Name), zap.String("scheduler", kw.schedulerName))
+		kw.stopWithError(fmt.Errorf("context done while sending to resultsChan: %w", kw.ctx.Err()))
+	case <-kw.stopChan:
+		kw.logger.Info("stopChan closed while trying to send event to resultsChan; event dropped", zap.String("pod", pod.Name), zap.String("scheduler", kw.schedulerName))
+	}
 }
 
 func (kw *kubernetesWatcher) addFunc(obj interface{}) {

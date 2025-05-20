@@ -27,6 +27,7 @@ import (
 	"strconv"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
+	"github.com/topfreegames/maestro/internal/core/logs"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -34,6 +35,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -194,56 +196,77 @@ func (k *kubernetes) MitigateDisruption(
 	}
 	incSafetyPercentage += safetyPercentage
 
-	// For kubernetes mitigating disruptions means updating the current PDB
-	// minAvailable to the number of occupied rooms if above a threshold
-	pdb, err := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
-	if err != nil && !kerrors.IsNotFound(err) {
-		// Non-recoverable errors
-		return errors.NewErrUnexpected("non recoverable error when getting PDB for scheduler '%s': %s", scheduler.Name, err)
-	}
-
-	if pdb == nil || kerrors.IsNotFound(err) {
-		pdb, err = k.createPDBFromScheduler(ctx, scheduler)
-		if err != nil {
-			return errors.NewErrUnexpected("error creating PDB for scheduler '%s': %s", scheduler.Name, err)
+	// Use RetryOnConflict to handle potential updates to the PDB object by other processes.
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// First, ensure the PDB exists, creating it if necessary.
+		pdb, getErr := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
+		if getErr != nil {
+			if kerrors.IsNotFound(getErr) {
+				// PDB doesn't exist, try to create it.
+				createdPdb, createErr := k.createPDBFromScheduler(ctx, scheduler)
+				if createErr != nil {
+					// If creation fails (and it's not because it now exists), return the error to stop retrying.
+					return errors.NewErrUnexpected(
+						"error creating PDB for scheduler '%s' during retry: %v",
+						scheduler.Name,
+						createErr,
+					).WithError(createErr)
+				}
+				pdb = createdPdb // Use the newly created PDB for the rest of the logic in this attempt.
+			} else {
+				// Another error occurred while getting the PDB, return it to stop retrying.
+				return errors.NewErrUnexpected(
+					"non recoverable error when getting PDB for scheduler '%s' during retry: %v",
+					scheduler.Name,
+					getErr,
+				).WithError(getErr)
+			}
 		}
-	}
 
-	var currentPdbMinAvailable int32
-	// PDB might exist and is based on MaxUnavailable
-	if pdb.Spec.MinAvailable != nil {
-		currentPdbMinAvailable = pdb.Spec.MinAvailable.IntVal
-	}
+		// At this point, pdb should be non-nil (either fetched or created).
+		if pdb == nil { // Should not happen if logic above is correct
+			return errors.NewErrUnexpected("PDB is nil for scheduler '%s' after get/create attempt in retry", scheduler.Name)
+		}
 
-	if currentPdbMinAvailable == int32(float64(roomAmount)*incSafetyPercentage) {
-		return nil
-	}
+		var currentPdbMinAvailable int32
+		if pdb.Spec.MinAvailable != nil {
+			currentPdbMinAvailable = pdb.Spec.MinAvailable.IntVal
+		}
 
-	// In theory, the PDB object can be changed in the runtime in the meantime after
-	// fetching initial state/ask for creation (beginning of the function) and before
-	// updating the value. This should never happen in production because there is only
-	// one agent setting this PDB in the namespace and it's the worker. However, on tests
-	// we were seeing intermittent failures running parallel cases, hence why adding this
-	// code it is safer to update the PDB object
-	pdb, err = k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
-	if err != nil || pdb == nil {
-		return errors.NewErrUnexpected("non recoverable error when getting PDB for scheduler '%s': %s", scheduler.Name, err)
-	}
-	pdb.Spec = v1Policy.PodDisruptionBudgetSpec{
-		MinAvailable: &intstr.IntOrString{
-			Type:   intstr.Int,
-			IntVal: int32(float64(roomAmount) * incSafetyPercentage),
-		},
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"maestro-scheduler": scheduler.Name,
+		desiredMinAvailable := int32(float64(roomAmount) * incSafetyPercentage)
+
+		// If current PDB already matches the desired state regarding MinAvailable and MaxUnavailable being nil,
+		// no update is needed.
+		if currentPdbMinAvailable == desiredMinAvailable && pdb.Spec.MaxUnavailable == nil {
+			k.logger.Info("PDB already in desired state", zap.String(logs.LogFieldSchedulerName, scheduler.Name))
+			return nil // No update needed, success.
+		}
+
+		// Prepare the updated PDB spec.
+		pdb.Spec = v1Policy.PodDisruptionBudgetSpec{
+			MinAvailable: &intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: desiredMinAvailable,
 			},
-		},
-	}
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"maestro-scheduler": scheduler.Name,
+				},
+			},
+		}
 
-	_, err = k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Update(ctx, pdb, metav1.UpdateOptions{})
+		_, updateErr := k.clientSet.PolicyV1().PodDisruptionBudgets(scheduler.Name).Update(ctx, pdb, metav1.UpdateOptions{})
+		// updateErr will be checked by RetryOnConflict. If it's a conflict, it retries.
+		// If it's another error, RetryOnConflict will return it.
+		return updateErr
+	})
+
 	if err != nil {
-		return errors.NewErrUnexpected("error updating PDB to mitigate disruptions for scheduler '%s': %s", scheduler.Name, err)
+		return errors.NewErrUnexpected(
+			"error updating PDB to mitigate disruptions for scheduler '%s': %v",
+			scheduler.Name,
+			err,
+		).WithError(err)
 	}
 
 	return nil

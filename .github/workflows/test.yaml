@@ -3,14 +3,14 @@ on: push
 jobs:
   unit:
     name: Unit tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - name: Set up Go
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.23'
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Restore cache
       uses: actions/cache@v4
       with:
@@ -23,46 +23,54 @@ jobs:
       run: bash <(curl -s https://codecov.io/bash)
   integration:
     name: Integration tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - name: Set up Go
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.23'
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Restore cache
       uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+    - name: Set up KinD cluster
+      uses: helm/kind-action@v1.10.0
+      with:
+        node_image: kindest/node:v1.27.3
     - name: Run tests
       run: |
-        make run/integration-tests
+        echo "INFO: Running integration tests (using KUBECONFIG from kind-action)..."
+        go test -tags=integration -count=1 -timeout 20m -coverprofile=coverage.out -covermode=atomic ./...
     - name: Upload coverage to Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
   runtime-integration:
     name: Runtime Integration tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        k3s-version: [v1.19.11, v1.20.7, v1.21.1]
-    env:
-      K3S_VERSION:  ${{ matrix.k3s-version }}
+        k8s-version: [v1.25.11, v1.26.6, v1.27.3]
     steps:
     - name: Set up Go
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.23'
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Restore cache
       uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+    - name: Set up KinD cluster
+      uses: helm/kind-action@v1.10.0
+      with:
+        node_image: kindest/node:${{ matrix.k8s-version }}
     - name: Run tests
       run: |
-        make run/runtime-integration-tests
+        echo "INFO: Running runtime integration tests (using KUBECONFIG from kind-action for k8s ${{ matrix.k8s-version }} )..."
+        go test -tags=integration -count=1 -timeout 20m ./internal/adapters/runtime/kubernetes/...

@@ -134,7 +134,7 @@ func (w *runtimeWatcherWorker) mitigateDisruptions() error {
 	if err != nil {
 		return err
 	}
-	w.logger.Info(
+	w.logger.Debug(
 		"mitigated disruption for occupied rooms",
 		zap.String("scheduler", w.scheduler.Name),
 		zap.Int("mitigationQuota", mitigationQuota),
@@ -198,12 +198,19 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 
 func (w *runtimeWatcherWorker) Stop(_ context.Context) {
 	if w.cancelFunc != nil {
-		w.logger.Info("stopping runtime watcher", zap.String("scheduler", w.scheduler.Name))
 		// To make this function idempotent, we need to set the cancelFunc to nil
 		// before calling it.
-		cancelFunc := w.cancelFunc
+		currentCancelFunc := w.cancelFunc
 		w.cancelFunc = nil
-		cancelFunc()
+
+		if w.logger != nil { // Ensure logger is available
+			if w.scheduler != nil {
+				w.logger.Info("stopping runtime watcher", zap.String(logs.LogFieldSchedulerName, w.scheduler.Name))
+			} else {
+				w.logger.Error("stopping runtime watcher: scheduler field was nil at stop")
+			}
+		}
+		currentCancelFunc()
 	}
 }
 

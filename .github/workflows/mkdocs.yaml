@@ -19,14 +19,13 @@ jobs:
         with:
           python-version: 3.x
       - run: cp proto/apidocs.swagger.json docs/reference/apidocs.json
-      - run: pip install mkdocs-material 
+      - run: pip install mkdocs-material
       - run: pip install mkdocs-git-revision-date-plugin
       - run: pip install mkdocs-render-swagger-plugin
       - run: pip install mkdocs-mermaid2-plugin
       - run: git config user.name 'github-actions[bot]' && git config user.email 'github-actions[bot]@users.noreply.github.com'
       - name: Publish docs
         run: mkdocs gh-deploy --force
-        
   update-docs:
     runs-on: ubuntu-latest
     steps:

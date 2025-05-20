@@ -26,20 +26,50 @@
 package kubernetes
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"testing"
 
-	"github.com/orlangure/gnomock"
-	"github.com/topfreegames/maestro/test"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-var kubernetesContainer *gnomock.Container
+var clientset k8s.Interface
 
 func TestMain(m *testing.M) {
-	var code int
-	test.WithK3sContainer(func(c *gnomock.Container) {
-		kubernetesContainer = c
-		code = m.Run()
-	})
+	var err error
+	// Assumes KUBECONFIG is set or in default location (~/.kube/config)
+	kubeconfigPath := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
+	if kubeconfigPath == "" {
+		kubeconfigPath = clientcmd.RecommendedHomeFile
+	}
+
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		fmt.Printf("Failed to build config from kubeconfig path %s: %v\n", kubeconfigPath, err)
+		os.Exit(1)
+	}
+
+	// Increase QPS and Burst for tests to reduce client-side throttling
+	cfg.QPS = 50
+	cfg.Burst = 100
+
+	clientset, err = k8s.NewForConfig(cfg)
+	if err != nil {
+		fmt.Printf("Failed to create kubernetes clientset: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Ensure the cluster is reachable
+	_, err = clientset.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{Limit: 1})
+	if err != nil {
+		fmt.Printf("Failed to connect to Kubernetes cluster: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Successfully connected to Kubernetes cluster")
+	code := m.Run()
 	os.Exit(code)
 }
