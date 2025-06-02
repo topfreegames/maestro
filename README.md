@@ -66,9 +66,4 @@ Maestro provides two APIs for external and internal communication:
 
 [//]: # (Here a link to the complete module documentation as well as other additional information should be added as well as contact information.)
 
-Documentation can be found in the [docs folder](./docs). This module is supported by the Wildlife's multiplayer team.
-
-| Position            | Name               |
-|---------------------|--------------------|
-| Owner Team          | Multiplayer Team   |
-| Documentation Owner | [Guilherme Carvalho](https://github.com/guilhermocc) |
+Documentation can be found in the [docs folder](./docs)

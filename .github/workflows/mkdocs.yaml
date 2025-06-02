@@ -14,8 +14,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: 3.x
       - run: cp proto/apidocs.swagger.json docs/reference/apidocs.json
@@ -29,19 +29,39 @@ jobs:
   update-docs:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Update Gitlab Documentation
+      env:
+        GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        GITLAB_USER: ${{ secrets.GITLAB_USER }}
+        GITLAB_EMAIL: ${{ secrets.GITLAB_EMAIL }}
+        GITLAB_DOCS_REPO_URL: ${{ secrets.GITLAB_DOCS_REPO_URL }}
       run: |
-        GL_BRANCH_NAME="documentation-ref_$GITHUB_SHA"
+        GL_BRANCH_NAME="main"
         cd ..
-        git clone ${{ secrets.GITLAB_DOC_URL }}
-        cd docs
-        git config user.name ${{ secrets.GITLAB_USER }}
-        git config user.email ${{ secrets.GITLAB_EMAIL }}
-        cp  ../maestro/**/*.md .
-        git checkout -b $GL_BRANCH_NAME
+
+        # Clone using service account credentials with HTTPS URL
+        git clone "https://${GITLAB_USER}:${GITLAB_TOKEN}@${GITLAB_DOCS_REPO_URL}" gitlab-docs
+        cd gitlab-docs
+
+        # Configure git with service account identity
+        git config user.name "${GITLAB_USER}"
+        git config user.email "${GITLAB_EMAIL}"
+
+        # Copy everything under docs/ directory while preserving directory structure
+        rsync -av ../maestro/docs/ ./
+
+        # Check if there are any changes to commit
+        if git diff --quiet && git diff --cached --quiet; then
+          echo "No changes to documentation files, skipping push"
+          exit 0
+        fi
+
+        # Create branch and commit changes
         git add .
-        git commit --allow-empty -m "Created by $GITHUB_ACTOR"
+        git commit -m "Auto-update documentation from GitHub (SHA: ${GITHUB_SHA:0:7})" -m "Triggered by: $GITHUB_ACTOR"
         git push origin $GL_BRANCH_NAME
+
+        echo "Documentation updated and pushed to branch: $GL_BRANCH_NAME"
