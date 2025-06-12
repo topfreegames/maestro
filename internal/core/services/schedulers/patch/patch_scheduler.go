@@ -272,8 +272,8 @@ func patchAutoscaling(scheduler *entities.Scheduler, patchMap map[string]interfa
 		scheduler.Autoscaling.Max = int(max)
 	}
 
-	if intrefaceCoolDown, ok := patchMap[LabelAutoscalingCooldown]; ok {
-		cooldown, ok := intrefaceCoolDown.(int32)
+	if interfaceCoolDown, ok := patchMap[LabelAutoscalingCooldown]; ok {
+		cooldown, ok := interfaceCoolDown.(int32)
 		if !ok {
 			return fmt.Errorf("error parsing autoscaling: cooldown malformed")
 		}

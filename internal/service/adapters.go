@@ -232,7 +232,7 @@ func NewPortAllocatorRandom(c config.Config) (ports.PortAllocator, error) {
 	return portAllocatorRandom.NewRandomPortAllocator(portRange), nil
 }
 
-// NewSchedulerStoragePg instanteates a postgres connection as scheduler storage.
+// NewSchedulerStoragePg instantiates a postgres connection as scheduler storage.
 func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
 	opts, err := connectToPostgres(GetSchedulerStoragePostgresURL(c))
 	if err != nil {

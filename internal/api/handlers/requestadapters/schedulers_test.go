@@ -1465,9 +1465,10 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: int(roomsReplicasValue),
 					Autoscaling: &autoscaling.Autoscaling{
-						Enabled: true,
-						Min:     1,
-						Max:     5,
+						Enabled:  true,
+						Min:      1,
+						Max:      5,
+						Cooldown: 300,
 						Policy: autoscaling.Policy{
 							Type: autoscaling.RoomOccupancy,
 							Parameters: autoscaling.PolicyParameters{
@@ -1560,9 +1561,10 @@ func TestFromEntitySchedulerToResponse(t *testing.T) {
 					MaxSurge:      maxSurgeValue,
 					RoomsReplicas: roomsReplicasValue,
 					Autoscaling: &api.Autoscaling{
-						Enabled: true,
-						Min:     int32(1),
-						Max:     int32(5),
+						Enabled:  true,
+						Min:      int32(1),
+						Max:      int32(5),
+						Cooldown: int32(300),
 						Policy: &api.AutoscalingPolicy{
 							Type: "roomOccupancy",
 							Parameters: &api.PolicyParameters{
