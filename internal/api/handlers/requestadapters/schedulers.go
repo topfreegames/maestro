@@ -548,10 +548,11 @@ func getSpec(spec game_room.Spec) *api.Spec {
 func getAutoscaling(autoscaling *autoscaling.Autoscaling) *api.Autoscaling {
 	if autoscaling != nil {
 		return &api.Autoscaling{
-			Enabled: autoscaling.Enabled,
-			Min:     int32(autoscaling.Min),
-			Max:     int32(autoscaling.Max),
-			Policy:  getAutoscalingPolicy(autoscaling.Policy),
+			Enabled:  autoscaling.Enabled,
+			Min:      int32(autoscaling.Min),
+			Max:      int32(autoscaling.Max),
+			Cooldown: int32(autoscaling.Cooldown),
+			Policy:   getAutoscalingPolicy(autoscaling.Policy),
 		}
 	}
 
