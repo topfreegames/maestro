@@ -61,7 +61,7 @@ func LoadConfig() *Config {
 	_ = k.Load(structs.Provider(NewDefaultConfig(), "room"), nil)
 
 	// This is to load MAESTRO_* environment variables
-	if err := k.Load(env.Provider("", ".", parseEnv), nil); err != nil {
+	if err := k.Load(env.Provider("MAESTRO_", ".", parseEnv), nil); err != nil {
 		log.Fatalf("error loading config from env: %v", err)
 	}
 
@@ -79,5 +79,5 @@ func LoadConfig() *Config {
 
 func parseEnv(s string) string {
 	return strings.Replace(strings.ToLower(
-		strings.TrimPrefix(s, "SIMULATION_")), "_", ".", -1)
+		strings.TrimPrefix(strings.TrimPrefix(s, "MAESTRO_"), "SIMULATION_")), "_", ".", -1)
 }
