@@ -5,10 +5,9 @@ on:
     types:
       - published
 jobs:
-  # Job para construir a imagem AMD64
   build-amd64:
     name: Build for linux/amd64
-    runs-on: ubuntu-latest # Runner padrão para AMD64
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
