@@ -5,16 +5,15 @@ on:
     types:
       - published
 jobs:
-  build-and-push:
-    name: Build and Publish
-    runs-on: ubuntu-latest
+  # Job para construir a imagem AMD64
+  build-amd64:
+    name: Build for linux/amd64
+    runs-on: ubuntu-latest # Runner padrão para AMD64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Get the version (release tag)
         run: echo "IMAGE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to DockerHub
@@ -22,11 +21,58 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push
+      - name: Build and push amd64 image
         uses: docker/build-push-action@v5
         with:
           context: ./
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
           push: true
-          tags: tfgco/maestro:${{ env.IMAGE_VERSION }}
+          tags: tfgco/maestro:${{ env.IMAGE_VERSION }}-amd64
+          provenance: false
+
+  build-arm64:
+    name: Build for linux/arm64
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get the version (release tag)
+        run: echo "IMAGE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push arm64 image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          tags: tfgco/maestro:${{ env.IMAGE_VERSION }}-arm64
+          provenance: false
+
+  push-manifest:
+    name: Push multi-arch manifest
+    runs-on: ubuntu-latest
+    needs: [build-amd64, build-arm64]
+    steps:
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Get the version (release tag)
+        run: echo "IMAGE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+
+      - name: Create and push manifest
+        run: |
+          # Cria o manifesto apontando para as imagens de cada arquitetura
+          docker manifest create tfgco/maestro:${{ env.IMAGE_VERSION }} \
+            --amend tfgco/maestro:${{ env.IMAGE_VERSION }}-amd64 \
+            --amend tfgco/maestro:${{ env.IMAGE_VERSION }}-arm64
+          # Faz o push do manifesto para o Docker Hub
+          docker manifest push tfgco/maestro:${{ env.IMAGE_VERSION }}
