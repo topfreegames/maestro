@@ -39,7 +39,7 @@ func initializeWorker(c config.Config, builder *worker.WorkerBuilder) (*workerss
 	wire.Build(
 		// ports + adapters
 		service.NewRuntimeKubernetes,
-		service.NewSchedulerStoragePg,
+		service.NewSchedulerStorage,
 		service.NewOperationFlowRedis,
 		service.NewClockTime,
 		service.NewOperationStorageRedis,

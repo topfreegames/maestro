@@ -50,7 +50,7 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 		service.NewRoomManagerConfig,
 		service.NewRoomManager,
 		service.NewEventsForwarder,
-		service.NewSchedulerStoragePg,
+		service.NewSchedulerStorage,
 		service.NewEventsForwarderServiceConfig,
 
 		// services

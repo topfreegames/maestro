@@ -62,7 +62,7 @@ func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error)
 		// watcher builder
 		provideMetricsReporterBuilder,
 
-		service.NewSchedulerStoragePg,
+		service.NewSchedulerStorage,
 
 		workers.NewWorkersManager,
 	)

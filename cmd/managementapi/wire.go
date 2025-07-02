@@ -45,7 +45,7 @@ func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.
 		service.NewOperationFlowRedis,
 		service.NewOperationStorageRedis,
 		service.NewOperationLeaseStorageRedis,
-		service.NewSchedulerStoragePg,
+		service.NewSchedulerStorage,
 		service.NewRoomStorageRedis,
 		service.NewSchedulerCacheRedis,
 

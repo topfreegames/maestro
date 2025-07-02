@@ -28,7 +28,7 @@ func initializeRoomsMux(ctx context.Context, conf config.Config) (*runtime.Serve
 	if err != nil {
 		return nil, err
 	}
-	schedulerStorage, err := service.NewSchedulerStoragePg(conf)
+	schedulerStorage, err := service.NewSchedulerStorage(conf)
 	if err != nil {
 		return nil, err
 	}

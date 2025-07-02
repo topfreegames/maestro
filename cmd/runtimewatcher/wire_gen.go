@@ -21,7 +21,7 @@ import (
 
 func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) {
 	workerBuilder := provideRuntimeWatcherBuilder()
-	schedulerStorage, err := service.NewSchedulerStoragePg(c)
+	schedulerStorage, err := service.NewSchedulerStorage(c)
 	if err != nil {
 		return nil, err
 	}
@@ -90,4 +90,4 @@ func provideRuntimeWatcherConfig(c config.Config) *config2.RuntimeWatcherConfig 
 var WorkerOptionsSet = wire.NewSet(service.NewRuntimeKubernetes, service.NewRoomStorageRedis, RoomManagerSet,
 	provideRuntimeWatcherConfig, wire.Struct(new(worker.WorkerOptions), "Runtime", "RoomStorage", "RoomManager", "RuntimeWatcherConfig"))
 
-var RoomManagerSet = wire.NewSet(service.NewSchedulerStoragePg, service.NewClockTime, service.NewPortAllocatorRandom, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, service.NewRoomManagerConfig, service.NewRoomManager, service.NewEventsForwarder, events.NewEventsForwarderService, service.NewEventsForwarderServiceConfig)
+var RoomManagerSet = wire.NewSet(service.NewSchedulerStorage, service.NewClockTime, service.NewPortAllocatorRandom, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, service.NewRoomManagerConfig, service.NewRoomManager, service.NewEventsForwarder, events.NewEventsForwarderService, service.NewEventsForwarderServiceConfig)

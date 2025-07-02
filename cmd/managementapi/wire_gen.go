@@ -19,7 +19,7 @@ import (
 // Injectors from wire.go:
 
 func initializeManagementMux(ctx context.Context, conf config.Config) (*runtime.ServeMux, error) {
-	schedulerStorage, err := service.NewSchedulerStoragePg(conf)
+	schedulerStorage, err := service.NewSchedulerStorage(conf)
 	if err != nil {
 		return nil, err
 	}

@@ -58,7 +58,7 @@ var WorkerOptionsSet = wire.NewSet(
 	wire.Struct(new(worker.WorkerOptions), "Runtime", "RoomStorage", "RoomManager", "RuntimeWatcherConfig"))
 
 var RoomManagerSet = wire.NewSet(
-	service.NewSchedulerStoragePg,
+	service.NewSchedulerStorage,
 	service.NewClockTime,
 	service.NewPortAllocatorRandom,
 	service.NewGameRoomInstanceStorageRedis,

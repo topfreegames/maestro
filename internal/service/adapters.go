@@ -61,6 +61,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/dynamic"
+	schedulerKubernetes "github.com/topfreegames/maestro/internal/adapters/storage/kubernetes/scheduler"
 )
 
 // configurations paths for the adapters
@@ -99,6 +101,15 @@ const (
 
 	// operation TTL
 	operationsTTLPath = "workers.redis.operationsTtl"
+
+	// Scheduler storage type
+	schedulerStorageTypePath = "adapters.schedulerStorage.type"
+	
+	// Kubernetes scheduler storage
+	schedulerStorageKubernetesNamespacePath = "adapters.schedulerStorage.kubernetes.namespace"
+	schedulerStorageKubernetesInClusterPath = "adapters.schedulerStorage.kubernetes.inCluster"
+	schedulerStorageKubernetesMasterURLPath = "adapters.schedulerStorage.kubernetes.masterUrl"
+	schedulerStorageKubernetesKubeconfigPath = "adapters.schedulerStorage.kubernetes.kubeconfig"
 )
 
 // NewSchedulerManager instantiates a new scheduler manager.
@@ -326,4 +337,53 @@ func createKubernetesClient(masterURL, kubeconfigPath string, opts ...func(*rest
 	}
 
 	return client, nil
+}
+
+// NewSchedulerStorage creates a new scheduler storage based on configuration
+func NewSchedulerStorage(c config.Config) (ports.SchedulerStorage, error) {
+	storageType := c.GetString(schedulerStorageTypePath)
+	
+	switch storageType {
+	case "postgres", "":
+		// Default to postgres for backward compatibility
+		return NewSchedulerStoragePg(c)
+	case "kubernetes":
+		return NewSchedulerStorageKubernetes(c)
+	default:
+		return nil, fmt.Errorf("unknown scheduler storage type: %s", storageType)
+	}
+}
+
+// NewSchedulerStorageKubernetes instantiates kubernetes CRD as scheduler storage.
+func NewSchedulerStorageKubernetes(c config.Config) (ports.SchedulerStorage, error) {
+	var masterURL string
+	var kubeConfigPath string
+	
+	inCluster := c.GetBool(schedulerStorageKubernetesInClusterPath)
+	if !inCluster {
+		masterURL = c.GetString(schedulerStorageKubernetesMasterURLPath)
+		kubeConfigPath = c.GetString(schedulerStorageKubernetesKubeconfigPath)
+	}
+	
+	kubeconfig, err := clientcmd.BuildConfigFromFlags(masterURL, kubeConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct kubernetes config: %w", err)
+	}
+	
+	kubeClient, err := kubernetes.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
+	}
+	
+	dynamicClient, err := dynamic.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
+	}
+	
+	namespace := c.GetString(schedulerStorageKubernetesNamespacePath)
+	if namespace == "" {
+		namespace = "default"
+	}
+	
+	return schedulerKubernetes.NewKubernetesSchedulerStorage(dynamicClient, kubeClient, namespace), nil
 }

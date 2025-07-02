@@ -20,7 +20,7 @@ import (
 
 func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error) {
 	workerBuilder := provideMetricsReporterBuilder()
-	schedulerStorage, err := service.NewSchedulerStoragePg(c)
+	schedulerStorage, err := service.NewSchedulerStorage(c)
 	if err != nil {
 		return nil, err
 	}

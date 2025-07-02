@@ -19,8 +19,19 @@ adapters:
   redis:
     poolSize: 500
   schedulerStorage:
+    # Storage type can be "postgres" or "kubernetes"
+    # Default is "postgres" for backward compatibility
+    type: "postgres"
     postgres:
       url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
+    kubernetes:
+      # Namespace where the CRDs will be stored
+      namespace: "default"
+      # Use in-cluster config
+      inCluster: false
+      # Only used when inCluster is false
+      masterUrl: "https://127.0.0.1:6443"
+      kubeconfig: "./kubeconfig/kubeconfig.yaml"
   schedulerCache:
     redis:
       url: "redis://localhost:6379/0"
