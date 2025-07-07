@@ -26,13 +26,12 @@
 package add
 
 import (
+	"context"
 	"fmt"
+	"testing"
 	"time"
 
 	clock_mock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
-
-	"context"
-	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -108,7 +107,7 @@ func TestExecutor_Execute(t *testing.T) {
 		require.Nil(t, err)
 	})
 
-	t.Run("should fail - some room creation fail, others succeed => returns unexpected error", func(t *testing.T) {
+	t.Run("should fail - some room creation fail, others succeed => returns success", func(t *testing.T) {
 		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, config)
 
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), op.SchedulerName).Return(&scheduler, nil)
@@ -117,14 +116,15 @@ func TestExecutor_Execute(t *testing.T) {
 		gameRoomReady.Status = game_room.GameStatusReady
 
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(9)
+
 		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error"))
-		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "error while creating room: error")
+
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", definition.Amount))
 
 		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, config)
 		err := executor.Execute(context.Background(), &op, &definition)
 
-		require.NotNil(t, err)
-		require.ErrorContains(t, err, "error while creating room: error")
+		require.Nil(t, err)
 	})
 
 	t.Run("should fail - no scheduler found => returns error", func(t *testing.T) {
@@ -168,7 +168,6 @@ func TestExecutor_Execute(t *testing.T) {
 }
 
 func TestExecutor_Rollback(t *testing.T) {
-
 	definition := Definition{Amount: 10}
 
 	op := operation.Operation{
@@ -188,7 +187,6 @@ func TestExecutor_Rollback(t *testing.T) {
 		rollbackErr := NewExecutor(roomsManager, schedulerStorage, operationsManager, config).Rollback(context.Background(), &op, &definition, nil)
 		require.NoError(t, rollbackErr)
 	})
-
 }
 
 func testSetup(t *testing.T, cfg Config) (*Executor, *mockports.MockRoomManager, *mockports.MockSchedulerStorage, *mockports.MockOperationManager) {

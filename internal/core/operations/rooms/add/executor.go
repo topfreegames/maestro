@@ -25,13 +25,13 @@ package add
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 
@@ -88,19 +88,49 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		amount = ex.config.AmountLimit
 	}
 
-	errGroup, errContext := errgroup.WithContext(ctx)
-	executionLogger.Info("start adding rooms", zap.Int32("amount", amount))
+	var wg sync.WaitGroup
+	errsCh := make(chan error, amount)
+
 	for i := int32(1); i <= amount; i++ {
-		errGroup.Go(func() error {
-			err := ex.createRoom(errContext, scheduler, executionLogger)
-			return err
-		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			err := ex.createRoom(ctx, scheduler, executionLogger)
+			if err != nil {
+				executionLogger.Warn("err to create room in a goroutine", zap.Error(err))
+				errsCh <- err
+			}
+		}()
 	}
 
-	if executionErr := errGroup.Wait(); executionErr != nil {
-		executionLogger.Error("Error creating rooms", zap.Error(executionErr))
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, executionErr.Error())
-		return executionErr
+	go func() {
+		wg.Wait()
+		close(errsCh)
+	}()
+
+	var collectedErrors []error
+	for err := range errsCh {
+		collectedErrors = append(collectedErrors, err)
+	}
+
+	// If all rooms give an error it's will be create a new error
+	// and the error log will be save all errors in a log parameter of each goroutine error
+	if int32(len(collectedErrors)) == amount {
+		ErrAllRooms := fmt.Errorf("error to create all rooms, errors: %d - amount: %d ", len(collectedErrors), amount)
+
+		errorMessages := make([]string, len(collectedErrors))
+		for i, err := range collectedErrors {
+			errorMessages[i] = err.Error()
+		}
+
+		executionLogger.Error(ErrAllRooms.Error(),
+			zap.Error(collectedErrors[0]),
+			zap.Int("failedRoomsCount", len(collectedErrors)),
+			zap.Any("allErrors", collectedErrors))
+
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, ErrAllRooms.Error())
+		return ErrAllRooms
 	}
 
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))

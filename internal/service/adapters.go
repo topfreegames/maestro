@@ -162,7 +162,8 @@ func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 
 // NewOperationStorageRedis instantiates redis as operation storage.
 func NewOperationStorageRedis(clock ports.Clock, operationDefinitionProviders map[string]operations.DefinitionConstructor, c config.Config) (ports.OperationStorage, error) {
-	client, err := createRedisClient(c, c.GetString(operationStorageRedisURLPath))
+	shouldRetryOperation := true
+	client, err := createRedisClient(c, c.GetString(operationStorageRedisURLPath), shouldRetryOperation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
@@ -179,7 +180,8 @@ func NewOperationStorageRedis(clock ports.Clock, operationDefinitionProviders ma
 
 // NewOperationLeaseStorageRedis instantiates redis as operation lease storage.
 func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.OperationLeaseStorage, error) {
-	client, err := createRedisClient(c, c.GetString(operationLeaseStorageRedisURLPath))
+	shouldRetryOperation := true
+	client, err := createRedisClient(c, c.GetString(operationLeaseStorageRedisURLPath), shouldRetryOperation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis operation lease storage: %w", err)
 	}
@@ -189,7 +191,8 @@ func NewOperationLeaseStorageRedis(clock ports.Clock, c config.Config) (ports.Op
 
 // NewRoomStorageRedis instantiates redis as room storage.
 func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
-	client, err := createRedisClient(c, c.GetString(roomStorageRedisURLPath))
+	shouldRetryOperation := false
+	client, err := createRedisClient(c, c.GetString(roomStorageRedisURLPath), shouldRetryOperation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis room storage: %w", err)
 	}
@@ -199,7 +202,8 @@ func NewRoomStorageRedis(c config.Config) (ports.RoomStorage, error) {
 
 // NewGameRoomInstanceStorageRedis instantiates redis as instance storage.
 func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceStorage, error) {
-	client, err := createRedisClient(c, c.GetString(instanceStorageRedisURLPath))
+	shouldRetryOperation := true
+	client, err := createRedisClient(c, c.GetString(instanceStorageRedisURLPath), shouldRetryOperation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis instance storage: %w", err)
 	}
@@ -209,7 +213,8 @@ func NewGameRoomInstanceStorageRedis(c config.Config) (ports.GameRoomInstanceSto
 
 // NewSchedulerCacheRedis instantiates redis as scheduler cache.
 func NewSchedulerCacheRedis(c config.Config) (ports.SchedulerCache, error) {
-	client, err := createRedisClient(c, c.GetString(schedulerCacheRedisURLPath))
+	shouldRetryOperation := true
+	client, err := createRedisClient(c, c.GetString(schedulerCacheRedisURLPath), shouldRetryOperation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis scheduler cache: %w", err)
 	}
@@ -253,7 +258,7 @@ func GetSchedulerStoragePostgresURL(c config.Config) string {
 	return c.GetString(schedulerStoragePostgresURLPath)
 }
 
-func createRedisClient(c config.Config, url string) (*redis.Client, error) {
+func createRedisClient(c config.Config, url string, shouldRetryOperation bool) (*redis.Client, error) {
 	opts, err := redis.ParseURL(url)
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
@@ -264,6 +269,10 @@ func createRedisClient(c config.Config, url string) (*redis.Client, error) {
 	}
 
 	hostPort := strings.Split(opts.Addr, ":")
+
+	if !shouldRetryOperation {
+		opts.MaxRetries = -1
+	}
 
 	client := redis.NewClient(opts)
 
@@ -291,7 +300,8 @@ func NewAutoscaler(policies autoscaler.PolicyMap) ports.Autoscaler {
 
 // NewOperationFlowRedis instantiates a new operation flow using redis as backend.
 func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
-	client, err := createRedisClient(c, c.GetString(operationFlowRedisURLPath))
+	shouldRetryOperation := true
+	client, err := createRedisClient(c, c.GetString(operationFlowRedisURLPath), shouldRetryOperation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis operation storage: %w", err)
 	}
