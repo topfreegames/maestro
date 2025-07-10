@@ -25,7 +25,9 @@ MAINTAINER TFG Co <backend@tfgco.com>
 
 WORKDIR /app
 
-COPY ./bin/maestro-linux-x86_64 /app/maestro
+ARG TARGETARCH
+
+COPY ./bin/maestro-linux-${TARGETARCH} /app/maestro
 COPY ./config /app/config
 
 ENTRYPOINT ["/app/maestro"]

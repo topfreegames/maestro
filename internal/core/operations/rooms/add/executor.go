@@ -98,7 +98,6 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 
 			err := ex.createRoom(ctx, scheduler, executionLogger)
 			if err != nil {
-				executionLogger.Warn("err to create room in a goroutine", zap.Error(err))
 				errsCh <- err
 			}
 		}()
@@ -116,26 +115,34 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 
 	// If all rooms give an error it's will be create a new error
 	// and the error log will be save all errors in a log parameter of each goroutine error
-	if int32(len(collectedErrors)) == amount {
-		ErrAllRooms := fmt.Errorf("error to create all rooms, errors: %d - amount: %d ", len(collectedErrors), amount)
+	errCount := int32(len(collectedErrors))
+	if errCount == 0 {
+		executionLogger.Info("added rooms successfully.")
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
+		return nil
+	}
 
-		errorMessages := make([]string, len(collectedErrors))
+	if errCount == amount {
+		ErrAllRooms := fmt.Errorf("error to create all rooms, errors: %d - amount: %d ", errCount, amount)
+
+		errorMessages := make([]string, errCount)
 		for i, err := range collectedErrors {
 			errorMessages[i] = err.Error()
 		}
 
 		executionLogger.Error(ErrAllRooms.Error(),
 			zap.Error(collectedErrors[0]),
-			zap.Int("failedRoomsCount", len(collectedErrors)),
+			zap.Int32("failedRoomsCount", errCount),
 			zap.Any("allErrors", collectedErrors))
 
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, ErrAllRooms.Error())
 		return ErrAllRooms
+	} else {
+		logMessage := fmt.Sprintf("some rooms failed to be created, errors: %d - amount: %d ", errCount, amount)
+		executionLogger.Warn(logMessage)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
+		return nil
 	}
-
-	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
-	executionLogger.Info("finished adding rooms")
-	return nil
 }
 
 func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
