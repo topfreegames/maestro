@@ -123,7 +123,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	}
 
 	if errCount == amount {
-		ErrAllRooms := fmt.Errorf("error to create all rooms, errors: %d - amount: %d ", errCount, amount)
+		ErrAllRooms := fmt.Errorf("error to create all rooms, errors: %d of amount: %d ", errCount, amount)
 
 		errorMessages := make([]string, errCount)
 		for i, err := range collectedErrors {
@@ -138,7 +138,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, ErrAllRooms.Error())
 		return ErrAllRooms
 	} else {
-		logMessage := fmt.Sprintf("some rooms failed to be created, errors: %d - amount: %d ", errCount, amount)
+		logMessage := fmt.Sprintf("some rooms failed to be created, errors: %d of amount: %d ", errCount, amount)
 		executionLogger.Warn(logMessage)
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
 		return nil
