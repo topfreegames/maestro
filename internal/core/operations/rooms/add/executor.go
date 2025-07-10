@@ -131,7 +131,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		}
 
 		executionLogger.Error(ErrAllRooms.Error(),
-			zap.Error(collectedErrors[0]),
+			zap.Error(ErrAllRooms),
 			zap.Int32("failedRoomsCount", errCount),
 			zap.Any("allErrors", collectedErrors))
 
