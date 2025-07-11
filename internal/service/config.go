@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/topfreegames/maestro/internal/core/operations/rooms/add"
+	"github.com/topfreegames/maestro/internal/core/operations/rooms/remove"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
 	"github.com/topfreegames/maestro/internal/core/services/events"
 	operationmanager "github.com/topfreegames/maestro/internal/core/services/operations"
@@ -48,6 +49,7 @@ const (
 	operationLeaseTTLMillisConfigPath           = "services.operationManager.operationLeaseTTLMillis"
 	schedulerCacheTTLMillisConfigPath           = "services.eventsForwarder.schedulerCacheTTLMillis"
 	operationsRoomsAddLimitConfigPath           = "operations.rooms.add.limit"
+	operationsRoomsRemoveLimitConfigPath        = "operations.rooms.remove.limit"
 )
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
@@ -87,6 +89,17 @@ func NewOperationRoomsAddConfig(c config.Config) add.Config {
 
 	config := add.Config{
 		AmountLimit: operationsRoomsAddLimit,
+	}
+
+	return config
+}
+
+// NewOperationRoomsRemoveConfig instantiate a new remove.Config to be used by the rooms remove operation.
+func NewOperationRoomsRemoveConfig(c config.Config) remove.Config {
+	operationsRoomsRemoveLimit := c.GetInt(operationsRoomsRemoveLimitConfigPath)
+
+	config := remove.Config{
+		AmountLimit: operationsRoomsRemoveLimit,
 	}
 
 	return config
