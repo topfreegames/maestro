@@ -29,27 +29,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"testing"
-	"time"
-
-	clock_mock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
-	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
-
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
+	"testing"
 )
 
 func TestExecutor_Execute(t *testing.T) {
-
-	clockMock := clock_mock.NewFakeClock(time.Now())
 
 	container1 := game_room.Container{
 		Name: "container1",
@@ -79,19 +73,6 @@ func TestExecutor_Execute(t *testing.T) {
 		SchedulerName:  "zooba_blue:1.0.0",
 		Status:         operation.StatusPending,
 		DefinitionName: "zooba_blue:1.0.0",
-	}
-
-	gameRoom := game_room.GameRoom{
-		ID:          "game-1",
-		SchedulerID: "zooba_blue:1.0.0",
-		Version:     "1.0.0",
-		Status:      game_room.GameStatusPending,
-		LastPingAt:  clockMock.Now(),
-	}
-
-	gameRoomInstance := game_room.Instance{
-		ID:          "game-1",
-		SchedulerID: "game",
 	}
 
 	config := Config{
@@ -248,15 +229,16 @@ func TestExecutor_Execute(t *testing.T) {
 			require.Equal(t, executor.config.AmountLimit, DefaultAmountLimit)
 		})
 
-		t.Run("should succeed - cap to the default amount if asked to create more than whats configured", func(t *testing.T) {
-			bigAmountDefinition := Definition{Amount: 10000}
-			smallDefaultConfig := Config{AmountLimit: 10}
+		t.Run("should succeed - cap to the default amount if asked to delete more than whats configured", func(t *testing.T) {
+			bigAmountDefinition := Definition{Amount: 5}
+			smallDefaultConfig := Config{AmountLimit: 1}
 
 			_, roomStorage, roomsManager, operationsManager, schedulerStorage := testSetup(t, smallDefaultConfig)
 
-			schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName, nil).Return(&scheduler, nil)
-			roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(smallDefaultConfig.AmountLimit)
-			operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", smallDefaultConfig.AmountLimit))
+			schedulerStorage.EXPECT().GetActiveScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), smallDefaultConfig.AmountLimit).Return([]*game_room.GameRoom{{}}, nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(smallDefaultConfig.AmountLimit)
+			operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("removed %d rooms", smallDefaultConfig.AmountLimit))
 
 			executor := NewExecutor(roomsManager, roomStorage, operationsManager, schedulerStorage, smallDefaultConfig)
 			err := executor.Execute(context.Background(), &op, &bigAmountDefinition)
