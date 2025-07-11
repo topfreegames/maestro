@@ -4,6 +4,9 @@ SOURCES := $(shell \
 
 BUF := github.com/bufbuild/buf/cmd/buf@v1.32.1
 
+# Detect Docker Compose command - prefer 'docker compose' over 'docker-compose'
+DOCKER_COMPOSE := $(shell if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo "docker-compose"; fi)
+
 .PHONY: help
 help: Makefile ## Show list of commands.
 	@echo "Choose a command to run in "$(APP_NAME)":"
@@ -152,25 +155,25 @@ migrate: ## Execute migration.
 .PHONY: deps/up
 deps/up: ## Create containers dependencies.
 	@echo "Creating dependencies "
-	@docker-compose up -d --build
+	@$(DOCKER_COMPOSE) up -d --build
 	@echo "Dependencies created successfully."
 
 .PHONY: deps/start
 deps/start: ## Start containers dependencies.
 	@echo "Starting dependencies "
-	@docker-compose start
+	@$(DOCKER_COMPOSE) start
 	@echo "Dependencies started successfully."
 
 .PHONY: deps/stop
 deps/stop: ## Stop containers dependencies.
 	@echo "Stopping dependencies "
-	@docker-compose stop
+	@$(DOCKER_COMPOSE) stop
 	@echo "Dependencies stopped successfully."
 
 .PHONY: deps/down
 deps/down: ## Delete containers dependencies.
 	@echo "Deleting dependencies "
-	@docker-compose down
+	@$(DOCKER_COMPOSE) down
 	@echo "Dependencies deleted successfully."
 
 
@@ -179,16 +182,18 @@ deps/down: ## Delete containers dependencies.
 #-------------------------------------------------------------------------------
 .PHONY: maestro/start
 maestro/start: k3d/up build ## Start Maestro with all of its dependencies.
-	@echo "Starting maestro..."
-	@cd ./e2e/framework/maestro; docker compose up --build -d
+	@echo "Starting maestro dependencies (postgres, redis)..."
+	@cd ./e2e/framework/maestro; $(DOCKER_COMPOSE) up -d postgres redis
+	@echo "Running database migrations..."
 	@MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate;
-	@cd ./e2e/framework/maestro; docker compose up --build -d worker runtime-watcher #Worker and watcher do not work before migration, so we start them after it.
+	@echo "Starting maestro application services..."
+	@cd ./e2e/framework/maestro; $(DOCKER_COMPOSE) up --build -d
 	@echo "Maestro is up and running!"
 
 .PHONY: maestro/down
 maestro/down: k3d/down ## Delete Maestro and all of its dependencies.
 	@echo "Deleting maestro..."
-	@cd ./e2e/framework/maestro; docker compose down
+	@cd ./e2e/framework/maestro; $(DOCKER_COMPOSE) down
 	@$(MAKE) k3d/down
 	@echo "Maestro was deleted with success!"
 
@@ -201,7 +206,7 @@ K3D_CLUSTER_NAME ?= maestro-dev
 .PHONY: k3d/up
 k3d/up: ## Create/Start the k3d cluster via docker-compose.
 	@echo "INFO: Ensuring k3d service is up and cluster '$(K3D_CLUSTER_NAME)' is created via docker-compose..."
-	@docker-compose up -d k3d
+	@$(DOCKER_COMPOSE) up -d k3d
 	@echo "INFO: Waiting for k3d cluster and kubeconfig file at ./e2e/framework/maestro/.k3d-kubeconfig.yaml..."
 	@timeout=120; \
 	interval=5; \
@@ -221,13 +226,13 @@ k3d/up: ## Create/Start the k3d cluster via docker-compose.
 .PHONY: k3d/down
 k3d/down: ## Delete the local k3d cluster and stop the k3d docker-compose service.
 	@echo "INFO: Attempting to delete k3d cluster '$(K3D_CLUSTER_NAME)' via k3d service (if running)..."
-	@if docker-compose ps k3d | grep -q "k3d"; then \
-		docker-compose exec k3d k3d cluster delete $(K3D_CLUSTER_NAME) || echo "INFO: k3d cluster delete command failed or cluster was not found."; \
+	@if $(DOCKER_COMPOSE) ps k3d | grep -q "k3d"; then \
+		$(DOCKER_COMPOSE) exec k3d k3d cluster delete $(K3D_CLUSTER_NAME) || echo "INFO: k3d cluster delete command failed or cluster was not found."; \
 	else \
 		echo "INFO: k3d service not running, skipping cluster deletion command."; \
 	fi
 	@echo "INFO: Stopping and removing k3d service..."
-	@docker-compose rm -sf k3d
+	@$(DOCKER_COMPOSE) rm -sf k3d
 	@echo "INFO: Removing k3d kubeconfig file..."
 	@rm -f ./e2e/framework/maestro/.k3d-kubeconfig.yaml
 	@echo "INFO: k3d cluster and service are down."
