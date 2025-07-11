@@ -29,9 +29,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	clock_mock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
 	"testing"
 	"time"
+
+	clock_mock "github.com/topfreegames/maestro/internal/core/ports/clock_mock.go"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -238,13 +239,13 @@ func TestExecutor_Execute(t *testing.T) {
 		t.Run("use default amount limit if AmountLimit not set", func(t *testing.T) {
 			executor, _, _, _, _ := testSetup(t, Config{})
 			require.NotNil(t, executor)
-			require.Equal(t, executor.config.AmountLimit, int32(DefaultAmountLimit))
+			require.Equal(t, executor.config.AmountLimit, DefaultAmountLimit)
 		})
 
 		t.Run("use default amount limit if invalid AmountLimit value", func(t *testing.T) {
 			executor, _, _, _, _ := testSetup(t, Config{AmountLimit: -1})
 			require.NotNil(t, executor)
-			require.Equal(t, executor.config.AmountLimit, int32(DefaultAmountLimit))
+			require.Equal(t, executor.config.AmountLimit, DefaultAmountLimit)
 		})
 
 		t.Run("should succeed - cap to the default amount if asked to create more than whats configured", func(t *testing.T) {

@@ -59,7 +59,6 @@ func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, o
 		zap.L().Sugar().Infof("Amount limit wrongly configured with %d, using default value %d", config.AmountLimit, DefaultAmountLimit)
 		config.AmountLimit = DefaultAmountLimit
 	}
-
 	return &Executor{
 		roomManager,
 		roomStorage,
