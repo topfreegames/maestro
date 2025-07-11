@@ -48,7 +48,7 @@ func provideDependencies(ctx context.Context, maestroPath string, compose tc.Com
 		return nil, fmt.Errorf("failed to tear down running containers: %w", err)
 	}
 
-	services := []string{"postgres", "redis", "k3s_agent", "k3s_server"}
+	services := []string{"postgres", "redis"}
 	err = compose.Up(context.Background(), tc.RunServices(services...), tc.RemoveOrphans(true), tc.Wait(true))
 	if err != nil {
 		return nil, fmt.Errorf("failed to start dependencies: %w", err)

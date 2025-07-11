@@ -25,13 +25,14 @@ package add
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
-	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 
@@ -88,24 +89,51 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		amount = ex.config.AmountLimit
 	}
 
-	errGroup, errContext := errgroup.WithContext(ctx)
-	executionLogger.Info("start adding rooms", zap.Int32("amount", amount))
+	var wg sync.WaitGroup
+	errsCh := make(chan error, amount)
+
 	for i := int32(1); i <= amount; i++ {
-		errGroup.Go(func() error {
-			err := ex.createRoom(errContext, scheduler, executionLogger)
-			return err
-		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			errsCh <- ex.createRoom(ctx, scheduler, executionLogger)
+		}()
 	}
 
-	if executionErr := errGroup.Wait(); executionErr != nil {
-		executionLogger.Error("Error creating rooms", zap.Error(executionErr))
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, executionErr.Error())
-		return executionErr
+	wg.Wait()
+	close(errsCh)
+
+	var collectedErrors []error
+	for err := range errsCh {
+		if err != nil {
+			collectedErrors = append(collectedErrors, err)
+		}
 	}
 
-	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
-	executionLogger.Info("finished adding rooms")
-	return nil
+	errCount := int32(len(collectedErrors))
+	successCount := amount - errCount
+
+	switch {
+	case errCount > successCount:
+		ErrMajorityRooms := fmt.Errorf("more rooms failed than succeeded, errors: %d and successes: %d of amount: %d", errCount, successCount, amount)
+
+		executionLogger.Error(ErrMajorityRooms.Error(),
+			zap.Error(ErrMajorityRooms),
+			zap.Int32("failedRoomsCount", errCount),
+			zap.Int32("successRoomsCount", successCount),
+			zap.Any("allErrors", collectedErrors))
+
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, ErrMajorityRooms.Error())
+		return ErrMajorityRooms
+	default:
+		executionLogger.Sugar().Infof("added rooms successfully with errors: %d and success: %d of amount: %d", errCount, successCount, amount)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
+		return nil
+	}
 }
 
 func (ex *Executor) Rollback(ctx context.Context, op *operation.Operation, definition operations.Definition, executeErr error) error {
