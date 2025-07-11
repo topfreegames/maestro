@@ -100,7 +100,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
-			err := ex.createRoom(ctx, scheduler, executionLogger)
+			errsCh <- ex.createRoom(ctx, scheduler, executionLogger)
 			if err != nil {
 				errsCh <- err
 			}
