@@ -96,6 +96,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		go func() {
 			defer wg.Done()
 
+			ctx := context.WithoutCancel(ctx)
 			err := ex.createRoom(ctx, scheduler, executionLogger)
 			if err != nil {
 				errsCh <- err
