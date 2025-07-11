@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/logs"
 
@@ -96,7 +97,9 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		go func() {
 			defer wg.Done()
 
-			ctx := context.WithoutCancel(ctx)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
 			err := ex.createRoom(ctx, scheduler, executionLogger)
 			if err != nil {
 				errsCh <- err
@@ -104,43 +107,33 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		}()
 	}
 
-	go func() {
-		wg.Wait()
-		close(errsCh)
-	}()
+	wg.Wait()
+	close(errsCh)
 
 	var collectedErrors []error
 	for err := range errsCh {
-		collectedErrors = append(collectedErrors, err)
-	}
-
-	// If all rooms give an error it's will be create a new error
-	// and the error log will be save all errors in a log parameter of each goroutine error
-	errCount := int32(len(collectedErrors))
-	if errCount == 0 {
-		executionLogger.Info("added rooms successfully.")
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
-		return nil
-	}
-
-	if errCount == amount {
-		ErrAllRooms := fmt.Errorf("error to create all rooms, errors: %d of amount: %d ", errCount, amount)
-
-		errorMessages := make([]string, errCount)
-		for i, err := range collectedErrors {
-			errorMessages[i] = err.Error()
+		if err != nil {
+			collectedErrors = append(collectedErrors, err)
 		}
+	}
 
-		executionLogger.Error(ErrAllRooms.Error(),
-			zap.Error(ErrAllRooms),
+	errCount := int32(len(collectedErrors))
+	successCount := amount - errCount
+
+	switch {
+	case errCount > successCount:
+		ErrMajorityRooms := fmt.Errorf("more rooms failed than succeeded, errors: %d and successes: %d of amount: %d", errCount, successCount, amount)
+
+		executionLogger.Error(ErrMajorityRooms.Error(),
+			zap.Error(ErrMajorityRooms),
 			zap.Int32("failedRoomsCount", errCount),
+			zap.Int32("successRoomsCount", successCount),
 			zap.Any("allErrors", collectedErrors))
 
-		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, ErrAllRooms.Error())
-		return ErrAllRooms
-	} else {
-		logMessage := fmt.Sprintf("some rooms failed to be created, errors: %d of amount: %d ", errCount, amount)
-		executionLogger.Warn(logMessage)
+		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, ErrMajorityRooms.Error())
+		return ErrMajorityRooms
+	default:
+		executionLogger.Sugar().Infof("added rooms successfully with errors: %d and success: %d of amount: %d", errCount, successCount, amount)
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
 		return nil
 	}
