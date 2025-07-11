@@ -19,14 +19,32 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-FROM alpine:3
-
-MAINTAINER TFG Co <backend@tfgco.com>
+FROM golang:1.23-alpine as builder
 
 WORKDIR /app
 
-COPY ./bin/maestro-linux-x86_64 /app/maestro
-COPY ./config /app/config
+# Copy go.mod and go.sum files to download dependencies
+COPY go.mod ./
+COPY go.sum ./
+RUN go get ./...
+RUN go mod download
+
+# Copy the entire source code
+COPY . .
+
+# Build the binary statically, ensuring it includes our latest changes
+# The -a flag forces rebuilding of packages that are already up-to-date.
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./maestro ./
+
+# Stage 2: Create the final, minimal image
+FROM alpine:3.15
+
+WORKDIR /app
+
+# Copy only the compiled binary from the builder stage
+COPY --from=builder /app/maestro .
+# Copy the static configuration files
+COPY ./config ./config
 
 ENTRYPOINT ["/app/maestro"]
 CMD ["--help"]
