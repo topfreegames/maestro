@@ -38,6 +38,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const DefaultAmountLimit = 1000
+
 type Config struct {
 	AmountLimit int
 }
@@ -53,6 +55,11 @@ var _ operations.Executor = (*Executor)(nil)
 
 // NewExecutor creates a new RemoveRoomExecutor
 func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, operationManager ports.OperationManager, schedulerManager ports.SchedulerManager, config Config) *Executor {
+	if config.AmountLimit <= 0 {
+		zap.L().Sugar().Infof("Amount limit wrongly configured with %d, using default value %d", config.AmountLimit, DefaultAmountLimit)
+		config.AmountLimit = DefaultAmountLimit
+	}
+
 	return &Executor{
 		roomManager,
 		roomStorage,

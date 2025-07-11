@@ -46,8 +46,6 @@ import (
 	"github.com/topfreegames/maestro/internal/core/entities/port"
 )
 
-const DefaultAmountLimit = 1000
-
 func TestExecutor_Execute(t *testing.T) {
 
 	clockMock := clock_mock.NewFakeClock(time.Now())
