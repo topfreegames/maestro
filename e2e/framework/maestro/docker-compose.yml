@@ -4,12 +4,14 @@ services:
     build:
       context: ../../..
       dockerfile: ./e2e/framework/maestro/Dockerfile
+      no_cache: true
     environment:
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
       - MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_OPERATIONSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_OPERATIONLEASESTORAGE_REDIS_URL=redis://redis:6379/0
+      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=
       - MAESTRO_INTERNALAPI_PORT=8081
       - MAESTRO_API_PORT=8080
     ports:
@@ -21,14 +23,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - default
+      - k3d
 
   rooms-api:
     build:
       context: ../../..
       dockerfile: ./e2e/framework/maestro/Dockerfile
+      no_cache: true
     environment:
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL=redis://redis:6379/0
+      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=k3d-maestro-dev-serverlb:6443
       - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/config
       - MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
@@ -45,15 +52,20 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - default
+      - k3d
 
   runtime-watcher:
     build:
       context: ../../..
       dockerfile: ./e2e/framework/maestro/Dockerfile
+      no_cache: true
     environment:
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL=redis://redis:6379/0
+      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=
       - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/config
       - MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_INTERNALAPI_PORT=8061
@@ -62,11 +74,15 @@ services:
     volumes:
       - ./.k3d-kubeconfig.yaml:/kubeconfig/config:ro
     command: [start, runtime-watcher, -l, development]
+    networks:
+      - default
+      - k3d
 
   worker:
     build:
       context: ../../..
       dockerfile: ./e2e/framework/maestro/Dockerfile
+      no_cache: true
     environment:
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
       - MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL=redis://redis:6379/0
@@ -74,6 +90,7 @@ services:
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_OPERATIONLEASESTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL=redis://redis:6379/0
+      - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_MASTERURL=
       - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_KUBECONFIG=/kubeconfig/config
       - MAESTRO_ADAPTERS_RUNTIME_KUBERNETES_TOPOLOGYSPREADCONSTRAINT_ENABLED=false
       - MAESTRO_ADAPTERS_SCHEDULERCACHE_REDIS_URL=redis://redis:6379/0
@@ -90,6 +107,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - default
+      - k3d
 
   postgres:
     image: postgres:17-alpine
@@ -100,10 +120,12 @@ services:
     - POSTGRES_USER=maestro
     - POSTGRES_PASSWORD=maestro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U maestro" ]
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - default
 
   redis:
     image: redis:8.0-alpine
@@ -114,6 +136,14 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - default
 
 volumes:
   eventsproto: {}
+
+networks:
+  default:
+  k3d:
+    name: k3d-maestro-dev
+    external: true

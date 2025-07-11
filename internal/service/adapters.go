@@ -65,7 +65,7 @@ import (
 
 // configurations paths for the adapters
 const (
-	// GRPC KeepAlive Configs
+	// GRPC Keep Alive Configs
 	grpcKeepAliveTimePath    = "adapters.grpc.keepalive.time"
 	grpcKeepAliveTimeoutPath = "adapters.grpc.keepalive.timeout"
 	// Kubernetes runtime
@@ -140,6 +140,14 @@ func NewRuntimeKubernetes(c config.Config) (ports.Runtime, error) {
 	} else {
 		masterURL = c.GetString(runtimeKubernetesMasterURLPath)
 		kubeConfigPath = c.GetString(runtimeKubernetesKubeconfigPath)
+	}
+
+	// This is a workaround to ensure that if a kubeconfig file is provided,
+	// it takes precedence over the masterURL, even if masterURL is set in the
+	// default config file. The client-go library prioritizes masterURL over the
+	// server address within the kubeconfig.
+	if kubeConfigPath != "" {
+		masterURL = ""
 	}
 
 	clientSet, err := createKubernetesClient(masterURL, kubeConfigPath, func(conf *rest.Config) {

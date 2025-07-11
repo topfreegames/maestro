@@ -114,9 +114,12 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 
 func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 	t.Run("don't produce metrics, log errors but doesn't stop worker when some error occurs", func(t *testing.T) {
+		// Reset metrics before test to ensure clean state
 		resetMetricsCollectors()
 
 		mockCtl := gomock.NewController(t)
+		defer mockCtl.Finish()
+
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
 		instanceStorage := mock.NewMockGameRoomInstanceStorage(mockCtl)
 		schedulerCache := mock.NewMockSchedulerCache(mockCtl)
@@ -132,6 +135,7 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 		}
 		worker := NewMetricsReporterWorker(scheduler, workerOpts)
 
+		// Set up all mocks to return errors
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).
 			Return(0, errors.New("some_error")).MinTimes(3)
 		roomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusPending).
@@ -162,7 +166,8 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 		cancelFunc()
 		assert.False(t, worker.IsRunning())
 
-		// assert metrics were not collected
+		// assert metrics were not collected for room and instance metrics (due to errors)
+		// but scheduler metrics may still be collected since they don't depend on storage
 		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomReadyGaugeMetric))
 		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomPendingGaugeMetric))
 		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomTerminatingGaugeMetric))
@@ -199,15 +204,24 @@ func newInstancesList(numberOfInstances int) (instances []*game_room.Instance) {
 	return instances
 }
 func resetMetricsCollectors() {
+	// Reset all game room metrics
 	gameRoomReadyGaugeMetric.Reset()
 	gameRoomPendingGaugeMetric.Reset()
 	gameRoomTerminatingGaugeMetric.Reset()
 	gameRoomOccupiedGaugeMetric.Reset()
 	gameRoomUnreadyGaugeMetric.Reset()
 	gameRoomErrorGaugeMetric.Reset()
+	gameRoomActiveGaugeMetric.Reset()
+
+	// Reset all instance metrics
 	instanceReadyGaugeMetric.Reset()
 	instancePendingGaugeMetric.Reset()
 	instanceUnknownGaugeMetric.Reset()
 	instanceTerminatingGaugeMetric.Reset()
 	instanceErrorGaugeMetric.Reset()
+
+	// Reset other metrics that might be set
+	runningMatchesGaugeMetric.Reset()
+	schedulerMaxMatchesGaugeMetric.Reset()
+	schedulerAutoscalePolicyReadyTargetGaugeMetric.Reset()
 }
