@@ -101,9 +101,6 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 			defer cancel()
 
 			errsCh <- ex.createRoom(ctx, scheduler, executionLogger)
-			if err != nil {
-				errsCh <- err
-			}
 		}()
 	}
 
