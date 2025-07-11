@@ -30,6 +30,8 @@ import (
 	"errors"
 	"fmt"
 
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -40,7 +42,6 @@ import (
 	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
 	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
-	"testing"
 )
 
 func TestExecutor_Execute(t *testing.T) {
