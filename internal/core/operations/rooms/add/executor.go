@@ -56,7 +56,7 @@ var _ operations.Executor = (*Executor)(nil)
 
 func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage, operationManager ports.OperationManager, config Config) *Executor {
 	if config.AmountLimit <= 0 {
-		zap.L().Sugar().Infof("Amount limit wrongly configured with %d, using default value %d", config.AmountLimit, DefaultAmountLimit)
+		zap.L().Sugar().Infof("Add Executor - Amount limit wrongly configured with %d, using default value %d", config.AmountLimit, DefaultAmountLimit)
 		config.AmountLimit = DefaultAmountLimit
 	}
 	return &Executor{

@@ -29,26 +29,60 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/topfreegames/maestro/internal/core/entities"
-	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
-	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
-	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
-
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
 	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/entities/port"
+	porterrors "github.com/topfreegames/maestro/internal/core/ports/errors"
+	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+	serviceerrors "github.com/topfreegames/maestro/internal/core/services/errors"
 )
 
 func TestExecutor_Execute(t *testing.T) {
 
+	container1 := game_room.Container{
+		Name: "container1",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "tcp"},
+		},
+	}
+
+	container2 := game_room.Container{
+		Name: "container2",
+		Ports: []game_room.ContainerPort{
+			{Protocol: "udp"},
+		},
+	}
+
+	scheduler := entities.Scheduler{
+		Name: "zooba_blue:1.0.0",
+		Spec: game_room.Spec{
+			Version:    "1.0.0",
+			Containers: []game_room.Container{container1, container2},
+		},
+		PortRange: nil,
+	}
+
+	op := operation.Operation{
+		ID:             "some-op-id",
+		SchedulerName:  "zooba_blue:1.0.0",
+		Status:         operation.StatusPending,
+		DefinitionName: "zooba_blue:1.0.0",
+	}
+
+	config := Config{
+		AmountLimit: 100,
+	}
+
 	t.Run("RemoveRoom by Amount", func(t *testing.T) {
 		t.Run("should fail - if fails to get active scheduler => returns error", func(t *testing.T) {
-			executor, _, _, _, schedulerManager := testSetup(t)
+			executor, _, _, _, schedulerManager := testSetup(t, config)
 
 			scheduler := newValidScheduler()
 			definition := &Definition{Amount: 2}
@@ -63,7 +97,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("should succeed and sort rooms by active scheduler version", func(t *testing.T) {
-			executor, _, roomsManager, operationManager, schedulerManager := testSetup(t)
+			executor, _, roomsManager, operationManager, schedulerManager := testSetup(t, config)
 
 			schedulerName := uuid.NewString()
 			schedulerV1 := &entities.Scheduler{
@@ -123,7 +157,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when any room failed to delete with unexpected error it returns with error", func(t *testing.T) {
-			executor, _, roomsManager, operationManager, schedulerManager := testSetup(t)
+			executor, _, roomsManager, operationManager, schedulerManager := testSetup(t, config)
 
 			scheduler := newValidScheduler()
 			definition := &Definition{Amount: 2, Reason: "reason"}
@@ -147,7 +181,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when any room failed to delete with timeout error it returns with error", func(t *testing.T) {
-			executor, _, roomsManager, operationManager, schedulerManager := testSetup(t)
+			executor, _, roomsManager, operationManager, schedulerManager := testSetup(t, config)
 
 			scheduler := newValidScheduler()
 			definition := &Definition{Amount: 2, Reason: "reason"}
@@ -170,7 +204,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when list rooms has error returns with error", func(t *testing.T) {
-			executor, _, roomsManager, _, schedulerManager := testSetup(t)
+			executor, _, roomsManager, _, schedulerManager := testSetup(t, config)
 
 			scheduler := newValidScheduler()
 			definition := &Definition{Amount: 2}
@@ -183,11 +217,40 @@ func TestExecutor_Execute(t *testing.T) {
 			require.NotNil(t, err)
 			require.ErrorContains(t, err, "error removing rooms by amount: error")
 		})
+
+		t.Run("use default amount limit if AmountLimit not set", func(t *testing.T) {
+			executor, _, _, _, _ := testSetup(t, Config{})
+			require.NotNil(t, executor)
+			require.Equal(t, executor.config.AmountLimit, DefaultAmountLimit)
+		})
+
+		t.Run("use default amount limit if invalid AmountLimit value", func(t *testing.T) {
+			executor, _, _, _, _ := testSetup(t, Config{AmountLimit: -1})
+			require.NotNil(t, executor)
+			require.Equal(t, executor.config.AmountLimit, DefaultAmountLimit)
+		})
+
+		t.Run("should succeed - cap to the default amount if asked to delete more than whats configured", func(t *testing.T) {
+			bigAmountDefinition := Definition{Amount: 5}
+			smallDefaultConfig := Config{AmountLimit: 1}
+
+			_, roomStorage, roomsManager, operationsManager, schedulerStorage := testSetup(t, smallDefaultConfig)
+
+			schedulerStorage.EXPECT().GetActiveScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+			roomsManager.EXPECT().ListRoomsWithDeletionPriority(gomock.Any(), gomock.Any(), smallDefaultConfig.AmountLimit).Return([]*game_room.GameRoom{{}}, nil)
+			roomsManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(smallDefaultConfig.AmountLimit)
+			operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("removed %d rooms", smallDefaultConfig.AmountLimit))
+
+			executor := NewExecutor(roomsManager, roomStorage, operationsManager, schedulerStorage, smallDefaultConfig)
+			err := executor.Execute(context.Background(), &op, &bigAmountDefinition)
+
+			require.Nil(t, err)
+		})
 	})
 
 	t.Run("RemoveRoom by RoomsIDs", func(t *testing.T) {
 		t.Run("should succeed - no rooms to be removed => returns without error", func(t *testing.T) {
-			executor, _, _, _, _ := testSetup(t)
+			executor, _, _, _, _ := testSetup(t, config)
 
 			scheduler := newValidScheduler()
 			definition := &Definition{RoomsIDs: []string{}}
@@ -198,7 +261,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("should succeed - rooms are successfully removed => returns without error", func(t *testing.T) {
-			executor, _, roomsManager, operationManager, _ := testSetup(t)
+			executor, _, roomsManager, operationManager, _ := testSetup(t, config)
 
 			firstRoomID := "first-room-id"
 			secondRoomID := "second-room-id"
@@ -225,7 +288,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when any room failed to delete with unexpected error it returns with error", func(t *testing.T) {
-			executor, _, roomsManager, operationManager, _ := testSetup(t)
+			executor, _, roomsManager, operationManager, _ := testSetup(t, config)
 
 			firstRoomID := "first-room-id"
 			secondRoomID := "second-room-id"
@@ -253,7 +316,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when any room returns not found on delete it is ignored and returns without error", func(t *testing.T) {
-			executor, _, roomsManager, operationManager, _ := testSetup(t)
+			executor, _, roomsManager, operationManager, _ := testSetup(t, config)
 
 			firstRoomID := "first-room-id"
 			secondRoomID := "second-room-id"
@@ -280,7 +343,7 @@ func TestExecutor_Execute(t *testing.T) {
 		})
 
 		t.Run("when any room failed to delete with timeout error it returns with error", func(t *testing.T) {
-			executor, _, roomsManager, operationManager, _ := testSetup(t)
+			executor, _, roomsManager, operationManager, _ := testSetup(t, config)
 
 			firstRoomID := "first-room-id"
 			secondRoomID := "second-room-id"
@@ -309,7 +372,7 @@ func TestExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("should succeed - no rooms to be removed => returns without error", func(t *testing.T) {
-		executor, _, _, _, _ := testSetup(t)
+		executor, _, _, _, _ := testSetup(t, config)
 
 		scheduler := newValidScheduler()
 		definition := &Definition{}
@@ -320,7 +383,7 @@ func TestExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("should succeed - there are ids and amount => return without error", func(t *testing.T) {
-		executor, _, roomsManager, operationManager, schedulerManager := testSetup(t)
+		executor, _, roomsManager, operationManager, schedulerManager := testSetup(t, config)
 
 		firstRoomID := "first-room-id"
 		secondRoomID := "second-room-id"
@@ -359,14 +422,14 @@ func TestExecutor_Execute(t *testing.T) {
 	})
 }
 
-func testSetup(t *testing.T) (*Executor, *mockports.MockRoomStorage, *mockports.MockRoomManager, *mockports.MockOperationManager, *mockports.MockSchedulerManager) {
+func testSetup(t *testing.T, cfg Config) (*Executor, *mockports.MockRoomStorage, *mockports.MockRoomManager, *mockports.MockOperationManager, *mockports.MockSchedulerManager) {
 	mockCtrl := gomock.NewController(t)
 
 	roomsStorage := mockports.NewMockRoomStorage(mockCtrl)
 	roomsManager := mockports.NewMockRoomManager(mockCtrl)
 	operationManager := mockports.NewMockOperationManager(mockCtrl)
 	schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
-	executor := NewExecutor(roomsManager, roomsStorage, operationManager, schedulerManager)
+	executor := NewExecutor(roomsManager, roomsStorage, operationManager, schedulerManager, cfg)
 	return executor, roomsStorage, roomsManager, operationManager, schedulerManager
 }
 

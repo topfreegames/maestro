@@ -77,6 +77,8 @@ operations:
   rooms:
     add:
       limit: 1000
+    remove:
+      limit: 50
 
 services:
   roomManager:

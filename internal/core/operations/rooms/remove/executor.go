@@ -38,22 +38,33 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const DefaultAmountLimit = 50
+
+type Config struct {
+	AmountLimit int
+}
 type Executor struct {
 	roomManager      ports.RoomManager
 	roomStorage      ports.RoomStorage
 	operationManager ports.OperationManager
 	schedulerManager ports.SchedulerManager
+	config           Config
 }
 
 var _ operations.Executor = (*Executor)(nil)
 
 // NewExecutor creates a new RemoveRoomExecutor
-func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, operationManager ports.OperationManager, schedulerManager ports.SchedulerManager) *Executor {
+func NewExecutor(roomManager ports.RoomManager, roomStorage ports.RoomStorage, operationManager ports.OperationManager, schedulerManager ports.SchedulerManager, config Config) *Executor {
+	if config.AmountLimit <= 0 {
+		zap.L().Sugar().Infof("Remove Executor - Amount limit wrongly configured with %d, using default value %d", config.AmountLimit, DefaultAmountLimit)
+		config.AmountLimit = DefaultAmountLimit
+	}
 	return &Executor{
 		roomManager,
 		roomStorage,
 		operationManager,
 		schedulerManager,
+		config,
 	}
 }
 
@@ -78,6 +89,11 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 			return fmt.Errorf("error removing rooms by ids: %w", err)
 		}
 		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("removed rooms: %v", removeDefinition.RoomsIDs))
+	}
+
+	if removeDefinition.Amount > e.config.AmountLimit {
+		logger.Info("operation called with amount greater than limit, capping it", zap.Int("calledAmount", removeDefinition.Amount), zap.Int("limit", e.config.AmountLimit))
+		removeDefinition.Amount = e.config.AmountLimit
 	}
 
 	if removeDefinition.Amount > 0 {
