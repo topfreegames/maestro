@@ -52,6 +52,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations/storagecleanup"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler"
+	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/fixedbufferamount"
 	"github.com/topfreegames/maestro/internal/core/services/autoscaler/policies/roomoccupancy"
 	operationservice "github.com/topfreegames/maestro/internal/core/services/operations"
 	"github.com/topfreegames/maestro/internal/core/services/rooms"
@@ -303,6 +304,7 @@ func createRedisClient(c config.Config, url string, customizers ...func(*redis.O
 func NewPolicyMap(roomStorage ports.RoomStorage) autoscaler.PolicyMap {
 	return autoscaler.PolicyMap{
 		autoscaling.RoomOccupancy: roomoccupancy.NewPolicy(roomStorage),
+		autoscaling.FixedBuffer:   fixedbufferamount.NewPolicy(roomStorage),
 	}
 }
 

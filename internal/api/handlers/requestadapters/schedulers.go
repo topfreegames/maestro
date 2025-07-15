@@ -385,6 +385,10 @@ func fromApiAutoscalingPolicyParameters(apiPolicyParameters *api.PolicyParameter
 	if roomOccupancy := apiPolicyParameters.GetRoomOccupancy(); roomOccupancy != nil {
 		policyParameters.RoomOccupancy = fromApiRoomOccupancyPolicyToEntity(roomOccupancy)
 	}
+	if fixedBufferAmount := apiPolicyParameters.GetFixedBufferAmount(); fixedBufferAmount != 0 {
+		amount := int(fixedBufferAmount)
+		policyParameters.FixedBufferAmount = &amount
+	}
 	return policyParameters
 }
 

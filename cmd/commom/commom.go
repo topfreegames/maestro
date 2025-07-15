@@ -32,6 +32,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/config"
 	"github.com/topfreegames/maestro/internal/config/viper"
+	"github.com/topfreegames/maestro/internal/core/entities/autoscaling"
 	"github.com/topfreegames/maestro/internal/service"
 	"github.com/topfreegames/maestro/internal/validations"
 	"go.uber.org/zap"
@@ -46,6 +47,12 @@ func ServiceSetup(ctx context.Context, cancelFn context.CancelFunc, logConfig, c
 	err = validations.RegisterValidations()
 	if err != nil {
 		return fmt.Errorf("unable to register validations: %w", err), nil, nil
+	}
+
+	// Register autoscaling policy validation
+	err = autoscaling.RegisterPolicyValidation(validations.Validate)
+	if err != nil {
+		return fmt.Errorf("unable to register autoscaling policy validation: %w", err), nil, nil
 	}
 
 	viperConfig, err := viper.NewViperConfig(configPath)

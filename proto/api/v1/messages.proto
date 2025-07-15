@@ -297,6 +297,8 @@ message AutoscalingPolicy {
 message PolicyParameters {
   // RoomOccupancy is the policy parameters to execute rooms occupancy policy
   optional RoomOccupancy room_occupancy = 1;
+  // FixedBufferAmount is the fixed number of rooms to maintain on top of occupied rooms
+  optional int32 fixed_buffer_amount = 2;
 }
 
 // RoomOccupancy optional policy parameter

@@ -30,7 +30,10 @@ type PolicyType string
 const (
 	// RoomOccupancy is an implemented policy in maestro autoscaler,
 	// it uses the number of occupied rooms and a ready rooms target percentage to calculate the desired number of rooms in a scheduler.
-	RoomOccupancy        PolicyType = "roomOccupancy"
+	RoomOccupancy PolicyType = "roomOccupancy"
+	// FixedBuffer is an implemented policy in maestro autoscaler,
+	// it uses a fixed amount of ready rooms to calculate the desired number of rooms in a scheduler.
+	FixedBuffer          PolicyType = "fixedBuffer"
 	DefaultDownThreshold float32    = 0.99
 )
 
@@ -70,9 +73,9 @@ func NewAutoscaling(enabled bool, min, max, cooldown int, policy Policy) (*Autos
 // Policy represents the autoscaling policy configuration.
 type Policy struct {
 	// Type indicates the autoscaling policy type.
-	Type PolicyType `validate:"oneof=roomOccupancy"`
+	Type PolicyType `validate:"oneof=roomOccupancy fixedBuffer"`
 	// Parameters indicates the autoscaling policy parameters.
-	Parameters PolicyParameters
+	Parameters PolicyParameters `validate:"required"`
 }
 
 // PolicyParameters represents the autoscaling policy parameters, its fields validations will
@@ -80,7 +83,10 @@ type Policy struct {
 type PolicyParameters struct {
 	// RoomOccupancy represents the parameters for RoomOccupancy policy type, it must be provided if Policy Type is RoomOccupancy.
 	// +optional
-	RoomOccupancy *RoomOccupancyParams `validate:"required_for_room_occupancy=Type"`
+	RoomOccupancy *RoomOccupancyParams
+	// ReadyAmount represents an integer of the amount of rooms that a scheduler should maintain at ready state at all times, it must be provided if Policy Type is Fixed.
+	// +optional
+	FixedBufferAmount *int
 }
 
 // RoomOccupancyParams represents the parameters accepted by rooms occupancy autoscaling properties.

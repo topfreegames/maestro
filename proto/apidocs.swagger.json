@@ -1707,6 +1707,11 @@
         "roomOccupancy": {
           "$ref": "#/definitions/v1RoomOccupancy",
           "title": "RoomOccupancy is the policy parameters to execute rooms occupancy policy"
+        },
+        "fixedBufferAmount": {
+          "type": "integer",
+          "format": "int32",
+          "title": "FixedBufferAmount is the fixed number of rooms to maintain on top of occupied rooms"
         }
       },
       "title": "PolicyParameters object representation"
