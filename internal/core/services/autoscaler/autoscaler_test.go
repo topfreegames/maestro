@@ -647,7 +647,3 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 		})
 	})
 }
-
-func intPtr(i int) *int {
-	return &i
-}

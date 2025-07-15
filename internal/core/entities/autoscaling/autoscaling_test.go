@@ -41,7 +41,10 @@ func TestNewAutoscaling(t *testing.T) {
 	}
 
 	// Register struct-level validation for Policy
-	RegisterPolicyValidation(validations.Validate)
+	err = RegisterPolicyValidation(validations.Validate)
+	if err != nil {
+		t.Errorf("unexpected error registering policy validation: %v", err)
+	}
 
 	translator := validations.GetDefaultTranslator()
 
@@ -55,7 +58,7 @@ func TestNewAutoscaling(t *testing.T) {
 		},
 	}
 
-	validFixedBufferAmountPolicy := Policy{
+	validFixedBufferPolicy := Policy{
 		Type: FixedBuffer,
 		Parameters: PolicyParameters{
 			FixedBuffer: &FixedBufferParams{
@@ -128,17 +131,17 @@ func TestNewAutoscaling(t *testing.T) {
 		t.Run("fails when try to create autoscaling with invalid fixedBuffer Policy", func(t *testing.T) {
 			_, err := NewAutoscaling(true, 1, 10, 10, Policy{Type: "fixedBuffer", Parameters: PolicyParameters{}})
 			validationErrs := err.(validator.ValidationErrors)
-			assert.Equal(t, "FixedBufferAmount must not be nil for FixedBuffer policy type", validationErrs[0].Translate(translator))
+			assert.Equal(t, "FixedBuffer must not be nil for FixedBuffer policy type", validationErrs[0].Translate(translator))
 
 			zeroValue := 0
 			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "fixedBuffer", Parameters: PolicyParameters{FixedBuffer: &FixedBufferParams{Amount: zeroValue}}})
 			validationErrs = err.(validator.ValidationErrors)
-			assert.Equal(t, "FixedBufferAmount must be greater than 0", validationErrs[0].Translate(translator))
+			assert.Equal(t, "Amount must be greater than 0", validationErrs[0].Translate(translator))
 
 			negativeValue := -1
 			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "fixedBuffer", Parameters: PolicyParameters{FixedBuffer: &FixedBufferParams{Amount: negativeValue}}})
 			validationErrs = err.(validator.ValidationErrors)
-			assert.Equal(t, "FixedBufferAmount must be greater than 0", validationErrs[0].Translate(translator))
+			assert.Equal(t, "Amount must be greater than 0", validationErrs[0].Translate(translator))
 		})
 	})
 
@@ -154,14 +157,14 @@ func TestNewAutoscaling(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
-		t.Run("success when try to create valid autoscaling with fixedBufferAmount type", func(t *testing.T) {
-			_, err := NewAutoscaling(true, 10, -1, 0, validFixedBufferAmountPolicy)
+		t.Run("success when try to create valid autoscaling with fixedBuffer type", func(t *testing.T) {
+			_, err := NewAutoscaling(true, 10, -1, 0, validFixedBufferPolicy)
 			assert.NoError(t, err)
 
-			_, err = NewAutoscaling(false, 1, 1, 10, validFixedBufferAmountPolicy)
+			_, err = NewAutoscaling(false, 1, 1, 10, validFixedBufferPolicy)
 			assert.NoError(t, err)
 
-			_, err = NewAutoscaling(false, 50, 100, 100, validFixedBufferAmountPolicy)
+			_, err = NewAutoscaling(false, 50, 100, 100, validFixedBufferPolicy)
 			assert.NoError(t, err)
 		})
 	})
