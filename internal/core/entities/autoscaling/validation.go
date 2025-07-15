@@ -43,13 +43,8 @@ func policyStructLevelValidation(sl validator.StructLevel) {
 			sl.ReportError(nil, "RoomOccupancy", "RoomOccupancy", "required_for_room_occupancy", "")
 		}
 	case FixedBuffer:
-		if policy.Parameters.FixedBufferAmount == nil {
-			sl.ReportError(nil, "FixedBufferAmount", "FixedBufferAmount", "required_for_fixed_buffer_amount", "")
-		} else {
-			value := *policy.Parameters.FixedBufferAmount
-			if value <= 0 {
-				sl.ReportError(nil, "FixedBufferAmount", "FixedBufferAmount", "gt", "0")
-			}
+		if policy.Parameters.FixedBuffer == nil {
+			sl.ReportError(nil, "FixedBuffer", "FixedBuffer", "required_for_fixed_buffer", "")
 		}
 	}
 }

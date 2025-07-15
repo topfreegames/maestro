@@ -52,7 +52,7 @@ func RegisterValidations() error {
 
 	// Register autoscaling validation translations
 	addTranslation(Validate, "required_for_room_occupancy", "RoomOccupancy must not be nil for RoomOccupancy policy type")
-	addTranslation(Validate, "required_for_fixed_buffer_amount", "FixedBufferAmount must not be nil for FixedBuffer policy type")
+	addTranslation(Validate, "required_for_fixed_buffer", "FixedBuffer must not be nil for FixedBuffer policy type")
 
 	err := Validate.RegisterValidation("semantic_version", semanticValidate)
 	if err != nil {
@@ -109,8 +109,8 @@ func RegisterAutoscalingValidations() error {
 	Validate.RegisterStructValidation(policyStructLevelValidation, struct {
 		Type       string
 		Parameters struct {
-			RoomOccupancy     interface{}
-			FixedBufferAmount *int
+			RoomOccupancy interface{}
+			FixedBuffer   interface{}
 		}
 	}{})
 	return nil
@@ -149,37 +149,11 @@ func policyStructLevelValidation(sl validator.StructLevel) {
 			sl.ReportError(roomOccupancyField.Interface(), "RoomOccupancy", "RoomOccupancy", "required_for_room_occupancy", "")
 		}
 	case "fixedBuffer":
-		fixedBufferAmountField := parametersField.FieldByName("FixedBufferAmount")
-		if fixedBufferAmountField.IsNil() {
-			sl.ReportError(fixedBufferAmountField.Interface(), "FixedBufferAmount", "FixedBufferAmount", "required_for_fixed_buffer_amount", "")
-		} else {
-			value := fixedBufferAmountField.Elem().Int()
-			if value <= 0 {
-				sl.ReportError(fixedBufferAmountField.Interface(), "FixedBufferAmount", "FixedBufferAmount", "gt", "0")
-			}
+		fixedBufferField := parametersField.FieldByName("FixedBuffer")
+		if fixedBufferField.IsNil() {
+			sl.ReportError(fixedBufferField.Interface(), "FixedBuffer", "FixedBuffer", "required_for_fixed_buffer", "")
 		}
 	}
-}
-
-// ValidateAutoscalingPolicy is a standalone function that can be used to validate autoscaling policy
-// without creating import cycles
-func ValidateAutoscalingPolicy(policyType string, roomOccupancy interface{}, fixedBufferAmount *int) error {
-	switch policyType {
-	case "roomOccupancy":
-		if roomOccupancy == nil {
-			return errors.New("RoomOccupancy is required when policy type is roomOccupancy")
-		}
-	case "fixedBuffer":
-		if fixedBufferAmount == nil {
-			return errors.New("FixedBufferAmount is required when policy type is fixedBuffer")
-		}
-		if *fixedBufferAmount <= 0 {
-			return errors.New("FixedBufferAmount must be greater than 0")
-		}
-	default:
-		return errors.New("invalid policy type")
-	}
-	return nil
 }
 
 func GetDefaultTranslator() ut.Translator {

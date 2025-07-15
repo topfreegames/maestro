@@ -71,14 +71,14 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 	}, nil
 }
 
-// CalculateDesiredNumberOfRooms returns the desired number of rooms: occupied rooms + fixed amount (ReadyAmount).
+// CalculateDesiredNumberOfRooms returns the desired number of rooms: occupied rooms + fixed amount (Amount).
 func (p *Policy) CalculateDesiredNumberOfRooms(policyParameters autoscaling.PolicyParameters, currentState policies.CurrentState) (int, error) {
 	currentOccupiedRooms, ok := currentState[OccupiedRoomsKey].(int)
 	if !ok {
 		return -1, fmt.Errorf("could not get occupied rooms from the currentState: %v", currentState)
 	}
 
-	fixedAmount := *policyParameters.FixedBufferAmount
+	fixedAmount := policyParameters.FixedBuffer.Amount
 	// Desired = occupied + fixed amount
 	desiredNumberOfRooms := currentOccupiedRooms + int(fixedAmount)
 

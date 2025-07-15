@@ -1328,6 +1328,17 @@
       },
       "title": "Delete scheduler payload"
     },
+    "v1FixedBuffer": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "format": "int32",
+          "title": "Amount is the fixed number of rooms to maintain on top of occupied rooms"
+        }
+      },
+      "title": "FixedBuffer optional policy parameter"
+    },
     "v1ForwardPlayerEventResponse": {
       "type": "object",
       "properties": {
@@ -1708,9 +1719,8 @@
           "$ref": "#/definitions/v1RoomOccupancy",
           "title": "RoomOccupancy is the policy parameters to execute rooms occupancy policy"
         },
-        "fixedBufferAmount": {
-          "type": "integer",
-          "format": "int32",
+        "fixedBuffer": {
+          "$ref": "#/definitions/v1FixedBuffer",
           "title": "FixedBufferAmount is the fixed number of rooms to maintain on top of occupied rooms"
         }
       },

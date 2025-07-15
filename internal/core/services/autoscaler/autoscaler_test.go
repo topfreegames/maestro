@@ -351,7 +351,9 @@ func TestCalculateDesiredNumberOfRooms_FixedBufferAmount(t *testing.T) {
 			Policy: autoscaling.Policy{
 				Type: policyType,
 				Parameters: autoscaling.PolicyParameters{
-					FixedBufferAmount: intPtr(5),
+					FixedBuffer: &autoscaling.FixedBufferParams{
+						Amount: 5,
+					},
 				},
 			},
 		},
@@ -422,7 +424,9 @@ func TestCalculateDesiredNumberOfRooms_FixedBufferAmount(t *testing.T) {
 					Policy: autoscaling.Policy{
 						Type: policyType,
 						Parameters: autoscaling.PolicyParameters{
-							FixedBufferAmount: intPtr(100),
+							FixedBuffer: &autoscaling.FixedBufferParams{
+								Amount: 100,
+							},
 						},
 					},
 				},
@@ -509,7 +513,9 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 			Policy: autoscaling.Policy{
 				Type: policyType,
 				Parameters: autoscaling.PolicyParameters{
-					FixedBufferAmount: intPtr(5),
+					FixedBuffer: &autoscaling.FixedBufferParams{
+						Amount: 5,
+					},
 				},
 			},
 		},

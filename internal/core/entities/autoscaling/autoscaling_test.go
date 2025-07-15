@@ -58,7 +58,9 @@ func TestNewAutoscaling(t *testing.T) {
 	validFixedBufferAmountPolicy := Policy{
 		Type: FixedBuffer,
 		Parameters: PolicyParameters{
-			FixedBufferAmount: func() *int { v := 5; return &v }(),
+			FixedBuffer: &FixedBufferParams{
+				Amount: 5,
+			},
 		},
 	}
 
@@ -129,12 +131,12 @@ func TestNewAutoscaling(t *testing.T) {
 			assert.Equal(t, "FixedBufferAmount must not be nil for FixedBuffer policy type", validationErrs[0].Translate(translator))
 
 			zeroValue := 0
-			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "fixedBuffer", Parameters: PolicyParameters{FixedBufferAmount: &zeroValue}})
+			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "fixedBuffer", Parameters: PolicyParameters{FixedBuffer: &FixedBufferParams{Amount: zeroValue}}})
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Equal(t, "FixedBufferAmount must be greater than 0", validationErrs[0].Translate(translator))
 
 			negativeValue := -1
-			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "fixedBuffer", Parameters: PolicyParameters{FixedBufferAmount: &negativeValue}})
+			_, err = NewAutoscaling(true, 1, 10, 10, Policy{Type: "fixedBuffer", Parameters: PolicyParameters{FixedBuffer: &FixedBufferParams{Amount: negativeValue}}})
 			validationErrs = err.(validator.ValidationErrors)
 			assert.Equal(t, "FixedBufferAmount must be greater than 0", validationErrs[0].Translate(translator))
 		})

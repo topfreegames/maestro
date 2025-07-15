@@ -236,7 +236,8 @@ autoscaling:
   policy:
     type: fixedBuffer
     parameters:
-      fixedBufferAmount: 50
+      fixedBuffer:
+        amount: 50
         </pre>
     </div>
 </details>
@@ -254,7 +255,37 @@ autoscaling:
     "policy": {
       "type": "fixedBuffer",
       "parameters": {
-        "fixedBufferAmount": 50
+        "fixedBuffer": {
+          "amount": 50
+        }
+      }
+    }
+  }
+}
+        </pre>
+    </div>
+</details>
+
+[comment]: <> (Coexisting with RoomOccupancy)
+<details>
+    <summary>Coexisting with RoomOccupancy</summary>
+    <div class="highlight highlight-source-yaml position-relative overflow-auto">
+        <pre>
+{
+  "autoscaling": {
+    "enabled": true,
+    "min": 1,
+    "max": 100,
+    "policy": {
+      "type": "fixedBuffer",
+      "parameters": {
+        "fixedBuffer": {
+          "amount": 50
+        },
+        "roomOccupancy": {
+          "readyTarget": 0.2,
+          "downThreshold": 0.9
+        }
       }
     }
   }

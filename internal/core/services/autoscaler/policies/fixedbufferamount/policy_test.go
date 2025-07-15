@@ -38,7 +38,7 @@ func TestCalculateDesiredNumberOfRooms_FixedBufferAmount(t *testing.T) {
 	policy := &fixedbufferamount.Policy{}
 
 	t.Run("returns desired = occupied + fixed amount", func(t *testing.T) {
-		params := autoscaling.PolicyParameters{FixedBufferAmount: intPtr(10)}
+		params := autoscaling.PolicyParameters{FixedBuffer: &autoscaling.FixedBufferParams{Amount: 10}}
 		state := policies.CurrentState{
 			fixedbufferamount.OccupiedRoomsKey: 5,
 		}
@@ -48,7 +48,7 @@ func TestCalculateDesiredNumberOfRooms_FixedBufferAmount(t *testing.T) {
 	})
 
 	t.Run("returns error if occupied rooms missing", func(t *testing.T) {
-		params := autoscaling.PolicyParameters{FixedBufferAmount: intPtr(10)}
+		params := autoscaling.PolicyParameters{FixedBuffer: &autoscaling.FixedBufferParams{Amount: 10}}
 		state := policies.CurrentState{}
 		_, err := policy.CalculateDesiredNumberOfRooms(params, state)
 		assert.Error(t, err)
@@ -59,7 +59,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 	policy := &fixedbufferamount.Policy{}
 
 	t.Run("can downscale if current total rooms > desired", func(t *testing.T) {
-		params := autoscaling.PolicyParameters{FixedBufferAmount: intPtr(10)}
+		params := autoscaling.PolicyParameters{FixedBuffer: &autoscaling.FixedBufferParams{Amount: 10}}
 		state := policies.CurrentState{
 			fixedbufferamount.OccupiedRoomsKey: 5,
 			fixedbufferamount.TotalRoomsKey:    20,
@@ -70,7 +70,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 	})
 
 	t.Run("cannot downscale if current total rooms == desired", func(t *testing.T) {
-		params := autoscaling.PolicyParameters{FixedBufferAmount: intPtr(10)}
+		params := autoscaling.PolicyParameters{FixedBuffer: &autoscaling.FixedBufferParams{Amount: 10}}
 		state := policies.CurrentState{
 			fixedbufferamount.OccupiedRoomsKey: 5,
 			fixedbufferamount.TotalRoomsKey:    15,
@@ -81,7 +81,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 	})
 
 	t.Run("cannot downscale if current total rooms < desired", func(t *testing.T) {
-		params := autoscaling.PolicyParameters{FixedBufferAmount: intPtr(10)}
+		params := autoscaling.PolicyParameters{FixedBuffer: &autoscaling.FixedBufferParams{Amount: 10}}
 		state := policies.CurrentState{
 			fixedbufferamount.OccupiedRoomsKey: 5,
 			fixedbufferamount.TotalRoomsKey:    10,
@@ -92,7 +92,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 	})
 
 	t.Run("returns error if total rooms missing", func(t *testing.T) {
-		params := autoscaling.PolicyParameters{FixedBufferAmount: intPtr(10)}
+		params := autoscaling.PolicyParameters{FixedBuffer: &autoscaling.FixedBufferParams{Amount: 10}}
 		state := policies.CurrentState{
 			fixedbufferamount.OccupiedRoomsKey: 5,
 		}
@@ -100,5 +100,3 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
-
-func intPtr(i int) *int { return &i }

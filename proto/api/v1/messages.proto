@@ -298,7 +298,13 @@ message PolicyParameters {
   // RoomOccupancy is the policy parameters to execute rooms occupancy policy
   optional RoomOccupancy room_occupancy = 1;
   // FixedBufferAmount is the fixed number of rooms to maintain on top of occupied rooms
-  optional int32 fixed_buffer_amount = 2;
+  optional FixedBuffer fixed_buffer = 2;
+}
+
+// FixedBuffer optional policy parameter
+message FixedBuffer {
+  // Amount is the fixed number of rooms to maintain on top of occupied rooms
+  optional int32 amount = 1;
 }
 
 // RoomOccupancy optional policy parameter

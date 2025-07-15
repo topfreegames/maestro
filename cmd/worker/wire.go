@@ -53,6 +53,7 @@ func initializeWorker(c config.Config, builder *worker.WorkerBuilder) (*workerss
 		service.NewCreateSchedulerVersionConfig,
 		service.NewHealthControllerConfig,
 		service.NewOperationRoomsAddConfig,
+		service.NewOperationRoomsRemoveConfig,
 		service.NewRoomManagerConfig,
 		service.NewRoomManager,
 		service.NewOperationManagerConfig,

@@ -84,9 +84,9 @@ type PolicyParameters struct {
 	// RoomOccupancy represents the parameters for RoomOccupancy policy type, it must be provided if Policy Type is RoomOccupancy.
 	// +optional
 	RoomOccupancy *RoomOccupancyParams
-	// ReadyAmount represents an integer of the amount of rooms that a scheduler should maintain at ready state at all times, it must be provided if Policy Type is Fixed.
+	// Amount represents an integer of the amount of rooms that a scheduler should maintain at ready state at all times, it must be provided if Policy Type is Fixed.
 	// +optional
-	FixedBufferAmount *int
+	FixedBuffer *FixedBufferParams
 }
 
 // RoomOccupancyParams represents the parameters accepted by rooms occupancy autoscaling properties.
@@ -95,4 +95,10 @@ type RoomOccupancyParams struct {
 	ReadyTarget float64 `validate:"gt=0,lt=1"`
 	// DownThreshold indicates the percentage of occupied rooms a scheduler should have to trigger a downscale event.
 	DownThreshold float64 `validate:"gt=0,lt=1"`
+}
+
+// FixedBufferParams represents the parameters accepted by fixed buffer autoscaling properties.
+type FixedBufferParams struct {
+	// Amount indicates the amount of rooms that a scheduler should maintain at ready state at all times.
+	Amount int `validate:"gt=0"`
 }
