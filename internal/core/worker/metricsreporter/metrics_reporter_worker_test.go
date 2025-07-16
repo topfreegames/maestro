@@ -91,6 +91,8 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 		time.Sleep(time.Second * 2)
 		assert.True(t, worker.IsRunning())
 		cancelFunc()
+		// Wait for the worker to properly stop
+		time.Sleep(time.Millisecond * 100)
 		assert.False(t, worker.IsRunning())
 
 		// assert metrics were collected
@@ -167,6 +169,8 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 		assert.True(t, worker.IsRunning())
 
 		cancelFunc()
+		// Wait for the worker to properly stop
+		time.Sleep(time.Millisecond * 100)
 		assert.False(t, worker.IsRunning())
 
 		// assert metrics were set to 0 for room and instance metrics (due to errors)
@@ -227,4 +231,5 @@ func resetMetricsCollectors() {
 	runningMatchesGaugeMetric.Reset()
 	schedulerMaxMatchesGaugeMetric.Reset()
 	schedulerAutoscalePolicyReadyTargetGaugeMetric.Reset()
+	schedulerAutoscalePolicyFixedBufferGaugeMetric.Reset()
 }
