@@ -238,7 +238,7 @@ func (k *kubernetes) MitigateDisruption(
 		// If current PDB already matches the desired state regarding MinAvailable and MaxUnavailable being nil,
 		// no update is needed.
 		if currentPdbMinAvailable == desiredMinAvailable && pdb.Spec.MaxUnavailable == nil {
-			k.logger.Info("PDB already in desired state", zap.String(logs.LogFieldSchedulerName, scheduler.Name))
+			k.logger.Debug("PDB already in desired state", zap.String(logs.LogFieldSchedulerName, scheduler.Name))
 			return nil // No update needed, success.
 		}
 
