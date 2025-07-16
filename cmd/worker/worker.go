@@ -74,7 +74,7 @@ func runWorker() {
 	}
 
 	go func() {
-		zap.L().Info("starting operation cancellation request watcher")
+		zap.L().Debug("starting operation cancellation request watcher")
 		err = operationExecutionWorkerManager.WorkerOptions.OperationManager.WatchOperationCancellationRequests(ctx)
 		if err != nil {
 			zap.L().With(zap.Error(err)).Info("operation cancellation watcher stopped with error")

@@ -419,7 +419,7 @@ func GetDesiredNumberOfRooms(
 		}
 		// If we have room to grow, we should grow to the upper limit. If not, set the desired calculated
 		if len(availableRooms) < upperLimitOfRooms {
-			logger.Info("recalculated desired number of rooms based on rolling update", zap.Int("autoscale", desiredNumber), zap.Int("upperLimit", upperLimitOfRooms), zap.Int("maxSurge", maxSurgeAmount))
+			logger.Debug("recalculated desired number of rooms based on rolling update", zap.Int("autoscale", desiredNumber), zap.Int("upperLimit", upperLimitOfRooms), zap.Int("maxSurge", maxSurgeAmount))
 			desiredNumber = upperLimitOfRooms
 		}
 	}
@@ -431,7 +431,7 @@ func GetDesiredNumberOfRooms(
 			if !canDownscale {
 				willDownscale = false
 				desiredNumber = len(availableRooms)
-				logger.Info("scheduler can't downscale, keeping the current number of rooms", zap.String("reason", msg))
+				logger.Debug("scheduler can't downscale, keeping the current number of rooms", zap.String("reason", msg))
 			}
 		}
 		if willDownscale {
@@ -442,13 +442,7 @@ func GetDesiredNumberOfRooms(
 		}
 	}
 
-	logger.Info(
-		"Finished getting desired number of rooms",
-		zap.Int("desired", desiredNumber),
-		zap.Int("current", len(availableRooms)),
-		zap.Bool("isRollingUpdating", isRollingUpdating),
-	)
-
+	logger.Sugar().Infof("[GetDesiredNumberOfRooms] desired %d, current %d, isRollingUpdating %t", desiredNumber, len(availableRooms), isRollingUpdating)
 	return
 }
 
@@ -514,14 +508,14 @@ func IsRollingUpdating(
 
 		if schedulerCache[room.Version].IsMajorVersion(scheduler) {
 			logger.Info(
-				"system has rooms with a major version of difference, rolling update",
+				"Rolling update detected, system has rooms with a major version of difference",
 				zap.String("activeScheduler", scheduler.Spec.Version),
 				zap.String("nonActiveSchedulerFound", room.Version),
 			)
 			return true
 		}
 	}
-	logger.Info("system only has rooms in previous minor scheduler versions, skipping rolling update")
+	logger.Debug("No rolling update detected, system only has rooms in previous minor scheduler versions")
 	return false
 }
 
