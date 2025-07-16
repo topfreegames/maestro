@@ -170,8 +170,15 @@ func (w *MetricsReporterWorker) reportSchedulerAutoscale() {
 	if w.scheduler.Autoscaling == nil {
 		return
 	}
-	if w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy != nil {
-		reportSchedulerPolicyReadyTarget(w.scheduler.Game, w.scheduler.Name, w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy.ReadyTarget)
+	switch w.scheduler.Autoscaling.Policy.Type {
+	case "roomOccupancy":
+		if w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy != nil {
+			reportSchedulerPolicyReadyTarget(w.scheduler.Game, w.scheduler.Name, w.scheduler.Autoscaling.Policy.Parameters.RoomOccupancy.ReadyTarget)
+		}
+	case "fixedBuffer":
+		if w.scheduler.Autoscaling.Policy.Parameters.FixedBuffer != nil {
+			reportSchedulerPolicyFixedBuffer(w.scheduler.Game, w.scheduler.Name, float64(w.scheduler.Autoscaling.Policy.Parameters.FixedBuffer.Amount))
+		}
 	}
 }
 

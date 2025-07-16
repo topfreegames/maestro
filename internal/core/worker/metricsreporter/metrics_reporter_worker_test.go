@@ -227,4 +227,5 @@ func resetMetricsCollectors() {
 	runningMatchesGaugeMetric.Reset()
 	schedulerMaxMatchesGaugeMetric.Reset()
 	schedulerAutoscalePolicyReadyTargetGaugeMetric.Reset()
+	schedulerAutoscalePolicyFixedBufferGaugeMetric.Reset()
 }
