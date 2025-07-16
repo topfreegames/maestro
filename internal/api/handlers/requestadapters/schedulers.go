@@ -574,6 +574,17 @@ func getAutoscalingPolicy(autoscalingPolicy autoscaling.Policy) *api.Autoscaling
 func getPolicyParameters(parameters autoscaling.PolicyParameters) *api.PolicyParameters {
 	return &api.PolicyParameters{
 		RoomOccupancy: getRoomOccupancy(parameters.RoomOccupancy),
+		FixedBuffer:   getFixedBuffer(parameters.FixedBuffer),
+	}
+}
+
+func getFixedBuffer(fixedBuffer *autoscaling.FixedBufferParams) *api.FixedBuffer {
+	if fixedBuffer == nil {
+		return nil
+	}
+	fixedBufferAmount := int32(fixedBuffer.Amount)
+	return &api.FixedBuffer{
+		Amount: &fixedBufferAmount,
 	}
 }
 
