@@ -161,25 +161,28 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 			err := worker.Start(ctx)
 			assert.NoError(t, err)
 		}()
-		time.Sleep(time.Second * 2)
+
+		// Wait for the worker to start and run at least 3 cycles (500ms * 3 = 1500ms)
+		time.Sleep(time.Millisecond * 1600) // Wait for 3 ticks (1500ms) plus some buffer
 		assert.True(t, worker.IsRunning())
+
 		cancelFunc()
 		assert.False(t, worker.IsRunning())
 
-		// assert metrics were not collected for room and instance metrics (due to errors)
+		// assert metrics were set to 0 for room and instance metrics (due to errors)
 		// but scheduler metrics may still be collected since they don't depend on storage
-		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomReadyGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomPendingGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomTerminatingGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomOccupiedGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomUnreadyGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(gameRoomErrorGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(gameRoomReadyGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(gameRoomPendingGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(gameRoomTerminatingGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(gameRoomOccupiedGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(gameRoomUnreadyGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(gameRoomErrorGaugeMetric))
 
-		assert.Equal(t, 0, testutil.CollectAndCount(instanceReadyGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(instancePendingGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(instanceUnknownGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(instanceTerminatingGaugeMetric))
-		assert.Equal(t, 0, testutil.CollectAndCount(instanceErrorGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(instanceReadyGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(instancePendingGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(instanceUnknownGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(instanceTerminatingGaugeMetric))
+		assert.Equal(t, float64(0), testutil.ToFloat64(instanceErrorGaugeMetric))
 	})
 }
 

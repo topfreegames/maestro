@@ -117,6 +117,12 @@ func (w *MetricsReporterWorker) reportInstanceMetrics() {
 	instances, err := w.instanceStorage.GetAllInstances(w.workerContext, w.scheduler.Name)
 	if err != nil {
 		w.logger.Error("Error getting pods", zap.Error(err))
+		// Set all instance metrics to 0 on error
+		reportInstanceReadyNumber(w.scheduler.Game, w.scheduler.Name, 0)
+		reportInstancePendingNumber(w.scheduler.Game, w.scheduler.Name, 0)
+		reportInstanceErrorNumber(w.scheduler.Game, w.scheduler.Name, 0)
+		reportInstanceUnknownNumber(w.scheduler.Game, w.scheduler.Name, 0)
+		reportInstanceTerminatingNumber(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 	readyInstances, pendingInstances, errorInstances, unknownInstances, terminatingInstances := 0, 0, 0, 0, 0
@@ -180,6 +186,7 @@ func (w *MetricsReporterWorker) reportPendingRooms() {
 	pendingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusPending)
 	if err != nil {
 		w.logger.Error("Error getting pending pods", zap.Error(err))
+		reportGameRoomPendingNumber(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 	reportGameRoomPendingNumber(w.scheduler.Game, w.scheduler.Name, pendingRooms)
@@ -189,6 +196,7 @@ func (w *MetricsReporterWorker) reportReadyRooms() {
 	readyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusReady)
 	if err != nil {
 		w.logger.Error("Error getting ready pods", zap.Error(err))
+		reportGameRoomReadyNumber(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 	reportGameRoomReadyNumber(w.scheduler.Game, w.scheduler.Name, readyRooms)
@@ -198,6 +206,7 @@ func (w *MetricsReporterWorker) reportOccupiedRooms() {
 	occupiedRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusOccupied)
 	if err != nil {
 		w.logger.Error("Error getting occupied pods", zap.Error(err))
+		reportGameRoomOccupiedNumber(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 	reportGameRoomOccupiedNumber(w.scheduler.Game, w.scheduler.Name, occupiedRooms)
@@ -207,6 +216,7 @@ func (w *MetricsReporterWorker) reportTerminatingRooms() {
 	terminatingRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusTerminating)
 	if err != nil {
 		w.logger.Error("Error getting terminating pods", zap.Error(err))
+		reportGameRoomTerminatingNumber(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 	reportGameRoomTerminatingNumber(w.scheduler.Game, w.scheduler.Name, terminatingRooms)
@@ -216,6 +226,7 @@ func (w *MetricsReporterWorker) reportErrorRooms() {
 	errorRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusError)
 	if err != nil {
 		w.logger.Error("Error getting error pods", zap.Error(err))
+		reportGameRoomErrorNumber(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 	reportGameRoomErrorNumber(w.scheduler.Game, w.scheduler.Name, errorRooms)
@@ -225,6 +236,7 @@ func (w *MetricsReporterWorker) reportUnreadyRooms() {
 	unreadyRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusUnready)
 	if err != nil {
 		w.logger.Error("Error getting unready pods", zap.Error(err))
+		reportGameRoomUnreadyNumber(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 	reportGameRoomUnreadyNumber(w.scheduler.Game, w.scheduler.Name, unreadyRooms)
@@ -234,6 +246,7 @@ func (w *MetricsReporterWorker) reportActiveRooms() {
 	activeRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusActive)
 	if err != nil {
 		w.logger.Error("Error getting active pods", zap.Error(err))
+		reportGameRoomActiveNumber(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 
@@ -244,6 +257,7 @@ func (w *MetricsReporterWorker) reportTotalRunningMatches() {
 	runningMatches, err := w.roomStorage.GetRunningMatchesCount(w.workerContext, w.scheduler.Name)
 	if err != nil {
 		w.logger.Error("Error getting running matches", zap.Error(err))
+		reportTotalRunningMatches(w.scheduler.Game, w.scheduler.Name, 0)
 		return
 	}
 
