@@ -4,7 +4,6 @@ services:
     build:
       context: ../../..
       dockerfile: ./e2e/framework/maestro/Dockerfile
-      no_cache: true
     environment:
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
@@ -31,7 +30,6 @@ services:
     build:
       context: ../../..
       dockerfile: ./e2e/framework/maestro/Dockerfile
-      no_cache: true
     environment:
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
       - MAESTRO_ADAPTERS_INSTANCESTORAGE_REDIS_URL=redis://redis:6379/0
@@ -60,7 +58,6 @@ services:
     build:
       context: ../../..
       dockerfile: ./e2e/framework/maestro/Dockerfile
-      no_cache: true
     environment:
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
       - MAESTRO_ADAPTERS_ROOMSTORAGE_REDIS_URL=redis://redis:6379/0
@@ -82,7 +79,6 @@ services:
     build:
       context: ../../..
       dockerfile: ./e2e/framework/maestro/Dockerfile
-      no_cache: true
     environment:
       - MAESTRO_ADAPTERS_SCHEDULERSTORAGE_POSTGRES_URL=postgres://maestro:maestro@postgres:5432/maestro?sslmode=disable
       - MAESTRO_ADAPTERS_OPERATIONFLOW_REDIS_URL=redis://redis:6379/0

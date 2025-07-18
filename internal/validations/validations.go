@@ -24,11 +24,16 @@ package validations
 
 import (
 	"errors"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	enTranslations "github.com/go-playground/validator/v10/translations/en"
-	"github.com/topfreegames/maestro/internal/core/validations"
+	"github.com/topfreegames/maestro/internal/core/entities/forwarder"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -44,6 +49,10 @@ func RegisterValidations() error {
 	uni = ut.New(english, english)
 	translator := GetDefaultTranslator()
 	_ = enTranslations.RegisterDefaultTranslations(Validate, translator)
+
+	// Register autoscaling validation translations
+	addTranslation(Validate, "required_for_room_occupancy", "RoomOccupancy must not be nil for RoomOccupancy policy type")
+	addTranslation(Validate, "required_for_fixed_buffer", "FixedBuffer must not be nil for FixedBuffer policy type")
 
 	err := Validate.RegisterValidation("semantic_version", semanticValidate)
 	if err != nil {
@@ -69,12 +78,6 @@ func RegisterValidations() error {
 	}
 	addTranslation(Validate, "custom_lower_than", "{0} must be a number lower than {1}")
 
-	err = Validate.RegisterValidation("required_for_room_occupancy", roomOccupancyParameterValidate)
-	if err != nil {
-		return errors.New("could not register roomOccupancyParameterValidate")
-	}
-	addTranslation(Validate, "required_for_room_occupancy", "{0} must not be nil for RoomOccupancy policy type")
-
 	err = Validate.RegisterValidation("max_surge", maxSurgeValidate)
 	if err != nil {
 		return errors.New("could not register maxSurgeValidate")
@@ -99,17 +102,71 @@ func RegisterValidations() error {
 	return nil
 }
 
+// RegisterAutoscalingValidations registers autoscaling-specific validations
+func RegisterAutoscalingValidations() error {
+	// Register struct-level validation for Policy using a generic approach
+	// This will be called by the autoscaling package
+	Validate.RegisterStructValidation(policyStructLevelValidation, struct {
+		Type       string
+		Parameters struct {
+			RoomOccupancy interface{}
+			FixedBuffer   interface{}
+		}
+	}{})
+	return nil
+}
+
+// policyStructLevelValidation performs struct-level validation for Policy
+func policyStructLevelValidation(sl validator.StructLevel) {
+	policy := sl.Current().Interface()
+	policyValue := reflect.ValueOf(policy)
+	if policyValue.Kind() == reflect.Ptr {
+		policyValue = policyValue.Elem()
+	}
+
+	typeField := policyValue.FieldByName("Type")
+	if !typeField.IsValid() {
+		sl.ReportError(nil, "Type", "Type", "type_required", "")
+		return
+	}
+
+	policyType := typeField.String()
+	if policyType != "roomOccupancy" && policyType != "fixedBuffer" {
+		sl.ReportError(typeField.Interface(), "Type", "Type", "oneof", "roomOccupancy fixedBuffer")
+		return
+	}
+
+	parametersField := policyValue.FieldByName("Parameters")
+	if !parametersField.IsValid() {
+		sl.ReportError(nil, "Parameters", "Parameters", "invalid_parameters", "")
+		return
+	}
+
+	switch policyType {
+	case "roomOccupancy":
+		roomOccupancyField := parametersField.FieldByName("RoomOccupancy")
+		if roomOccupancyField.IsNil() {
+			sl.ReportError(roomOccupancyField.Interface(), "RoomOccupancy", "RoomOccupancy", "required_for_room_occupancy", "")
+		}
+	case "fixedBuffer":
+		fixedBufferField := parametersField.FieldByName("FixedBuffer")
+		if fixedBufferField.IsNil() {
+			sl.ReportError(fixedBufferField.Interface(), "FixedBuffer", "FixedBuffer", "required_for_fixed_buffer", "")
+		}
+	}
+}
+
 func GetDefaultTranslator() ut.Translator {
 	translator, _ := uni.GetTranslator("en")
 	return translator
 }
 
 func imagePullPolicyValidate(fl validator.FieldLevel) bool {
-	return validations.IsImagePullPolicySupported(fl.Field().String())
+	return IsImagePullPolicySupported(fl.Field().String())
 }
 
 func portsProtocolValidate(fl validator.FieldLevel) bool {
-	return validations.IsProtocolSupported(fl.Field().String())
+	return IsProtocolSupported(fl.Field().String())
 }
 
 func autoscalingMinMaxValidate(fl validator.FieldLevel) bool {
@@ -121,35 +178,23 @@ func autoscalingMinMaxValidate(fl validator.FieldLevel) bool {
 		return false
 	}
 
-	return validations.IsAutoscalingMinMaxValid(int(field.Int()), int(topField.Int()))
-}
-
-func roomOccupancyParameterValidate(fl validator.FieldLevel) bool {
-	field := fl.Field()
-	kind := field.Kind()
-
-	topField, topKind, _, ok := fl.GetStructFieldOK2()
-	if !ok || topKind != kind {
-		return false
-	}
-
-	return validations.RequiredIfTypeRoomOccupancy(field.IsNil(), topField.String())
+	return IsAutoscalingMinMaxValid(int(field.Int()), int(topField.Int()))
 }
 
 func maxSurgeValidate(fl validator.FieldLevel) bool {
-	return validations.IsMaxSurgeValid(fl.Field().String())
+	return IsMaxSurgeValid(fl.Field().String())
 }
 
 func semanticValidate(fl validator.FieldLevel) bool {
-	return validations.IsVersionValid(fl.Field().String())
+	return IsVersionValid(fl.Field().String())
 }
 
 func kubeResourceNameValidate(fl validator.FieldLevel) bool {
-	return validations.IsKubeResourceNameValid(fl.Field().String())
+	return IsKubeResourceNameValid(fl.Field().String())
 }
 
 func forwarderTypeValidate(fl validator.FieldLevel) bool {
-	return validations.IsForwarderTypeSupported(fl.Field().String())
+	return IsForwarderTypeSupported(fl.Field().String())
 }
 
 func addTranslation(validate *validator.Validate, tag string, errMessage string) {
@@ -169,4 +214,107 @@ func addTranslation(validate *validator.Validate, tag string, errMessage string)
 	}
 
 	_ = validate.RegisterTranslation(tag, GetDefaultTranslator(), registerFn, transFn)
+}
+
+// Validation helper functions (moved from core/validations to avoid import cycles)
+func IsAutoscalingMinMaxValid(min int, max int) bool {
+	if max >= 0 && min > max {
+		return false
+	}
+	if min <= 0 {
+		return false
+	}
+	if max < -1 {
+		return false
+	}
+	return true
+}
+
+// IsMaxSurgeValid check if MaxSurge is valid. A MaxSurge valid is a number greater than zero or a number greater than zero with suffix '%'
+func IsMaxSurgeValid(maxSurge string) bool {
+	if maxSurge == "" {
+		return false
+	}
+	minMaxSurge := 1
+	relativeSymbol := "%"
+
+	isRelative := strings.HasSuffix(maxSurge, relativeSymbol)
+	maxSurgeInt, err := strconv.Atoi(strings.TrimSuffix(maxSurge, relativeSymbol))
+	if err != nil {
+		return false
+	}
+
+	if !isRelative {
+		if minMaxSurge > maxSurgeInt {
+			return false
+		}
+	}
+	return true
+}
+
+// IsImagePullPolicySupported check if received policy is supported by maestro
+func IsImagePullPolicySupported(policy string) bool {
+	policies := []string{"Always", "Never", "IfNotPresent"}
+	for _, item := range policies {
+		if item == policy {
+			return true
+		}
+	}
+	return false
+}
+
+// IsProtocolSupported check if received protocol is supported by kubernetes
+func IsProtocolSupported(protocol string) bool {
+	protocols := []string{"tcp", "udp", "sctp"}
+	for _, item := range protocols {
+		if item == protocol {
+			return true
+		}
+	}
+	return false
+}
+
+// IsVersionValid check if version value is according to semantic definitions
+func IsVersionValid(version string) bool {
+	_, err := semver.NewVersion(version)
+	return err == nil
+}
+
+// IsKubeResourceNameValid check if name is valid for kubernetes resources (RFC 1123)
+// Since regexp does not support lookbehind, we test directly the last character before
+// matching the string name.
+func IsKubeResourceNameValid(name string) bool {
+	const (
+		minNameLength           = 1
+		maxNameLength           = 63
+		regexCanOnlyStartWith   = "^[a-z0-9]"
+		regexAcceptedCharacters = "[a-z0-9-]*$"
+		cannotEndWith           = "-"
+		regexValidMatch         = regexCanOnlyStartWith + regexAcceptedCharacters
+	)
+
+	if len(name) < minNameLength || len(name) > maxNameLength {
+		return false
+	}
+
+	if name[len(name)-1:] == cannotEndWith {
+		return false
+	}
+
+	matched, err := regexp.MatchString(regexValidMatch, name)
+	if err != nil || !matched {
+		return false
+	}
+	return true
+}
+
+// IsForwarderTypeSupported check if received forwarder type is supported by Maestro
+func IsForwarderTypeSupported(forwarderType string) bool {
+	types := []string{string(forwarder.TypeGrpc)}
+	for _, item := range types {
+		if item == forwarderType {
+			return true
+		}
+	}
+	return false
 }

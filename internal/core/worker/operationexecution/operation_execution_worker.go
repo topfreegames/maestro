@@ -245,7 +245,7 @@ func (w OperationExecutionWorker) executeOperationWithLease(operationContext con
 }
 
 func (w *OperationExecutionWorker) prepareExecutionAndLease(op *operation.Operation, def operations.Definition, loopLogger *zap.Logger) (operationContext context.Context, operationCancellationFunction context.CancelFunc, err error) {
-	loopLogger.Info("Starting operation")
+	loopLogger.Debug("Starting operation")
 
 	w.operationManager.AppendOperationEventToExecutionHistory(w.workerContext, op, "Starting operation")
 

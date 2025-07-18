@@ -111,6 +111,8 @@ autoscaling:
 Maestro has a set of predefined policy types that can be used to configure the autoscaling, each policy will implement
 a specific strategy for calculating the desired number of rooms and will have its configurable parameters.
 
+**Note:** Policy types are mutually exclusive. The parameters used will depend on the value of `autoscaling.policy.type`.
+
 ### Room Occupancy Policy
 The basic concept of this policy is to scale the scheduler up or down based on the actual room occupancy rate, by defining a "buffer" percentage
 of ready rooms that Maestro must keep. The desired number of rooms will be given by the following formula:
@@ -189,4 +191,125 @@ Below are some simulated examples of how the room occupancy policy will behave:
 |     5      |       5       |     0.1     |           6          |    Scale Up: +1     |
 |     1      |       1       |     0.3     |           2          |    Scale Up: +1     |
 |     2      |       2       |     0.9     |          20          |    Scale Up: +18    |
+
+### Fixed Buffer Amount Policy
+The Fixed Buffer Amount policy maintains a fixed number of rooms on top of the currently occupied rooms. This policy is useful when you want to ensure a consistent buffer of available rooms regardless of the occupancy rate.
+
+The desired number of rooms will be given by the following formula:
+
+```
+desiredNumberOfRooms = numberOfOccupiedRooms + fixedBufferAmount
+```
+
+Respecting autoscaling boundaries (min and max):
+
+```go
+if desiredNumberOfRooms < autoscaling.Min {
+  desiredNumberOfRooms = autoscaling.Min
+}
+
+if autoscaling.Max != -1 && desiredNumberOfRooms > autoscaling.Max {
+  desiredNumberOfRooms = autoscaling.Max
+}
+```
+
+Maestro will constantly try to maintain the specified fixed amount of rooms in addition to the occupied rooms, ensuring there are always enough rooms available for new players.
+
+#### Fixed Buffer Policy Parameters
+
+- **fixedBufferAmount** [integer]: The fixed number of rooms that Maestro should maintain on top of the occupied rooms. Must be a value greater than 0 and less than the maximum number of rooms (max) when max is greater than 0.
+
+#### Example
+
+[comment]: <> (YAML version)
+<details>
+    <summary>YAML version</summary>
+    <div class="highlight highlight-source-yaml position-relative overflow-auto">
+        <pre>
+name: String
+game: String
+...
+autoscaling:
+  enabled: true
+  min: 1
+  max: 100
+  policy:
+    type: fixedBuffer
+    parameters:
+      fixedBuffer:
+        amount: 50
+        </pre>
+    </div>
+</details>
+
+[comment]: <> (JSON version)
+<details>
+    <summary>JSON version</summary>
+    <div class="highlight highlight-source-yaml position-relative overflow-auto">
+        <pre>
+{
+  "autoscaling": {
+    "enabled": true,
+    "min": 1,
+    "max": 100,
+    "policy": {
+      "type": "fixedBuffer",
+      "parameters": {
+        "fixedBuffer": {
+          "amount": 50
+        }
+      }
+    }
+  }
+}
+        </pre>
+    </div>
+</details>
+
+[comment]: <> (Coexisting with RoomOccupancy)
+<details>
+    <summary>Coexisting with RoomOccupancy</summary>
+    <div class="highlight highlight-source-yaml position-relative overflow-auto">
+        <pre>
+{
+  "autoscaling": {
+    "enabled": true,
+    "min": 1,
+    "max": 100,
+    "policy": {
+      "type": "fixedBuffer",
+      "parameters": {
+        "fixedBuffer": {
+          "amount": 50
+        },
+        "roomOccupancy": {
+          "readyTarget": 0.2,
+          "downThreshold": 0.9
+        }
+      }
+    }
+  }
+}
+        </pre>
+    </div>
+</details>
+
+Below are some simulated examples of how the fixed buffer amount policy will behave:
+
+> Note that the autoscaling decision will always be limited by the min-max values!
+
+| totalRooms | occupiedRooms | fixedBufferAmount | desiredNumberOfRooms | autoscalingDecision |
+|:----------:|:-------------:|:-----------------:|:--------------------:|:-------------------:|
+|    100     |      80       |        50         |          130         |    Scale Up: +30    |
+|    100     |      50       |        50         |          100         |    Do Nothing: 0    |
+|    100     |      30       |        50         |           80         |   Scale Down: -20   |
+|     50     |      40       |        20         |           60         |    Scale Up: +10    |
+|     50     |      30       |        20         |           50         |    Do Nothing: 0    |
+|     50     |      10       |        20         |           30         |   Scale Down: -20   |
+|     10     |       5       |        10         |           15         |    Scale Up: +5     |
+|     10     |       0       |        10         |           10         |    Do Nothing: 0    |
+|     10     |       0       |         5         |            5         |   Scale Down: -5    |
+|     5      |       5       |         5         |           10         |    Scale Up: +5     |
+|     1      |       1       |         3         |            4         |    Scale Up: +3     |
+|     2      |       2       |         8         |           10         |    Scale Up: +8     |
 

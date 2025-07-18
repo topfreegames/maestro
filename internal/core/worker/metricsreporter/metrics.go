@@ -190,6 +190,17 @@ var (
 			monitoring.LabelScheduler,
 		},
 	})
+
+	schedulerAutoscalePolicyFixedBufferGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "fixed_buffer",
+		Help:      "Fixed buffer amount configured in autoscale policy",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
 )
 
 func reportGameRoomReadyNumber(game, schedulerName string, numberOfGameRooms int) {
@@ -249,4 +260,8 @@ func reportSchedulerMaxMatches(game, schedulerName string, availableSlots int) {
 
 func reportSchedulerPolicyReadyTarget(game, schedulerName string, readyTarget float64) {
 	schedulerAutoscalePolicyReadyTargetGaugeMetric.WithLabelValues(game, schedulerName).Set(readyTarget)
+}
+
+func reportSchedulerPolicyFixedBuffer(game, schedulerName string, amount float64) {
+	schedulerAutoscalePolicyFixedBufferGaugeMetric.WithLabelValues(game, schedulerName).Set(amount)
 }
