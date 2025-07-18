@@ -46,6 +46,8 @@ adapters:
       range: 60001-60010
   runtime:
     kubernetes:
+      qps: 100
+      burst: 200
       inCluster: false
       masterUrl: "https://127.0.0.1:6443"
       kubeconfig: "./kubeconfig/kubeconfig.yaml"
