@@ -33,11 +33,40 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
 	GameRoomDeletionEventID = "GameRoomDeleted"
 )
+
+// isRetryableError checks if the error is retryable according to Kubernetes best practices
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return kerrors.IsTooManyRequests(err) ||
+		kerrors.IsServerTimeout(err) ||
+		kerrors.IsInternalError(err) ||
+		kerrors.IsServiceUnavailable(err) ||
+		kerrors.IsUnexpectedServerError(err)
+}
+
+// createPodWithRetry creates a pod with retry logic for retryable errors
+func (k *kubernetes) createPodWithRetry(ctx context.Context, scheduler *entities.Scheduler, pod *corev1.Pod) (*corev1.Pod, error) {
+	var createdPod *corev1.Pod
+
+	err := retry.OnError(retry.DefaultBackoff, func(err error) bool {
+		return isRetryableError(err)
+	}, func() error {
+		var createErr error
+		createdPod, createErr = k.clientSet.CoreV1().Pods(scheduler.Name).Create(ctx, pod, metav1.CreateOptions{})
+		return createErr
+	})
+
+	return createdPod, err
+}
 
 func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec) (*game_room.Instance, error) {
 	pod, err := convertGameRoomSpec(*scheduler, gameRoomName, gameRoomSpec, k.config)
@@ -45,7 +74,7 @@ func (k *kubernetes) CreateGameRoomInstance(ctx context.Context, scheduler *enti
 		return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
 	}
 
-	pod, err = k.clientSet.CoreV1().Pods(scheduler.Name).Create(ctx, pod, metav1.CreateOptions{})
+	pod, err = k.createPodWithRetry(ctx, scheduler, pod)
 	if err != nil {
 		if kerrors.IsInvalid(err) {
 			return nil, errors.NewErrInvalidArgument("invalid game room spec: %s", err)
