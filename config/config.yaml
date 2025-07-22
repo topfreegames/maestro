@@ -79,6 +79,7 @@ operations:
   rooms:
     add:
       limit: 1000
+      batchSize: 40
     remove:
       limit: 50
 
