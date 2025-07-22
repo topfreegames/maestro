@@ -49,6 +49,7 @@ const (
 	operationLeaseTTLMillisConfigPath           = "services.operationManager.operationLeaseTTLMillis"
 	schedulerCacheTTLMillisConfigPath           = "services.eventsForwarder.schedulerCacheTTLMillis"
 	operationsRoomsAddLimitConfigPath           = "operations.rooms.add.limit"
+	operationsRoomsAddBatchSizePath             = "operations.rooms.add.batchSize"
 	operationsRoomsRemoveLimitConfigPath        = "operations.rooms.remove.limit"
 )
 
@@ -86,9 +87,11 @@ func NewHealthControllerConfig(c config.Config) healthcontroller.Config {
 // NewOperationRoomsAddConfig instantiate a new add.Config to be used by the rooms add operation.
 func NewOperationRoomsAddConfig(c config.Config) add.Config {
 	operationsRoomsAddLimit := int32(c.GetInt(operationsRoomsAddLimitConfigPath))
+	operationsRoomsAddBatchSize := int32(c.GetInt(operationsRoomsAddBatchSizePath))
 
 	config := add.Config{
 		AmountLimit: operationsRoomsAddLimit,
+		BatchSize:   operationsRoomsAddBatchSize,
 	}
 
 	return config

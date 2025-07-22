@@ -40,10 +40,14 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 )
 
-const DefaultAmountLimit = 1000
+const (
+	DefaultAmountLimit = 1000
+	DefaultBatchSize   = 40
+)
 
 type Config struct {
 	AmountLimit int32
+	BatchSize   int32
 }
 
 type Executor struct {
@@ -59,6 +63,10 @@ func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage, 
 	if config.AmountLimit <= 0 {
 		zap.L().Sugar().Infof("Add Executor - Amount limit wrongly configured with %d, using default value %d", config.AmountLimit, DefaultAmountLimit)
 		config.AmountLimit = DefaultAmountLimit
+	}
+	if config.BatchSize <= 0 {
+		zap.L().Sugar().Infof("Add Executor - Batch size wrongly configured with %d, using default value %d", config.BatchSize, DefaultBatchSize)
+		config.BatchSize = DefaultBatchSize
 	}
 	return &Executor{
 		roomManager,
@@ -89,29 +97,54 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		amount = ex.config.AmountLimit
 	}
 
-	var wg sync.WaitGroup
-	errsCh := make(chan error, amount)
-
-	for i := int32(1); i <= amount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-
-			errsCh <- ex.createRoom(ctx, scheduler, executionLogger)
-		}()
-	}
-
-	wg.Wait()
-	close(errsCh)
+	executionLogger.Info("starting batched room creation",
+		zap.Int32("totalAmount", amount),
+		zap.Int32("batchSize", ex.config.BatchSize))
 
 	var collectedErrors []error
-	for err := range errsCh {
-		if err != nil {
-			collectedErrors = append(collectedErrors, err)
+	remainingAmount := amount
+
+	for remainingAmount > 0 {
+		batchSize := ex.config.BatchSize
+		if remainingAmount < batchSize {
+			batchSize = remainingAmount
 		}
+
+		executionLogger.Debug("processing batch",
+			zap.Int32("batchSize", batchSize),
+			zap.Int32("remainingAmount", remainingAmount))
+
+		var wg sync.WaitGroup
+		errsCh := make(chan error, batchSize)
+
+		// Spawn goroutines for current batch
+		for i := int32(0); i < batchSize; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+
+				errsCh <- ex.createRoom(ctx, scheduler, executionLogger)
+			}()
+		}
+
+		// Wait for current batch to complete
+		wg.Wait()
+		close(errsCh)
+
+		// Collect errors from current batch
+		for err := range errsCh {
+			if err != nil {
+				collectedErrors = append(collectedErrors, err)
+			}
+		}
+
+		remainingAmount -= batchSize
+		executionLogger.Debug("batch completed",
+			zap.Int32("batchSize", batchSize),
+			zap.Int32("remainingAmount", remainingAmount))
 	}
 
 	errCount := int32(len(collectedErrors))
