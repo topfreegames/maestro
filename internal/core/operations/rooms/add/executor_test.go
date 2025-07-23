@@ -185,6 +185,129 @@ func TestExecutor_Execute(t *testing.T) {
 		require.NotNil(t, err)
 		require.ErrorContains(t, err, "more rooms failed than succeeded, errors: 6 and successes: 4 of amount: 10")
 	})
+
+	t.Run("use default batch size if BatchSize not set", func(t *testing.T) {
+		executor, _, _, _ := testSetup(t, Config{})
+		require.NotNil(t, executor)
+		require.Equal(t, executor.config.BatchSize, int32(DefaultBatchSize))
+	})
+
+	t.Run("use default batch size if invalid BatchSize value", func(t *testing.T) {
+		executor, _, _, _ := testSetup(t, Config{BatchSize: -1})
+		require.NotNil(t, executor)
+		require.Equal(t, executor.config.BatchSize, int32(DefaultBatchSize))
+	})
+
+	t.Run("should succeed - process rooms in batches when amount exceeds batch size", func(t *testing.T) {
+		batchConfig := Config{
+			AmountLimit: 100,
+			BatchSize:   3, // Small batch size for testing
+		}
+		largeDefinition := Definition{Amount: 7} // Will create 3 batches: 3, 3, 1
+
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, batchConfig)
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+		// Expect 7 room creations total (3 + 3 + 1)
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(7)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", largeDefinition.Amount))
+
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, batchConfig)
+		err := executor.Execute(context.Background(), &op, &largeDefinition)
+
+		require.Nil(t, err)
+	})
+
+	t.Run("should succeed - process rooms in batches with errors in some batches", func(t *testing.T) {
+		batchConfig := Config{
+			AmountLimit: 100,
+			BatchSize:   2, // Small batch size for testing
+		}
+		definition := Definition{Amount: 6} // Will create 3 batches: 2, 2, 2
+
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, batchConfig)
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+		// First batch: 2 successes
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(2)
+		// Second batch: 1 success, 1 failure
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(1)
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error")).Times(1)
+		// Third batch: 2 successes
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(2)
+
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", definition.Amount))
+
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, batchConfig)
+		err := executor.Execute(context.Background(), &op, &definition)
+
+		require.Nil(t, err) // Should succeed because only 1 out of 6 failed
+	})
+
+	t.Run("should fail - majority failures across batches", func(t *testing.T) {
+		batchConfig := Config{
+			AmountLimit: 100,
+			BatchSize:   2, // Small batch size for testing
+		}
+		definition := Definition{Amount: 6} // Will create 3 batches: 2, 2, 2
+
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, batchConfig)
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+		// First batch: 2 failures
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error")).Times(2)
+		// Second batch: 2 failures
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error")).Times(2)
+		// Third batch: 1 success, 1 failure
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(1)
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(nil, nil, porterrors.NewErrUnexpected("error")).Times(1)
+
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "more rooms failed than succeeded, errors: 5 and successes: 1 of amount: 6")
+
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, batchConfig)
+		err := executor.Execute(context.Background(), &op, &definition)
+
+		require.NotNil(t, err)
+		require.ErrorContains(t, err, "more rooms failed than succeeded, errors: 5 and successes: 1 of amount: 6")
+	})
+
+	t.Run("should succeed - amount exactly equals batch size", func(t *testing.T) {
+		batchConfig := Config{
+			AmountLimit: 100,
+			BatchSize:   5,
+		}
+		exactDefinition := Definition{Amount: 5} // Exactly equals batch size
+
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, batchConfig)
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(5)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", exactDefinition.Amount))
+
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, batchConfig)
+		err := executor.Execute(context.Background(), &op, &exactDefinition)
+
+		require.Nil(t, err)
+	})
+
+	t.Run("should succeed - large amount with default batch size", func(t *testing.T) {
+		largeDefinition := Definition{Amount: 100} // Large amount to test default batch processing
+		largeConfig := Config{
+			AmountLimit: 200, // High enough to allow 100 rooms
+			BatchSize:   25,  // Default batch size
+		}
+
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, largeConfig)
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).Return(&gameRoom, &gameRoomInstance, nil).Times(100)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", largeDefinition.Amount))
+
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, largeConfig)
+		err := executor.Execute(context.Background(), &op, &largeDefinition)
+
+		require.Nil(t, err)
+	})
 }
 
 func TestExecutor_Rollback(t *testing.T) {
