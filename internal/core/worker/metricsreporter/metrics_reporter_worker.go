@@ -102,7 +102,12 @@ func (w *MetricsReporterWorker) IsRunning() bool {
 func (w *MetricsReporterWorker) syncScheduler(ctx context.Context) {
 	scheduler, err := w.schedulerCache.GetScheduler(ctx, w.scheduler.Name)
 	if err != nil {
-		w.logger.Error("Error loading scheduler", zap.Error(err))
+		w.logger.Error("Error loading scheduler from cache", zap.Error(err))
+		return
+	}
+
+	if scheduler == nil {
+		w.logger.Warn("Scheduler not found in cache, skipping sync", zap.String("scheduler", w.scheduler.Name))
 		return
 	}
 
