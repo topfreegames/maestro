@@ -29,10 +29,24 @@ import (
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-const SchedulerStorageMetricLabel = "scheduler-storage"
+const (
+	SchedulerStorageMetricLabel = "scheduler-storage"
 
-func reportSchedulerStorageFailsCounterMetric(operation string, labels ...string) {
-	metrics.PostgresFailsCounterMetric.WithLabelValues(append([]string{SchedulerStorageMetricLabel, operation}, labels...)...).Inc()
+	// Operation constants
+	OpGetScheduler            = "GetScheduler"
+	OpGetSchedulerWithFilter  = "GetSchedulerWithFilter"
+	OpGetSchedulerVersions    = "GetSchedulerVersions"
+	OpGetSchedulers           = "GetSchedulers"
+	OpGetSchedulersWithFilter = "GetSchedulersWithFilter"
+	OpGetAllSchedulers        = "GetAllSchedulers"
+	OpCreateScheduler         = "CreateScheduler"
+	OpUpdateScheduler         = "UpdateScheduler"
+	OpDeleteScheduler         = "DeleteScheduler"
+	OpCreateSchedulerVersion  = "CreateSchedulerVersion"
+)
+
+func reportSchedulerStorageFailsCounterMetric(operation string) {
+	metrics.PostgresFailsCounterMetric.WithLabelValues(SchedulerStorageMetricLabel, operation).Inc()
 }
 
 func runSchedulerStorageFunctionCollectingLatency(operation string, executionFunction func()) {

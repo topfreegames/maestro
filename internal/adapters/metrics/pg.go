@@ -35,7 +35,6 @@ var (
 		Labels: []string{
 			monitoring.LabelStorage,
 			monitoring.LabelOperation,
-			monitoring.LabelScheduler,
 		},
 	})
 
