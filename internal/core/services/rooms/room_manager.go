@@ -166,7 +166,7 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 	if gameRoomInstance == nil {
 		return fmt.Errorf("cannot update room instance since it is nil")
 	}
-	m.Logger.Sugar().Infof("Updating room instance. ID: %v", gameRoomInstance.ID)
+	m.Logger.Sugar().Debugf("Updating room instance. ID: %v", gameRoomInstance.ID)
 	err := m.InstanceStorage.UpsertInstance(ctx, gameRoomInstance)
 	if err != nil {
 		return fmt.Errorf("failed when updating the game room instance on storage: %w", err)
@@ -177,7 +177,7 @@ func (m *RoomManager) UpdateRoomInstance(ctx context.Context, gameRoomInstance *
 		return fmt.Errorf("failed to update game room status: %w", err)
 	}
 
-	m.Logger.Info("Updating room instance success")
+	m.Logger.Debug("Updating room instance success")
 
 	return nil
 }
