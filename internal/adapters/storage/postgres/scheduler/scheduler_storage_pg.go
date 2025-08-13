@@ -108,15 +108,15 @@ func (s schedulerStorage) GetScheduler(ctx context.Context, name string) (*entit
 	queryString := queryGetActiveScheduler
 
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("GetScheduler", func() {
+	runSchedulerStorageFunctionCollectingLatency(OpGetScheduler, func() {
 		_, err = client.QueryOne(&dbScheduler, queryString, name)
 	})
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", name)
 	}
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("GetScheduler", name)
-		return nil, errors.NewErrUnexpected("error getting scheduler %s", name).WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpGetScheduler)
+		return nil, errors.NewErrUnexpected("error getting scheduler %s (operation: %s)", name, OpGetScheduler).WithError(err)
 	}
 	scheduler, err := dbScheduler.ToScheduler()
 	if err != nil {
@@ -144,15 +144,15 @@ func (s schedulerStorage) GetSchedulerWithFilter(ctx context.Context, schedulerF
 	queryString = queryString + " order by created_at desc limit 1"
 
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("GetSchedulerWithFilter", func() {
+	runSchedulerStorageFunctionCollectingLatency(OpGetSchedulerWithFilter, func() {
 		_, err = client.QueryOne(&dbScheduler, queryString, queryArr...)
 	})
 	if err == pg.ErrNoRows {
 		return nil, errors.NewErrNotFound("scheduler %s not found", schedulerFilter.Name)
 	}
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("GetSchedulerWithFilter", schedulerFilter.Name)
-		return nil, errors.NewErrUnexpected("error getting scheduler %s", schedulerFilter.Name).WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpGetSchedulerWithFilter)
+		return nil, errors.NewErrUnexpected("error getting scheduler %s (operation: %s)", schedulerFilter.Name, OpGetSchedulerWithFilter).WithError(err)
 	}
 	scheduler, err := dbScheduler.ToScheduler()
 	if err != nil {
@@ -165,15 +165,15 @@ func (s schedulerStorage) GetSchedulerVersions(ctx context.Context, name string)
 	client := s.db.WithContext(ctx)
 	var dbSchedulerVersions []SchedulerVersion
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("GetSchedulerVersions", func() {
+	runSchedulerStorageFunctionCollectingLatency(OpGetSchedulerVersions, func() {
 		_, err = client.Query(&dbSchedulerVersions, queryGetSchedulerVersions, name)
 	})
 	if len(dbSchedulerVersions) == 0 {
 		return nil, errors.NewErrNotFound("scheduler %s not found", name)
 	}
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("GetSchedulerVersion", name)
-		return nil, errors.NewErrUnexpected("error getting scheduler versions").WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpGetSchedulerVersions)
+		return nil, errors.NewErrUnexpected("error getting scheduler versions (operation: %s)", OpGetSchedulerVersions).WithError(err)
 	}
 	versions := make([]*entities.SchedulerVersion, len(dbSchedulerVersions))
 	for i := range dbSchedulerVersions {
@@ -187,12 +187,12 @@ func (s schedulerStorage) GetSchedulers(ctx context.Context, names []string) ([]
 	client := s.db.WithContext(ctx)
 	var dbSchedulers []Scheduler
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("GetSchedulers", func() {
+	runSchedulerStorageFunctionCollectingLatency(OpGetSchedulers, func() {
 		_, err = client.Query(&dbSchedulers, queryGetSchedulers, pg.In(names))
 	})
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("GetSchedulers")
-		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpGetSchedulers)
+		return nil, errors.NewErrUnexpected("error getting schedulers (operation: %s)", OpGetSchedulers).WithError(err)
 	}
 	schedulers := make([]*entities.Scheduler, len(dbSchedulers))
 	for i := range dbSchedulers {
@@ -215,12 +215,12 @@ func (s schedulerStorage) GetSchedulersWithFilter(ctx context.Context, scheduler
 	queryString = queryString + whereClauses
 
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("GetSchedulersWithFilter", func() {
+	runSchedulerStorageFunctionCollectingLatency(OpGetSchedulersWithFilter, func() {
 		_, err = client.Query(&dbSchedulers, queryString, arrayValues...)
 	})
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("GetSchedulersWithFilter")
-		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpGetSchedulersWithFilter)
+		return nil, errors.NewErrUnexpected("error getting schedulers (operation: %s)", OpGetSchedulersWithFilter).WithError(err)
 	}
 	schedulers := make([]*entities.Scheduler, len(dbSchedulers))
 	for i := range dbSchedulers {
@@ -277,12 +277,12 @@ func (s schedulerStorage) GetAllSchedulers(ctx context.Context) ([]*entities.Sch
 	client := s.db.WithContext(ctx)
 	var dbSchedulers []Scheduler
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("GetAllSchedulers", func() {
+	runSchedulerStorageFunctionCollectingLatency(OpGetAllSchedulers, func() {
 		_, err = client.Query(&dbSchedulers, queryGetAllSchedulers)
 	})
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("GetAllSchedulers")
-		return nil, errors.NewErrUnexpected("error getting schedulers").WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpGetAllSchedulers)
+		return nil, errors.NewErrUnexpected("error getting schedulers (operation: %s)", OpGetAllSchedulers).WithError(err)
 	}
 	schedulers := make([]*entities.Scheduler, len(dbSchedulers))
 	for i := range dbSchedulers {
@@ -299,15 +299,15 @@ func (s schedulerStorage) CreateScheduler(ctx context.Context, scheduler *entiti
 	client := s.db.WithContext(ctx)
 	dbScheduler := NewDBScheduler(scheduler)
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("CreateScheduler", func() {
+	runSchedulerStorageFunctionCollectingLatency(OpCreateScheduler, func() {
 		_, err = client.Exec(queryInsertScheduler, dbScheduler)
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "schedulers_name_unique") {
 			return errors.NewErrAlreadyExists("error creating scheduler %s: name already exists", dbScheduler.Name)
 		}
-		reportSchedulerStorageFailsCounterMetric("CreateScheduler", scheduler.Name)
-		return errors.NewErrUnexpected("error creating scheduler %s", dbScheduler.Name).WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpCreateScheduler)
+		return errors.NewErrUnexpected("error creating scheduler %s (operation: %s)", dbScheduler.Name, OpCreateScheduler).WithError(err)
 	}
 	err = s.CreateSchedulerVersion(ctx, "", scheduler)
 	if err != nil {
@@ -320,15 +320,15 @@ func (s schedulerStorage) UpdateScheduler(ctx context.Context, scheduler *entiti
 	client := s.db.WithContext(ctx)
 	dbScheduler := NewDBScheduler(scheduler)
 	var err error
-	runSchedulerStorageFunctionCollectingLatency("UpdateScheduler", func() {
+	runSchedulerStorageFunctionCollectingLatency(OpUpdateScheduler, func() {
 		_, err = client.ExecOne(queryUpdateScheduler, dbScheduler)
 	})
 	if err == pg.ErrNoRows {
 		return errors.NewErrNotFound("scheduler %s not found", dbScheduler.Name)
 	}
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("UpdateScheduler", dbScheduler.Name)
-		return errors.NewErrUnexpected("error updating scheduler %s", dbScheduler.Name).WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpUpdateScheduler)
+		return errors.NewErrUnexpected("error updating scheduler %s (operation: %s)", dbScheduler.Name, OpUpdateScheduler).WithError(err)
 	}
 
 	return nil
@@ -342,13 +342,13 @@ func (s schedulerStorage) DeleteScheduler(ctx context.Context, transactionID por
 		if !ok {
 			return errors.NewErrNotFound("transaction %s not found", transactionID)
 		}
-		runSchedulerStorageFunctionCollectingLatency("DeleteScheduler", func() {
+		runSchedulerStorageFunctionCollectingLatency(OpDeleteScheduler, func() {
 			_, err = txClient.Exec(queryDeleteScheduler, scheduler.Name)
 		})
 
 	} else {
 		client := s.db.WithContext(ctx)
-		runSchedulerStorageFunctionCollectingLatency("DeleteScheduler", func() {
+		runSchedulerStorageFunctionCollectingLatency(OpDeleteScheduler, func() {
 			_, err = client.ExecOne(queryDeleteScheduler, scheduler.Name)
 		})
 	}
@@ -357,8 +357,8 @@ func (s schedulerStorage) DeleteScheduler(ctx context.Context, transactionID por
 		return errors.NewErrNotFound("scheduler %s not found", scheduler.Name)
 	}
 	if err != nil {
-		reportSchedulerStorageFailsCounterMetric("DeleteScheduler", scheduler.Name)
-		return errors.NewErrUnexpected("error deleting scheduler %s", scheduler.Name).WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpDeleteScheduler)
+		return errors.NewErrUnexpected("error deleting scheduler %s (operation: %s)", scheduler.Name, OpDeleteScheduler).WithError(err)
 	}
 	return nil
 }
@@ -371,13 +371,13 @@ func (s schedulerStorage) CreateSchedulerVersion(ctx context.Context, transactio
 		if !ok {
 			return errors.NewErrNotFound("transaction %s not found", transactionID)
 		}
-		runSchedulerStorageFunctionCollectingLatency("CreateSchedulerVersion", func() {
+		runSchedulerStorageFunctionCollectingLatency(OpCreateSchedulerVersion, func() {
 			_, err = txClient.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
 		})
 
 	} else {
 		client := s.db.WithContext(ctx)
-		runSchedulerStorageFunctionCollectingLatency("CreateSchedulerVersion", func() {
+		runSchedulerStorageFunctionCollectingLatency(OpCreateSchedulerVersion, func() {
 			_, err = client.Exec(queryInsertVersion, dbScheduler.Name, dbScheduler.Version, dbScheduler.Yaml, dbScheduler.RollbackVersion)
 		})
 	}
@@ -386,8 +386,8 @@ func (s schedulerStorage) CreateSchedulerVersion(ctx context.Context, transactio
 		if strings.Contains(err.Error(), "violates foreign key constraint") {
 			return errors.NewErrUnexpected("error creating version %s for non existent scheduler \"%s\"", dbScheduler.Version, dbScheduler.Name)
 		}
-		reportSchedulerStorageFailsCounterMetric("CreateSchedulerVersion", scheduler.Name)
-		return errors.NewErrUnexpected("error creating scheduler %s version %s", dbScheduler.Name, dbScheduler.Version).WithError(err)
+		reportSchedulerStorageFailsCounterMetric(OpCreateSchedulerVersion)
+		return errors.NewErrUnexpected("error creating scheduler %s version %s (operation: %s)", dbScheduler.Name, dbScheduler.Version, OpCreateSchedulerVersion).WithError(err)
 	}
 	return nil
 }
