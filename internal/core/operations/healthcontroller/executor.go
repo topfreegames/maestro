@@ -241,6 +241,9 @@ func (ex *Executor) findAvailableAndExpiredRooms(ctx context.Context, scheduler 
 	terminatedRooms := 0
 
 	for gameRoomId, instance := range existentGameRoomsInstancesMap {
+		if instance.Status.Type == game_room.InstanceUnknown {
+			continue
+		}
 		if instance.Status.Type == game_room.InstancePending {
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomId)
 			continue

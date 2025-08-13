@@ -88,7 +88,9 @@ func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room
 				select {
 				case event, ok := <-resultChan:
 					if !ok {
-						w.logger.Warn("resultChan closed, finishing worker goroutine")
+						if w.logger != nil {
+							w.logger.Warn("resultChan closed, finishing worker goroutine")
+						}
 						w.Stop(w.ctx)
 						return
 					}
