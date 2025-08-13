@@ -30,6 +30,7 @@ import (
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,6 +66,7 @@ var invalidPodWaitingStates = []string{
 	"ErrImagePull",
 	"CrashLoopBackOff",
 	"RunContainerError",
+	"ContainerStatusUnknown",
 }
 
 func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, gameRoomSpec game_room.Spec, config KubernetesConfig) (*v1.Pod, error) {
@@ -293,16 +295,69 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 		return game_room.InstanceStatus{Type: game_room.InstanceTerminating}
 	}
 
+	// Handle terminal pod phases early so we don't incorrectly mark them as pending/unknown
+	switch pod.Status.Phase {
+	case v1.PodFailed:
+		zap.L().Info("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
+		return game_room.InstanceStatus{Type: game_room.InstanceError, Description: "PodFailed"}
+	case v1.PodSucceeded:
+		// Completed pods should not be considered available; treat as terminating
+		zap.L().Info("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceTerminating.String()))
+		return game_room.InstanceStatus{Type: game_room.InstanceTerminating, Description: "PodSucceeded"}
+	case v1.PodUnknown:
+		// Unknown pods should not be treated as available
+		zap.L().Warn("pod phase unknown; mapping to error", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
+		return game_room.InstanceStatus{Type: game_room.InstanceError, Description: "PodUnknown"}
+	}
+
 	for _, containerStatus := range pod.Status.ContainerStatuses {
 		state := containerStatus.State
 		if state.Waiting != nil {
 			for _, invalidState := range invalidPodWaitingStates {
 				if state.Waiting.Reason == invalidState {
+					zap.L().Warn(
+						"container waiting in invalid state; mapping to error",
+						zap.String("pod", pod.Namespace+"/"+pod.Name),
+						zap.String("container", containerStatus.Name),
+						zap.String("reason", state.Waiting.Reason),
+						zap.String("message", state.Waiting.Message),
+						zap.String("mappedTo", game_room.InstanceError.String()),
+					)
 					return game_room.InstanceStatus{
 						Type:        game_room.InstanceError,
 						Description: fmt.Sprintf("%s: %s", state.Waiting.Reason, state.Waiting.Message),
 					}
 				}
+			}
+		}
+
+		// If container is terminated, classify based on the termination reason
+		if state.Terminated != nil {
+			if state.Terminated.Reason == "Completed" || state.Terminated.ExitCode == 0 {
+				zap.L().Info(
+					"container terminated successfully; mapping to terminating",
+					zap.String("pod", pod.Namespace+"/"+pod.Name),
+					zap.String("container", containerStatus.Name),
+					zap.String("reason", state.Terminated.Reason),
+					zap.Int32("exitCode", state.Terminated.ExitCode),
+					zap.String("mappedTo", game_room.InstanceTerminating.String()),
+				)
+				return game_room.InstanceStatus{
+					Type:        game_room.InstanceTerminating,
+					Description: state.Terminated.Reason,
+				}
+			}
+			zap.L().Warn(
+				"container terminated with error; mapping to error",
+				zap.String("pod", pod.Namespace+"/"+pod.Name),
+				zap.String("container", containerStatus.Name),
+				zap.String("reason", state.Terminated.Reason),
+				zap.Int32("exitCode", state.Terminated.ExitCode),
+				zap.String("mappedTo", game_room.InstanceError.String()),
+			)
+			return game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: state.Terminated.Reason,
 			}
 		}
 	}
