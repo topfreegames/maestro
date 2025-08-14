@@ -149,6 +149,8 @@ message Spec {
   string toleration = 4;
   // Runtime game room affinity configuration.
   string affinity = 5;
+  // Restart policy of pod, defaults to Never.
+  optional string restart_policy = 6;
 }
 
 // OptionalSpec is the specifications of the scheduler, with relevant info about what is being used.
