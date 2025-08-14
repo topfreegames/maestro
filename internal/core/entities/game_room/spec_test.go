@@ -75,6 +75,7 @@ func TestNewSpec(t *testing.T) {
 				expectedSpec.Containers,
 				expectedSpec.Toleration,
 				expectedSpec.Affinity,
+				expectedSpec.RestartPolicy,
 			)
 
 			assert.EqualValues(t, spec, expectedSpec)
@@ -105,6 +106,7 @@ func TestNewSpec(t *testing.T) {
 				Containers:             containers,
 				Toleration:             "10",
 				Affinity:               "10",
+				RestartPolicy:          "Never",
 			}
 
 			spec := game_room.NewSpec(
@@ -113,6 +115,7 @@ func TestNewSpec(t *testing.T) {
 				expectedSpec.Containers,
 				expectedSpec.Toleration,
 				expectedSpec.Affinity,
+				expectedSpec.RestartPolicy,
 			)
 
 			assert.EqualValues(t, spec, expectedSpec)
@@ -148,6 +151,7 @@ func TestNewSpec(t *testing.T) {
 				Containers:             containers,
 				Toleration:             "10",
 				Affinity:               "10",
+				RestartPolicy:          "Never",
 			}
 
 			spec := game_room.NewSpec(
@@ -156,6 +160,7 @@ func TestNewSpec(t *testing.T) {
 				expectedSpec.Containers,
 				expectedSpec.Toleration,
 				expectedSpec.Affinity,
+				expectedSpec.RestartPolicy,
 			)
 
 			assert.EqualValues(t, spec, expectedSpec)
@@ -189,6 +194,7 @@ func TestNewSpec(t *testing.T) {
 				Containers:             containers,
 				Toleration:             "10",
 				Affinity:               "10",
+				RestartPolicy:          "Never",
 			}
 
 			spec := game_room.NewSpec(
@@ -197,6 +203,7 @@ func TestNewSpec(t *testing.T) {
 				expectedSpec.Containers,
 				expectedSpec.Toleration,
 				expectedSpec.Affinity,
+				expectedSpec.RestartPolicy,
 			)
 
 			assert.EqualValues(t, spec, expectedSpec)

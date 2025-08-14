@@ -63,7 +63,8 @@
         }
       ],
       "toleration": "",
-      "affinity": ""
+      "affinity": "",
+      "restartPolicy": "Never"
     },
     "forwarders": [
       {
