@@ -213,6 +213,7 @@ func TestGetScheduler(t *testing.T) {
 			Spec: game_room.Spec{
 				Version:                "v1.0.0",
 				TerminationGracePeriod: 100 * time.Second,
+				RestartPolicy:          "Never",
 				Containers: []game_room.Container{
 					{
 						Name:            "game-room-container-name",
@@ -490,6 +491,7 @@ func TestCreateScheduler(t *testing.T) {
 			Spec: game_room.Spec{
 				Version:                "v1.0.0",
 				TerminationGracePeriod: 100 * time.Second,
+				RestartPolicy:          "Never",
 				Containers: []game_room.Container{
 					{
 						Name:            "game-room-container-name",
@@ -1327,6 +1329,7 @@ func newValidScheduler() *entities.Scheduler {
 			TerminationGracePeriod: 60,
 			Toleration:             "toleration",
 			Affinity:               "affinity",
+			RestartPolicy:          "Never",
 			Containers: []game_room.Container{
 				{
 					Name:            "default",

@@ -349,12 +349,19 @@ func fromEntityMatchAllocationToResponse(entity *allocation.MatchAllocation) *ap
 }
 
 func fromApiSpec(apiSpec *api.Spec) *game_room.Spec {
+	// Default to "Never" if no restart policy is provided
+	restartPolicy := apiSpec.GetRestartPolicy()
+	if restartPolicy == "" {
+		restartPolicy = "Never"
+	}
+
 	return game_room.NewSpec(
 		"",
 		time.Duration(apiSpec.GetTerminationGracePeriod().AsDuration()),
 		fromApiContainers(apiSpec.GetContainers()),
 		apiSpec.GetToleration(),
 		apiSpec.GetAffinity(),
+		restartPolicy,
 	)
 }
 
@@ -544,10 +551,18 @@ func getSpec(spec game_room.Spec) *api.Spec {
 			Containers:             fromEntityContainerToApiContainer(spec.Containers),
 			TerminationGracePeriod: durationpb.New(spec.TerminationGracePeriod),
 			Affinity:               spec.Affinity,
+			RestartPolicy:          fromEntityRestartPolicyToApiRestartPolicy(spec.RestartPolicy),
 		}
 	}
 
 	return nil
+}
+
+func fromEntityRestartPolicyToApiRestartPolicy(restartPolicy string) *string {
+	if restartPolicy == "" {
+		return &[]string{"Never"}[0]
+	}
+	return &restartPolicy
 }
 
 func getAutoscaling(autoscaling *autoscaling.Autoscaling) *api.Autoscaling {

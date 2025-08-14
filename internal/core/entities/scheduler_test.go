@@ -73,6 +73,7 @@ func TestNewScheduler(t *testing.T) {
 		containers,
 		"10",
 		"10",
+		"Never",
 	)
 	portRange := port.NewPortRange(
 		1,
@@ -155,6 +156,7 @@ func TestNewScheduler(t *testing.T) {
 				containers,
 				"10",
 				"10",
+				"Never",
 			),
 			port.NewPortRange(
 				1,
@@ -179,6 +181,7 @@ func TestNewScheduler(t *testing.T) {
 				containers,
 				"10",
 				"10",
+				"Never",
 			),
 			port.NewPortRange(
 				1,

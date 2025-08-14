@@ -1987,6 +1987,10 @@
         "affinity": {
           "type": "string",
           "description": "Runtime game room affinity configuration."
+        },
+        "restartPolicy": {
+          "type": "string",
+          "description": "Restart policy of pod, defaults to Never."
         }
       },
       "description": "Spec is the specifications of the scheduler, with relevant info about what is being used."

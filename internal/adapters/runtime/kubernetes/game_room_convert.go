@@ -88,6 +88,7 @@ func convertGameRoomSpec(scheduler entities.Scheduler, gameRoomName string, game
 			Containers:                    []v1.Container{},
 			Tolerations:                   convertSpecTolerations(gameRoomSpec),
 			Affinity:                      convertSpecAffinity(gameRoomSpec),
+			RestartPolicy:                 convertRestartPolicy(gameRoomSpec.RestartPolicy),
 		},
 	}
 	if config.TopologySpreadConstraintConfig.Enabled {
@@ -478,4 +479,17 @@ func mergeMaps(target map[string]string, source map[string]string) map[string]st
 	}
 
 	return target
+}
+
+func convertRestartPolicy(restartPolicy string) v1.RestartPolicy {
+	switch restartPolicy {
+	case "Always":
+		return v1.RestartPolicyAlways
+	case "OnFailure":
+		return v1.RestartPolicyOnFailure
+	case "Never":
+		return v1.RestartPolicyNever
+	default:
+		return v1.RestartPolicyNever
+	}
 }
