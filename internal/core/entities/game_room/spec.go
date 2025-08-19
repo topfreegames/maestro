@@ -34,10 +34,11 @@ type Spec struct {
 	// NOTE: consider moving it to a kubernetes-specific option?
 	Toleration string
 	// NOTE: consider moving it to a kubernetes-specific option?
-	Affinity string
+	Affinity      string
+	RestartPolicy string
 }
 
-func NewSpec(version string, terminationGracePeriod time.Duration, containers []Container, toleration string, affinity string) *Spec {
+func NewSpec(version string, terminationGracePeriod time.Duration, containers []Container, toleration, affinity, restartPolicy string) *Spec {
 	if version == "" {
 		version = "v1.0.0"
 	}
@@ -46,7 +47,9 @@ func NewSpec(version string, terminationGracePeriod time.Duration, containers []
 		TerminationGracePeriod: terminationGracePeriod,
 		Containers:             containers,
 		Toleration:             toleration,
-		Affinity:               affinity}
+		Affinity:               affinity,
+		RestartPolicy:          restartPolicy,
+	}
 }
 
 func (s *Spec) DeepCopy() *Spec {
