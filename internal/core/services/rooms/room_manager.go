@@ -445,7 +445,7 @@ func (m *RoomManager) createRoomOnStorageAndRuntime(ctx context.Context, schedul
 	if err != nil {
 		deleteRoomErr := m.RoomStorage.DeleteRoom(ctx, scheduler.Name, room.ID)
 		if deleteRoomErr != nil {
-			return nil, nil, fmt.Errorf("error deleting room during create game room instance error: %w, %w", deleteRoomErr, err)
+			return nil, nil, fmt.Errorf("error deleting room during create game room instance error: %w", deleteRoomErr)
 		}
 		return nil, nil, err
 	}
