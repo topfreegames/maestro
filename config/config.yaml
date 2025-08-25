@@ -21,6 +21,8 @@ adapters:
   schedulerStorage:
     postgres:
       url: "postgres://maestro:maestro@localhost:5432/maestro?sslmode=disable"
+      pooSize: 20
+      minIdleConns: 10
   schedulerCache:
     redis:
       url: "redis://localhost:6379/0"
