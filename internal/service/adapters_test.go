@@ -245,6 +245,8 @@ func TestSchedulerStoragePostgres(t *testing.T) {
 		config := configmock.NewMockConfig(mockCtrl)
 
 		config.EXPECT().GetString(schedulerStoragePostgresURLPath).Return("postgres://somewhere:5432/db")
+		config.EXPECT().GetInt(schedulerStoragePostgresPoolSize).Return(50)
+		config.EXPECT().GetInt(schedulerStoragePostgresMinIdleConnections).Return(10)
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 		_, err := NewSchedulerStoragePg(config)
 		require.NoError(t, err)

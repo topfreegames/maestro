@@ -97,6 +97,10 @@ const (
 	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
 	// Postgres scheduler storage
 	schedulerStoragePostgresURLPath = "adapters.schedulerStorage.postgres.url"
+	// Postgres scheduler storage pool size
+	schedulerStoragePostgresPoolSize = "adapters.schedulerStorage.postgres.poolSize"
+	// Posgres scheduler storage min idle connections
+	schedulerStoragePostgresMinIdleConnections = "adapters.schedulerStorage.postgres.minIdleConns"
 
 	// operation TTL
 	operationsTTLPath = "workers.redis.operationsTtl"
@@ -253,7 +257,7 @@ func NewPortAllocatorRandom(c config.Config) (ports.PortAllocator, error) {
 
 // NewSchedulerStoragePg instantiates a postgres connection as scheduler storage.
 func NewSchedulerStoragePg(c config.Config) (ports.SchedulerStorage, error) {
-	opts, err := connectToPostgres(GetSchedulerStoragePostgresURL(c))
+	opts, err := connectToPostgres(c, GetSchedulerStoragePostgresURL(c))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize postgres scheduler storage: %w", err)
 	}
@@ -325,11 +329,14 @@ func NewOperationFlowRedis(c config.Config) (ports.OperationFlow, error) {
 	return operation.NewRedisOperationFlow(client), nil
 }
 
-func connectToPostgres(url string) (*pg.Options, error) {
+func connectToPostgres(c config.Config, url string) (*pg.Options, error) {
 	opts, err := pg.ParseURL(url)
 	if err != nil {
 		return nil, fmt.Errorf("invalid postgres URL: %w", err)
 	}
+
+	opts.PoolSize = c.GetInt(schedulerStoragePostgresPoolSize)
+	opts.MinIdleConns = c.GetInt(schedulerStoragePostgresMinIdleConnections)
 
 	return opts, nil
 }
