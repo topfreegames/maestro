@@ -195,7 +195,9 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 		roomStorage.EXPECT().DeleteRoom(context.Background(), scheduler.Name, gameRoom.ID).Return(fmt.Errorf("error deleting room"))
 
 		room, instance, err := roomManager.CreateRoom(context.Background(), scheduler, false)
-		assert.EqualError(t, err, "error deleting room during create game room instance error: error deleting room")
+		assert.ErrorContains(t, err, "error creating game room and cleaning up room on storage")
+		assert.ErrorContains(t, err, "error creating game room on runtime")
+		assert.ErrorContains(t, err, "error deleting room")
 		assert.Nil(t, room)
 		assert.Nil(t, instance)
 	})
