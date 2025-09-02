@@ -41,13 +41,15 @@ import (
 )
 
 const (
-	DefaultAmountLimit = 1000
-	DefaultBatchSize   = 40
+	DefaultAmountLimit      = 1000
+	DefaultBatchSize        = 40
+	DefaultOperationTimeout = 5 * time.Second
 )
 
 type Config struct {
-	AmountLimit int32
-	BatchSize   int32
+	AmountLimit      int32
+	BatchSize        int32
+	OperationTimeout time.Duration
 }
 
 type Executor struct {
@@ -67,6 +69,10 @@ func NewExecutor(roomManager ports.RoomManager, storage ports.SchedulerStorage, 
 	if config.BatchSize <= 0 {
 		zap.L().Sugar().Infof("Add Executor - Batch size wrongly configured with %d, using default value %d", config.BatchSize, DefaultBatchSize)
 		config.BatchSize = DefaultBatchSize
+	}
+	if config.OperationTimeout <= 0 {
+		zap.L().Sugar().Infof("Add Executor - Operation timeout wrongly configured with %v, using default value %v", config.OperationTimeout, DefaultOperationTimeout)
+		config.OperationTimeout = DefaultOperationTimeout
 	}
 	return &Executor{
 		roomManager,
@@ -119,7 +125,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 			go func() {
 				defer wg.Done()
 
-				ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, ex.config.OperationTimeout)
 				defer cancel()
 
 				errsCh <- ex.createRoom(ctx, scheduler, executionLogger)

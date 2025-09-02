@@ -40,17 +40,18 @@ import (
 )
 
 const (
-	healthControllerExecutionIntervalConfigPath = "workers.healthControllerInterval"
-	storagecleanupExecutionIntervalConfigPath   = "workers.storageClenupInterval"
-	roomInitializationTimeoutMillisConfigPath   = "services.roomManager.roomInitializationTimeoutMillis"
-	roomRoomValidationAttemptsConfigPath        = "services.roomManager.roomValidationAttempts"
-	roomPingTimeoutMillisConfigPath             = "services.roomManager.roomPingTimeoutMillis"
-	roomDeletionTimeoutMillisConfigPath         = "services.roomManager.roomDeletionTimeoutMillis"
-	operationLeaseTTLMillisConfigPath           = "services.operationManager.operationLeaseTTLMillis"
-	schedulerCacheTTLMillisConfigPath           = "services.eventsForwarder.schedulerCacheTTLMillis"
-	operationsRoomsAddLimitConfigPath           = "operations.rooms.add.limit"
-	operationsRoomsAddBatchSizePath             = "operations.rooms.add.batchSize"
-	operationsRoomsRemoveLimitConfigPath        = "operations.rooms.remove.limit"
+	healthControllerExecutionIntervalConfigPath  = "workers.healthControllerInterval"
+	storagecleanupExecutionIntervalConfigPath    = "workers.storageClenupInterval"
+	roomInitializationTimeoutMillisConfigPath    = "services.roomManager.roomInitializationTimeoutMillis"
+	roomRoomValidationAttemptsConfigPath         = "services.roomManager.roomValidationAttempts"
+	roomPingTimeoutMillisConfigPath              = "services.roomManager.roomPingTimeoutMillis"
+	roomDeletionTimeoutMillisConfigPath          = "services.roomManager.roomDeletionTimeoutMillis"
+	operationLeaseTTLMillisConfigPath            = "services.operationManager.operationLeaseTTLMillis"
+	schedulerCacheTTLMillisConfigPath            = "services.eventsForwarder.schedulerCacheTTLMillis"
+	operationsRoomsAddLimitConfigPath            = "operations.rooms.add.limit"
+	operationsRoomsAddBatchSizePath              = "operations.rooms.add.batchSize"
+	operationsRoomsAddOperationTimeoutConfigPath = "operations.rooms.add.operationTimeout"
+	operationsRoomsRemoveLimitConfigPath         = "operations.rooms.remove.limit"
 )
 
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
@@ -88,10 +89,12 @@ func NewHealthControllerConfig(c config.Config) healthcontroller.Config {
 func NewOperationRoomsAddConfig(c config.Config) add.Config {
 	operationsRoomsAddLimit := int32(c.GetInt(operationsRoomsAddLimitConfigPath))
 	operationsRoomsAddBatchSize := int32(c.GetInt(operationsRoomsAddBatchSizePath))
+	operationsRoomsAddOperationTimeout := c.GetDuration(operationsRoomsAddOperationTimeoutConfigPath)
 
 	config := add.Config{
-		AmountLimit: operationsRoomsAddLimit,
-		BatchSize:   operationsRoomsAddBatchSize,
+		AmountLimit:      operationsRoomsAddLimit,
+		BatchSize:        operationsRoomsAddBatchSize,
+		OperationTimeout: operationsRoomsAddOperationTimeout,
 	}
 
 	return config
