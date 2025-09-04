@@ -308,6 +308,89 @@ func TestExecutor_Execute(t *testing.T) {
 
 		require.Nil(t, err)
 	})
+
+	t.Run("use default operation timeout if OperationTimeout not set", func(t *testing.T) {
+		executor, _, _, _ := testSetup(t, Config{})
+		require.NotNil(t, executor)
+		require.Equal(t, executor.config.OperationTimeout, DefaultOperationTimeout)
+	})
+
+	t.Run("use default operation timeout if invalid OperationTimeout value", func(t *testing.T) {
+		executor, _, _, _ := testSetup(t, Config{OperationTimeout: -1 * time.Second})
+		require.NotNil(t, executor)
+		require.Equal(t, executor.config.OperationTimeout, DefaultOperationTimeout)
+	})
+
+	t.Run("use custom operation timeout when valid value provided", func(t *testing.T) {
+		customTimeout := 10 * time.Second
+		executor, _, _, _ := testSetup(t, Config{OperationTimeout: customTimeout})
+		require.NotNil(t, executor)
+		require.Equal(t, executor.config.OperationTimeout, customTimeout)
+	})
+
+	t.Run("should timeout when room creation takes longer than configured timeout", func(t *testing.T) {
+		shortTimeoutDefinition := Definition{Amount: 1}
+		shortTimeoutConfig := Config{
+			AmountLimit:      10,
+			BatchSize:        10,
+			OperationTimeout: 10 * time.Millisecond, // Very short timeout
+		}
+
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, shortTimeoutConfig)
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+
+		// Mock room creation to take longer than the timeout
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).DoAndReturn(
+			func(ctx context.Context, scheduler entities.Scheduler, checkRoomDeletion bool) (*game_room.GameRoom, *game_room.Instance, error) {
+				select {
+				// Sleep longer than the timeout to trigger context deadline
+				case <-time.After(100 * time.Millisecond):
+					return &gameRoom, &gameRoomInstance, nil
+				// Should return context deadline exceeded
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				}
+			},
+		).Times(1)
+
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, "more rooms failed than succeeded, errors: 1 and successes: 0 of amount: 1")
+
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, shortTimeoutConfig)
+		err := executor.Execute(context.Background(), &op, &shortTimeoutDefinition)
+
+		require.NotNil(t, err)
+		require.ErrorContains(t, err, "more rooms failed than succeeded")
+	})
+
+	t.Run("should succeed when room creation completes within configured timeout", func(t *testing.T) {
+		fastDefinition := Definition{Amount: 2}
+		reasonableTimeoutConfig := Config{
+			AmountLimit:      10,
+			BatchSize:        10,
+			OperationTimeout: 1 * time.Second, // Reasonable timeout
+		}
+
+		_, roomsManager, schedulerStorage, operationsManager := testSetup(t, reasonableTimeoutConfig)
+
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), op.SchedulerName).Return(&scheduler, nil)
+
+		// Mock room creation to complete quickly within the timeout
+		roomsManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), false).DoAndReturn(
+			func(ctx context.Context, scheduler entities.Scheduler, checkRoomDeletion bool) (*game_room.GameRoom, *game_room.Instance, error) {
+				// Complete quickly within timeout
+				time.Sleep(50 * time.Millisecond) // Much less than 1 second
+				return &gameRoom, &gameRoomInstance, nil
+			},
+		).Times(2)
+
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), &op, fmt.Sprintf("added %d rooms", fastDefinition.Amount))
+
+		executor := NewExecutor(roomsManager, schedulerStorage, operationsManager, reasonableTimeoutConfig)
+		err := executor.Execute(context.Background(), &op, &fastDefinition)
+
+		require.Nil(t, err)
+	})
 }
 
 func TestExecutor_Rollback(t *testing.T) {

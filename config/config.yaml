@@ -82,6 +82,7 @@ operations:
     add:
       limit: 1000
       batchSize: 40
+      operationTimeout: 5s
     remove:
       limit: 50
 
