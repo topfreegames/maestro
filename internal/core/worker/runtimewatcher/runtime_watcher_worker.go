@@ -122,22 +122,14 @@ func (w *runtimeWatcherWorker) mitigateDisruptions() error {
 	}
 	mitigationQuota := 0
 	if totalRoomsAmount >= MinRoomsToApplyDisruption {
-		mitigationQuota, err = w.roomStorage.GetRoomCountByStatus(w.ctx, w.scheduler.Name, game_room.GameStatusOccupied)
-		if err != nil {
-			w.logger.Error(
-				"failed to get occupied rooms for scheduler",
-				zap.String("scheduler", w.scheduler.Name),
-				zap.Error(err),
-			)
-			return err
-		}
+		mitigationQuota = totalRoomsAmount
 	}
 	err = w.runtime.MitigateDisruption(w.ctx, w.scheduler, mitigationQuota, w.config.DisruptionSafetyPercentage)
 	if err != nil {
 		return err
 	}
 	w.logger.Debug(
-		"mitigated disruption for occupied rooms",
+		"mitigated disruption for total rooms",
 		zap.String("scheduler", w.scheduler.Name),
 		zap.Int("mitigationQuota", mitigationQuota),
 	)

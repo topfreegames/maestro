@@ -354,8 +354,8 @@ func TestMitigateDisruption(t *testing.T) {
 		// Default PDB created by CreateScheduler should have MinAvailable = 0
 		require.Equal(t, int32(0), pdb.Spec.MinAvailable.IntVal, "Initial PDB MinAvailable should be 0")
 
-		occupiedRooms := 100
-		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, occupiedRooms, 0.0) // This should update the PDB
+		totalRooms := 100
+		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, totalRooms, 0.0) // This should update the PDB
 		require.NoError(t, err)
 
 		pdb, err = clientset.PolicyV1().PodDisruptionBudgets(scheduler.Name).Get(ctx, scheduler.Name, metav1.GetOptions{})
@@ -363,8 +363,7 @@ func TestMitigateDisruption(t *testing.T) {
 		require.NotNil(t, pdb)
 		require.Equal(t, pdb.Name, scheduler.Name)
 
-		incSafetyPercentage := 1.0 + DefaultDisruptionSafetyPercentage
-		newRoomAmount := int32(float64(occupiedRooms) * incSafetyPercentage)
+		newRoomAmount := int32(float64(totalRooms) * (1.0 - DefaultDisruptionSafetyPercentage))
 		require.Equal(t, newRoomAmount, pdb.Spec.MinAvailable.IntVal)
 	})
 
@@ -424,8 +423,7 @@ func TestMitigateDisruption(t *testing.T) {
 		require.NotNil(t, pdb)
 		require.Equal(t, pdb.Name, scheduler.Name)
 
-		incSafetyPercentage := 1.0 + DefaultDisruptionSafetyPercentage // Default safety percentage
-		require.Equal(t, int32(float64(newValue)*incSafetyPercentage), pdb.Spec.MinAvailable.IntVal)
+		require.Equal(t, int32(float64(newValue)*(1.0-DefaultDisruptionSafetyPercentage)), pdb.Spec.MinAvailable.IntVal)
 	})
 
 	t.Run("should clear maxUnavailable and set minAvailable if existing PDB uses maxUnavailable", func(t *testing.T) {
@@ -469,8 +467,8 @@ func TestMitigateDisruption(t *testing.T) {
 		})
 
 		// Now, call MitigateDisruption
-		occupiedRooms := 100
-		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, occupiedRooms, 0.0)
+		totalRooms := 100
+		err = kubernetesRuntime.MitigateDisruption(ctx, scheduler, totalRooms, 0.0)
 		require.NoError(t, err)
 
 		// Check that PDB was updated: MinAvailable should be set, MaxUnavailable should be cleared
@@ -479,8 +477,7 @@ func TestMitigateDisruption(t *testing.T) {
 		require.NotNil(t, pdb)
 		require.Equal(t, pdb.Name, scheduler.Name)
 
-		incSafetyPercentage := 1.0 + DefaultDisruptionSafetyPercentage
-		newRoomAmount := int32(float64(occupiedRooms) * incSafetyPercentage)
+		newRoomAmount := int32(float64(totalRooms) * (1.0 - DefaultDisruptionSafetyPercentage))
 		require.Equal(t, newRoomAmount, pdb.Spec.MinAvailable.IntVal, "MinAvailable not set correctly")
 		require.Nil(t, pdb.Spec.MaxUnavailable, "MaxUnavailable was not cleared")
 	})
