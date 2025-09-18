@@ -39,6 +39,7 @@ import (
 )
 
 const (
+	MaxDisruptionSafetyPercentage     float64 = 1
 	DefaultDisruptionSafetyPercentage float64 = 0.05
 	MajorKubeVersionPDB               int     = 1
 	MinorKubeVersionPDB               int     = 21
@@ -185,7 +186,6 @@ func (k *kubernetes) MitigateDisruption(
 		return errors.NewErrInvalidArgument("empty pointer received for scheduler, can not mitigate disruptions")
 	}
 
-	incSafetyPercentage := 1.0
 	if safetyPercentage < DefaultDisruptionSafetyPercentage {
 		k.logger.Warn(
 			"invalid safety percentage, using default percentage",
@@ -194,7 +194,15 @@ func (k *kubernetes) MitigateDisruption(
 		)
 		safetyPercentage = DefaultDisruptionSafetyPercentage
 	}
-	incSafetyPercentage += safetyPercentage
+
+	if safetyPercentage >= MaxDisruptionSafetyPercentage {
+		k.logger.Warn(
+			"invalid safety percentage, using default percentage",
+			zap.Float64("safetyPercentage", safetyPercentage),
+			zap.Float64("DefaultDisruptionSafetyPercentage", DefaultDisruptionSafetyPercentage),
+		)
+		safetyPercentage = DefaultDisruptionSafetyPercentage
+	}
 
 	// Use RetryOnConflict to handle potential updates to the PDB object by other processes.
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -233,7 +241,7 @@ func (k *kubernetes) MitigateDisruption(
 			currentPdbMinAvailable = pdb.Spec.MinAvailable.IntVal
 		}
 
-		desiredMinAvailable := int32(float64(roomAmount) * incSafetyPercentage)
+		desiredMinAvailable := int32(float64(roomAmount) * (1.0 - safetyPercentage))
 
 		// If current PDB already matches the desired state regarding MinAvailable and MaxUnavailable being nil,
 		// no update is needed.
