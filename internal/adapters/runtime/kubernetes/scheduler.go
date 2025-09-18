@@ -39,6 +39,7 @@ import (
 )
 
 const (
+	MaxDisruptionSafetyPercentage     float64 = 1
 	DefaultDisruptionSafetyPercentage float64 = 0.05
 	MajorKubeVersionPDB               int     = 1
 	MinorKubeVersionPDB               int     = 21
@@ -186,6 +187,15 @@ func (k *kubernetes) MitigateDisruption(
 	}
 
 	if safetyPercentage < DefaultDisruptionSafetyPercentage {
+		k.logger.Warn(
+			"invalid safety percentage, using default percentage",
+			zap.Float64("safetyPercentage", safetyPercentage),
+			zap.Float64("DefaultDisruptionSafetyPercentage", DefaultDisruptionSafetyPercentage),
+		)
+		safetyPercentage = DefaultDisruptionSafetyPercentage
+	}
+
+	if safetyPercentage >= MaxDisruptionSafetyPercentage {
 		k.logger.Warn(
 			"invalid safety percentage, using default percentage",
 			zap.Float64("safetyPercentage", safetyPercentage),
