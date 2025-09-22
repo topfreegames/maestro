@@ -122,3 +122,22 @@ func (h *RoomsHandler) GetRoomAddress(ctx context.Context, message *api.GetRoomA
 	}
 	return requestadapters.FromInstanceEntityToGameRoomAddressResponse(instance), nil
 }
+
+func (h *RoomsHandler) AllocateRoom(ctx context.Context, message *api.AllocateRoomRequest) (*api.AllocateRoomResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName))
+	handlerLogger.Debug("handling room allocation request", zap.Any("message", message))
+
+	roomID, err := h.roomManager.AllocateRoom(ctx, message.SchedulerName)
+	if err != nil {
+		handlerLogger.Error("error allocating room", zap.Any("allocation_request", message), zap.Error(err))
+		return &api.AllocateRoomResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	if roomID == "" {
+		handlerLogger.Info("no ready rooms available for allocation")
+		return &api.AllocateRoomResponse{Success: false, Message: "no ready rooms available"}, nil
+	}
+
+	handlerLogger.Debug("room allocated successfully", zap.String(logs.LogFieldRoomID, roomID))
+	return &api.AllocateRoomResponse{RoomId: roomID, Success: true, Message: ""}, nil
+}

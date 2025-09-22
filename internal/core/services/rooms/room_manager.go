@@ -339,7 +339,7 @@ func (m *RoomManager) updateGameRoomStatus(ctx context.Context, schedulerID, gam
 		return false, fmt.Errorf("failed to get game room instance: %w", err)
 	}
 
-	calculator := NewStatusCalculator(*scheduler, m.Logger)
+	calculator := NewStatusCalculator(*scheduler, m.Config, m.Logger)
 	newStatus, err := calculator.CalculateRoomStatus(*gameRoom, *instance)
 	//newStatus, err := gameRoom.RoomComposedStatus(instance.Status.Type)
 	if err != nil {
@@ -531,4 +531,22 @@ func contains[T comparable](s []T, e T) bool {
 		}
 	}
 	return false
+}
+
+func (m *RoomManager) AllocateRoom(ctx context.Context, schedulerName string) (string, error) {
+	roomId, err := m.RoomStorage.AllocateRoom(ctx, schedulerName)
+	if err != nil {
+		m.Logger.Error("failed to allocate room from storage",
+			zap.String(logs.LogFieldSchedulerName, schedulerName),
+			zap.Error(err))
+		return "", err
+	}
+
+	if roomId != "" {
+		m.Logger.Debug("room allocated successfully",
+			zap.String(logs.LogFieldSchedulerName, schedulerName),
+			zap.String(logs.LogFieldRoomID, roomId))
+	}
+
+	return roomId, nil
 }

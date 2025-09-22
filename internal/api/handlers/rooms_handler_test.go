@@ -479,3 +479,98 @@ func extractBodyForComparisons(t *testing.T, body []byte, expectedBodyFixturePat
 	require.NoError(t, err)
 	return bodyBuffer.String(), expectedBodyBuffer.String()
 }
+
+func TestRoomsHandler_AllocateRoom(t *testing.T) {
+	t.Run("should succeed - room allocated successfully => return room ID and success true", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		expectedRoomID := "room-123"
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return(expectedRoomID, nil)
+
+		requestBody := `{"scheduler_name": "scheduler-name-1"}`
+		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		// Parse the JSON response manually since gRPC-Gateway uses camelCase
+		var jsonResponse map[string]interface{}
+		err = json.Unmarshal(rr.Body.Bytes(), &jsonResponse)
+		require.NoError(t, err)
+		require.Equal(t, expectedRoomID, jsonResponse["roomId"])
+		require.Equal(t, true, jsonResponse["success"])
+		require.Equal(t, "", jsonResponse["message"])
+	})
+
+	t.Run("should succeed - no rooms available => return empty room ID and success false", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return("", nil)
+
+		requestBody := `{"scheduler_name": "scheduler-name-1"}`
+		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		var jsonResponse map[string]interface{}
+		err = json.Unmarshal(rr.Body.Bytes(), &jsonResponse)
+		require.NoError(t, err)
+		require.Equal(t, "", jsonResponse["roomId"])
+		require.Equal(t, false, jsonResponse["success"])
+		require.Equal(t, "no ready rooms available", jsonResponse["message"])
+	})
+
+	t.Run("should fail - room manager returns error => return success false with error message", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		expectedError := errors.NewErrUnexpected("allocation failed")
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return("", expectedError)
+
+		requestBody := `{"scheduler_name": "scheduler-name-1"}`
+		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		var jsonResponse map[string]interface{}
+		err = json.Unmarshal(rr.Body.Bytes(), &jsonResponse)
+		require.NoError(t, err)
+		require.Equal(t, "", jsonResponse["roomId"])
+		require.Equal(t, false, jsonResponse["success"])
+		require.Contains(t, jsonResponse["message"], "allocation failed")
+	})
+}

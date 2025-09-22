@@ -27,4 +27,5 @@ import "time"
 type RoomManagerConfig struct {
 	RoomPingTimeout     time.Duration
 	RoomDeletionTimeout time.Duration
+	RoomAllocationTTL   time.Duration
 }

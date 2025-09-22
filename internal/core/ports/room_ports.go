@@ -73,6 +73,9 @@ type RoomManager interface {
 	// WaitRoomStatus blocks the caller until the context is canceled, an error
 	// happens in the process or the game room has the desired status.
 	WaitRoomStatus(ctx context.Context, gameRoom *game_room.GameRoom, status []game_room.GameRoomStatus) (game_room.GameRoomStatus, error)
+	// AllocateRoom atomically selects and allocates a ready room from the pool.
+	// Returns the room ID if allocation was successful, empty string if no rooms available.
+	AllocateRoom(ctx context.Context, schedulerName string) (string, error)
 }
 
 // Secondary Ports (output, driven ports)
@@ -105,6 +108,9 @@ type RoomStorage interface {
 	WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (RoomStorageStatusWatcher, error)
 	// GetRunningMatchesCount returns the current amount of running matches in a scheduler.
 	GetRunningMatchesCount(ctx context.Context, scheduler string) (int, error)
+	// AllocateRoom atomically selects a ready room and marks it as occupied.
+	// Returns the room ID if allocation was successful, empty string if no rooms available.
+	AllocateRoom(ctx context.Context, schedulerName string) (string, error)
 }
 
 // RoomStorageStatusWatcher defines a process of watcher, it will have a chan

@@ -52,6 +52,14 @@ service RoomsService {
       get: "/scheduler/{scheduler_name=*}/rooms/{room_name=*}/address",
     };
   }
+
+  // Allocates a ready room from the pool.
+  rpc AllocateRoom(AllocateRoomRequest) returns (AllocateRoomResponse) {
+    option (google.api.http) = {
+      post: "/scheduler/{scheduler_name=*}/rooms/allocate",
+      body: "*"
+    };
+  }
 }
 
 // The get room address request.
@@ -178,4 +186,21 @@ message UpdateRoomWithPingRequest {
 message UpdateRoomWithPingResponse {
   // Indicates if the ping update succeeded or not.
   bool success = 1;
+}
+
+// The allocate room request.
+message AllocateRoomRequest {
+  // Target scheduler name.
+  // NOTE: On http protocol, this operates as a path param.
+  string scheduler_name = 1;
+}
+
+// The allocate room response.
+message AllocateRoomResponse {
+  // The allocated room ID, empty if no room was available.
+  string room_id = 1;
+  // Flag indicating if allocation was successful.
+  bool success = 2;
+  // Message providing additional context (e.g., error details).
+  string message = 3;
 }
