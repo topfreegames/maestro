@@ -52,6 +52,7 @@ import (
 	"github.com/golang/mock/gomock"
 
 	mockports "github.com/topfreegames/maestro/internal/core/ports/mock"
+	"go.uber.org/zap"
 )
 
 func TestRoomManager_CreateRoom(t *testing.T) {
@@ -1626,4 +1627,72 @@ func newValidScheduler() *entities.Scheduler {
 			End:   60000,
 		},
 	}
+}
+
+func TestRoomManager_AllocateRoom(t *testing.T) {
+	t.Run("successfully allocates room from storage", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		roomManager := &RoomManager{
+			RoomStorage: roomStorage,
+			Logger:      zap.NewNop(),
+		}
+
+		schedulerName := "test-scheduler"
+		expectedRoomID := "room-123"
+
+		roomStorage.EXPECT().
+			AllocateRoom(gomock.Any(), schedulerName).
+			Return(expectedRoomID, nil)
+
+		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
+		require.NoError(t, err)
+		require.Equal(t, expectedRoomID, roomID)
+	})
+
+	t.Run("returns empty string when no rooms available", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		roomManager := &RoomManager{
+			RoomStorage: roomStorage,
+			Logger:      zap.NewNop(),
+		}
+
+		schedulerName := "test-scheduler"
+
+		roomStorage.EXPECT().
+			AllocateRoom(gomock.Any(), schedulerName).
+			Return("", nil)
+
+		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
+		require.NoError(t, err)
+		require.Equal(t, "", roomID)
+	})
+
+	t.Run("returns error when storage fails", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		roomManager := &RoomManager{
+			RoomStorage: roomStorage,
+			Logger:      zap.NewNop(),
+		}
+
+		schedulerName := "test-scheduler"
+		expectedError := errors.New("storage error")
+
+		roomStorage.EXPECT().
+			AllocateRoom(gomock.Any(), schedulerName).
+			Return("", expectedError)
+
+		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
+		require.Error(t, err)
+		require.Equal(t, "", roomID)
+		require.Equal(t, expectedError, err)
+	})
 }

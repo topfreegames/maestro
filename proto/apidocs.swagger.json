@@ -26,6 +26,47 @@
     "application/json"
   ],
   "paths": {
+    "/scheduler/{schedulerName}/rooms/allocate": {
+      "post": {
+        "summary": "Allocates a ready room from the pool.",
+        "operationId": "RoomsService_AllocateRoom",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1AllocateRoomResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "schedulerName",
+            "description": "Target scheduler name.\nNOTE: On http protocol, this operates as a path param.",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "[^/]+"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RoomsServiceAllocateRoomBody"
+            }
+          }
+        ],
+        "tags": [
+          "RoomsService"
+        ]
+      }
+    },
     "/scheduler/{schedulerName}/rooms/{roomName}/address": {
       "get": {
         "summary": "Gets room public addresses.",
@@ -743,6 +784,10 @@
     }
   },
   "definitions": {
+    "RoomsServiceAllocateRoomBody": {
+      "type": "object",
+      "description": "The allocate room request."
+    },
     "RoomsServiceForwardPlayerEventBody": {
       "type": "object",
       "properties": {
@@ -1027,6 +1072,24 @@
           }
         }
       }
+    },
+    "v1AllocateRoomResponse": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "The allocated room ID, empty if no room was available."
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Flag indicating if allocation was successful."
+        },
+        "message": {
+          "type": "string",
+          "description": "Message providing additional context (e.g., error details)."
+        }
+      },
+      "description": "The allocate room response."
     },
     "v1Autoscaling": {
       "type": "object",

@@ -24,6 +24,7 @@ const (
 	RoomsService_ForwardPlayerEvent_FullMethodName = "/api.v1.RoomsService/ForwardPlayerEvent"
 	RoomsService_UpdateRoomStatus_FullMethodName   = "/api.v1.RoomsService/UpdateRoomStatus"
 	RoomsService_GetRoomAddress_FullMethodName     = "/api.v1.RoomsService/GetRoomAddress"
+	RoomsService_AllocateRoom_FullMethodName       = "/api.v1.RoomsService/AllocateRoom"
 )
 
 // RoomsServiceClient is the client API for RoomsService service.
@@ -44,6 +45,8 @@ type RoomsServiceClient interface {
 	// Deprecated: Do not use.
 	// Gets room public addresses.
 	GetRoomAddress(ctx context.Context, in *GetRoomAddressRequest, opts ...grpc.CallOption) (*GetRoomAddressResponse, error)
+	// Allocates a ready room from the pool.
+	AllocateRoom(ctx context.Context, in *AllocateRoomRequest, opts ...grpc.CallOption) (*AllocateRoomResponse, error)
 }
 
 type roomsServiceClient struct {
@@ -106,6 +109,16 @@ func (c *roomsServiceClient) GetRoomAddress(ctx context.Context, in *GetRoomAddr
 	return out, nil
 }
 
+func (c *roomsServiceClient) AllocateRoom(ctx context.Context, in *AllocateRoomRequest, opts ...grpc.CallOption) (*AllocateRoomResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AllocateRoomResponse)
+	err := c.cc.Invoke(ctx, RoomsService_AllocateRoom_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoomsServiceServer is the server API for RoomsService service.
 // All implementations must embed UnimplementedRoomsServiceServer
 // for forward compatibility.
@@ -124,6 +137,8 @@ type RoomsServiceServer interface {
 	// Deprecated: Do not use.
 	// Gets room public addresses.
 	GetRoomAddress(context.Context, *GetRoomAddressRequest) (*GetRoomAddressResponse, error)
+	// Allocates a ready room from the pool.
+	AllocateRoom(context.Context, *AllocateRoomRequest) (*AllocateRoomResponse, error)
 	mustEmbedUnimplementedRoomsServiceServer()
 }
 
@@ -148,6 +163,9 @@ func (UnimplementedRoomsServiceServer) UpdateRoomStatus(context.Context, *Update
 }
 func (UnimplementedRoomsServiceServer) GetRoomAddress(context.Context, *GetRoomAddressRequest) (*GetRoomAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRoomAddress not implemented")
+}
+func (UnimplementedRoomsServiceServer) AllocateRoom(context.Context, *AllocateRoomRequest) (*AllocateRoomResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AllocateRoom not implemented")
 }
 func (UnimplementedRoomsServiceServer) mustEmbedUnimplementedRoomsServiceServer() {}
 func (UnimplementedRoomsServiceServer) testEmbeddedByValue()                      {}
@@ -260,6 +278,24 @@ func _RoomsService_GetRoomAddress_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoomsService_AllocateRoom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AllocateRoomRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoomsServiceServer).AllocateRoom(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoomsService_AllocateRoom_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoomsServiceServer).AllocateRoom(ctx, req.(*AllocateRoomRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoomsService_ServiceDesc is the grpc.ServiceDesc for RoomsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -286,6 +322,10 @@ var RoomsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRoomAddress",
 			Handler:    _RoomsService_GetRoomAddress_Handler,
+		},
+		{
+			MethodName: "AllocateRoom",
+			Handler:    _RoomsService_AllocateRoom_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

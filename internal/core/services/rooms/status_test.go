@@ -27,6 +27,7 @@ package rooms
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities"
@@ -43,8 +44,13 @@ func TestMultipleMatchStatusCalculator_CalculateRoomStatus(t *testing.T) {
 		},
 	}
 
+	config := RoomManagerConfig{
+		RoomAllocationTTL: 5 * time.Minute,
+	}
+
 	calculator := &MultipleMatchStatusCalculator{
 		scheduler: scheduler,
+		config:    config,
 		logger:    logger,
 	}
 
@@ -110,4 +116,150 @@ func TestMultipleMatchStatusCalculator_CalculateRoomStatus(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, status)
 		})
 	}
+}
+
+func TestSingleMatchStatusCalculator_AllocatedRoomTTLBehavior(t *testing.T) {
+	logger := zap.NewNop()
+	scheduler := entities.Scheduler{} // Single match scheduler
+	config := RoomManagerConfig{
+		RoomAllocationTTL: 5 * time.Minute,
+	}
+
+	calculator := &SingleMatchStatusCalculator{
+		scheduler: scheduler,
+		config:    config,
+		logger:    logger,
+	}
+
+	t.Run("allocated room within TTL ignores Ready pings", func(t *testing.T) {
+		allocatedAt := time.Now().Add(-2 * time.Minute) // 2 minutes ago (within 5 min TTL)
+		room := game_room.GameRoom{
+			ID:          "room1",
+			Status:      game_room.GameStatusAllocated,
+			PingStatus:  game_room.GameRoomPingStatusReady, // Room reports Ready
+			AllocatedAt: &allocatedAt,
+		}
+		instance := game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+
+		status, err := calculator.CalculateRoomStatus(room, instance)
+
+		assert.NoError(t, err)
+		assert.Equal(t, game_room.GameStatusAllocated, status, "should stay Allocated despite Ready ping")
+	})
+
+	t.Run("allocated room within TTL allows transition to Occupied", func(t *testing.T) {
+		allocatedAt := time.Now().Add(-2 * time.Minute) // 2 minutes ago (within 5 min TTL)
+		room := game_room.GameRoom{
+			ID:          "room1",
+			Status:      game_room.GameStatusAllocated,
+			PingStatus:  game_room.GameRoomPingStatusOccupied, // Room reports Occupied
+			AllocatedAt: &allocatedAt,
+		}
+		instance := game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+
+		status, err := calculator.CalculateRoomStatus(room, instance)
+
+		assert.NoError(t, err)
+		assert.Equal(t, game_room.GameStatusOccupied, status, "should transition to Occupied when room reports occupied")
+	})
+
+	t.Run("allocated room after TTL expires returns to normal calculation", func(t *testing.T) {
+		allocatedAt := time.Now().Add(-10 * time.Minute) // 10 minutes ago (beyond 5 min TTL)
+		room := game_room.GameRoom{
+			ID:          "room1",
+			Status:      game_room.GameStatusAllocated,
+			PingStatus:  game_room.GameRoomPingStatusReady, // Room reports Ready
+			AllocatedAt: &allocatedAt,
+		}
+		instance := game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+
+		status, err := calculator.CalculateRoomStatus(room, instance)
+
+		assert.NoError(t, err)
+		assert.Equal(t, game_room.GameStatusReady, status, "should return to Ready after TTL expires")
+	})
+
+	t.Run("allocated room with nil AllocatedAt proceeds with normal calculation", func(t *testing.T) {
+		room := game_room.GameRoom{
+			ID:          "room1",
+			Status:      game_room.GameStatusAllocated,
+			PingStatus:  game_room.GameRoomPingStatusReady,
+			AllocatedAt: nil, // No timestamp
+		}
+		instance := game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+
+		status, err := calculator.CalculateRoomStatus(room, instance)
+
+		assert.NoError(t, err)
+		assert.Equal(t, game_room.GameStatusReady, status, "should proceed with normal calculation when AllocatedAt is nil")
+	})
+}
+
+func TestMultipleMatchStatusCalculator_AllocatedRoomTTLBehavior(t *testing.T) {
+	logger := zap.NewNop()
+	scheduler := entities.Scheduler{
+		MatchAllocation: &allocation.MatchAllocation{
+			MaxMatches: 3,
+		},
+	}
+	config := RoomManagerConfig{
+		RoomAllocationTTL: 5 * time.Minute,
+	}
+
+	calculator := &MultipleMatchStatusCalculator{
+		scheduler: scheduler,
+		config:    config,
+		logger:    logger,
+	}
+
+	t.Run("allocated room within TTL ignores Ready pings", func(t *testing.T) {
+		allocatedAt := time.Now().Add(-2 * time.Minute) // 2 minutes ago (within 5 min TTL)
+		room := game_room.GameRoom{
+			ID:             "room1",
+			Status:         game_room.GameStatusAllocated,
+			PingStatus:     game_room.GameRoomPingStatusReady, // Room reports Ready
+			AllocatedAt:    &allocatedAt,
+			RunningMatches: 0,
+		}
+		instance := game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+
+		status, err := calculator.CalculateRoomStatus(room, instance)
+
+		assert.NoError(t, err)
+		assert.Equal(t, game_room.GameStatusAllocated, status, "should stay Allocated despite Ready ping")
+	})
+
+	t.Run("allocated room within TTL allows transition to Occupied", func(t *testing.T) {
+		allocatedAt := time.Now().Add(-2 * time.Minute) // 2 minutes ago (within 5 min TTL)
+		room := game_room.GameRoom{
+			ID:             "room1",
+			Status:         game_room.GameStatusAllocated,
+			PingStatus:     game_room.GameRoomPingStatusOccupied, // Room reports Occupied
+			AllocatedAt:    &allocatedAt,
+			RunningMatches: 3, // Max matches
+		}
+		instance := game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+
+		status, err := calculator.CalculateRoomStatus(room, instance)
+
+		assert.NoError(t, err)
+		assert.Equal(t, game_room.GameStatusOccupied, status, "should transition to Occupied when room reports occupied")
+	})
+
+	t.Run("allocated room after TTL expires returns to Ready when no matches", func(t *testing.T) {
+		allocatedAt := time.Now().Add(-10 * time.Minute) // 10 minutes ago (beyond 5 min TTL)
+		room := game_room.GameRoom{
+			ID:             "room1",
+			Status:         game_room.GameStatusAllocated,
+			PingStatus:     game_room.GameRoomPingStatusReady, // Room reports Ready
+			AllocatedAt:    &allocatedAt,
+			RunningMatches: 0, // No matches
+		}
+		instance := game_room.Instance{Status: game_room.InstanceStatus{Type: game_room.InstanceReady}}
+
+		status, err := calculator.CalculateRoomStatus(room, instance)
+
+		assert.NoError(t, err)
+		assert.Equal(t, game_room.GameStatusReady, status, "should return to Ready after TTL expires with no matches")
+	})
 }
