@@ -62,7 +62,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 		// Assert
 		assert.NoError(t, err)
 		assert.Equal(t, 12, state[fixedbufferamount.OccupiedRoomsKey]) // 10 occupied + 2 allocated = 12
-		assert.Equal(t, 17, state[fixedbufferamount.TotalRoomsKey]) // 20 - 2 - 1 = 17
+		assert.Equal(t, 17, state[fixedbufferamount.TotalRoomsKey])    // 20 - 2 - 1 = 17
 	})
 
 	t.Run("successfully builds current state with no terminating or error rooms", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 		// Assert
 		assert.NoError(t, err)
 		assert.Equal(t, 6, state[fixedbufferamount.OccupiedRoomsKey]) // 5 occupied + 1 allocated = 6
-		assert.Equal(t, 15, state[fixedbufferamount.TotalRoomsKey]) // 15 - 0 - 0 = 15
+		assert.Equal(t, 15, state[fixedbufferamount.TotalRoomsKey])   // 15 - 0 - 0 = 15
 	})
 
 	t.Run("returns error when getting occupied rooms count fails", func(t *testing.T) {

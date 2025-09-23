@@ -223,6 +223,7 @@ func TestCanDownscale(t *testing.T) {
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(4, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(0, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(1, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
@@ -240,6 +241,7 @@ func TestCanDownscale(t *testing.T) {
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(2, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(3, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(3, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
@@ -257,6 +259,7 @@ func TestCanDownscale(t *testing.T) {
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(70, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(30, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(30, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
@@ -274,6 +277,7 @@ func TestCanDownscale(t *testing.T) {
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(500, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(80, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(80, nil)
 
 			policy := roomoccupancy.NewPolicy(mockRoomStorage)
@@ -527,6 +531,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(3, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(1, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusTerminating).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCount(gomock.Any(), scheduler.Name).Return(10, nil)
@@ -544,6 +549,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(3, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusTerminating).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCount(gomock.Any(), scheduler.Name).Return(8, nil)
@@ -561,6 +567,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(3, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusTerminating).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCount(gomock.Any(), scheduler.Name).Return(5, nil)
@@ -578,6 +585,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(0, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusTerminating).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCount(gomock.Any(), scheduler.Name).Return(10, nil)
@@ -595,6 +603,7 @@ func TestCanDownscale_FixedBufferAmount(t *testing.T) {
 			mockRoomStorage := mock.NewMockRoomStorage(ctrl)
 
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(80, nil)
+			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusTerminating).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusError).Return(0, nil)
 			mockRoomStorage.EXPECT().GetRoomCount(gomock.Any(), scheduler.Name).Return(90, nil)

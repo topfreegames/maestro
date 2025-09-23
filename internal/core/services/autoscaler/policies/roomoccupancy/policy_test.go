@@ -88,6 +88,7 @@ func TestCurrentStateBuilder(t *testing.T) {
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(1, nil)
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(1, nil)
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(1, nil)
+		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(1, nil)
 		roomStorageMock.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(-1, errors.New("Error getting amount of running matches"))
 
 		policy := roomoccupancy.NewPolicy(roomStorageMock)
