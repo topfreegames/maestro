@@ -51,6 +51,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 
 		// Setup mock expectations
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusOccupied).Return(10, nil)
+		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusAllocated).Return(2, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusTerminating).Return(2, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusError).Return(1, nil)
 		mockRoomStorage.EXPECT().GetRoomCount(gomock.Any(), "test-scheduler").Return(20, nil)
@@ -60,7 +61,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
-		assert.Equal(t, 10, state[fixedbufferamount.OccupiedRoomsKey])
+		assert.Equal(t, 12, state[fixedbufferamount.OccupiedRoomsKey]) // 10 occupied + 2 allocated = 12
 		assert.Equal(t, 17, state[fixedbufferamount.TotalRoomsKey]) // 20 - 2 - 1 = 17
 	})
 
@@ -74,6 +75,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 
 		// Setup mock expectations
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusOccupied).Return(5, nil)
+		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusAllocated).Return(1, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusTerminating).Return(0, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusError).Return(0, nil)
 		mockRoomStorage.EXPECT().GetRoomCount(gomock.Any(), "test-scheduler").Return(15, nil)
@@ -83,7 +85,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
-		assert.Equal(t, 5, state[fixedbufferamount.OccupiedRoomsKey])
+		assert.Equal(t, 6, state[fixedbufferamount.OccupiedRoomsKey]) // 5 occupied + 1 allocated = 6
 		assert.Equal(t, 15, state[fixedbufferamount.TotalRoomsKey]) // 15 - 0 - 0 = 15
 	})
 
@@ -117,6 +119,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 
 		// Setup mock expectations
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusOccupied).Return(10, nil)
+		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusAllocated).Return(2, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusTerminating).Return(0, errors.New("storage error"))
 
 		// Execute
@@ -138,6 +141,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 
 		// Setup mock expectations
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusOccupied).Return(10, nil)
+		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusAllocated).Return(2, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusTerminating).Return(2, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusError).Return(0, errors.New("storage error"))
 
@@ -160,6 +164,7 @@ func TestCurrentStateBuilder_FixedBufferAmount(t *testing.T) {
 
 		// Setup mock expectations
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusOccupied).Return(10, nil)
+		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusAllocated).Return(2, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusTerminating).Return(2, nil)
 		mockRoomStorage.EXPECT().GetRoomCountByStatus(gomock.Any(), "test-scheduler", game_room.GameStatusError).Return(1, nil)
 		mockRoomStorage.EXPECT().GetRoomCount(gomock.Any(), "test-scheduler").Return(0, errors.New("storage error"))

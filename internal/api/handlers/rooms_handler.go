@@ -138,6 +138,22 @@ func (h *RoomsHandler) AllocateRoom(ctx context.Context, message *api.AllocateRo
 		return &api.AllocateRoomResponse{Success: false, Message: "no ready rooms available"}, nil
 	}
 
+	// Get room instance to retrieve address information
+	instance, err := h.roomManager.GetRoomInstance(ctx, message.SchedulerName, roomID)
+	if err != nil {
+		handlerLogger.Error("error getting allocated room instance", zap.String(logs.LogFieldRoomID, roomID), zap.Error(err))
+		return &api.AllocateRoomResponse{RoomId: roomID, Success: true, Message: "room allocated but address unavailable"}, nil
+	}
+
+	// Convert instance to address response format and include in allocation response
+	addressResponse := requestadapters.FromInstanceEntityToGameRoomAddressResponse(instance)
+
 	handlerLogger.Debug("room allocated successfully", zap.String(logs.LogFieldRoomID, roomID))
-	return &api.AllocateRoomResponse{RoomId: roomID, Success: true, Message: ""}, nil
+	return &api.AllocateRoomResponse{
+		RoomId:  roomID,
+		Success: true,
+		Message: "",
+		Ports:   addressResponse.Ports,
+		Host:    addressResponse.Host,
+	}, nil
 }
