@@ -76,7 +76,12 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
 	}
 
-	totalFreeSlots := (readyCount + activeCount + occupiedCount) * scheduler.MatchAllocation.MaxMatches
+	allocatedCount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusAllocated)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching allocated game rooms amount: %w", err)
+	}
+
+	totalFreeSlots := (readyCount + activeCount + occupiedCount + allocatedCount) * scheduler.MatchAllocation.MaxMatches
 
 	runningMatchesAmount, err := p.roomStorage.GetRunningMatchesCount(ctx, scheduler.Name)
 	if err != nil {
