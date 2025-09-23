@@ -1087,6 +1087,18 @@
         "message": {
           "type": "string",
           "description": "Message providing additional context (e.g., error details)."
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Port"
+          },
+          "description": "List of game room ports (available when allocation succeeds)."
+        },
+        "host": {
+          "type": "string",
+          "description": "Game room host (available when allocation succeeds)."
         }
       },
       "description": "The allocate room response."

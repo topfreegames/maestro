@@ -494,6 +494,19 @@ func TestRoomsHandler_AllocateRoom(t *testing.T) {
 		expectedRoomID := "room-123"
 		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return(expectedRoomID, nil)
 
+		// Mock room instance for address information
+		expectedInstance := &game_room.Instance{
+			ID: expectedRoomID,
+			Address: &game_room.Address{
+				Host: "192.168.1.100",
+				Ports: []game_room.Port{
+					{Name: "tcp", Port: 8080, Protocol: "TCP"},
+					{Name: "udp", Port: 9090, Protocol: "UDP"},
+				},
+			},
+		}
+		roomsManager.EXPECT().GetRoomInstance(gomock.Any(), "scheduler-name-1", expectedRoomID).Return(expectedInstance, nil)
+
 		requestBody := `{"scheduler_name": "scheduler-name-1"}`
 		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
 		require.NoError(t, err)
@@ -511,6 +524,22 @@ func TestRoomsHandler_AllocateRoom(t *testing.T) {
 		require.Equal(t, expectedRoomID, jsonResponse["roomId"])
 		require.Equal(t, true, jsonResponse["success"])
 		require.Equal(t, "", jsonResponse["message"])
+		require.Equal(t, "192.168.1.100", jsonResponse["host"])
+
+		// Check ports array
+		ports, ok := jsonResponse["ports"].([]interface{})
+		require.True(t, ok)
+		require.Len(t, ports, 2)
+
+		port1 := ports[0].(map[string]interface{})
+		require.Equal(t, "tcp", port1["name"])
+		require.Equal(t, "TCP", port1["protocol"])
+		require.Equal(t, float64(8080), port1["port"]) // JSON numbers are float64
+
+		port2 := ports[1].(map[string]interface{})
+		require.Equal(t, "udp", port2["name"])
+		require.Equal(t, "UDP", port2["protocol"])
+		require.Equal(t, float64(9090), port2["port"])
 	})
 
 	t.Run("should succeed - no rooms available => return empty room ID and success false", func(t *testing.T) {
@@ -572,5 +601,41 @@ func TestRoomsHandler_AllocateRoom(t *testing.T) {
 		require.Equal(t, "", jsonResponse["roomId"])
 		require.Equal(t, false, jsonResponse["success"])
 		require.Contains(t, jsonResponse["message"], "allocation failed")
+	})
+
+	t.Run("should succeed with warning - room allocated but address unavailable", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		expectedRoomID := "room-123"
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return(expectedRoomID, nil)
+		roomsManager.EXPECT().GetRoomInstance(gomock.Any(), "scheduler-name-1", expectedRoomID).Return(nil, errors.NewErrUnexpected("instance not found"))
+
+		requestBody := `{"scheduler_name": "scheduler-name-1"}`
+		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		var jsonResponse map[string]interface{}
+		err = json.Unmarshal(rr.Body.Bytes(), &jsonResponse)
+		require.NoError(t, err)
+		require.Equal(t, expectedRoomID, jsonResponse["roomId"])
+		require.Equal(t, true, jsonResponse["success"])
+		require.Equal(t, "room allocated but address unavailable", jsonResponse["message"])
+		require.Equal(t, "", jsonResponse["host"])
+
+		// Protobuf serializes empty array fields as empty arrays, not null
+		require.Empty(t, jsonResponse["ports"])
 	})
 }

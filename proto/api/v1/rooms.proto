@@ -203,4 +203,8 @@ message AllocateRoomResponse {
   bool success = 2;
   // Message providing additional context (e.g., error details).
   string message = 3;
+  // List of game room ports (available when allocation succeeds).
+  repeated Port ports = 4;
+  // Game room host (available when allocation succeeds).
+  string host = 5;
 }
