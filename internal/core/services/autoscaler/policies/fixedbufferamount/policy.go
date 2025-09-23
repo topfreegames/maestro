@@ -60,6 +60,11 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
 	}
 
+	allocatedCount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusAllocated)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching allocated game rooms amount: %w", err)
+	}
+
 	terminatingCount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusTerminating)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching terminating game rooms amount: %w", err)
@@ -78,7 +83,7 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 	totalCount = totalCount - terminatingCount - errorCount
 
 	return policies.CurrentState{
-		OccupiedRoomsKey: occupiedCount,
+		OccupiedRoomsKey: occupiedCount + allocatedCount,
 		TotalRoomsKey:    totalCount,
 	}, nil
 }
