@@ -400,8 +400,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	newGameRoom := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusReady, PingStatus: game_room.GameRoomPingStatusOccupied, LastPingAt: clock.Now(), Metadata: map[string]interface{}{}}
 
 	t.Run("when the current game room exists then it execute without returning error", func(t *testing.T) {
-		scheduler := &entities.Scheduler{Name: newGameRoom.SchedulerID}
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(scheduler, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(&entities.Scheduler{Name: newGameRoom.SchedulerID}, nil)
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
@@ -441,8 +440,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 
 	t.Run("when update status fails then it returns error", func(t *testing.T) {
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
-		scheduler := &entities.Scheduler{Name: newGameRoom.SchedulerID}
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(scheduler, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(&entities.Scheduler{Name: newGameRoom.SchedulerID}, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(porterrors.ErrUnexpected)
@@ -453,8 +451,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 
 	t.Run("when some error occurs on events forwarding then it does not return with error", func(t *testing.T) {
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
-		scheduler := &entities.Scheduler{Name: newGameRoom.SchedulerID}
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(scheduler, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(&entities.Scheduler{Name: newGameRoom.SchedulerID}, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
@@ -722,8 +719,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 
 	t.Run("updates rooms with success", func(t *testing.T) {
 		instanceStorage.EXPECT().UpsertInstance(context.Background(), newGameRoomInstance).Return(nil)
-		scheduler := &entities.Scheduler{Name: newGameRoomInstance.SchedulerID}
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoomInstance.SchedulerID).Return(scheduler, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoomInstance.SchedulerID).Return(&entities.Scheduler{Name: newGameRoomInstance.SchedulerID}, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID).Return(newGameRoomInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID).Return(currentGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID, game_room.GameStatusError).Return(nil)
