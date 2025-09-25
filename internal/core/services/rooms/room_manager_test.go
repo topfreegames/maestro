@@ -65,8 +65,9 @@ func TestRoomManager_CreateRoom(t *testing.T) {
 	instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
 	fakeClock := clockmock.NewFakeClock(now)
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 	config := RoomManagerConfig{}
-	roomManager := New(fakeClock, portAllocator, roomStorage, schedulerStorage, instanceStorage, runtime, eventsService, config)
+	roomManager := New(fakeClock, portAllocator, roomStorage, schedulerStorage, schedulerCache, instanceStorage, runtime, eventsService, config)
 
 	container1 := game_room.Container{
 		Name: "container1",
@@ -384,6 +385,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		mockports.NewMockPortAllocator(mockCtrl),
 		roomStorage,
 		schedulerStorage,
+		mockports.NewMockSchedulerCache(mockCtrl),
 		instanceStorage,
 		runtime,
 		eventsService,
@@ -467,6 +469,7 @@ func TestRoomManager_ListRoomsWithDeletionPriority(t *testing.T) {
 		nil,
 		roomStorage,
 		schedulerStorage,
+		mockports.NewMockSchedulerCache(mockCtrl),
 		nil,
 		runtime,
 		eventsService,
@@ -693,6 +696,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 		mockports.NewMockPortAllocator(mockCtrl),
 		roomStorage,
 		schedulerStorage,
+		mockports.NewMockSchedulerCache(mockCtrl),
 		instanceStorage,
 		runtime,
 		eventsService,
@@ -740,6 +744,7 @@ func TestRoomManager_CleanRoomState(t *testing.T) {
 		mockports.NewMockPortAllocator(mockCtrl),
 		roomStorage,
 		schedulerStorage,
+		mockports.NewMockSchedulerCache(mockCtrl),
 		instanceStorage,
 		runtime,
 		eventsService,
@@ -1354,6 +1359,7 @@ func testSetup(t *testing.T) (
 
 	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 	instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
 	runtime := mockports.NewMockRuntime(mockCtrl)
 	eventsService := mockports.NewMockEventsService(mockCtrl)
@@ -1365,6 +1371,7 @@ func testSetup(t *testing.T) (
 		mockports.NewMockPortAllocator(mockCtrl),
 		roomStorage,
 		schedulerStorage,
+		schedulerCache,
 		instanceStorage,
 		runtime,
 		eventsService,
