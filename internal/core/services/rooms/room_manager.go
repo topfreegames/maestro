@@ -55,6 +55,7 @@ type RoomManager struct {
 	PortAllocator    ports.PortAllocator
 	RoomStorage      ports.RoomStorage
 	SchedulerStorage ports.SchedulerStorage
+	SchedulerCache   ports.SchedulerCache
 	InstanceStorage  ports.GameRoomInstanceStorage
 	Runtime          ports.Runtime
 	EventsService    ports.EventsService
@@ -64,12 +65,13 @@ type RoomManager struct {
 
 var _ ports.RoomManager = (*RoomManager)(nil)
 
-func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, schedulerStorage ports.SchedulerStorage, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config RoomManagerConfig) ports.RoomManager {
+func New(clock ports.Clock, portAllocator ports.PortAllocator, roomStorage ports.RoomStorage, schedulerStorage ports.SchedulerStorage, schedulerCache ports.SchedulerCache, instanceStorage ports.GameRoomInstanceStorage, runtime ports.Runtime, eventsService ports.EventsService, config RoomManagerConfig) ports.RoomManager {
 	return &RoomManager{
 		Clock:            clock,
 		PortAllocator:    portAllocator,
 		RoomStorage:      roomStorage,
 		SchedulerStorage: schedulerStorage,
+		SchedulerCache:   schedulerCache,
 		InstanceStorage:  instanceStorage,
 		Runtime:          runtime,
 		EventsService:    eventsService,
@@ -324,7 +326,7 @@ func (m *RoomManager) UpdateGameRoomStatus(ctx context.Context, schedulerID, gam
 }
 
 func (m *RoomManager) updateGameRoomStatus(ctx context.Context, schedulerID, gameRoomId string) (bool, error) {
-	scheduler, err := m.SchedulerStorage.GetScheduler(ctx, schedulerID)
+	scheduler, err := m.getScheduler(ctx, schedulerID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get scheduler from storage: %w", err)
 	}
@@ -531,4 +533,22 @@ func contains[T comparable](s []T, e T) bool {
 		}
 	}
 	return false
+}
+
+func (m *RoomManager) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
+	scheduler, err := m.SchedulerCache.GetScheduler(ctx, schedulerName)
+	if err != nil {
+		m.Logger.Error(fmt.Sprintf("Failed to get scheduler \"%v\" from cache", schedulerName), zap.Error(err))
+	}
+	if scheduler == nil {
+		scheduler, err = m.SchedulerStorage.GetScheduler(ctx, schedulerName)
+		if err != nil {
+			m.Logger.Error(fmt.Sprintf("Failed to get scheduler \"%v\" from storage", schedulerName), zap.Error(err))
+			return nil, err
+		}
+		if err = m.SchedulerCache.SetScheduler(ctx, scheduler, m.Config.SchedulerCacheTtl); err != nil {
+			m.Logger.Error(fmt.Sprintf("Failed to set scheduler \"%v\" in cache", schedulerName), zap.Error(err))
+		}
+	}
+	return scheduler, nil
 }
