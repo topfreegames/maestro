@@ -1,7 +1,7 @@
 ## Kubernetes usage
 Maestro uses kubernetes for orchestrating game room instances. It uses a unique **namespace** for each scheduler, and a unique **pod** for each game room instance.
 
-We use [client-go](https://github.com/kubernetes/client-go) for communicating with kubernetes. The [Runtime](internal/core/ports/runtime.go) port
+We use [client-go](https://github.com/kubernetes/client-go) for communicating with kubernetes. The `Runtime` (the file on repo at `internal/core/ports/runtime.go`) port
 is the interface used for managing resources, you can find all of the features we are using for managing k8s resources in it.
 
 The diagram below shows how maestro components interact with kubernetes for managing resources.
