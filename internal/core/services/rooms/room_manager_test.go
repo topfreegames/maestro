@@ -381,6 +381,10 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{}
 
+	// Configure cache to always miss, making tests transparent to caching
+	schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	schedulerCache.EXPECT().SetScheduler(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 	roomManager := New(
 		clock,
 		mockports.NewMockPortAllocator(mockCtrl),
@@ -397,9 +401,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 
 	t.Run("when the current game room exists then it execute without returning error", func(t *testing.T) {
 		scheduler := &entities.Scheduler{Name: newGameRoom.SchedulerID}
-		schedulerCache.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
@@ -429,9 +431,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		currentInstance := &game_room.Instance{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.InstanceStatus{Type: game_room.InstancePending}}
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoomInvalidState).Return(nil)
 		scheduler := &entities.Scheduler{Name: newGameRoomInvalidState.SchedulerID}
-		schedulerCache.EXPECT().GetScheduler(context.Background(), newGameRoomInvalidState.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoomInvalidState.SchedulerID).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(newGameRoomInvalidState, nil)
 
@@ -442,9 +442,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	t.Run("when update status fails then it returns error", func(t *testing.T) {
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 		scheduler := &entities.Scheduler{Name: newGameRoom.SchedulerID}
-		schedulerCache.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(porterrors.ErrUnexpected)
@@ -456,9 +454,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 	t.Run("when some error occurs on events forwarding then it does not return with error", func(t *testing.T) {
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoom).Return(nil)
 		scheduler := &entities.Scheduler{Name: newGameRoom.SchedulerID}
-		schedulerCache.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoom.SchedulerID).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID).Return(newGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoom.SchedulerID, newGameRoom.ID, game_room.GameStatusOccupied).Return(nil)
@@ -705,6 +701,11 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 	eventsService := mockports.NewMockEventsService(mockCtrl)
 	clock := clockmock.NewFakeClock(time.Now())
 	config := RoomManagerConfig{}
+
+	// Configure cache to always miss, making tests transparent to caching
+	schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	schedulerCache.EXPECT().SetScheduler(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 	roomManager := New(
 		clock,
 		mockports.NewMockPortAllocator(mockCtrl),
@@ -722,9 +723,7 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 	t.Run("updates rooms with success", func(t *testing.T) {
 		instanceStorage.EXPECT().UpsertInstance(context.Background(), newGameRoomInstance).Return(nil)
 		scheduler := &entities.Scheduler{Name: newGameRoomInstance.SchedulerID}
-		schedulerCache.EXPECT().GetScheduler(context.Background(), newGameRoomInstance.SchedulerID).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoomInstance.SchedulerID).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID).Return(newGameRoomInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID).Return(currentGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID, game_room.GameStatusError).Return(nil)
@@ -1170,6 +1169,11 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
 		eventsService := mockports.NewMockEventsService(mockCtrl)
+
+		// Configure cache to always miss, making tests transparent to caching
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+		schedulerCache.EXPECT().SetScheduler(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 		roomManager := New(
 			clockmock.NewFakeClock(time.Now()),
 			mockports.NewMockPortAllocator(mockCtrl),
@@ -1190,7 +1194,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		scheduler := newValidScheduler()
 		roomId := "room-id"
-		roomStorage, schedulerStorage, schedulerCache, instanceStorage, roomManager, _ := setup(mockCtrl)
+		roomStorage, schedulerStorage, _, instanceStorage, roomManager, _ := setup(mockCtrl)
 
 		room := &game_room.GameRoom{SchedulerID: scheduler.Name, PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending, Metadata: map[string]interface{}{}}
 		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
@@ -1200,9 +1204,7 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), scheduler.Name, roomId, game_room.GameStatusReady)
 
-		schedulerCache.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 
 		err := roomManager.UpdateGameRoomStatus(context.Background(), scheduler.Name, roomId)
 		require.NoError(t, err)
@@ -1213,11 +1215,9 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		scheduler := newValidScheduler()
 		roomId := "room-id"
-		roomStorage, schedulerStorage, schedulerCache, instanceStorage, roomManager, _ := setup(mockCtrl)
+		roomStorage, schedulerStorage, _, instanceStorage, roomManager, _ := setup(mockCtrl)
 
-		schedulerCache.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 
 		room := &game_room.GameRoom{SchedulerID: scheduler.Name, PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusReady}
 		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
@@ -1234,11 +1234,9 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		scheduler := newValidScheduler()
 		roomId := "room-id"
-		roomStorage, schedulerStorage, schedulerCache, _, roomManager, _ := setup(mockCtrl)
+		roomStorage, schedulerStorage, _, _, roomManager, _ := setup(mockCtrl)
 
-		schedulerCache.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 
 		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(nil, porterrors.ErrNotFound)
 
@@ -1251,11 +1249,9 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		scheduler := newValidScheduler()
 		roomId := "room-id"
-		roomStorage, schedulerStorage, schedulerCache, instanceStorage, roomManager, _ := setup(mockCtrl)
+		roomStorage, schedulerStorage, _, instanceStorage, roomManager, _ := setup(mockCtrl)
 
-		schedulerCache.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 
 		room := &game_room.GameRoom{SchedulerID: scheduler.Name, PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusPending}
 		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
@@ -1271,11 +1267,9 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		scheduler := newValidScheduler()
 		roomId := "room-id"
-		roomStorage, schedulerStorage, schedulerCache, instanceStorage, roomManager, _ := setup(mockCtrl)
+		roomStorage, schedulerStorage, _, instanceStorage, roomManager, _ := setup(mockCtrl)
 
-		schedulerCache.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 
 		room := &game_room.GameRoom{SchedulerID: scheduler.Name, PingStatus: game_room.GameRoomPingStatusReady, Status: game_room.GameStatusTerminating}
 		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
@@ -1292,11 +1286,9 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		scheduler := newValidScheduler()
 		roomId := "room-id"
-		roomStorage, schedulerStorage, schedulerCache, instanceStorage, roomManager, eventsService := setup(mockCtrl)
+		roomStorage, schedulerStorage, _, instanceStorage, roomManager, eventsService := setup(mockCtrl)
 
-		schedulerCache.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 
 		room := &game_room.GameRoom{SchedulerID: scheduler.Name, PingStatus: game_room.GameRoomPingStatusTerminating, Status: game_room.GameStatusReady}
 		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
@@ -1316,11 +1308,9 @@ func TestUpdateGameRoomStatus(t *testing.T) {
 
 		scheduler := newValidScheduler()
 		roomId := "room-id"
-		roomStorage, schedulerStorage, schedulerCache, instanceStorage, roomManager, eventsService := setup(mockCtrl)
+		roomStorage, schedulerStorage, _, instanceStorage, roomManager, eventsService := setup(mockCtrl)
 
-		schedulerCache.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(nil, nil)
 		schedulerStorage.EXPECT().GetScheduler(context.Background(), scheduler.Name).Return(scheduler, nil)
-		schedulerCache.EXPECT().SetScheduler(context.Background(), scheduler, gomock.Any()).Return(nil)
 
 		room := &game_room.GameRoom{SchedulerID: scheduler.Name, PingStatus: game_room.GameRoomPingStatusTerminating, Status: game_room.GameStatusReady}
 		roomStorage.EXPECT().GetRoom(context.Background(), scheduler.Name, roomId).Return(room, nil)
@@ -1340,14 +1330,20 @@ func TestRoomManager_GetRoomInstance(t *testing.T) {
 	setup := func(mockCtrl *gomock.Controller) (*mockports.MockRoomStorage, *mockports.MockGameRoomInstanceStorage, ports.RoomManager, *mockports.MockEventsService) {
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		instanceStorage := mockports.NewMockGameRoomInstanceStorage(mockCtrl)
 		eventsService := mockports.NewMockEventsService(mockCtrl)
+
+		// Configure cache to always miss, making tests transparent to caching
+		schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+		schedulerCache.EXPECT().SetScheduler(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 		roomManager := New(
 			clockmock.NewFakeClock(time.Now()),
 			mockports.NewMockPortAllocator(mockCtrl),
 			roomStorage,
 			schedulerStorage,
-			mockports.NewMockSchedulerCache(mockCtrl),
+			schedulerCache,
 			instanceStorage,
 			mockports.NewMockRuntime(mockCtrl),
 			eventsService,
@@ -1406,6 +1402,10 @@ func testSetup(t *testing.T) (
 	eventsService := mockports.NewMockEventsService(mockCtrl)
 	config := RoomManagerConfig{}
 	roomStorageStatusWatcher := mockports.NewMockRoomStorageStatusWatcher(mockCtrl)
+
+	// Configure cache to always miss, making tests transparent to caching
+	schedulerCache.EXPECT().GetScheduler(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	schedulerCache.EXPECT().SetScheduler(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	roomManager := New(
 		clockmock.NewFakeClock(time.Now()),
