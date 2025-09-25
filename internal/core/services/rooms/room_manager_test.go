@@ -429,8 +429,7 @@ func TestRoomManager_UpdateRoom(t *testing.T) {
 		newGameRoomInvalidState := &game_room.GameRoom{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.GameStatusTerminating, PingStatus: game_room.GameRoomPingStatusReady}
 		currentInstance := &game_room.Instance{ID: "test-room", SchedulerID: "test-scheduler", Status: game_room.InstanceStatus{Type: game_room.InstancePending}}
 		roomStorage.EXPECT().UpdateRoom(context.Background(), newGameRoomInvalidState).Return(nil)
-		scheduler := &entities.Scheduler{Name: newGameRoomInvalidState.SchedulerID}
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoomInvalidState.SchedulerID).Return(scheduler, nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoomInvalidState.SchedulerID).Return(&entities.Scheduler{Name: newGameRoomInvalidState.SchedulerID}, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(currentInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInvalidState.SchedulerID, newGameRoomInvalidState.ID).Return(newGameRoomInvalidState, nil)
 
@@ -719,10 +718,10 @@ func TestRoomManager_UpdateRoomInstance(t *testing.T) {
 
 	t.Run("updates rooms with success", func(t *testing.T) {
 		instanceStorage.EXPECT().UpsertInstance(context.Background(), newGameRoomInstance).Return(nil)
-		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoomInstance.SchedulerID).Return(&entities.Scheduler{Name: newGameRoomInstance.SchedulerID}, nil)
 		instanceStorage.EXPECT().GetInstance(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID).Return(newGameRoomInstance, nil)
 		roomStorage.EXPECT().GetRoom(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID).Return(currentGameRoom, nil)
 		roomStorage.EXPECT().UpdateRoomStatus(context.Background(), newGameRoomInstance.SchedulerID, newGameRoomInstance.ID, game_room.GameStatusError).Return(nil)
+		schedulerStorage.EXPECT().GetScheduler(context.Background(), newGameRoomInstance.SchedulerID).Return(&entities.Scheduler{Name: newGameRoomInstance.SchedulerID}, nil)
 
 		err := roomManager.UpdateRoomInstance(context.Background(), newGameRoomInstance)
 		require.NoError(t, err)
