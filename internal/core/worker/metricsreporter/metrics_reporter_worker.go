@@ -162,6 +162,7 @@ func (w *MetricsReporterWorker) reportGameRoomMetrics() {
 	w.reportTerminatingRooms()
 	w.reportUnreadyRooms()
 	w.reportActiveRooms()
+	w.reportAllocatedRooms()
 	w.reportTotalRunningMatches()
 }
 
@@ -263,6 +264,17 @@ func (w *MetricsReporterWorker) reportActiveRooms() {
 	}
 
 	reportGameRoomActiveNumber(w.scheduler.Game, w.scheduler.Name, activeRooms)
+}
+
+func (w *MetricsReporterWorker) reportAllocatedRooms() {
+	allocatedRooms, err := w.roomStorage.GetRoomCountByStatus(w.workerContext, w.scheduler.Name, game_room.GameStatusAllocated)
+	if err != nil {
+		w.logger.Error("Error getting allocated rooms", zap.Error(err))
+		reportGameRoomAllocatedNumber(w.scheduler.Game, w.scheduler.Name, 0)
+		return
+	}
+
+	reportGameRoomAllocatedNumber(w.scheduler.Game, w.scheduler.Name, allocatedRooms)
 }
 
 func (w *MetricsReporterWorker) reportTotalRunningMatches() {

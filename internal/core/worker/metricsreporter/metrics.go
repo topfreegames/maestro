@@ -103,6 +103,17 @@ var (
 		},
 	})
 
+	gameRoomAllocatedGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemWorker,
+		Name:      "gru_allocated",
+		Help:      "The number of game rooms with status allocated",
+		Labels: []string{
+			monitoring.LabelGame,
+			monitoring.LabelScheduler,
+		},
+	})
+
 	instanceReadyGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
 		Namespace: monitoring.Namespace,
 		Subsystem: monitoring.SubsystemWorker,
@@ -228,6 +239,10 @@ func reportGameRoomOccupiedNumber(game, schedulerName string, numberOfGameRooms 
 }
 func reportGameRoomActiveNumber(game, schedulerName string, numberOfGameRooms int) {
 	gameRoomActiveGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
+}
+
+func reportGameRoomAllocatedNumber(game, schedulerName string, numberOfGameRooms int) {
+	gameRoomAllocatedGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(numberOfGameRooms))
 }
 
 func reportInstanceReadyNumber(game, schedulerName string, numberOfInstances int) {
