@@ -53,15 +53,15 @@ func initializeWorker(c config.Config, builder *worker.WorkerBuilder) (*workers.
 	if err != nil {
 		return nil, err
 	}
+	schedulerCache, err := service.NewSchedulerCacheRedis(c)
+	if err != nil {
+		return nil, err
+	}
 	gameRoomInstanceStorage, err := service.NewGameRoomInstanceStorageRedis(c)
 	if err != nil {
 		return nil, err
 	}
 	eventsForwarder, err := service.NewEventsForwarder(c)
-	if err != nil {
-		return nil, err
-	}
-	schedulerCache, err := service.NewSchedulerCacheRedis(c)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func initializeWorker(c config.Config, builder *worker.WorkerBuilder) (*workers.
 	if err != nil {
 		return nil, err
 	}
-	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, schedulerStorage, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
+	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, schedulerStorage, schedulerCache, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
 	schedulerManager := service.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 	policyMap := service.NewPolicyMap(roomStorage)
 	autoscaler := service.NewAutoscaler(policyMap)

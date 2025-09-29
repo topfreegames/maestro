@@ -38,15 +38,15 @@ func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) 
 	if err != nil {
 		return nil, err
 	}
+	schedulerCache, err := service.NewSchedulerCacheRedis(c)
+	if err != nil {
+		return nil, err
+	}
 	gameRoomInstanceStorage, err := service.NewGameRoomInstanceStorageRedis(c)
 	if err != nil {
 		return nil, err
 	}
 	eventsForwarder, err := service.NewEventsForwarder(c)
-	if err != nil {
-		return nil, err
-	}
-	schedulerCache, err := service.NewSchedulerCacheRedis(c)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func initializeRuntimeWatcher(c config.Config) (*workers.WorkersManager, error) 
 	if err != nil {
 		return nil, err
 	}
-	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, schedulerStorage, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
+	roomManager := service.NewRoomManager(clock, portAllocator, roomStorage, schedulerStorage, schedulerCache, gameRoomInstanceStorage, runtime, eventsService, roomManagerConfig)
 	runtimeWatcherConfig := provideRuntimeWatcherConfig(c)
 	workerOptions := &worker.WorkerOptions{
 		Runtime:              runtime,

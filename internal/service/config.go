@@ -115,10 +115,12 @@ func NewOperationRoomsRemoveConfig(c config.Config) remove.Config {
 func NewRoomManagerConfig(c config.Config) (roommanager.RoomManagerConfig, error) {
 	pingTimeout := time.Duration(c.GetInt(roomPingTimeoutMillisConfigPath)) * time.Millisecond
 	deletionTimeout := time.Duration(c.GetInt(roomDeletionTimeoutMillisConfigPath)) * time.Millisecond
+	schedulerCacheTTL := getSchedulerCacheTTL(c)
 
 	roomManagerConfig := roommanager.RoomManagerConfig{
 		RoomPingTimeout:     pingTimeout,
 		RoomDeletionTimeout: deletionTimeout,
+		SchedulerCacheTtl:   schedulerCacheTTL,
 	}
 
 	return roomManagerConfig, nil
@@ -151,18 +153,21 @@ func NewOperationManagerConfig(c config.Config) (operationmanager.OperationManag
 
 // NewEventsForwarderServiceConfig instantiate a new EventsForwarderConfig to be used by the EventsForwarder to customize its configuration.
 func NewEventsForwarderServiceConfig(c config.Config) (events.EventsForwarderConfig, error) {
-	var schedulerCacheTTL time.Duration
-	defaultSchedulerCacheTTL := time.Hour * 24
-
-	if configuredSchedulerCacheTTLInt := c.GetInt(schedulerCacheTTLMillisConfigPath); configuredSchedulerCacheTTLInt > 0 {
-		schedulerCacheTTL = time.Duration(configuredSchedulerCacheTTLInt) * time.Millisecond
-	} else {
-		schedulerCacheTTL = defaultSchedulerCacheTTL
-	}
+	schedulerCacheTTL := getSchedulerCacheTTL(c)
 
 	eventsForwarderConfig := events.EventsForwarderConfig{
 		SchedulerCacheTtl: schedulerCacheTTL,
 	}
 
 	return eventsForwarderConfig, nil
+}
+
+// getSchedulerCacheTTL returns the scheduler cache TTL from config or default value
+func getSchedulerCacheTTL(c config.Config) time.Duration {
+	defaultSchedulerCacheTTL := 5 * time.Minute
+
+	if configuredSchedulerCacheTTLInt := c.GetInt(schedulerCacheTTLMillisConfigPath); configuredSchedulerCacheTTLInt > 0 {
+		return time.Duration(configuredSchedulerCacheTTLInt) * time.Millisecond
+	}
+	return defaultSchedulerCacheTTL
 }
