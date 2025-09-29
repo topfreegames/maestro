@@ -538,7 +538,7 @@ func contains[T comparable](s []T, e T) bool {
 func (m *RoomManager) getScheduler(ctx context.Context, schedulerName string) (*entities.Scheduler, error) {
 	scheduler, err := m.SchedulerCache.GetScheduler(ctx, schedulerName)
 	if err != nil {
-		m.Logger.Error(fmt.Sprintf("Failed to get scheduler \"%v\" from cache", schedulerName), zap.Error(err))
+		m.Logger.Warn(fmt.Sprintf("Failed to get scheduler \"%v\" from cache", schedulerName), zap.Error(err))
 	}
 	if scheduler == nil {
 		scheduler, err = m.SchedulerStorage.GetScheduler(ctx, schedulerName)
@@ -547,7 +547,7 @@ func (m *RoomManager) getScheduler(ctx context.Context, schedulerName string) (*
 			return nil, err
 		}
 		if err = m.SchedulerCache.SetScheduler(ctx, scheduler, m.Config.SchedulerCacheTtl); err != nil {
-			m.Logger.Error(fmt.Sprintf("Failed to set scheduler \"%v\" in cache", schedulerName), zap.Error(err))
+			m.Logger.Warn(fmt.Sprintf("Failed to set scheduler \"%v\" in cache", schedulerName), zap.Error(err))
 		}
 	}
 	return scheduler, nil
