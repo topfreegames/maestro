@@ -41,8 +41,6 @@ const (
 	GameStatusReady
 	// GameStatusOccupied room is running, but not available for allocation.
 	GameStatusOccupied
-	// GameStatusAllocated room has been allocated to a match but hasn't reported occupied yet.
-	GameStatusAllocated
 	// GameStatusTerminating room is running, but it is in the termination
 	// process.
 	GameStatusTerminating
@@ -52,6 +50,8 @@ const (
 	GameStatusTerminated
 	// GameStatusActive room is partially occupied, when hosting multiple matches
 	GameStatusActive
+	// GameStatusAllocated room has been allocated to a match but hasn't reported occupied yet.
+	GameStatusAllocated
 )
 
 func (status GameRoomStatus) String() string {
