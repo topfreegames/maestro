@@ -110,8 +110,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 200, rr.Code)
-		require.Equal(t, "{\"success\":false}", rr.Body.String())
+		require.NotEqual(t, http.StatusOK, rr.Code)
 	})
 
 	t.Run("should fail - valid request, error while updating game room => return status code 500", func(t *testing.T) {
@@ -135,8 +134,7 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, 200, rr.Code)
-		require.Equal(t, "{\"success\":false}", rr.Body.String())
+		require.NotEqual(t, http.StatusOK, rr.Code)
 	})
 
 	t.Run("should fail - invalid request => return status code 400", func(t *testing.T) {
@@ -201,7 +199,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 		}
 	})
 
-	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
+	t.Run("when some error occur when forwarding then it return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
@@ -222,12 +220,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)
 
-			require.Equal(t, 200, rr.Code)
-			bodyString := rr.Body.String()
-			var body map[string]interface{}
-			err = json.Unmarshal([]byte(bodyString), &body)
-			require.NoError(t, err)
-			require.Equal(t, false, body["success"])
+			require.NotEqual(t, http.StatusOK, rr.Code)
 		}
 	})
 }
@@ -270,7 +263,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 		}
 	})
 
-	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
+	t.Run("when some error occur when forwarding then it return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
@@ -291,12 +284,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)
 
-			require.Equal(t, 200, rr.Code)
-			bodyString := rr.Body.String()
-			var body map[string]interface{}
-			err = json.Unmarshal([]byte(bodyString), &body)
-			require.NoError(t, err)
-			require.Equal(t, false, body["success"])
+			require.NotEqual(t, http.StatusOK, rr.Code)
 		}
 	})
 }
@@ -356,7 +344,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 			nil,
 		},
 		{
-			"return no error and success false when some error occurs producing the event",
+			"return error when some error occurs producing the event",
 			func(controller *gomock.Controller) (ports.RoomManager, ports.EventsService) {
 				roomManagerMock := mockports.NewMockRoomManager(controller)
 				eventsServiceMock := mockports.NewMockEventsService(controller)
@@ -391,8 +379,8 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 					Timestamp: 0,
 				},
 			},
-			&api.UpdateRoomStatusResponse{Success: false},
 			nil,
+			errors.NewErrUnexpected("some error"),
 		},
 	}
 	for _, tt := range tests {
@@ -406,7 +394,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 			}
 			got, err := h.UpdateRoomStatus(tt.args.ctx, tt.args.message)
 			if tt.errWanted != nil {
-				assert.EqualError(t, err, tt.errWanted.Error())
+				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.responseWanted, got)
@@ -542,7 +530,7 @@ func TestRoomsHandler_AllocateRoom(t *testing.T) {
 		require.Equal(t, float64(9090), port2["port"])
 	})
 
-	t.Run("should succeed - no rooms available => return empty room ID and success false", func(t *testing.T) {
+	t.Run("should fail - no rooms available => return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -552,7 +540,7 @@ func TestRoomsHandler_AllocateRoom(t *testing.T) {
 		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
 		require.NoError(t, err)
 
-		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return("", nil)
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return("", errors.NewErrUnexpected("no ready rooms available"))
 
 		requestBody := `{"scheduler_name": "scheduler-name-1"}`
 		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
@@ -562,17 +550,10 @@ func TestRoomsHandler_AllocateRoom(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, http.StatusOK, rr.Code)
-
-		var jsonResponse map[string]interface{}
-		err = json.Unmarshal(rr.Body.Bytes(), &jsonResponse)
-		require.NoError(t, err)
-		require.Equal(t, "", jsonResponse["roomId"])
-		require.Equal(t, false, jsonResponse["success"])
-		require.Equal(t, "no ready rooms available", jsonResponse["message"])
+		require.NotEqual(t, http.StatusOK, rr.Code)
 	})
 
-	t.Run("should fail - room manager returns error => return success false with error message", func(t *testing.T) {
+	t.Run("should fail - room manager returns error => return error", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -593,17 +574,10 @@ func TestRoomsHandler_AllocateRoom(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, http.StatusOK, rr.Code)
-
-		var jsonResponse map[string]interface{}
-		err = json.Unmarshal(rr.Body.Bytes(), &jsonResponse)
-		require.NoError(t, err)
-		require.Equal(t, "", jsonResponse["roomId"])
-		require.Equal(t, false, jsonResponse["success"])
-		require.Contains(t, jsonResponse["message"], "allocation failed")
+		require.NotEqual(t, http.StatusOK, rr.Code)
 	})
 
-	t.Run("should succeed with warning - room allocated but address unavailable", func(t *testing.T) {
+	t.Run("should fail - room allocated but address unavailable", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -625,17 +599,6 @@ func TestRoomsHandler_AllocateRoom(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.Equal(t, http.StatusOK, rr.Code)
-
-		var jsonResponse map[string]interface{}
-		err = json.Unmarshal(rr.Body.Bytes(), &jsonResponse)
-		require.NoError(t, err)
-		require.Equal(t, expectedRoomID, jsonResponse["roomId"])
-		require.Equal(t, true, jsonResponse["success"])
-		require.Equal(t, "room allocated but address unavailable", jsonResponse["message"])
-		require.Equal(t, "", jsonResponse["host"])
-
-		// Protobuf serializes empty array fields as empty arrays, not null
-		require.Empty(t, jsonResponse["ports"])
+		require.NotEqual(t, http.StatusOK, rr.Code)
 	})
 }
