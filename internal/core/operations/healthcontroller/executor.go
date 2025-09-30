@@ -269,9 +269,6 @@ func (ex *Executor) findAvailableAndExpiredRooms(ctx context.Context, scheduler 
 			continue
 		case ex.isRoomStatus(room, game_room.GameStatusError):
 			continue
-		case ex.isRoomStatus(room, game_room.GameStatusAllocated):
-			// Allocated rooms are treated as occupied - not available for new matches
-			continue
 		default:
 			availableRoomsIDs = append(availableRoomsIDs, gameRoomId)
 		}
