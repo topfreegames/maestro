@@ -1647,12 +1647,16 @@ func TestRoomManager_AllocateRoom(t *testing.T) {
 			AllocateRoom(gomock.Any(), schedulerName).
 			Return(expectedRoomID, nil)
 
+		roomStorage.EXPECT().
+			PublishRoomStatusEvent(gomock.Any(), schedulerName, expectedRoomID, game_room.GameStatusAllocated).
+			Return(nil)
+
 		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
 		require.NoError(t, err)
 		require.Equal(t, expectedRoomID, roomID)
 	})
 
-	t.Run("returns empty string when no rooms available", func(t *testing.T) {
+	t.Run("returns error when no rooms available", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -1663,17 +1667,19 @@ func TestRoomManager_AllocateRoom(t *testing.T) {
 		}
 
 		schedulerName := "test-scheduler"
+		noRoomsError := errors.New("no ready rooms available")
 
 		roomStorage.EXPECT().
 			AllocateRoom(gomock.Any(), schedulerName).
-			Return("NO_ROOMS_AVAILABLE", nil)
+			Return("", noRoomsError)
 
 		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
-		require.NoError(t, err)
+		require.Error(t, err)
 		require.Equal(t, "", roomID)
+		require.Equal(t, noRoomsError, err)
 	})
 
-	t.Run("returns empty string when allocation fails due to race condition", func(t *testing.T) {
+	t.Run("returns error when allocation fails due to race condition", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 
@@ -1684,14 +1690,16 @@ func TestRoomManager_AllocateRoom(t *testing.T) {
 		}
 
 		schedulerName := "test-scheduler"
+		allocationError := errors.New("room allocation failed")
 
 		roomStorage.EXPECT().
 			AllocateRoom(gomock.Any(), schedulerName).
-			Return("ALLOCATION_FAILED", nil)
+			Return("", allocationError)
 
 		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
-		require.NoError(t, err)
+		require.Error(t, err)
 		require.Equal(t, "", roomID)
+		require.Equal(t, allocationError, err)
 	})
 
 	t.Run("returns error when storage fails", func(t *testing.T) {
@@ -1705,15 +1713,42 @@ func TestRoomManager_AllocateRoom(t *testing.T) {
 		}
 
 		schedulerName := "test-scheduler"
-		expectedError := errors.New("storage error")
+		storageError := errors.New("storage error")
 
 		roomStorage.EXPECT().
 			AllocateRoom(gomock.Any(), schedulerName).
-			Return("", expectedError)
+			Return("", storageError)
 
 		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
 		require.Error(t, err)
 		require.Equal(t, "", roomID)
-		require.Equal(t, expectedError, err)
+		require.Equal(t, storageError, err)
+	})
+
+	t.Run("returns room ID even when event publishing fails", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		roomManager := &RoomManager{
+			RoomStorage: roomStorage,
+			Logger:      zap.NewNop(),
+		}
+
+		schedulerName := "test-scheduler"
+		expectedRoomID := "room-123"
+		publishError := errors.New("publish error")
+
+		roomStorage.EXPECT().
+			AllocateRoom(gomock.Any(), schedulerName).
+			Return(expectedRoomID, nil)
+
+		roomStorage.EXPECT().
+			PublishRoomStatusEvent(gomock.Any(), schedulerName, expectedRoomID, game_room.GameStatusAllocated).
+			Return(publishError)
+
+		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
+		require.NoError(t, err)
+		require.Equal(t, expectedRoomID, roomID)
 	})
 }

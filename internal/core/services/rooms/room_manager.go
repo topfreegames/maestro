@@ -556,29 +556,15 @@ func (m *RoomManager) getScheduler(ctx context.Context, schedulerName string) (*
 func (m *RoomManager) AllocateRoom(ctx context.Context, schedulerName string) (string, error) {
 	roomId, err := m.RoomStorage.AllocateRoom(ctx, schedulerName)
 	if err != nil {
-		m.Logger.Error("failed to allocate room from storage",
+		m.Logger.Warn("failed to allocate room from storage",
 			zap.String(logs.LogFieldSchedulerName, schedulerName),
 			zap.Error(err))
 		return "", err
 	}
 
-	// Handle descriptive error strings from storage layer
-	switch roomId {
-	case "NO_ROOMS_AVAILABLE":
-		m.Logger.Warn("no ready rooms available for allocation",
-			zap.String(logs.LogFieldSchedulerName, schedulerName))
-		return "", nil
-	case "ALLOCATION_FAILED":
-		m.Logger.Warn("room allocation failed due to race condition",
-			zap.String(logs.LogFieldSchedulerName, schedulerName))
-		return "", nil
-	}
-
-	if roomId != "" {
-		m.Logger.Debug("room allocated successfully",
-			zap.String(logs.LogFieldSchedulerName, schedulerName),
-			zap.String(logs.LogFieldRoomID, roomId))
-	}
+	m.Logger.Debug("room allocated successfully",
+		zap.String(logs.LogFieldSchedulerName, schedulerName),
+		zap.String(logs.LogFieldRoomID, roomId))
 
 	return roomId, nil
 }

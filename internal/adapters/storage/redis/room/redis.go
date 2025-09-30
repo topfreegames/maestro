@@ -57,9 +57,9 @@ const (
 var allocateRoomScript = redis.NewScript(`
 local status_key = KEYS[1]
 local room_key_prefix = KEYS[2]
-local ready_status = tonumber(ARGV[1])
-local allocated_status = tonumber(ARGV[2])
-local current_time = ARGV[3]
+local ready_status = 2  -- GameStatusReady
+local allocated_status = 8  -- GameStatusAllocated
+local current_time = ARGV[1]
 
 -- Get one ready room (lowest score first, which is actually by room ID since all ready rooms have same score)
 local ready_rooms = redis.call('ZRANGEBYSCORE', status_key, ready_status, ready_status, 'LIMIT', 0, 1)
@@ -485,14 +485,12 @@ func getRoomOccupancyRedisKey(scheduler string) string {
 func (r *redisStateStorage) AllocateRoom(ctx context.Context, schedulerName string) (string, error) {
 	statusKey := getRoomStatusSetRedisKey(schedulerName)
 	roomKeyPrefix := fmt.Sprintf("scheduler:%s:rooms:", schedulerName)
-	readyStatus := int(game_room.GameStatusReady)
-	allocatedStatus := int(game_room.GameStatusAllocated)
 	currentTime := time.Now().Unix()
 
 	var result interface{}
 	var err error
 	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
-		result, err = allocateRoomScript.Run(ctx, r.client, []string{statusKey, roomKeyPrefix}, readyStatus, allocatedStatus, currentTime).Result()
+		result, err = allocateRoomScript.Run(ctx, r.client, []string{statusKey, roomKeyPrefix}, currentTime).Result()
 		return err
 	})
 
@@ -500,39 +498,40 @@ func (r *redisStateStorage) AllocateRoom(ctx context.Context, schedulerName stri
 		return "", errors.NewErrUnexpected("error executing room allocation script for scheduler %s", schedulerName).WithError(err)
 	}
 
-	if result == nil {
-		return "", errors.NewErrUnexpected("room allocation script returned nil for scheduler %s", schedulerName)
-	}
-
 	roomID, ok := result.(string)
-	if !ok {
-		return "", errors.NewErrUnexpected("unexpected result type from room allocation script for scheduler %s", schedulerName)
+	if !ok || roomID == "" {
+		return "", errors.NewErrUnexpected("unexpected result %v from room allocation script for scheduler %s", result, schedulerName)
 	}
 
-	// Return early for descriptive error strings - no room status changed, no event to publish
-	if roomID == "NO_ROOMS_AVAILABLE" || roomID == "ALLOCATION_FAILED" {
-		return roomID, nil
+	// Return errors for descriptive error strings from Lua script
+	if roomID == "NO_ROOMS_AVAILABLE" {
+		return "", errors.NewErrUnexpected("no ready rooms available for scheduler %s", schedulerName)
 	}
-
-	if roomID != "" {
-		encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{
-			RoomID:        roomID,
-			SchedulerName: schedulerName,
-			Status:        game_room.GameStatusAllocated,
-		})
-		if err != nil {
-			return "", errors.NewErrEncoding("failed to encode status event for allocated room").WithError(err)
-		}
-
-		var publishCmd *redis.IntCmd
-		metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
-			publishCmd = r.client.Publish(ctx, getRoomStatusUpdateChannel(schedulerName, roomID), encodedEvent)
-			return publishCmd.Err()
-		})
-		if publishCmd.Err() != nil {
-			return "", errors.NewErrUnexpected("error sending room allocation status event for room %s", roomID).WithError(publishCmd.Err())
-		}
+	if roomID == "ALLOCATION_FAILED" {
+		return "", errors.NewErrUnexpected("room allocation failed for scheduler %s", schedulerName)
 	}
 
 	return roomID, nil
+}
+
+func (r *redisStateStorage) PublishRoomStatusEvent(ctx context.Context, schedulerName, roomID string, status game_room.GameRoomStatus) error {
+	encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{
+		RoomID:        roomID,
+		SchedulerName: schedulerName,
+		Status:        status,
+	})
+	if err != nil {
+		return errors.NewErrEncoding("failed to encode status event for room %s", roomID).WithError(err)
+	}
+
+	var publishCmd *redis.IntCmd
+	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+		publishCmd = r.client.Publish(ctx, getRoomStatusUpdateChannel(schedulerName, roomID), encodedEvent)
+		return publishCmd.Err()
+	})
+	if publishCmd.Err() != nil {
+		return errors.NewErrUnexpected("error sending room status event for room %s", roomID).WithError(publishCmd.Err())
+	}
+
+	return nil
 }

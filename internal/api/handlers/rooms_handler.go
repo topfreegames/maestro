@@ -60,7 +60,7 @@ func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.Forwar
 	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
 		handlerLogger.Error("error forwarding room event", zap.Any("event_message", message), zap.Error(err))
-		return &api.ForwardRoomEventResponse{Success: false, Message: err.Error()}, nil
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	return &api.ForwardRoomEventResponse{Success: true, Message: ""}, nil
 }
@@ -73,7 +73,7 @@ func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.Forw
 	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
 		handlerLogger.Error("error forwarding player event", zap.Any("event_message", message), zap.Error(err))
-		return &api.ForwardPlayerEventResponse{Success: false, Message: err.Error()}, nil
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	return &api.ForwardPlayerEventResponse{Success: true, Message: ""}, nil
 }
@@ -90,7 +90,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 	err = h.roomManager.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		handlerLogger.Error("error updating room with ping", zap.Any("ping", message), zap.Error(err))
-		return &api.UpdateRoomWithPingResponse{Success: false}, nil
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	handlerLogger.Debug("Room updated with ping successfully")
@@ -108,7 +108,7 @@ func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.Update
 	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
 		handlerLogger.Error("error forwarding room status event", zap.Any("event_message", message), zap.Error(err))
-		return &api.UpdateRoomStatusResponse{Success: false}, nil
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	return &api.UpdateRoomStatusResponse{Success: true}, nil
 }
@@ -130,19 +130,14 @@ func (h *RoomsHandler) AllocateRoom(ctx context.Context, message *api.AllocateRo
 	roomID, err := h.roomManager.AllocateRoom(ctx, message.SchedulerName)
 	if err != nil {
 		handlerLogger.Error("error allocating room", zap.Any("allocation_request", message), zap.Error(err))
-		return &api.AllocateRoomResponse{Success: false, Message: err.Error()}, nil
-	}
-
-	if roomID == "" {
-		handlerLogger.Info("no ready rooms available for allocation")
-		return &api.AllocateRoomResponse{Success: false, Message: "no ready rooms available"}, nil
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	// Get room instance to retrieve address information
 	instance, err := h.roomManager.GetRoomInstance(ctx, message.SchedulerName, roomID)
 	if err != nil {
 		handlerLogger.Error("error getting allocated room instance", zap.String(logs.LogFieldRoomID, roomID), zap.Error(err))
-		return &api.AllocateRoomResponse{RoomId: roomID, Success: true, Message: "room allocated but address unavailable"}, nil
+		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	// Convert instance to address response format and include in allocation response
