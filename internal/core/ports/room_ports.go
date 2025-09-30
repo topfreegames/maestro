@@ -111,8 +111,6 @@ type RoomStorage interface {
 	// AllocateRoom atomically selects a ready room and marks it as occupied.
 	// Returns the room ID if allocation was successful, empty string if no rooms available.
 	AllocateRoom(ctx context.Context, schedulerName string) (string, error)
-	// PublishRoomStatusEvent publishes a status change event for a specific room.
-	PublishRoomStatusEvent(ctx context.Context, schedulerName, roomID string, status game_room.GameRoomStatus) error
 }
 
 // RoomStorageStatusWatcher defines a process of watcher, it will have a chan

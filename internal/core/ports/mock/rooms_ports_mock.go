@@ -370,20 +370,6 @@ func (mr *MockRoomStorageMockRecorder) GetRunningMatchesCount(ctx, scheduler int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRunningMatchesCount", reflect.TypeOf((*MockRoomStorage)(nil).GetRunningMatchesCount), ctx, scheduler)
 }
 
-// PublishRoomStatusEvent mocks base method.
-func (m *MockRoomStorage) PublishRoomStatusEvent(ctx context.Context, schedulerName, roomID string, status game_room.GameRoomStatus) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PublishRoomStatusEvent", ctx, schedulerName, roomID, status)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// PublishRoomStatusEvent indicates an expected call of PublishRoomStatusEvent.
-func (mr *MockRoomStorageMockRecorder) PublishRoomStatusEvent(ctx, schedulerName, roomID, status interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishRoomStatusEvent", reflect.TypeOf((*MockRoomStorage)(nil).PublishRoomStatusEvent), ctx, schedulerName, roomID, status)
-}
-
 // UpdateRoom mocks base method.
 func (m *MockRoomStorage) UpdateRoom(ctx context.Context, room *game_room.GameRoom) error {
 	m.ctrl.T.Helper()

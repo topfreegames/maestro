@@ -514,24 +514,3 @@ func (r *redisStateStorage) AllocateRoom(ctx context.Context, schedulerName stri
 	return roomID, nil
 }
 
-func (r *redisStateStorage) PublishRoomStatusEvent(ctx context.Context, schedulerName, roomID string, status game_room.GameRoomStatus) error {
-	encodedEvent, err := encodeStatusEvent(&game_room.StatusEvent{
-		RoomID:        roomID,
-		SchedulerName: schedulerName,
-		Status:        status,
-	})
-	if err != nil {
-		return errors.NewErrEncoding("failed to encode status event for room %s", roomID).WithError(err)
-	}
-
-	var publishCmd *redis.IntCmd
-	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
-		publishCmd = r.client.Publish(ctx, getRoomStatusUpdateChannel(schedulerName, roomID), encodedEvent)
-		return publishCmd.Err()
-	})
-	if publishCmd.Err() != nil {
-		return errors.NewErrUnexpected("error sending room status event for room %s", roomID).WithError(publishCmd.Err())
-	}
-
-	return nil
-}
