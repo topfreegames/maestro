@@ -1451,7 +1451,28 @@ func TestRoomManager_AllocateRoom(t *testing.T) {
 
 		roomStorage.EXPECT().
 			AllocateRoom(gomock.Any(), schedulerName).
-			Return("", nil)
+			Return("NO_ROOMS_AVAILABLE", nil)
+
+		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
+		require.NoError(t, err)
+		require.Equal(t, "", roomID)
+	})
+
+	t.Run("returns empty string when allocation fails due to race condition", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		roomManager := &RoomManager{
+			RoomStorage: roomStorage,
+			Logger:      zap.NewNop(),
+		}
+
+		schedulerName := "test-scheduler"
+
+		roomStorage.EXPECT().
+			AllocateRoom(gomock.Any(), schedulerName).
+			Return("ALLOCATION_FAILED", nil)
 
 		roomID, err := roomManager.AllocateRoom(context.Background(), schedulerName)
 		require.NoError(t, err)

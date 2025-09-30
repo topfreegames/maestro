@@ -815,7 +815,7 @@ func TestRedisStateStorage_AllocateRoom(t *testing.T) {
 		require.True(t, time.Since(*updatedRoom.AllocatedAt) < 5*time.Second, "AllocatedAt should be recent")
 	})
 
-	t.Run("returns empty string when no ready rooms available", func(t *testing.T) {
+	t.Run("returns NO_ROOMS_AVAILABLE when no ready rooms available", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		storage := NewRedisStateStorage(client)
 
@@ -832,16 +832,16 @@ func TestRedisStateStorage_AllocateRoom(t *testing.T) {
 
 		allocatedRoomID, err := storage.AllocateRoom(ctx, "game")
 		require.NoError(t, err)
-		require.Equal(t, "", allocatedRoomID)
+		require.Equal(t, "NO_ROOMS_AVAILABLE", allocatedRoomID)
 	})
 
-	t.Run("returns empty string when scheduler has no rooms", func(t *testing.T) {
+	t.Run("returns NO_ROOMS_AVAILABLE when scheduler has no rooms", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		storage := NewRedisStateStorage(client)
 
 		allocatedRoomID, err := storage.AllocateRoom(ctx, "nonexistent")
 		require.NoError(t, err)
-		require.Equal(t, "", allocatedRoomID)
+		require.Equal(t, "NO_ROOMS_AVAILABLE", allocatedRoomID)
 	})
 
 	t.Run("allocates only one room when multiple ready rooms exist", func(t *testing.T) {
@@ -916,7 +916,7 @@ func TestRedisStateStorage_AllocateRoom(t *testing.T) {
 		allocatedRooms := make([]string, 0)
 		for i := 0; i < 10; i++ {
 			roomID := <-done
-			if roomID != "" {
+			if roomID != "" && roomID != "NO_ROOMS_AVAILABLE" && roomID != "ALLOCATION_FAILED" {
 				allocatedRooms = append(allocatedRooms, roomID)
 			}
 		}
@@ -968,6 +968,6 @@ func TestRedisStateStorage_AllocateRoom(t *testing.T) {
 
 		allocatedRoomID, err := storage.AllocateRoom(ctx, "game")
 		require.NoError(t, err)
-		require.Equal(t, "", allocatedRoomID)
+		require.Equal(t, "NO_ROOMS_AVAILABLE", allocatedRoomID)
 	})
 }

@@ -64,7 +64,7 @@ local current_time = ARGV[3]
 -- Get one ready room (lowest score first, which is actually by room ID since all ready rooms have same score)
 local ready_rooms = redis.call('ZRANGEBYSCORE', status_key, ready_status, ready_status, 'LIMIT', 0, 1)
 if #ready_rooms == 0 then
-    return nil
+    return "NO_ROOMS_AVAILABLE"
 end
 
 local room_id = ready_rooms[1]
@@ -78,7 +78,7 @@ if changed == 1 then
     redis.call('HSET', room_key, 'allocated_at', current_time)
     return room_id
 else
-    return nil
+    return "ALLOCATION_FAILED"
 end
 `)
 
@@ -497,19 +497,21 @@ func (r *redisStateStorage) AllocateRoom(ctx context.Context, schedulerName stri
 	})
 
 	if err != nil {
-		if err == redis.Nil {
-			return "", nil
-		}
 		return "", errors.NewErrUnexpected("error executing room allocation script for scheduler %s", schedulerName).WithError(err)
 	}
 
 	if result == nil {
-		return "", nil
+		return "", errors.NewErrUnexpected("room allocation script returned nil for scheduler %s", schedulerName)
 	}
 
 	roomID, ok := result.(string)
 	if !ok {
 		return "", errors.NewErrUnexpected("unexpected result type from room allocation script for scheduler %s", schedulerName)
+	}
+
+	// Return early for descriptive error strings - no room status changed, no event to publish
+	if roomID == "NO_ROOMS_AVAILABLE" || roomID == "ALLOCATION_FAILED" {
+		return roomID, nil
 	}
 
 	if roomID != "" {
