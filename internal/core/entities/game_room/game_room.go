@@ -183,6 +183,7 @@ var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{
 		GameStatusActive:      struct{}{},
 	},
 	GameStatusAllocated: {
+		GameStatusActive:      struct{}{},
 		GameStatusOccupied:    struct{}{},
 		GameStatusReady:       struct{}{},
 		GameStatusTerminating: struct{}{},

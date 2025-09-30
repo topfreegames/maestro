@@ -68,13 +68,13 @@ func (sm *SingleMatchStatusCalculator) CalculateRoomStatus(room game_room.GameRo
 				return room.Status, fmt.Errorf("error calculating room composed status: %w", err)
 			}
 
-			// Allow transition to Occupied if room reports occupied
-			if composedStatus == game_room.GameStatusOccupied {
-				return game_room.GameStatusOccupied, nil
+			// Ignore Ready pings - keep room as Allocated
+			if composedStatus == game_room.GameStatusReady {
+				return game_room.GameStatusAllocated, nil
 			}
 
-			// Ignore Ready pings - keep room as Allocated
-			return game_room.GameStatusAllocated, nil
+			// Allow all other status transitions (Active, Occupied, Error, Terminating, etc.)
+			return composedStatus, nil
 		}
 		// TTL expired, allow normal status calculation
 	}
@@ -102,6 +102,9 @@ type MultipleMatchStatusCalculator struct {
 }
 
 func (mm *MultipleMatchStatusCalculator) CalculateRoomStatus(room game_room.GameRoom, instance game_room.Instance) (game_room.GameRoomStatus, error) {
+	// NOTE: Room allocation flow (AllocateRoom API) is not intended for multiple match rooms.
+	// This logic exists for consistency but should not be used in production with multiple match schedulers.
+
 	// Check if room is allocated and within TTL
 	if room.Status == game_room.GameStatusAllocated && room.AllocatedAt != nil {
 		timeSinceAllocation := time.Since(*room.AllocatedAt)
@@ -112,13 +115,13 @@ func (mm *MultipleMatchStatusCalculator) CalculateRoomStatus(room game_room.Game
 				return room.Status, fmt.Errorf("error calculating room composed status: %w", err)
 			}
 
-			// Allow transition to Occupied if room reports occupied
-			if composedStatus == game_room.GameStatusOccupied {
-				return game_room.GameStatusOccupied, nil
+			// Ignore Ready pings - keep room as Allocated
+			if composedStatus == game_room.GameStatusReady {
+				return game_room.GameStatusAllocated, nil
 			}
 
-			// Ignore Ready pings - keep room as Allocated
-			return game_room.GameStatusAllocated, nil
+			// Allow all other status transitions (Active, Occupied, Error, Terminating, etc.)
+			return composedStatus, nil
 		}
 		// TTL expired, allow normal status calculation
 	}
