@@ -208,6 +208,7 @@ func (f *ForwarderClient) createGRPCConnection(address string, opts ...grpc.Dial
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithKeepaliveParams(f.config.KeepAlive),
 		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)),
+		grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
 	}
 
 	// Append any additionally provided options (e.g., grpc.WithBlock() for tests)
