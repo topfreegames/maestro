@@ -60,7 +60,7 @@ func (h *RoomsHandler) ForwardRoomEvent(ctx context.Context, message *api.Forwar
 	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
 		handlerLogger.Error("error forwarding room event", zap.Any("event_message", message), zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
+		return &api.ForwardRoomEventResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &api.ForwardRoomEventResponse{Success: true, Message: ""}, nil
 }
@@ -73,7 +73,7 @@ func (h *RoomsHandler) ForwardPlayerEvent(ctx context.Context, message *api.Forw
 	err := h.eventsService.ProduceEvent(ctx, events.NewPlayerEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
 		handlerLogger.Error("error forwarding player event", zap.Any("event_message", message), zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
+		return &api.ForwardPlayerEventResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &api.ForwardPlayerEventResponse{Success: true, Message: ""}, nil
 }
@@ -90,7 +90,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 	err = h.roomManager.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		handlerLogger.Error("error updating room with ping", zap.Any("ping", message), zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
+		return &api.UpdateRoomWithPingResponse{Success: false}, nil
 	}
 
 	handlerLogger.Debug("Room updated with ping successfully")
@@ -108,7 +108,7 @@ func (h *RoomsHandler) UpdateRoomStatus(ctx context.Context, message *api.Update
 	err := h.eventsService.ProduceEvent(ctx, events.NewRoomEvent(message.SchedulerName, message.RoomName, eventMetadata))
 	if err != nil {
 		handlerLogger.Error("error forwarding room status event", zap.Any("event_message", message), zap.Error(err))
-		return nil, status.Error(codes.Unknown, err.Error())
+		return &api.UpdateRoomStatusResponse{Success: false}, nil
 	}
 	return &api.UpdateRoomStatusResponse{Success: true}, nil
 }

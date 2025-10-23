@@ -513,4 +513,3 @@ func (r *redisStateStorage) AllocateRoom(ctx context.Context, schedulerName stri
 
 	return roomID, nil
 }
-

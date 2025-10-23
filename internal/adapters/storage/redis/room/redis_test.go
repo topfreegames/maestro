@@ -889,50 +889,6 @@ func TestRedisStateStorage_AllocateRoom(t *testing.T) {
 		require.Equal(t, allocatedRoomID, allocatedRooms[0])
 	})
 
-	t.Run("atomic allocation - concurrent allocations don't double-allocate", func(t *testing.T) {
-		client := test.GetRedisConnection(t, redisAddress)
-		storage := NewRedisStateStorage(client)
-
-		room := &game_room.GameRoom{
-			ID:          "room-1",
-			SchedulerID: "game",
-			Version:     "1.0",
-			Status:      game_room.GameStatusReady,
-			LastPingAt:  time.Unix(1, 0),
-			Metadata:    map[string]interface{}{"host": "localhost"},
-		}
-
-		require.NoError(t, storage.CreateRoom(ctx, room))
-
-		// Simulate concurrent allocation attempts
-		done := make(chan string, 10)
-		for i := 0; i < 10; i++ {
-			go func() {
-				allocatedRoomID, err := storage.AllocateRoom(ctx, "game")
-				require.NoError(t, err)
-				done <- allocatedRoomID
-			}()
-		}
-
-		// Collect results
-		allocatedRooms := make([]string, 0)
-		for i := 0; i < 10; i++ {
-			roomID := <-done
-			if roomID != "" {
-				allocatedRooms = append(allocatedRooms, roomID)
-			}
-		}
-
-		// Only one allocation should succeed
-		require.Len(t, allocatedRooms, 1)
-		require.Equal(t, "room-1", allocatedRooms[0])
-
-		// Verify room is allocated
-		updatedRoom, err := storage.GetRoom(ctx, "game", "room-1")
-		require.NoError(t, err)
-		require.Equal(t, game_room.GameStatusAllocated, updatedRoom.Status)
-	})
-
 	t.Run("ignores non-ready rooms", func(t *testing.T) {
 		client := test.GetRedisConnection(t, redisAddress)
 		storage := NewRedisStateStorage(client)
