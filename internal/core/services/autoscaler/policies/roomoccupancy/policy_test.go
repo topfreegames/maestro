@@ -57,10 +57,11 @@ func TestCurrentStateBuilder(t *testing.T) {
 	t.Run("Success cases - when no error occurs it builds the state with occupied rooms amount", func(t *testing.T) {
 		roomStorageMock := mock.NewMockRoomStorage(ctrl)
 
+		allocatedCount := 1
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusReady).Return(1, nil)
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusActive).Return(1, nil)
 		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusOccupied).Return(1, nil)
-		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(1, nil)
+		roomStorageMock.EXPECT().GetRoomCountByStatus(gomock.Any(), scheduler.Name, game_room.GameStatusAllocated).Return(allocatedCount, nil)
 		roomStorageMock.EXPECT().GetRunningMatchesCount(gomock.Any(), scheduler.Name).Return(runningMatches, nil)
 
 		policy := roomoccupancy.NewPolicy(roomStorageMock)
@@ -68,7 +69,8 @@ func TestCurrentStateBuilder(t *testing.T) {
 		currentState, err := policy.CurrentStateBuilder(context.Background(), scheduler)
 		assert.NoError(t, err)
 
-		assert.Equal(t, runningMatches, currentState[roomoccupancy.RunningMatchesKey])
+		// RunningMatchesKey now includes allocatedCount
+		assert.Equal(t, runningMatches+allocatedCount, currentState[roomoccupancy.RunningMatchesKey])
 		assert.Equal(t, scheduler.MatchAllocation.MaxMatches, currentState[roomoccupancy.MaxMatchesKey])
 	})
 
