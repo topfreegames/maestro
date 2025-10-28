@@ -110,7 +110,8 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.NotEqual(t, http.StatusOK, rr.Code)
+		require.Equal(t, 200, rr.Code)
+		require.Equal(t, "{\"success\":false}", rr.Body.String())
 	})
 
 	t.Run("should fail - valid request, error while updating game room => return status code 500", func(t *testing.T) {
@@ -134,7 +135,8 @@ func TestRoomsHandler_UpdateRoomWithPing(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		require.NotEqual(t, http.StatusOK, rr.Code)
+		require.Equal(t, 200, rr.Code)
+		require.Equal(t, "{\"success\":false}", rr.Body.String())
 	})
 
 	t.Run("should fail - invalid request => return status code 400", func(t *testing.T) {
@@ -199,7 +201,7 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 		}
 	})
 
-	t.Run("when some error occur when forwarding then it return error", func(t *testing.T) {
+	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
@@ -220,7 +222,12 @@ func TestRoomsHandler_ForwardRoomEvent(t *testing.T) {
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)
 
-			require.NotEqual(t, http.StatusOK, rr.Code)
+			require.Equal(t, 200, rr.Code)
+			bodyString := rr.Body.String()
+			var body map[string]interface{}
+			err = json.Unmarshal([]byte(bodyString), &body)
+			require.NoError(t, err)
+			require.Equal(t, false, body["success"])
 		}
 	})
 }
@@ -263,7 +270,7 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 		}
 	})
 
-	t.Run("when some error occur when forwarding then it return error", func(t *testing.T) {
+	t.Run("when some error occur when forwarding then it return status code 200 with success = false", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 
 		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
@@ -284,7 +291,12 @@ func TestRoomsHandler_ForwardPlayerEvent(t *testing.T) {
 			rr := httptest.NewRecorder()
 			mux.ServeHTTP(rr, req)
 
-			require.NotEqual(t, http.StatusOK, rr.Code)
+			require.Equal(t, 200, rr.Code)
+			bodyString := rr.Body.String()
+			var body map[string]interface{}
+			err = json.Unmarshal([]byte(bodyString), &body)
+			require.NoError(t, err)
+			require.Equal(t, false, body["success"])
 		}
 	})
 }
@@ -344,7 +356,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 			nil,
 		},
 		{
-			"return error when some error occurs producing the event",
+			"return no error and success false when some error occurs producing the event",
 			func(controller *gomock.Controller) (ports.RoomManager, ports.EventsService) {
 				roomManagerMock := mockports.NewMockRoomManager(controller)
 				eventsServiceMock := mockports.NewMockEventsService(controller)
@@ -379,8 +391,8 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 					Timestamp: 0,
 				},
 			},
+			&api.UpdateRoomStatusResponse{Success: false},
 			nil,
-			errors.NewErrUnexpected("some error"),
 		},
 	}
 	for _, tt := range tests {
@@ -394,7 +406,7 @@ func TestRoomsHandler_UpdateRoomStatus(t *testing.T) {
 			}
 			got, err := h.UpdateRoomStatus(tt.args.ctx, tt.args.message)
 			if tt.errWanted != nil {
-				assert.Error(t, err)
+				assert.EqualError(t, err, tt.errWanted.Error())
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.responseWanted, got)
