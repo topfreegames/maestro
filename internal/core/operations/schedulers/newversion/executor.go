@@ -198,7 +198,7 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 	roomStatus, waitRoomErr := ex.roomManager.WaitRoomStatus(
 		timeoutContext,
 		gameRoom,
-		[]game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError},
+		[]game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusOccupied, game_room.GameStatusError},
 	)
 
 	if waitRoomErr != nil {
