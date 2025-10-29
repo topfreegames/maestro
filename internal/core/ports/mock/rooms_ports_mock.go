@@ -38,6 +38,21 @@ func (m *MockRoomManager) EXPECT() *MockRoomManagerMockRecorder {
 	return m.recorder
 }
 
+// AllocateRoom mocks base method.
+func (m *MockRoomManager) AllocateRoom(ctx context.Context, schedulerName string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllocateRoom", ctx, schedulerName)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AllocateRoom indicates an expected call of AllocateRoom.
+func (mr *MockRoomManagerMockRecorder) AllocateRoom(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocateRoom", reflect.TypeOf((*MockRoomManager)(nil).AllocateRoom), ctx, schedulerName)
+}
+
 // CleanRoomState mocks base method.
 func (m *MockRoomManager) CleanRoomState(ctx context.Context, schedulerName, roomId string) error {
 	m.ctrl.T.Helper()
@@ -205,6 +220,21 @@ func NewMockRoomStorage(ctrl *gomock.Controller) *MockRoomStorage {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRoomStorage) EXPECT() *MockRoomStorageMockRecorder {
 	return m.recorder
+}
+
+// AllocateRoom mocks base method.
+func (m *MockRoomStorage) AllocateRoom(ctx context.Context, schedulerName string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AllocateRoom", ctx, schedulerName)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AllocateRoom indicates an expected call of AllocateRoom.
+func (mr *MockRoomStorageMockRecorder) AllocateRoom(ctx, schedulerName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllocateRoom", reflect.TypeOf((*MockRoomStorage)(nil).AllocateRoom), ctx, schedulerName)
 }
 
 // CreateRoom mocks base method.

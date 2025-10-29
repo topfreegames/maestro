@@ -76,16 +76,24 @@ func (p *Policy) CurrentStateBuilder(ctx context.Context, scheduler *entities.Sc
 		return nil, fmt.Errorf("error fetching occupied game rooms amount: %w", err)
 	}
 
-	totalFreeSlots := (readyCount + activeCount + occupiedCount) * scheduler.MatchAllocation.MaxMatches
+	allocatedCount, err := p.roomStorage.GetRoomCountByStatus(ctx, scheduler.Name, game_room.GameStatusAllocated)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching allocated game rooms amount: %w", err)
+	}
+
+	totalFreeSlots := (readyCount + activeCount + occupiedCount + allocatedCount) * scheduler.MatchAllocation.MaxMatches
 
 	runningMatchesAmount, err := p.roomStorage.GetRunningMatchesCount(ctx, scheduler.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching running matches amount: %w", err)
 	}
 
+	// NOTE: Adding allocatedCount to runningMatches assumes 1 match per allocated room.
+	// This approach does not work accurately for schedulers with multiple matches per room (maxMatches > 1).
+	// The allocate feature currently does not support specifying match count, so we use 1 as a conservative estimate.
 	currentState := policies.CurrentState{
 		CurrentFreeSlotsKey: totalFreeSlots - runningMatchesAmount,
-		RunningMatchesKey:   runningMatchesAmount,
+		RunningMatchesKey:   runningMatchesAmount + allocatedCount,
 		MaxMatchesKey:       scheduler.MatchAllocation.MaxMatches,
 	}
 

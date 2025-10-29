@@ -122,3 +122,33 @@ func (h *RoomsHandler) GetRoomAddress(ctx context.Context, message *api.GetRoomA
 	}
 	return requestadapters.FromInstanceEntityToGameRoomAddressResponse(instance), nil
 }
+
+func (h *RoomsHandler) AllocateRoom(ctx context.Context, message *api.AllocateRoomRequest) (*api.AllocateRoomResponse, error) {
+	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, message.SchedulerName))
+	handlerLogger.Debug("handling room allocation request", zap.Any("message", message))
+
+	roomID, err := h.roomManager.AllocateRoom(ctx, message.SchedulerName)
+	if err != nil {
+		handlerLogger.Error("error allocating room", zap.Any("allocation_request", message), zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	// Get room instance to retrieve address information
+	instance, err := h.roomManager.GetRoomInstance(ctx, message.SchedulerName, roomID)
+	if err != nil {
+		handlerLogger.Error("error getting allocated room instance", zap.String(logs.LogFieldRoomID, roomID), zap.Error(err))
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
+	// Convert instance to address response format and include in allocation response
+	addressResponse := requestadapters.FromInstanceEntityToGameRoomAddressResponse(instance)
+
+	handlerLogger.Debug("room allocated successfully", zap.String(logs.LogFieldRoomID, roomID))
+	return &api.AllocateRoomResponse{
+		RoomId:  roomID,
+		Success: true,
+		Message: "",
+		Ports:   addressResponse.Ports,
+		Host:    addressResponse.Host,
+	}, nil
+}

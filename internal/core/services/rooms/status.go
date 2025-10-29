@@ -24,6 +24,7 @@ package rooms
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
@@ -34,26 +35,50 @@ type StatusCalculator interface {
 	CalculateRoomStatus(room game_room.GameRoom, instance game_room.Instance) (game_room.GameRoomStatus, error)
 }
 
-func NewStatusCalculator(scheduler entities.Scheduler, logger *zap.Logger) StatusCalculator {
+func NewStatusCalculator(scheduler entities.Scheduler, config RoomManagerConfig, logger *zap.Logger) StatusCalculator {
 	if scheduler.MatchAllocation != nil && scheduler.MatchAllocation.MaxMatches > 1 {
 		return &MultipleMatchStatusCalculator{
 			scheduler: scheduler,
+			config:    config,
 			logger:    logger,
 		}
 	}
 
 	return &SingleMatchStatusCalculator{
 		scheduler: scheduler,
+		config:    config,
 		logger:    logger,
 	}
 }
 
 type SingleMatchStatusCalculator struct {
 	scheduler entities.Scheduler
+	config    RoomManagerConfig
 	logger    *zap.Logger
 }
 
 func (sm *SingleMatchStatusCalculator) CalculateRoomStatus(room game_room.GameRoom, instance game_room.Instance) (game_room.GameRoomStatus, error) {
+	// Check if room is allocated and within TTL
+	if room.Status == game_room.GameStatusAllocated && room.AllocatedAt != nil {
+		timeSinceAllocation := time.Since(*room.AllocatedAt)
+		if timeSinceAllocation <= sm.config.RoomAllocationTTL {
+			// Room is still within allocation TTL
+			composedStatus, err := room.RoomComposedStatus(instance.Status.Type)
+			if err != nil {
+				return room.Status, fmt.Errorf("error calculating room composed status: %w", err)
+			}
+
+			// Ignore Ready pings - keep room as Allocated
+			if composedStatus == game_room.GameStatusReady {
+				return game_room.GameStatusAllocated, nil
+			}
+
+			// Allow all other status transitions (Active, Occupied, Error, Terminating, etc.)
+			return composedStatus, nil
+		}
+		// TTL expired, allow normal status calculation
+	}
+
 	currentStatus, err := room.RoomComposedStatus(instance.Status.Type)
 	if err != nil {
 		return currentStatus, fmt.Errorf("error calculating room status: %w", err)
@@ -72,10 +97,35 @@ func (sm *SingleMatchStatusCalculator) CalculateRoomStatus(room game_room.GameRo
 
 type MultipleMatchStatusCalculator struct {
 	scheduler entities.Scheduler
+	config    RoomManagerConfig
 	logger    *zap.Logger
 }
 
 func (mm *MultipleMatchStatusCalculator) CalculateRoomStatus(room game_room.GameRoom, instance game_room.Instance) (game_room.GameRoomStatus, error) {
+	// NOTE: Room allocation flow (AllocateRoom API) is not intended for multiple match rooms.
+	// This logic exists for consistency but should not be used in production with multiple match schedulers.
+
+	// Check if room is allocated and within TTL
+	if room.Status == game_room.GameStatusAllocated && room.AllocatedAt != nil {
+		timeSinceAllocation := time.Since(*room.AllocatedAt)
+		if timeSinceAllocation <= mm.config.RoomAllocationTTL {
+			// Room is still within allocation TTL
+			composedStatus, err := room.RoomComposedStatus(instance.Status.Type)
+			if err != nil {
+				return room.Status, fmt.Errorf("error calculating room composed status: %w", err)
+			}
+
+			// Ignore Ready pings - keep room as Allocated
+			if composedStatus == game_room.GameStatusReady {
+				return game_room.GameStatusAllocated, nil
+			}
+
+			// Allow all other status transitions (Active, Occupied, Error, Terminating, etc.)
+			return composedStatus, nil
+		}
+		// TTL expired, allow normal status calculation
+	}
+
 	composedStatus, err := room.RoomComposedStatus(instance.Status.Type)
 	if err != nil {
 		return composedStatus, fmt.Errorf("error calculating room status: %w", err)

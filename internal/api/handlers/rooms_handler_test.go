@@ -479,3 +479,138 @@ func extractBodyForComparisons(t *testing.T, body []byte, expectedBodyFixturePat
 	require.NoError(t, err)
 	return bodyBuffer.String(), expectedBodyBuffer.String()
 }
+
+func TestRoomsHandler_AllocateRoom(t *testing.T) {
+	t.Run("should succeed - room allocated successfully => return room ID and success true", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		expectedRoomID := "room-123"
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return(expectedRoomID, nil)
+
+		// Mock room instance for address information
+		expectedInstance := &game_room.Instance{
+			ID: expectedRoomID,
+			Address: &game_room.Address{
+				Host: "192.168.1.100",
+				Ports: []game_room.Port{
+					{Name: "tcp", Port: 8080, Protocol: "TCP"},
+					{Name: "udp", Port: 9090, Protocol: "UDP"},
+				},
+			},
+		}
+		roomsManager.EXPECT().GetRoomInstance(gomock.Any(), "scheduler-name-1", expectedRoomID).Return(expectedInstance, nil)
+
+		requestBody := `{"scheduler_name": "scheduler-name-1"}`
+		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		// Parse the JSON response manually since gRPC-Gateway uses camelCase
+		var jsonResponse map[string]interface{}
+		err = json.Unmarshal(rr.Body.Bytes(), &jsonResponse)
+		require.NoError(t, err)
+		require.Equal(t, expectedRoomID, jsonResponse["roomId"])
+		require.Equal(t, true, jsonResponse["success"])
+		require.Equal(t, "", jsonResponse["message"])
+		require.Equal(t, "192.168.1.100", jsonResponse["host"])
+
+		// Check ports array
+		ports, ok := jsonResponse["ports"].([]interface{})
+		require.True(t, ok)
+		require.Len(t, ports, 2)
+
+		port1 := ports[0].(map[string]interface{})
+		require.Equal(t, "tcp", port1["name"])
+		require.Equal(t, "TCP", port1["protocol"])
+		require.Equal(t, float64(8080), port1["port"]) // JSON numbers are float64
+
+		port2 := ports[1].(map[string]interface{})
+		require.Equal(t, "udp", port2["name"])
+		require.Equal(t, "UDP", port2["protocol"])
+		require.Equal(t, float64(9090), port2["port"])
+	})
+
+	t.Run("should fail - no rooms available => return error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return("", errors.NewErrUnexpected("no ready rooms available"))
+
+		requestBody := `{"scheduler_name": "scheduler-name-1"}`
+		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.NotEqual(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("should fail - room manager returns error => return error", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		expectedError := errors.NewErrUnexpected("allocation failed")
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return("", expectedError)
+
+		requestBody := `{"scheduler_name": "scheduler-name-1"}`
+		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.NotEqual(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("should fail - room allocated but address unavailable", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+
+		eventsForwarderService := mockports.NewMockEventsService(mockCtrl)
+		roomsManager := mockports.NewMockRoomManager(mockCtrl)
+		mux := runtime.NewServeMux()
+		err := api.RegisterRoomsServiceHandlerServer(context.Background(), mux, ProvideRoomsHandler(roomsManager, eventsForwarderService))
+		require.NoError(t, err)
+
+		expectedRoomID := "room-123"
+		roomsManager.EXPECT().AllocateRoom(gomock.Any(), "scheduler-name-1").Return(expectedRoomID, nil)
+		roomsManager.EXPECT().GetRoomInstance(gomock.Any(), "scheduler-name-1", expectedRoomID).Return(nil, errors.NewErrUnexpected("instance not found"))
+
+		requestBody := `{"scheduler_name": "scheduler-name-1"}`
+		req, err := http.NewRequest(http.MethodPost, "/scheduler/scheduler-name-1/rooms/allocate", bytes.NewReader([]byte(requestBody)))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.NotEqual(t, http.StatusOK, rr.Code)
+	})
+}

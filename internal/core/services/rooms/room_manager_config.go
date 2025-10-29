@@ -28,4 +28,5 @@ type RoomManagerConfig struct {
 	RoomPingTimeout     time.Duration
 	RoomDeletionTimeout time.Duration
 	SchedulerCacheTtl   time.Duration
+	RoomAllocationTTL   time.Duration
 }

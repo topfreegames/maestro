@@ -50,7 +50,37 @@ const (
 	versionKey          = "version"
 	isValidationRoomKey = "is_validation_room"
 	createdAtKey        = "created_at"
+	allocatedAtKey      = "allocated_at"
 )
+
+// allocateRoomScript atomically selects a ready room and marks it as occupied
+var allocateRoomScript = redis.NewScript(`
+local status_key = KEYS[1]
+local room_key_prefix = KEYS[2]
+local ready_status = 2  -- GameStatusReady
+local allocated_status = 8  -- GameStatusAllocated
+local current_time = ARGV[1]
+
+-- Get one ready room (lowest score first, which is actually by room ID since all ready rooms have same score)
+local ready_rooms = redis.call('ZRANGEBYSCORE', status_key, ready_status, ready_status, 'LIMIT', 0, 1)
+if #ready_rooms == 0 then
+    return "NO_ROOMS_AVAILABLE"
+end
+
+local room_id = ready_rooms[1]
+
+-- Atomically change the room status from ready to allocated using ZAddXXCh
+-- This only updates if the member already exists and returns 1 if score was changed
+local changed = redis.call('ZADD', status_key, 'XX', 'CH', allocated_status, room_id)
+if changed == 1 then
+    -- Set the AllocatedAt timestamp
+    local room_key = room_key_prefix .. room_id
+    redis.call('HSET', room_key, 'allocated_at', current_time)
+    return room_id
+else
+    return "ALLOCATION_FAILED"
+end
+`)
 
 type redisStateStorage struct {
 	client *redis.Client
@@ -112,6 +142,17 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 	}
 
 	room.CreatedAt = time.Unix(createdAt, 0)
+
+	// Parse AllocatedAt if it exists
+	if allocatedAtStr := roomHashCmd.Val()[allocatedAtKey]; allocatedAtStr != "" {
+		allocatedAtUnix, err := strconv.ParseInt(allocatedAtStr, 10, 64)
+		if err != nil {
+			return nil, errors.NewErrEncoding("error parsing room %s allocatedAtKey", roomID).WithError(err)
+		}
+		allocatedAt := time.Unix(allocatedAtUnix, 0)
+		room.AllocatedAt = &allocatedAt
+	}
+
 	return room, nil
 }
 
@@ -439,4 +480,36 @@ func getRoomStatusUpdateChannel(scheduler, roomID string) string {
 
 func getRoomOccupancyRedisKey(scheduler string) string {
 	return fmt.Sprintf("scheduler:%s:occupancy", scheduler)
+}
+
+func (r *redisStateStorage) AllocateRoom(ctx context.Context, schedulerName string) (string, error) {
+	statusKey := getRoomStatusSetRedisKey(schedulerName)
+	roomKeyPrefix := fmt.Sprintf("scheduler:%s:rooms:", schedulerName)
+	currentTime := time.Now().Unix()
+
+	var result interface{}
+	var err error
+	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
+		result, err = allocateRoomScript.Run(ctx, r.client, []string{statusKey, roomKeyPrefix}, currentTime).Result()
+		return err
+	})
+
+	if err != nil {
+		return "", errors.NewErrUnexpected("error executing room allocation script for scheduler %s", schedulerName).WithError(err)
+	}
+
+	roomID, ok := result.(string)
+	if !ok || roomID == "" {
+		return "", errors.NewErrUnexpected("unexpected result %v from room allocation script for scheduler %s", result, schedulerName)
+	}
+
+	// Return errors for descriptive error strings from Lua script
+	if roomID == "NO_ROOMS_AVAILABLE" {
+		return "", errors.NewErrUnexpected("no ready rooms available for scheduler %s", schedulerName)
+	}
+	if roomID == "ALLOCATION_FAILED" {
+		return "", errors.NewErrUnexpected("room allocation failed for scheduler %s", schedulerName)
+	}
+
+	return roomID, nil
 }

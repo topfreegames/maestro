@@ -782,3 +782,151 @@ func TestRedisStateStorage_GetRunningMatchesCount(t *testing.T) {
 		require.Equal(t, 6, count)
 	})
 }
+
+func TestRedisStateStorage_AllocateRoom(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("successfully allocates a ready room", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		storage := NewRedisStateStorage(client)
+
+		room := &game_room.GameRoom{
+			ID:          "room-1",
+			SchedulerID: "game",
+			Version:     "1.0",
+			Status:      game_room.GameStatusReady,
+			LastPingAt:  time.Unix(1, 0),
+			Metadata:    map[string]interface{}{"host": "localhost"},
+		}
+
+		require.NoError(t, storage.CreateRoom(ctx, room))
+
+		allocatedRoomID, err := storage.AllocateRoom(ctx, "game")
+		require.NoError(t, err)
+		require.Equal(t, "room-1", allocatedRoomID)
+
+		// Verify the room status was changed to allocated
+		updatedRoom, err := storage.GetRoom(ctx, "game", "room-1")
+		require.NoError(t, err)
+		require.Equal(t, game_room.GameStatusAllocated, updatedRoom.Status)
+
+		// Verify the AllocatedAt timestamp was set
+		require.NotNil(t, updatedRoom.AllocatedAt, "AllocatedAt should be set")
+		require.True(t, time.Since(*updatedRoom.AllocatedAt) < 5*time.Second, "AllocatedAt should be recent")
+	})
+
+	t.Run("returns error when no ready rooms available", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		storage := NewRedisStateStorage(client)
+
+		room := &game_room.GameRoom{
+			ID:          "room-1",
+			SchedulerID: "game",
+			Version:     "1.0",
+			Status:      game_room.GameStatusOccupied,
+			LastPingAt:  time.Unix(1, 0),
+			Metadata:    map[string]interface{}{"host": "localhost"},
+		}
+
+		require.NoError(t, storage.CreateRoom(ctx, room))
+
+		allocatedRoomID, err := storage.AllocateRoom(ctx, "game")
+		require.Error(t, err)
+		require.Equal(t, "", allocatedRoomID)
+		require.Contains(t, err.Error(), "no ready rooms available")
+	})
+
+	t.Run("returns error when scheduler has no rooms", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		storage := NewRedisStateStorage(client)
+
+		allocatedRoomID, err := storage.AllocateRoom(ctx, "nonexistent")
+		require.Error(t, err)
+		require.Equal(t, "", allocatedRoomID)
+		require.Contains(t, err.Error(), "no ready rooms available")
+	})
+
+	t.Run("allocates only one room when multiple ready rooms exist", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		storage := NewRedisStateStorage(client)
+
+		rooms := []*game_room.GameRoom{
+			{
+				ID:          "room-1",
+				SchedulerID: "game",
+				Version:     "1.0",
+				Status:      game_room.GameStatusReady,
+				LastPingAt:  time.Unix(1, 0),
+				Metadata:    map[string]interface{}{"host": "localhost"},
+			},
+			{
+				ID:          "room-2",
+				SchedulerID: "game",
+				Version:     "1.0",
+				Status:      game_room.GameStatusReady,
+				LastPingAt:  time.Unix(2, 0),
+				Metadata:    map[string]interface{}{"host": "localhost"},
+			},
+		}
+
+		for _, room := range rooms {
+			require.NoError(t, storage.CreateRoom(ctx, room))
+		}
+
+		allocatedRoomID, err := storage.AllocateRoom(ctx, "game")
+		require.NoError(t, err)
+		require.NotEmpty(t, allocatedRoomID)
+		require.Contains(t, []string{"room-1", "room-2"}, allocatedRoomID)
+
+		// Verify only the allocated room was changed to allocated
+		readyRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusReady)
+		require.NoError(t, err)
+		require.Len(t, readyRooms, 1)
+
+		allocatedRooms, err := storage.GetRoomIDsByStatus(ctx, "game", game_room.GameStatusAllocated)
+		require.NoError(t, err)
+		require.Len(t, allocatedRooms, 1)
+		require.Equal(t, allocatedRoomID, allocatedRooms[0])
+	})
+
+	t.Run("ignores non-ready rooms", func(t *testing.T) {
+		client := test.GetRedisConnection(t, redisAddress)
+		storage := NewRedisStateStorage(client)
+
+		rooms := []*game_room.GameRoom{
+			{
+				ID:          "room-pending",
+				SchedulerID: "game",
+				Version:     "1.0",
+				Status:      game_room.GameStatusPending,
+				LastPingAt:  time.Unix(1, 0),
+				Metadata:    map[string]interface{}{"host": "localhost"},
+			},
+			{
+				ID:          "room-occupied",
+				SchedulerID: "game",
+				Version:     "1.0",
+				Status:      game_room.GameStatusOccupied,
+				LastPingAt:  time.Unix(2, 0),
+				Metadata:    map[string]interface{}{"host": "localhost"},
+			},
+			{
+				ID:          "room-terminating",
+				SchedulerID: "game",
+				Version:     "1.0",
+				Status:      game_room.GameStatusTerminating,
+				LastPingAt:  time.Unix(3, 0),
+				Metadata:    map[string]interface{}{"host": "localhost"},
+			},
+		}
+
+		for _, room := range rooms {
+			require.NoError(t, storage.CreateRoom(ctx, room))
+		}
+
+		allocatedRoomID, err := storage.AllocateRoom(ctx, "game")
+		require.Error(t, err)
+		require.Equal(t, "", allocatedRoomID)
+		require.Contains(t, err.Error(), "no ready rooms available")
+	})
+}

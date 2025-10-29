@@ -46,6 +46,7 @@ const (
 	roomRoomValidationAttemptsConfigPath         = "services.roomManager.roomValidationAttempts"
 	roomPingTimeoutMillisConfigPath              = "services.roomManager.roomPingTimeoutMillis"
 	roomDeletionTimeoutMillisConfigPath          = "services.roomManager.roomDeletionTimeoutMillis"
+	roomAllocationTTLMillisConfigPath            = "services.roomManager.roomAllocationTTLMillis"
 	operationLeaseTTLMillisConfigPath            = "services.operationManager.operationLeaseTTLMillis"
 	schedulerCacheTTLMillisConfigPath            = "services.eventsForwarder.schedulerCacheTTLMillis"
 	operationsRoomsAddLimitConfigPath            = "operations.rooms.add.limit"
@@ -116,11 +117,13 @@ func NewRoomManagerConfig(c config.Config) (roommanager.RoomManagerConfig, error
 	pingTimeout := time.Duration(c.GetInt(roomPingTimeoutMillisConfigPath)) * time.Millisecond
 	deletionTimeout := time.Duration(c.GetInt(roomDeletionTimeoutMillisConfigPath)) * time.Millisecond
 	schedulerCacheTTL := getSchedulerCacheTTL(c)
+	allocationTTL := time.Duration(c.GetInt(roomAllocationTTLMillisConfigPath)) * time.Millisecond
 
 	roomManagerConfig := roommanager.RoomManagerConfig{
 		RoomPingTimeout:     pingTimeout,
 		RoomDeletionTimeout: deletionTimeout,
 		SchedulerCacheTtl:   schedulerCacheTTL,
+		RoomAllocationTTL:   allocationTTL,
 	}
 
 	return roomManagerConfig, nil

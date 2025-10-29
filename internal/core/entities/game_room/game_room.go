@@ -50,6 +50,8 @@ const (
 	GameStatusTerminated
 	// GameStatusActive room is partially occupied, when hosting multiple matches
 	GameStatusActive
+	// GameStatusAllocated room has been allocated to a match but hasn't reported occupied yet.
+	GameStatusAllocated
 )
 
 func (status GameRoomStatus) String() string {
@@ -64,6 +66,8 @@ func (status GameRoomStatus) String() string {
 		return "active"
 	case GameStatusOccupied:
 		return "occupied"
+	case GameStatusAllocated:
+		return "allocated"
 	case GameStatusTerminating:
 		return "terminating"
 	case GameStatusError:
@@ -135,6 +139,7 @@ type GameRoom struct {
 	LastPingAt       time.Time
 	CreatedAt        time.Time
 	RunningMatches   int
+	AllocatedAt      *time.Time
 }
 
 // validStatusTransitions this map has all possible status changes for a game
@@ -149,6 +154,7 @@ var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{
 	},
 	GameStatusReady: {
 		GameStatusOccupied:    struct{}{},
+		GameStatusAllocated:   struct{}{},
 		GameStatusTerminating: struct{}{},
 		GameStatusUnready:     struct{}{},
 		GameStatusError:       struct{}{},
@@ -175,6 +181,14 @@ var validStatusTransitions = map[GameRoomStatus]map[GameRoomStatus]struct{}{
 		GameStatusUnready:     struct{}{},
 		GameStatusError:       struct{}{},
 		GameStatusActive:      struct{}{},
+	},
+	GameStatusAllocated: {
+		GameStatusActive:      struct{}{},
+		GameStatusOccupied:    struct{}{},
+		GameStatusReady:       struct{}{},
+		GameStatusTerminating: struct{}{},
+		GameStatusUnready:     struct{}{},
+		GameStatusError:       struct{}{},
 	},
 	GameStatusError: {
 		GameStatusTerminating: struct{}{},

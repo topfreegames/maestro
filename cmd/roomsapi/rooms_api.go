@@ -161,6 +161,8 @@ func buildMuxWithMetricsMdlw(mdlw middleware.Middleware, mux *runtime.ServeMux) 
 			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/status", mdlw, mux)
 		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/address", anyWordRegex, anyWordRegex)):
 			handler = std.Handler("/scheduler/:schedulerName/rooms/:roomID/address", mdlw, mux)
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/allocate$", anyWordRegex)):
+			handler = std.Handler("/scheduler/:schedulerName/rooms/allocate", mdlw, mux)
 		default:
 			handler = std.Handler("", mdlw, mux)
 		}
@@ -190,6 +192,8 @@ func buildMuxWithTracing(hndl http.Handler) http.Handler {
 			handler = otelhttp.NewHandler(hndl, "/scheduler/:schedulerName/rooms/:roomID/status")
 		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/%s/address", anyWordRegex, anyWordRegex)):
 			handler = otelhttp.NewHandler(hndl, "/scheduler/:schedulerName/rooms/:roomID/address")
+		case commom.MatchPath(path, fmt.Sprintf("^/scheduler/%s/rooms/allocate$", anyWordRegex)):
+			handler = otelhttp.NewHandler(hndl, "/scheduler/:schedulerName/rooms/allocate")
 		default:
 			handler = otelhttp.NewHandler(hndl, "")
 		}
