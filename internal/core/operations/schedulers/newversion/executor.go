@@ -45,6 +45,7 @@ import (
 // Config defines configurations for the Executor.
 type Config struct {
 	RoomInitializationTimeout time.Duration
+	RoomValidationTimeout     time.Duration
 	RoomValidationAttempts    int
 }
 
@@ -191,7 +192,7 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 		ex.RemoveValidationRoomID(scheduler.Name)
 	}()
 
-	duration := ex.config.RoomInitializationTimeout
+	duration := ex.config.RoomValidationTimeout
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 	defer cancelFunc()
 

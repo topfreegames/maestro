@@ -90,6 +90,7 @@ services:
   roomManager:
     roomPingTimeoutMillis: 240000
     roomInitializationTimeoutMillis: 120000
+    roomValidationTimeoutMillis: 120000
     roomDeletionTimeoutMillis: 120000
     roomAllocationTTLMillis: 300000
     roomValidationAttempts: 3
