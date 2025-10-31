@@ -176,6 +176,9 @@ func (h *SchedulersHandler) NewSchedulerVersion(ctx context.Context, request *ap
 		if errors.Is(err, portsErrors.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
+		if errors.Is(err, portsErrors.ErrConflict) {
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	handlerLogger.Debug("finish handling new scheduler version request")
@@ -201,6 +204,9 @@ func (h *SchedulersHandler) PatchScheduler(ctx context.Context, request *api.Pat
 		}
 		if errors.Is(err, portsErrors.ErrInvalidArgument) {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		if errors.Is(err, portsErrors.ErrConflict) {
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
 		}
 
 		return nil, status.Error(codes.Unknown, err.Error())
