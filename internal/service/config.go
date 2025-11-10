@@ -43,6 +43,7 @@ const (
 	healthControllerExecutionIntervalConfigPath  = "workers.healthControllerInterval"
 	storagecleanupExecutionIntervalConfigPath    = "workers.storageClenupInterval"
 	roomInitializationTimeoutMillisConfigPath    = "services.roomManager.roomInitializationTimeoutMillis"
+	roomValidationTimeoutMillisConfigPath        = "services.roomManager.roomValidationTimeoutMillis"
 	roomRoomValidationAttemptsConfigPath         = "services.roomManager.roomValidationAttempts"
 	roomPingTimeoutMillisConfigPath              = "services.roomManager.roomPingTimeoutMillis"
 	roomDeletionTimeoutMillisConfigPath          = "services.roomManager.roomDeletionTimeoutMillis"
@@ -58,6 +59,7 @@ const (
 // NewCreateSchedulerVersionConfig instantiate a new CreateSchedulerVersionConfig to be used by the NewSchedulerVersion operation to customize its configuration.
 func NewCreateSchedulerVersionConfig(c config.Config) newversion.Config {
 	initializationTimeout := time.Duration(c.GetInt(roomInitializationTimeoutMillisConfigPath)) * time.Millisecond
+	validationTimeout := time.Duration(c.GetInt(roomValidationTimeoutMillisConfigPath)) * time.Millisecond
 	roomValidationAttempts := c.GetInt(roomRoomValidationAttemptsConfigPath)
 	if roomValidationAttempts < 1 {
 		roomValidationAttempts = 1
@@ -65,6 +67,7 @@ func NewCreateSchedulerVersionConfig(c config.Config) newversion.Config {
 
 	createSchedulerVersionConfig := newversion.Config{
 		RoomInitializationTimeout: initializationTimeout,
+		RoomValidationTimeout:     validationTimeout,
 		RoomValidationAttempts:    roomValidationAttempts,
 	}
 

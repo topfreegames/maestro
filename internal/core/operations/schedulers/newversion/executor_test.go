@@ -72,6 +72,7 @@ func TestExecutor_Execute(t *testing.T) {
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -123,6 +124,7 @@ func TestExecutor_Execute(t *testing.T) {
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    3,
 		}
 
@@ -177,6 +179,7 @@ func TestExecutor_Execute(t *testing.T) {
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -228,6 +231,7 @@ func TestExecutor_Execute(t *testing.T) {
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -279,6 +283,7 @@ func TestExecutor_Execute(t *testing.T) {
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -328,6 +333,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -361,6 +367,7 @@ func TestExecutor_Execute(t *testing.T) {
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v-----"}}
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -393,6 +400,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -435,6 +443,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    3,
 		}
 
@@ -482,6 +491,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    3,
 		}
 		ctx, cancelFn := context.WithCancel(context.Background())
@@ -524,6 +534,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -568,6 +579,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -619,6 +631,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -666,6 +679,7 @@ func TestExecutor_Execute(t *testing.T) {
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -710,6 +724,7 @@ func TestExecutor_Execute(t *testing.T) {
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -754,6 +769,7 @@ func TestExecutor_Execute(t *testing.T) {
 		switchOpID := "switch-active-version-op-id"
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -796,6 +812,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -828,6 +845,7 @@ func TestExecutor_Execute(t *testing.T) {
 		schedulerVersions := []*entities.SchedulerVersion{{Version: "v-----"}}
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -859,6 +877,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -896,6 +915,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -927,6 +947,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -958,6 +979,7 @@ func TestExecutor_Execute(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -996,6 +1018,7 @@ func TestExecutor_Rollback(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -1025,6 +1048,7 @@ func TestExecutor_Rollback(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
@@ -1052,6 +1076,7 @@ func TestExecutor_Rollback(t *testing.T) {
 		operationsManager := mockports.NewMockOperationManager(mockCtrl)
 		config := newversion.Config{
 			RoomInitializationTimeout: time.Duration(120000),
+			RoomValidationTimeout:     time.Duration(120000),
 			RoomValidationAttempts:    1,
 		}
 
