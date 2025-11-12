@@ -223,6 +223,9 @@ func (h *SchedulersHandler) SwitchActiveVersion(ctx context.Context, request *ap
 
 	if err != nil {
 		handlerLogger.Error(fmt.Sprintf("error switching active version %s", request.GetVersion()), zap.Error(err))
+		if errors.Is(err, portsErrors.ErrConflict) {
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		}
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
