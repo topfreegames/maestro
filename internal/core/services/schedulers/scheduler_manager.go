@@ -145,12 +145,12 @@ func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx 
 }
 
 func (s *SchedulerManager) PatchSchedulerAndCreateNewSchedulerVersionOperation(ctx context.Context, schedulerName string, patchMap map[string]interface{}) (*operation.Operation, error) {
-	ongoingOpID, err := s.hasOngoingVersionOperation(ctx, schedulerName)
+	ongoing, err := s.hasOngoingVersionOperation(ctx, schedulerName)
 	if err != nil {
 		return nil, portsErrors.NewErrUnexpected("failed to check for ongoing version operations: %s", err.Error())
 	}
-	if ongoingOpID != "" {
-		return nil, portsErrors.NewErrConflict("cannot patch scheduler: there is already an ongoing version operation (ID: %s) for scheduler %s", ongoingOpID, schedulerName)
+	if ongoing != "" {
+		return nil, portsErrors.NewErrConflict("cannot patch scheduler: there is already an ongoing version operation (id: %s) for scheduler %s", ongoing, schedulerName)
 	}
 
 	scheduler, err := s.schedulerStorage.GetScheduler(ctx, schedulerName)
@@ -197,12 +197,12 @@ func (s *SchedulerManager) GetSchedulerVersions(ctx context.Context, schedulerNa
 }
 
 func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Context, scheduler *entities.Scheduler) (*operation.Operation, error) {
-	ongoingOpID, err := s.hasOngoingVersionOperation(ctx, scheduler.Name)
+	ongoing, err := s.hasOngoingVersionOperation(ctx, scheduler.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for ongoing version operations: %w", err)
 	}
-	if ongoingOpID != "" {
-		return nil, portsErrors.NewErrConflict("cannot create new scheduler version: there is already an ongoing version operation (ID: %s) for scheduler %s", ongoingOpID, scheduler.Name)
+	if ongoing != "" {
+		return nil, portsErrors.NewErrConflict("cannot create new scheduler version: there is already an ongoing version operation (id: %s) for scheduler %s", ongoing, scheduler.Name)
 	}
 
 	currentScheduler, err := s.schedulerStorage.GetScheduler(ctx, scheduler.Name)
@@ -227,12 +227,12 @@ func (s *SchedulerManager) EnqueueNewSchedulerVersionOperation(ctx context.Conte
 }
 
 func (s *SchedulerManager) EnqueueSwitchActiveVersionOperation(ctx context.Context, schedulerName, newVersion string) (*operation.Operation, error) {
-	ongoingOpID, err := s.hasOngoingVersionOperation(ctx, schedulerName)
+	ongoing, err := s.hasOngoingVersionOperation(ctx, schedulerName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for ongoing version operations: %w", err)
 	}
-	if ongoingOpID != "" {
-		return nil, portsErrors.NewErrConflict("cannot switch active version: there is already an ongoing version operation (ID: %s) for scheduler %s", ongoingOpID, schedulerName)
+	if ongoing != "" {
+		return nil, portsErrors.NewErrConflict("cannot switch active version: there is already an ongoing version operation (id: %s) for scheduler %s", ongoing, schedulerName)
 	}
 
 	opDef := &switchversion.Definition{NewActiveVersion: newVersion}
@@ -355,12 +355,12 @@ func (s *SchedulerManager) newSchedulerInfo(ctx context.Context, scheduler *enti
 }
 
 func (s *SchedulerManager) hasOngoingVersionOperation(ctx context.Context, schedulerName string) (string, error) {
-	pendingOps, err := s.operationManager.ListSchedulerPendingOperations(ctx, schedulerName)
+	pending, err := s.operationManager.ListSchedulerPendingOperations(ctx, schedulerName)
 	if err != nil {
 		return "", fmt.Errorf("failed to list pending operations: %w", err)
 	}
 
-	for _, op := range pendingOps {
+	for _, op := range pending {
 		if slices.Contains([]string{newversion.OperationName, switchversion.OperationName}, op.DefinitionName) {
 			s.logger.Debug("found pending version operation",
 				zap.String("operationID", op.ID),
@@ -370,12 +370,12 @@ func (s *SchedulerManager) hasOngoingVersionOperation(ctx context.Context, sched
 		}
 	}
 
-	activeOps, err := s.operationManager.ListSchedulerActiveOperations(ctx, schedulerName)
+	active, err := s.operationManager.ListSchedulerActiveOperations(ctx, schedulerName)
 	if err != nil {
 		return "", fmt.Errorf("failed to list active operations: %w", err)
 	}
 
-	for _, op := range activeOps {
+	for _, op := range active {
 		if slices.Contains([]string{newversion.OperationName, switchversion.OperationName}, op.DefinitionName) {
 			s.logger.Debug("found active version operation",
 				zap.String("operationID", op.ID),
