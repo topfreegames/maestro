@@ -44,6 +44,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/operations"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/delete"
 	"github.com/topfreegames/maestro/internal/core/operations/schedulers/newversion"
+	"github.com/topfreegames/maestro/internal/core/operations/schedulers/switchversion"
 	"github.com/topfreegames/maestro/internal/core/ports"
 	"github.com/topfreegames/maestro/internal/core/ports/errors"
 	portsErrors "github.com/topfreegames/maestro/internal/core/ports/errors"
@@ -173,6 +174,9 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(&operation.Operation{}, nil)
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 
@@ -181,6 +185,147 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		require.NotNil(t, op)
 		require.NotNil(t, op.ID)
 
+	})
+
+	t.Run("return conflict error when there is a pending newversion operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		pendingOp := &operation.Operation{
+			ID:             "pending-op-id",
+			SchedulerName:  scheduler.Name,
+			DefinitionName: newversion.OperationName,
+		}
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{pendingOp}, nil)
+
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "cannot create new scheduler version: there is already an ongoing version operation")
+		require.Contains(t, err.Error(), "pending-op-id")
+	})
+
+	t.Run("return conflict error when there is an active newversion operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		activeOp := &operation.Operation{
+			ID:             "active-newversion-op-id",
+			SchedulerName:  scheduler.Name,
+			DefinitionName: newversion.OperationName,
+		}
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{activeOp}, nil)
+
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "cannot create new scheduler version: there is already an ongoing version operation")
+		require.Contains(t, err.Error(), "active-newversion-op-id")
+	})
+
+	t.Run("return conflict error when there is a pending switchversion operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		pendingOp := &operation.Operation{
+			ID:             "pending-switchversion-op-id",
+			SchedulerName:  scheduler.Name,
+			DefinitionName: switchversion.OperationName,
+		}
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{pendingOp}, nil)
+
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "cannot create new scheduler version: there is already an ongoing version operation")
+		require.Contains(t, err.Error(), "pending-switchversion-op-id")
+	})
+
+	t.Run("return conflict error when there is an active switchversion operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		activeOp := &operation.Operation{
+			ID:             "active-op-id",
+			SchedulerName:  scheduler.Name,
+			DefinitionName: switchversion.OperationName,
+		}
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{activeOp}, nil)
+
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "cannot create new scheduler version: there is already an ongoing version operation")
+		require.Contains(t, err.Error(), "active-op-id")
+	})
+
+	t.Run("return error when checking for pending operations fails", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return(nil, errors.NewErrUnexpected("database error"))
+
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "failed to check for ongoing version operations")
+	})
+
+	t.Run("return error when checking for active operations fails", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return(nil, errors.NewErrUnexpected("database error"))
+
+		op, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "failed to check for ongoing version operations")
 	})
 
 	t.Run("return error when the scheduler is invalid", func(t *testing.T) {
@@ -193,6 +338,9 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 
@@ -212,6 +360,9 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(nil, errors.NewErrUnexpected("some_error"))
 
 		_, err := schedulerManager.EnqueueNewSchedulerVersionOperation(ctx, scheduler)
@@ -228,6 +379,9 @@ func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
 
 		schedulerStorage.EXPECT().GetScheduler(ctx, scheduler.Name).Return(scheduler, nil)
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
@@ -261,6 +415,9 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(&operation.Operation{}, nil)
 
 		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
@@ -284,12 +441,156 @@ func TestEnqueueSwitchActiveVersionOperation(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+
 		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
 
 		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
 		require.Nil(t, op)
 		require.ErrorIs(t, err, errors.ErrUnexpected)
 		require.Contains(t, err.Error(), "failed to schedule switch_active_version operation:")
+	})
+
+	t.Run("return conflict error when there is a pending newversion operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		pendingOp := &operation.Operation{
+			ID:             "pending-op-id",
+			SchedulerName:  scheduler.Name,
+			DefinitionName: newversion.OperationName,
+		}
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{pendingOp}, nil)
+
+		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "cannot switch active version: there is already an ongoing version operation")
+		require.Contains(t, err.Error(), "pending-op-id")
+	})
+
+	t.Run("return conflict error when there is an active newversion operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		activeOp := &operation.Operation{
+			ID:             "active-newversion-op-id",
+			SchedulerName:  scheduler.Name,
+			DefinitionName: newversion.OperationName,
+		}
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{activeOp}, nil)
+
+		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "cannot switch active version: there is already an ongoing version operation")
+		require.Contains(t, err.Error(), "active-newversion-op-id")
+	})
+
+	t.Run("return conflict error when there is a pending switchversion operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		pendingOp := &operation.Operation{
+			ID:             "pending-switchversion-op-id",
+			SchedulerName:  scheduler.Name,
+			DefinitionName: switchversion.OperationName,
+		}
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{pendingOp}, nil)
+
+		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "cannot switch active version: there is already an ongoing version operation")
+		require.Contains(t, err.Error(), "pending-switchversion-op-id")
+	})
+
+	t.Run("return conflict error when there is an active switchversion operation", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		activeOp := &operation.Operation{
+			ID:             "active-switchversion-op-id",
+			SchedulerName:  scheduler.Name,
+			DefinitionName: switchversion.OperationName,
+		}
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return([]*operation.Operation{activeOp}, nil)
+
+		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "cannot switch active version: there is already an ongoing version operation")
+		require.Contains(t, err.Error(), "active-switchversion-op-id")
+	})
+
+	t.Run("return error when checking for pending operations fails", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return(nil, errors.NewErrUnexpected("database error"))
+
+		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "failed to check for ongoing version operations")
+	})
+
+	t.Run("return error when checking for active operations fails", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.PortRange = &port.PortRange{Start: 0, End: 1}
+
+		ctx := context.Background()
+		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+		operationManager := mock.NewMockOperationManager(mockCtrl)
+		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+		schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+		operationManager.EXPECT().ListSchedulerPendingOperations(ctx, scheduler.Name).Return([]*operation.Operation{}, nil)
+		operationManager.EXPECT().ListSchedulerActiveOperations(ctx, scheduler.Name).Return(nil, errors.NewErrUnexpected("database error"))
+
+		op, err := schedulerManager.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
+		require.Error(t, err)
+		require.Nil(t, op)
+		require.Contains(t, err.Error(), "failed to check for ongoing version operations")
 	})
 }
 
@@ -1011,6 +1312,9 @@ func TestPatchSchedulerAndSwitchActiveVersionOperation(t *testing.T) {
 			mockOperationManager := mock.NewMockOperationManager(mockCtrl)
 			mockSchedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 			schedulerManager := NewSchedulerManager(mockSchedulerStorage, nil, mockOperationManager, nil)
+
+			mockOperationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), scheduler.Name).Return([]*operation.Operation{}, nil).AnyTimes()
+			mockOperationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), scheduler.Name).Return([]*operation.Operation{}, nil).AnyTimes()
 
 			mockSchedulerStorage.EXPECT().GetScheduler(gomock.Any(), scheduler.Name).Return(scheduler, testCase.ExpectedMock.GetSchedulerError)
 			mockOperationManager.EXPECT().
