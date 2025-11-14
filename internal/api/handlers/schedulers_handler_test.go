@@ -694,8 +694,6 @@ func TestNewSchedulerVersion(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
 
@@ -734,8 +732,6 @@ func TestNewSchedulerVersion(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").DoAndReturn(func(_ context.Context, _ string) (*entities.Scheduler, error) {
 			dbScheduler := scheduler.NewDBScheduler(currentScheduler)
@@ -767,13 +763,9 @@ func TestNewSchedulerVersion(t *testing.T) {
 	t.Run("fails when scheduler does not exists", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 		schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
-		operationManager := mock.NewMockOperationManager(mockCtrl)
 		roomStorage := mockports.NewMockRoomStorage(mockCtrl)
-		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
-		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, nil, nil, roomStorage)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(nil, errors.NewErrNotFound("err"))
 
 		mux := runtime.NewServeMux()
@@ -807,8 +799,6 @@ func TestNewSchedulerVersion(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil, errors.NewErrUnexpected("storage offline"))
 		schedulerStorage.EXPECT().GetScheduler(gomock.Any(), "scheduler-name-1").Return(currentScheduler, nil)
 
@@ -845,8 +835,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(&operation.Operation{ID: "id-1"}, nil)
 
 		mux := runtime.NewServeMux()
@@ -876,8 +864,6 @@ func TestSwitchActiveVersion(t *testing.T) {
 		schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
 		schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
 
-		operationManager.EXPECT().ListSchedulerPendingOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
-		operationManager.EXPECT().ListSchedulerActiveOperations(gomock.Any(), "scheduler-name-1").Return([]*operation.Operation{}, nil)
 		operationManager.EXPECT().CreateOperation(gomock.Any(), "scheduler-name-1", gomock.Any()).Return(nil, errors.NewErrUnexpected("internal error"))
 
 		mux := runtime.NewServeMux()
@@ -1181,16 +1167,6 @@ func TestPatchScheduler(t *testing.T) {
 			schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
 			operationManager := mock.NewMockOperationManager(mockCtrl)
 			schedulerManager := schedulers.NewSchedulerManager(schedulerStorage, nil, operationManager, nil)
-
-			operationManager.EXPECT().
-				ListSchedulerPendingOperations(gomock.Any(), "scheduler-name-1").
-				Return([]*operation.Operation{}, nil).
-				AnyTimes()
-
-			operationManager.EXPECT().
-				ListSchedulerActiveOperations(gomock.Any(), "scheduler-name-1").
-				Return([]*operation.Operation{}, nil).
-				AnyTimes()
 
 			schedulerStorage.EXPECT().
 				GetScheduler(gomock.Any(), "scheduler-name-1").
