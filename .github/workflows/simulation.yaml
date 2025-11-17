@@ -21,7 +21,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
-          context: ./
+          context: ./simulation
           file: ./simulation/Dockerfile
           push: true
           tags: tfgco/maestro-simulation:${{ env.IMAGE_VERSION }}
