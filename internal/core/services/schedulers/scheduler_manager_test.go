@@ -155,6 +155,38 @@ func TestCreateNewSchedulerVersion(t *testing.T) {
 
 }
 
+func TestCreateNewSchedulerVersionAndEnqueueSwitchVersion(t *testing.T) {
+	err := validations.RegisterValidations()
+	if err != nil {
+		t.Errorf("unexpected error %d'", err)
+	}
+
+	ctx := context.Background()
+	mockCtrl := gomock.NewController(t)
+
+	schedulerStorage := mockports.NewMockSchedulerStorage(mockCtrl)
+	operationManager := mock.NewMockOperationManager(mockCtrl)
+	roomStorage := mockports.NewMockRoomStorage(mockCtrl)
+	schedulerCache := mockports.NewMockSchedulerCache(mockCtrl)
+	schedulerManager := NewSchedulerManager(schedulerStorage, schedulerCache, operationManager, roomStorage)
+
+	t.Run("succeeds without conflict checking - called from operation executor", func(t *testing.T) {
+		scheduler := newValidScheduler()
+		scheduler.Spec.Version = "v2.0.0"
+
+		schedulerStorage.EXPECT().RunWithTransaction(ctx, gomock.Any()).DoAndReturn(
+			func(ctx context.Context, fn func(ports.TransactionID) error) error {
+				return fn(ports.TransactionID("test-transaction-id"))
+			})
+		schedulerStorage.EXPECT().CreateSchedulerVersion(ctx, ports.TransactionID("test-transaction-id"), scheduler).Return(nil)
+		operationManager.EXPECT().CreateOperation(ctx, scheduler.Name, gomock.Any()).Return(&operation.Operation{ID: "switch-op-id"}, nil)
+
+		opID, err := schedulerManager.CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx, scheduler)
+		require.NoError(t, err)
+		require.Equal(t, "switch-op-id", opID)
+	})
+}
+
 func TestEnqueueNewSchedulerVersionOperation(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 

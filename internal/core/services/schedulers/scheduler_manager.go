@@ -130,7 +130,12 @@ func (s *SchedulerManager) CreateNewSchedulerVersionAndEnqueueSwitchVersion(ctx 
 			return err
 		}
 
-		op, err := s.EnqueueSwitchActiveVersionOperation(ctx, scheduler.Name, scheduler.Spec.Version)
+		// Conflict checks are not performed here because this method runs only inside
+		// the operation executor. Checking for conflicts at this point would cause the
+		// operation to block itself. All conflict validation is handled earlier, when
+		// operations are enqueued at the API level.
+		opDef := &switchversion.Definition{NewActiveVersion: scheduler.Spec.Version}
+		op, err := s.operationManager.CreateOperation(ctx, scheduler.Name, opDef)
 		if err != nil {
 			return fmt.Errorf("error enqueuing switch active version operation: %w", err)
 		}
