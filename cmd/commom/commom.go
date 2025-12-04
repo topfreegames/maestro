@@ -62,7 +62,8 @@ func ServiceSetup(ctx context.Context, cancelFn context.CancelFunc, logConfig, c
 
 	launchTerminatingListenerGoroutine(cancelFn)
 
-	shutdownInternalServerFn := service.RunInternalServer(ctx, viperConfig)
+	healthDeps := service.InitHealthDependencies(viperConfig)
+	shutdownInternalServerFn := service.RunInternalServer(ctx, viperConfig, healthDeps)
 
 	return nil, viperConfig, shutdownInternalServerFn
 }
