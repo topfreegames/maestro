@@ -90,6 +90,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 	err = h.roomManager.UpdateRoom(ctx, gameRoom)
 	if err != nil {
 		handlerLogger.Error("error updating room with ping", zap.Any("ping", message), zap.Error(err))
+		reportPingHandlerUpdateRoomFailure(message.SchedulerName)
 		return &api.UpdateRoomWithPingResponse{Success: false}, nil
 	}
 
