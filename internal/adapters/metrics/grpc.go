@@ -38,4 +38,18 @@ var (
 			monitoring.LabelCode,
 		},
 	})
+
+	PingHandlerUpdateRoomFailuresMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+		Namespace: monitoring.Namespace,
+		Subsystem: monitoring.SubsystemApi,
+		Name:      "ping_handler_update_room_failures",
+		Help:      "Number of failures in UpdateRoomWithPing handler when calling UpdateRoom",
+		Labels: []string{
+			monitoring.LabelScheduler,
+		},
+	})
 )
+
+func ReportPingHandlerUpdateRoomFailure(schedulerName string) {
+	PingHandlerUpdateRoomFailuresMetric.WithLabelValues(schedulerName).Inc()
+}
