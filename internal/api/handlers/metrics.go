@@ -26,16 +26,21 @@ import (
 	"github.com/topfreegames/maestro/internal/core/monitoring"
 )
 
-var pingHandlerUpdateRoomFailuresMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
+var pingHandlerUpdateRoomTotalMetric = monitoring.CreateCounterMetric(&monitoring.MetricOpts{
 	Namespace: monitoring.Namespace,
 	Subsystem: monitoring.SubsystemApi,
-	Name:      "ping_handler_update_room_failures",
-	Help:      "Number of failures in UpdateRoomWithPing handler when calling UpdateRoom",
+	Name:      "ping_handler_update_room",
+	Help:      "Total number of UpdateRoomWithPing handler calls",
 	Labels: []string{
 		monitoring.LabelScheduler,
+		"result",
 	},
 })
 
 func reportPingHandlerUpdateRoomFailure(schedulerName string) {
-	pingHandlerUpdateRoomFailuresMetric.WithLabelValues(schedulerName).Inc()
+	pingHandlerUpdateRoomTotalMetric.WithLabelValues(schedulerName, "failure").Inc()
+}
+
+func reportPingHandlerUpdateRoomSuccess(schedulerName string) {
+	pingHandlerUpdateRoomTotalMetric.WithLabelValues(schedulerName, "success").Inc()
 }

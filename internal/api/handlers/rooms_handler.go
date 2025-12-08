@@ -95,6 +95,7 @@ func (h *RoomsHandler) UpdateRoomWithPing(ctx context.Context, message *api.Upda
 	}
 
 	handlerLogger.Debug("Room updated with ping successfully")
+	reportPingHandlerUpdateRoomSuccess(message.SchedulerName)
 	return &api.UpdateRoomWithPingResponse{Success: true}, nil
 }
 
