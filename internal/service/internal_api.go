@@ -36,12 +36,13 @@ import (
 // shutdown function. The internal server contains handlers for:
 // - health check
 // - metrics
-func RunInternalServer(ctx context.Context, configs config.Config) func() error {
+func RunInternalServer(ctx context.Context, configs config.Config, healthDeps *HealthDependencies) func() error {
 	mux := http.NewServeMux()
 	if configs.GetBool("internalApi.healthcheck.enabled") {
 		zap.L().Info("adding healthcheck handler to internal API")
 		mux.HandleFunc("/health", handleHealth)
 		mux.HandleFunc("/healthz", handleHealth)
+		mux.HandleFunc("/readyz", handleReadyz(healthDeps))
 	}
 	if configs.GetBool("internalApi.metrics.enabled") {
 		zap.L().Info("adding metrics handler to internal API")
@@ -66,6 +67,32 @@ func RunInternalServer(ctx context.Context, configs config.Config) func() error 
 
 		zap.L().Info("stopping HTTP internal server")
 		return httpServer.Shutdown(shutdownCtx)
+	}
+}
+
+func handleReadyz(deps *HealthDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		healthy := true
+
+		if deps.PostgresDB != nil {
+			if err := checkPostgres(r.Context(), deps.PostgresDB); err != nil {
+				healthy = false
+			}
+		}
+
+		if deps.RedisClient != nil {
+			if err := checkRedis(r.Context(), deps.RedisClient); err != nil {
+				healthy = false
+			}
+		}
+
+		if !healthy {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
 	}
 }
 
