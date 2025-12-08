@@ -44,9 +44,10 @@ import (
 
 // Config defines configurations for the Executor.
 type Config struct {
-	RoomInitializationTimeout time.Duration
-	RoomValidationTimeout     time.Duration
-	RoomValidationAttempts    int
+	RoomInitializationTimeout          time.Duration
+	RoomValidationTimeout              time.Duration
+	RoomValidationAttempts             int
+	RoomValidationAcceptOccupiedStatus bool
 }
 
 // Executor holds the dependecies to execute the operation to create a new scheduler version.
@@ -196,10 +197,18 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 	timeoutContext, cancelFunc := context.WithTimeout(ctx, duration)
 	defer cancelFunc()
 
+	status := []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError}
+	if ex.config.RoomValidationAcceptOccupiedStatus {
+		// WARNING: Accepting occupied as valid is dangerous. Use only when validation
+		// rooms may be picked up by the matchmaker before reporting ready status. If a new room
+		// version incorrectly transitions to occupied, Maestro may scale up indefinitely.
+		status = append(status, game_room.GameStatusOccupied)
+	}
+
 	roomStatus, waitRoomErr := ex.roomManager.WaitRoomStatus(
 		timeoutContext,
 		gameRoom,
-		[]game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError},
+		status,
 	)
 
 	if waitRoomErr != nil {
@@ -213,6 +222,9 @@ func (ex *Executor) validateGameRoomCreation(ctx context.Context, scheduler *ent
 	switch roomStatus {
 	case game_room.GameStatusReady:
 		logger.Sugar().Infof("validation room with ID: %s is ready", gameRoom.ID)
+		return nil
+	case game_room.GameStatusOccupied:
+		logger.Sugar().Infof("validation room with ID: %s is occupied", gameRoom.ID)
 		return nil
 	case game_room.GameStatusError:
 		logger.Sugar().Infof("validation room with ID: %s is in error state", gameRoom.ID)

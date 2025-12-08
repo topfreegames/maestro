@@ -160,6 +160,59 @@ func TestExecutor_Execute(t *testing.T) {
 		require.Nil(t, result)
 	})
 
+	t.Run("should succeed - major version update, game room status is occupied with config enabled, returns no error -> enqueue switch active version op", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+
+		currentActiveScheduler := newValidSchedulerWithImageVersion("image-v1")
+		newScheduler := *newValidSchedulerWithImageVersion("image-v2")
+		newSchedulerExpectedVersion := "v2.0.0"
+		op := &operation.Operation{
+			ID:             "123",
+			Status:         operation.StatusInProgress,
+			DefinitionName: newversion.OperationName,
+			SchedulerName:  newScheduler.Name,
+		}
+		operationDef := &newversion.Definition{NewScheduler: &newScheduler}
+		roomManager := mockports.NewMockRoomManager(mockCtrl)
+		schedulerManager := mockports.NewMockSchedulerManager(mockCtrl)
+		operationsManager := mockports.NewMockOperationManager(mockCtrl)
+		switchOpID := "switch-active-version-op-id"
+		config := newversion.Config{
+			RoomInitializationTimeout:          time.Duration(120000),
+			RoomValidationTimeout:              time.Duration(120000),
+			RoomValidationAttempts:             1,
+			RoomValidationAcceptOccupiedStatus: true,
+		}
+
+		executor := newversion.NewExecutor(roomManager, schedulerManager, operationsManager, config)
+
+		schedulerVersions := []*entities.SchedulerVersion{{Version: "v1.0.0"}, {Version: "v1.1.0"}, {Version: "v1.2.0"}}
+		gameRoom := &game_room.GameRoom{ID: "id-1"}
+
+		roomManager.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), true).Return(gameRoom, nil, nil)
+		roomManager.EXPECT().WaitRoomStatus(gomock.Any(), gameRoom, []game_room.GameRoomStatus{game_room.GameStatusReady, game_room.GameStatusError, game_room.GameStatusOccupied}).Return(game_room.GameStatusOccupied, nil)
+		roomManager.EXPECT().DeleteRoom(gomock.Any(), gomock.Any(), remove.NewVersionValidationFinished).Return(nil)
+
+		schedulerManager.
+			EXPECT().
+			CreateNewSchedulerVersionAndEnqueueSwitchVersion(gomock.Any(), gomock.Any()).
+			DoAndReturn(
+				func(ctx context.Context, scheduler *entities.Scheduler) (string, error) {
+					require.Equal(t, newSchedulerExpectedVersion, scheduler.Spec.Version)
+					return switchOpID, nil
+				})
+		schedulerManager.EXPECT().GetActiveScheduler(gomock.Any(), newScheduler.Name).Return(currentActiveScheduler, nil)
+		schedulerManager.EXPECT().GetSchedulerVersions(gomock.Any(), newScheduler.Name).Return(schedulerVersions, nil)
+		schedulerManager.EXPECT().UpdateScheduler(gomock.Any(), currentActiveScheduler).Return(nil)
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "Major version detected, starting game room validation process...")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, "1º Attempt: Game room validation success!")
+		operationsManager.EXPECT().AppendOperationEventToExecutionHistory(gomock.Any(), op, fmt.Sprintf("enqueued switch active version operation with id: %s", switchOpID))
+
+		result := executor.Execute(context.Background(), op, operationDef)
+
+		require.Nil(t, result)
+	})
+
 	t.Run("should succeed - major version update, game room is valid, greatest major version is v3, returns no error -> enqueue switch active version op", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)
 

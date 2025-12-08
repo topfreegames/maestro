@@ -94,6 +94,7 @@ services:
     roomDeletionTimeoutMillis: 120000
     roomAllocationTTLMillis: 300000
     roomValidationAttempts: 3
+    roomValidationAcceptOccupiedStatus: false
   operationManager:
     operationLeaseTTLMillis: 5000
   eventsForwarder:

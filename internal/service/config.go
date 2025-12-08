@@ -45,6 +45,7 @@ const (
 	roomInitializationTimeoutMillisConfigPath    = "services.roomManager.roomInitializationTimeoutMillis"
 	roomValidationTimeoutMillisConfigPath        = "services.roomManager.roomValidationTimeoutMillis"
 	roomRoomValidationAttemptsConfigPath         = "services.roomManager.roomValidationAttempts"
+	roomValidationAcceptOccupiedStatusConfigPath = "services.roomManager.roomValidationAcceptOccupiedStatus"
 	roomPingTimeoutMillisConfigPath              = "services.roomManager.roomPingTimeoutMillis"
 	roomDeletionTimeoutMillisConfigPath          = "services.roomManager.roomDeletionTimeoutMillis"
 	roomAllocationTTLMillisConfigPath            = "services.roomManager.roomAllocationTTLMillis"
@@ -64,11 +65,13 @@ func NewCreateSchedulerVersionConfig(c config.Config) newversion.Config {
 	if roomValidationAttempts < 1 {
 		roomValidationAttempts = 1
 	}
+	acceptOccupiedStatus := c.GetBool(roomValidationAcceptOccupiedStatusConfigPath)
 
 	createSchedulerVersionConfig := newversion.Config{
-		RoomInitializationTimeout: initializationTimeout,
-		RoomValidationTimeout:     validationTimeout,
-		RoomValidationAttempts:    roomValidationAttempts,
+		RoomInitializationTimeout:          initializationTimeout,
+		RoomValidationTimeout:              validationTimeout,
+		RoomValidationAttempts:             roomValidationAttempts,
+		RoomValidationAcceptOccupiedStatus: acceptOccupiedStatus,
 	}
 
 	return createSchedulerVersionConfig
