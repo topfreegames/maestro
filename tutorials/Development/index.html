@@ -1,0 +1,1403 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../../how-to-guides/User%20Guides/">
+      
+      
+        <link rel="next" href="../../reference/Architecture/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Developers - Maestro</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="cyan" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#development" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Maestro" class="md-header__button md-logo" aria-label="Maestro" data-md-component="logo">
+      
+  <img src="https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Maestro
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Developers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/topfreegames/maestro" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Maestro" class="md-nav__button md-logo" aria-label="Maestro" data-md-component="logo">
+      
+  <img src="https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true" alt="logo">
+
+    </a>
+    Maestro
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/topfreegames/maestro" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GettingStarted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/Scheduler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scheduler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to-guides/User%20Guides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UserGuides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setting-up-the-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setting up the environment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setting up the environment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#grpc-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grpc gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#golang-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Golang version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#building-and-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building and running
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running locally
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running locally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clone-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clone Repository
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-maestro-up-and-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Maestro up and running
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find-rooms-api-address" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find rooms-api address
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-a-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create a scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#congratulations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Congratulations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-environment-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Environment Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Local Environment Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-maestro-locally-with-k3d-managed-by-docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Maestro Locally with k3d (Managed by Docker Compose)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ensure-migrations-are-run-if-its-the-first-time-or-after-schema-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ensure migrations are run if it's the first time or after schema changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maestro_migration_pathfileinternalservicemigrations-go-run-maingo-migrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-make-maestrostart-target-handles-migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (The make maestro/start target handles migrations)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="(The make maestro/start target handles migrations)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/OpenAPI/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Autoscaling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autoscaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EventsForwarding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Events Forwarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/Operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/Kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to-guides/Guidelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setting-up-the-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setting up the environment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setting up the environment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#grpc-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grpc gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#golang-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Golang version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#building-and-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building and running
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running locally
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running locally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clone-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clone Repository
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-maestro-up-and-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Maestro up and running
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find-rooms-api-address" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find rooms-api address
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-a-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create a scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#congratulations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Congratulations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-environment-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Environment Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Local Environment Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-maestro-locally-with-k3d-managed-by-docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Maestro Locally with k3d (Managed by Docker Compose)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ensure-migrations-are-run-if-its-the-first-time-or-after-schema-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ensure migrations are run if it's the first time or after schema changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maestro_migration_pathfileinternalservicemigrations-go-run-maingo-migrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-make-maestrostart-target-handles-migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (The make maestro/start target handles migrations)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="(The make maestro/start target handles migrations)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ci-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h2 id="development">Development</h2>
+<hr />
+<h3 id="setting-up-the-environment">Setting up the environment</h3>
+<h4 id="grpc-gateway">Grpc gateway</h4>
+<p>In order to run make generate with success, you need to have grpc-gateway dependencies installed with the following command:</p>
+<pre><code class="language-shell">go install \
+    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
+    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
+    google.golang.org/protobuf/cmd/protoc-gen-go \
+    google.golang.org/grpc/cmd/protoc-gen-go-grpc
+</code></pre>
+<h4 id="golang-version">Golang version</h4>
+<p>The project requires golang version 1.20 or higher.</p>
+<h4 id="building-and-running">Building and running</h4>
+<ol>
+<li>Run <code>make setup</code> to get all required modules</li>
+<li>Run <code>make generate</code> to generate mocks, protos and wire (dependency injection)</li>
+<li>Run <code>make deps/up</code> to startup service dependencies</li>
+<li>Run <code>make migrate</code> to migrate database with the most updated schema</li>
+</ol>
+<h4 id="running-tests">Running tests</h4>
+<ol>
+<li>Run <code>make run/unit-tests</code> to run all unit tests</li>
+<li>Run <code>make run/integration-tests</code> to run all integration tests</li>
+<li>Run <code>make run/e2e-tests</code> to run all E2E tests. NOTE: Currently it is not
+   possible to run it with the development environment set. This command will
+   stop the dev dependencies before running.</li>
+<li>Run <code>make lint</code> to run all registered linters</li>
+</ol>
+<hr />
+<h3 id="running-locally">Running locally</h3>
+<p>To help you get along with Maestro, by the end of this section you should have a scheduler up and running.</p>
+<h4 id="prerequisites">Prerequisites</h4>
+<ul>
+<li>Golang v1.20+</li>
+<li>Linux/MacOS environment</li>
+<li>Docker</li>
+</ul>
+<h4 id="clone-repository">Clone Repository</h4>
+<p>Clone the <a href="https://github.com/topfreegames/maestro">repository</a> to your favorite folder.</p>
+<h4 id="getting-maestro-up-and-running">Getting Maestro up and running</h4>
+<blockquote>
+<p>For this step, you need docker running on your machine.</p>
+<p><strong>WARNING: Ensure using cgroupv1</strong></p>
+<p>K3s needs to use the deprecated <code>cgroupv1</code>, to successfully run the project in your machine ensure that your current docker use this version.</p>
+</blockquote>
+<p>In the folder where the project was cloned, simply run:</p>
+<pre><code class="language-shell">make maestro/start
+</code></pre>
+<p>This will build and start all containers needed by Maestro, such as databases and maestro-modules. This will also start
+all maestro components, including rooms api, management api, runtime watcher, and execution worker.</p>
+<p>Because of that, be aware that it might take some time to finish.</p>
+<h4 id="find-rooms-api-address">Find rooms-api address</h4>
+<p>To simulate a game room, it's important to find the address of running <strong>rooms-api</strong> on the local network.</p>
+<p>To do that, with Maestro containers running, simply use:</p>
+<pre><code class="language-shell">docker inspect -f '{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}' {{ROOMS_API_CONTAINER_NAME}}
+</code></pre>
+<p>This command should give you an IP address.
+This IP is important because the game rooms will use it to communicate their status.</p>
+<h4 id="create-a-scheduler">Create a scheduler</h4>
+<p>If everything is working as expected now, each Maestro-module is up and running.
+Use the command below to create a new scheduler:</p>
+<blockquote>
+<p>Be aware to change the {{ROOMS_API_ADDRESS}} for the one found above.</p>
+</blockquote>
+<pre><code class="language-shell">curl --request POST \
+  --url http://localhost:8080/schedulers \
+  --header 'Content-Type: application/json' \
+  --data '{
+    &quot;name&quot;: &quot;scheduler-run-local&quot;,
+    &quot;game&quot;: &quot;game-test&quot;,
+    &quot;state&quot;: &quot;creating&quot;,
+    &quot;portRange&quot;: {
+        &quot;start&quot;: 1,
+        &quot;end&quot;: 1000
+    },
+    &quot;maxSurge&quot;: &quot;10%&quot;,
+    &quot;spec&quot;: {
+        &quot;terminationGracePeriod&quot;: &quot;100s&quot;,
+        &quot;containers&quot;: [
+            {
+                &quot;name&quot;: &quot;alpine&quot;,
+                &quot;image&quot;: &quot;alpine&quot;,
+                &quot;imagePullPolicy&quot;: &quot;IfNotPresent&quot;,
+                &quot;command&quot;: [
+                    &quot;sh&quot;,
+                    &quot;-c&quot;,
+                    &quot;apk add curl &amp;&amp; while true; do curl --request PUT {{ROOMS_API_ADDRESS}}:8070/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping --data-raw '\''{\&quot;status\&quot;: \&quot;ready\&quot;,\&quot;timestamp\&quot;: \&quot;12312312313\&quot;}'\'' &amp;&amp; sleep 5; done&quot;
+                ],
+                &quot;environment&quot;: [],
+                &quot;requests&quot;: {
+                    &quot;memory&quot;: &quot;100Mi&quot;,
+                    &quot;cpu&quot;: &quot;100m&quot;
+                },
+                &quot;limits&quot;: {
+                    &quot;memory&quot;: &quot;200Mi&quot;,
+                    &quot;cpu&quot;: &quot;200m&quot;
+                },
+                &quot;ports&quot;: [
+                    {
+                        &quot;name&quot;: &quot;port-name&quot;,
+                        &quot;protocol&quot;: &quot;tcp&quot;,
+                        &quot;port&quot;: 12345
+                    }
+                ]
+            }
+        ],
+        &quot;toleration&quot;: &quot;&quot;,
+        &quot;affinity&quot;: &quot;&quot;
+    },
+    &quot;forwarders&quot;: []
+}'
+</code></pre>
+<h4 id="congratulations">Congratulations</h4>
+<p>If you followed the steps above you have Maestro running in your local machine, and with a <a href="../../reference/Scheduler/">scheduler</a> to try different <a href="../../reference/Operations/">operations</a> on it.
+Feel free to explore the available endpoints in the <a href="../../reference/OpenAPI/">API</a> hitting directly the management-API.</p>
+<p>If you have any doubts or feedbacks regarding this process, feel free to reach out in <a href="https://github.com/topfreegames/maestro">Maestro's GitHub repository</a> and open an issue/question.</p>
+<h2 id="local-environment-setup">Local Environment Setup</h2>
+<p>To run Maestro locally for development or testing, you'll need the following tools installed:</p>
+<ul>
+<li><strong>Go (version 1.23 or higher)</strong></li>
+<li><strong>Docker</strong></li>
+<li><strong>Docker Compose</strong></li>
+<li><strong>kubectl (Kubernetes CLI)</strong> - <em>Optional, for interacting with the k3d cluster directly.</em></li>
+<li><strong>Make</strong></li>
+</ul>
+<p>(Note: <code>k3d</code> itself is now managed via Docker Compose as part of the local dependencies, so direct installation of <code>k3d</code> CLI is no longer a prerequisite for basic <code>make</code> target usage.)</p>
+<h3 id="running-maestro-locally-with-k3d-managed-by-docker-compose">Running Maestro Locally with k3d (Managed by Docker Compose)</h3>
+<ol>
+<li>
+<p><strong>Set up dependencies (Postgres, Redis &amp; k3d Kubernetes cluster):</strong>
+    The <code>docker-compose.yaml</code> file at the root of the project defines services for Postgres, Redis, and <code>k3d</code>. The <code>k3d</code> service will automatically create a Kubernetes cluster named <code>maestro-dev</code> and export its kubeconfig to <code>e2e/framework/maestro/.k3d-kubeconfig.yaml</code>.</p>
+<p>To start these dependencies, including the k3d cluster:
+<code>bash
+make deps/up</code>
+Alternatively, to only start/ensure the k3d cluster is up:
+<code>bash
+make k3d/up</code>
+This command will also wait until the kubeconfig file is ready.
+The <code>maestro-dev</code> cluster will have port <code>38080</code> on your host mapped to the cluster's ingress (port 80 on the load balancer).</p>
+</li>
+<li>
+<p><strong>Start Maestro Application Services:</strong>
+    Once the k3d cluster is running and its kubeconfig is available (handled by <code>make k3d/up</code>), you can start the Maestro application services (management-api, rooms-api, etc.). These are defined in <code>e2e/framework/maestro/docker-compose.yml</code>.</p>
+<p>The recommended way to start everything, including dependencies and Maestro services, is:
+<code>bash
+make maestro/start</code>
+This target handles the correct order of operations: starts k3d, ensures kubeconfig is present, builds Maestro, runs migrations, and then starts the Maestro services using the <code>e2e/framework/maestro/docker-compose.yml</code> file. The Maestro services in this compose file are configured to use the kubeconfig generated by the <code>k3d</code> service.</p>
+<p>If you need to start them manually after <code>make k3d/up</code> and <code>make build</code>:
+```bash</p>
+<h1 id="ensure-migrations-are-run-if-its-the-first-time-or-after-schema-changes">Ensure migrations are run if it's the first time or after schema changes</h1>
+<h1 id="maestro_migration_pathfileinternalservicemigrations-go-run-maingo-migrate">MAESTRO_MIGRATION_PATH="file://internal/service/migrations" go run main.go migrate</h1>
+<h1 id="the-make-maestrostart-target-handles-migrations">(The make maestro/start target handles migrations)</h1>
+<p>docker-compose -f e2e/framework/maestro/docker-compose.yml up -d management-api rooms-api worker runtime-watcher # Add other services as needed
+```</p>
+</li>
+<li>
+<p><strong>Build and Run Maestro components (alternative to full Docker Compose setup for services):</strong>
+    If you prefer to run Maestro components (e.g., <code>management-api</code>, <code>worker</code>) directly on your host for development (after <code>make deps/up</code> has started Postgres, Redis, and k3d):
+    <code>bash
+    make build</code>
+    Then run individual components, e.g.:
+    <code>bash
+    # Ensure KUBECONFIG points to the k3d cluster
+    export KUBECONFIG="$(pwd)/e2e/framework/maestro/.k3d-kubeconfig.yaml"
+    MAESTRO_INTERNALAPI_PORT=8081 MAESTRO_API_PORT=8080 go run main.go start management-api -l development</code>
+    These components will connect to Postgres and Redis (from the root <code>docker-compose</code>) and the k3d Kubernetes cluster (using the exported KUBECONFIG).</p>
+</li>
+<li>
+<p><strong>Running Tests:</strong></p>
+<ul>
+<li><strong>Unit Tests:</strong> <code>make run/unit-tests</code></li>
+<li><strong>Integration Tests:</strong> <code>make run/integration-tests</code> (These will run against the k3d cluster managed by Docker Compose)</li>
+<li><strong>E2E Tests:</strong> <code>make run/e2e-tests</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Stopping the local k3d cluster and dependencies:</strong>
+    To delete the <code>maestro-dev</code> k3d cluster and remove its Docker Compose service:
+    <code>bash
+    make k3d/down</code>
+    To stop all dependencies defined in the root <code>docker-compose.yaml</code> (Postgres, Redis, k3d):
+    <code>bash
+    make deps/down</code>
+    To stop the Maestro application services defined in <code>e2e/framework/maestro/docker-compose.yml</code>:
+    <code>bash
+    docker-compose -f e2e/framework/maestro/docker-compose.yml down</code>
+    The <code>make maestro/down</code> target handles stopping both the k3d cluster and the Maestro application services.</p>
+</li>
+</ol>
+<h3 id="ci-environment">CI Environment</h3>
+<p>Note: In our CI environment (GitHub Actions), we use <strong>KinD (Kubernetes in Docker)</strong> to run integration and runtime-integration tests. This provides a fresh Kubernetes cluster for each test run.</p>
+<h2 id="project-overview">Project overview</h2>
+
+
+
+
+
+
+
+  
+    
+  
+  
+
+
+  <aside class="md-source-file">
+    
+      
+  <span class="md-source-file__fact">
+    <span class="md-icon" title="Last update">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
+    </span>
+    2025-12-09
+  </span>
+
+    
+    
+    
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

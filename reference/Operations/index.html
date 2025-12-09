@@ -1,0 +1,969 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="../../tutorials/EventsForwarding/" rel="prev"/>
+<link href="../Kubernetes/" rel="next"/>
+<link href="../../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.7.0" name="generator"/>
+<title>Operations - Maestro</title>
+<link href="../../assets/stylesheets/main.618322db.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/palette.ab4e12ef.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="indigo" data-md-color-primary="cyan" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#what-is">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Maestro" class="md-header__button md-logo" data-md-component="logo" href="../.." title="Maestro">
+<img alt="logo" src="https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Maestro
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Operations
+            
+          </span>
+</div>
+</div>
+</div>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/topfreegames/maestro" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Maestro" class="md-nav__button md-logo" data-md-component="logo" href="../.." title="Maestro">
+<img alt="logo" src="https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true"/>
+</a>
+    Maestro
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/topfreegames/maestro" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../..">
+<span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/GettingStarted/">
+<span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Scheduler/">
+<span class="md-ellipsis">
+    
+  
+    Scheduler
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to-guides/User%20Guides/">
+<span class="md-ellipsis">
+    
+  
+    UserGuides
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/Development/">
+<span class="md-ellipsis">
+    
+  
+    Developers
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Architecture/">
+<span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../OpenAPI/">
+<span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/Autoscaling/">
+<span class="md-ellipsis">
+    
+  
+    Autoscaling
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/EventsForwarding/">
+<span class="md-ellipsis">
+    
+  
+    Events Forwarding
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#what-is">
+<span class="md-ellipsis">
+      
+        What is
+      
+    </span>
+</a>
+<nav aria-label="What is" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#definition-and-executors">
+<span class="md-ellipsis">
+      
+        Definition and executors
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#operation-structure">
+<span class="md-ellipsis">
+      
+        Operation Structure
+      
+    </span>
+</a>
+<nav aria-label="Operation Structure" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#input">
+<span class="md-ellipsis">
+      
+        Input
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#execution-history">
+<span class="md-ellipsis">
+      
+        Execution History
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-does-maestro-handle-operations">
+<span class="md-ellipsis">
+      
+        How does Maestro handle operations
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#state">
+<span class="md-ellipsis">
+      
+        State
+      
+    </span>
+</a>
+<nav aria-label="State" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#state-machine">
+<span class="md-ellipsis">
+      
+        State Machine
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#lifecycle">
+<span class="md-ellipsis">
+      
+        Lifecycle
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#lease">
+<span class="md-ellipsis">
+      
+        Lease
+      
+    </span>
+</a>
+<nav aria-label="Lease" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#what-is-the-operation-lease">
+<span class="md-ellipsis">
+      
+        What is the operation lease
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#why-operations-have-it">
+<span class="md-ellipsis">
+      
+        Why Operations have it
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#troubleshooting">
+<span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#operation-lease-lifecycle">
+<span class="md-ellipsis">
+      
+        Operation Lease Lifecycle
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#available-operations">
+<span class="md-ellipsis">
+      
+        Available Operations
+      
+    </span>
+</a>
+<nav aria-label="Available Operations" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#create-scheduler">
+<span class="md-ellipsis">
+      
+        Create Scheduler
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#create-new-scheduler-version">
+<span class="md-ellipsis">
+      
+        Create New Scheduler Version
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#switch-active-version">
+<span class="md-ellipsis">
+      
+        Switch Active Version
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#add-rooms">
+<span class="md-ellipsis">
+      
+        Add Rooms
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#remove-rooms">
+<span class="md-ellipsis">
+      
+        Remove Rooms
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Kubernetes/">
+<span class="md-ellipsis">
+    
+  
+    Kubernetes Usage
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to-guides/Guidelines/">
+<span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#what-is">
+<span class="md-ellipsis">
+      
+        What is
+      
+    </span>
+</a>
+<nav aria-label="What is" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#definition-and-executors">
+<span class="md-ellipsis">
+      
+        Definition and executors
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#operation-structure">
+<span class="md-ellipsis">
+      
+        Operation Structure
+      
+    </span>
+</a>
+<nav aria-label="Operation Structure" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#input">
+<span class="md-ellipsis">
+      
+        Input
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#execution-history">
+<span class="md-ellipsis">
+      
+        Execution History
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-does-maestro-handle-operations">
+<span class="md-ellipsis">
+      
+        How does Maestro handle operations
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#state">
+<span class="md-ellipsis">
+      
+        State
+      
+    </span>
+</a>
+<nav aria-label="State" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#state-machine">
+<span class="md-ellipsis">
+      
+        State Machine
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#lifecycle">
+<span class="md-ellipsis">
+      
+        Lifecycle
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#lease">
+<span class="md-ellipsis">
+      
+        Lease
+      
+    </span>
+</a>
+<nav aria-label="Lease" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#what-is-the-operation-lease">
+<span class="md-ellipsis">
+      
+        What is the operation lease
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#why-operations-have-it">
+<span class="md-ellipsis">
+      
+        Why Operations have it
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#troubleshooting">
+<span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#operation-lease-lifecycle">
+<span class="md-ellipsis">
+      
+        Operation Lease Lifecycle
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#available-operations">
+<span class="md-ellipsis">
+      
+        Available Operations
+      
+    </span>
+</a>
+<nav aria-label="Available Operations" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#create-scheduler">
+<span class="md-ellipsis">
+      
+        Create Scheduler
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#create-new-scheduler-version">
+<span class="md-ellipsis">
+      
+        Create New Scheduler Version
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#switch-active-version">
+<span class="md-ellipsis">
+      
+        Switch Active Version
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#add-rooms">
+<span class="md-ellipsis">
+      
+        Add Rooms
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#remove-rooms">
+<span class="md-ellipsis">
+      
+        Remove Rooms
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1>Operations</h1>
+<h2 id="what-is">What is</h2>
+<p>Operation is a core concept at Maestro, and it represents executions done in multiple layers of Maestro, a state update, or a configuration change.
+Operations can be created by user actions while managing schedulers (e.g. consuming management API), or internally by Maestro to fulfill internal states requirements</p>
+<p>Operations are heavily inspired by the <a href="https://en.wikipedia.org/wiki/Command_pattern">Command Design Pattern</a></p>
+<h3 id="definition-and-executors">Definition and executors</h3>
+<p>Maestro will have multiple operations, and those will be set using pairs of definitions and executors.
+An operation definition consists of the operation parameters.
+An operation executor is where the actual operation execution and rollback logic is implemented, and it will receive as input its correlated definition.
+So, for example, the <code>CreateSchedulerExecutor</code> will always receive a <code>CreateSchedulerDefinition</code>.</p>
+<div class="mermaid">flowchart TD
+  subgraph operations [Operations]
+    subgraph operation_implementation [Operation Impl.]
+      definition(Definition)
+      executor(Executor)
+    end
+    subgraph operation_implementation2 [Operation Impl.]
+      definition2(Definition)
+      executor2(Executor)
+    end
+    subgraph operation_implementation3 [Operation Impl.]
+      definition3(Definition)
+      executor3(Executor)
+    end
+    ...
+  end
+</div>
+<h2 id="operation-structure">Operation Structure</h2>
+<ul>
+<li><strong>id</strong>: Unique operation identification. Auto-Generated;</li>
+<li><strong>status</strong>: Operations status. For reference, see <a href="#state">here</a>.</li>
+<li><strong>definitionName</strong>: Name of the operation. For reference, see <a href="#available-operations">here</a>.</li>
+<li><strong>schedulerName</strong>: Name of the scheduler which this operation affects.</li>
+<li><strong>createdAt</strong>: Timestamp representing when the operation was enqueued.</li>
+<li><strong>input</strong>: Contains the input value for this operation. Each operation has its own input format.
+  For details, see <a href="#input">below</a>.</li>
+<li><strong>executionHistory</strong>: Contains logs with detailed info about the operation execution. See <a href="#execution-history">below</a>.</li>
+</ul>
+<pre><code class="language-yaml">id: String
+status: String
+definitionName: String
+schedulerName: String
+createdAt: Timestamp
+input: Any
+executionHistory: ExecutionHistory
+</code></pre>
+<h3 id="input">Input</h3>
+<ul>
+<li>Create Scheduler</li>
+</ul>
+<pre><code class="language-yaml">scheduler: Scheduler
+</code></pre>
+<ul>
+<li>Create New Scheduler Version</li>
+</ul>
+<pre><code class="language-yaml">scheduler: Scheduler
+</code></pre>
+<ul>
+<li>Switch Scheduler Version</li>
+</ul>
+<pre><code class="language-yaml">newActiveVersion: Scheduler
+</code></pre>
+<ul>
+<li>Add Rooms</li>
+</ul>
+<pre><code class="language-yaml">amount: Integer
+</code></pre>
+<ul>
+<li>Remove Rooms</li>
+</ul>
+<pre><code class="language-yaml">amount: Integer
+</code></pre>
+<h3 id="execution-history">Execution History</h3>
+<pre><code class="language-yaml">createdAt: timestamp
+event: String
+</code></pre>
+<ul>
+<li><strong>createdAt</strong>: When did the event happened.</li>
+<li><strong>event</strong>: What happened. E.g. "Operation failed because...".</li>
+</ul>
+<h2 id="how-does-maestro-handle-operations">How does Maestro handle operations</h2>
+<ul>
+<li>Each scheduler has 1 operation execution (no operations running in parallel for a scheduler).</li>
+<li>Every operation execution has 1 queue for pending operations.</li>
+<li>When the worker is ready to work on a new operation, it'll pop from the queue.</li>
+<li>The operation is executed by the worker following the lifecycle described <a href="#lifecycle">here</a>.</li>
+</ul>
+<h2 id="state">State</h2>
+<p>An operation can have one of the Status below:</p>
+<ul>
+<li>
+<p><strong>Pending</strong>: When an operation is enqueued to be executed;</p>
+</li>
+<li>
+<p><strong>Evicted</strong>: When an operation is unknown or should not be executed By Maestro;</p>
+</li>
+<li>
+<p><strong>In Progress</strong>: Operation is currently being executed;</p>
+</li>
+<li>
+<p><strong>Finished</strong>: Operation finished; Execution succeeded;</p>
+</li>
+<li>
+<p><strong>Error</strong>: Operation finished. Execution failed;</p>
+</li>
+<li>
+<p><strong>Canceled</strong>: Operation was canceled by the user.</p>
+</li>
+</ul>
+<h3 id="state-machine">State Machine</h3>
+<div class="mermaid">flowchart TD
+  pending(Pending)
+  in_progress(In Progress)
+  evicted(Evicted)
+  finished(Finished)
+  canceled(Canceled)
+  error(Error)
+
+  pending --&gt; in_progress;
+  pending --&gt; evicted;
+  in_progress --&gt; finished;
+  in_progress --&gt; error;
+  in_progress --&gt; canceled;
+</div>
+<h2 id="lifecycle">Lifecycle</h2>
+<div class="mermaid">flowchart TD
+  finish((End))
+  created("Created (Pending)")
+  evicted(Evicted)
+  error(Error)
+  finished(Finished)
+  canceled(Canceled)
+  should_execute{Should Execute?}
+  execution_succeeded{Success?}
+  err_kind{Error Kind}
+  execute[[Execute]]
+  rollback[[Rollback]]
+  canceled_by_user&gt;Canceled By User]
+  created --&gt; should_execute;
+  should_execute -- No --&gt; evicted --&gt; finish;
+  should_execute -- Yes --&gt; execute;
+  execute --&gt; execution_succeeded;
+  execute --&gt; canceled_by_user --&gt; rollback;
+  execution_succeeded -- Yes --&gt; finished --&gt; finish;
+  execution_succeeded -- No --&gt; rollback;
+  rollback --&gt; err_kind;
+  err_kind -- Canceled --&gt; canceled --&gt; finish;
+  err_kind -- Error --&gt; error --&gt; finish
+</div>
+<h2 id="lease">Lease</h2>
+<h3 id="what-is-the-operation-lease">What is the operation lease</h3>
+<p>Lease is a mechanism to track the operations' execution process and check if we can rely on the current/future operation state. </p>
+<h3 id="why-operations-have-it">Why Operations have it</h3>
+<p>Sometimes, an operation might get stuck. It could happen, for example, if the worker crashes during the execution of an operation.
+To keep track of operations, we assign each operation a Lease.
+This Lease has a TTL (time to live). </p>
+<p>When the operation is being executed, this TTL is renewed each time the lease is about to expire while the operation is still in progress.
+It'll be revoked once the operation is finished.</p>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<p>If an operation is fetched and the TTL expired (the TTL is in the past), the operation probably got stuck, 
+and we can't rely upon its current state, nor guarantee the required side effects of the execution or rollback have succeeded.</p>
+<p>If an operation does not have a Lease, it either did not start at all (should be on the queue) or is already finished. 
+An Active Operation without a Lease is at an invalid state.</p>
+<blockquote>
+<p><strong>Maestro do not have a self-healing routine yet for expired operations.</strong></p>
+</blockquote>
+<h3 id="operation-lease-lifecycle">Operation Lease Lifecycle</h3>
+<div class="mermaid">flowchart TD
+  finish_routine((End))
+  start_routine((Start))
+  finish((End))
+
+  operation_finished{Op. Finished?}
+
+  to_execute[Operation to Execute]
+
+  grant_lease[[Grant Lease]]
+  renew_lease[[Renew Lease]]
+  revoke_lease[[Revoke Lease]]
+
+  wait_for_ttl(Wait for TTL)
+  execute(Execute Operation)
+
+  to_execute --&gt; grant_lease;
+  grant_lease --&gt; renew_lease_routine;
+  grant_lease --&gt; execute;
+  subgraph renew_lease_routine [ASYNC Renew Lease Routine]
+      start_routine --&gt; wait_for_ttl;
+      wait_for_ttl --&gt; operation_finished;
+      operation_finished -- Yes --&gt; revoke_lease;
+      operation_finished -- No --&gt; renew_lease --&gt; wait_for_ttl;
+      revoke_lease --&gt; finish_routine;
+  end
+  renew_lease_routine --&gt; finish;
+</div>
+<h2 id="available-operations">Available Operations</h2>
+<p>For more details on how to use Maestro API, see <a href="https://topfreegames.github.io/maestro/reference/OpenAPI/">this section</a>.</p>
+<h3 id="create-scheduler"><strong>Create Scheduler</strong></h3>
+<ul>
+<li>Accessed through the <code>POST /schedulers</code> endpoint.</li>
+<li>Creates the scheduler structure for receiving rooms;</li>
+<li>The scheduler structure is validated, but the game room is not;</li>
+<li>If operation fails, rollback feature will delete anything created related to scheduler.</li>
+</ul>
+<h3 id="create-new-scheduler-version"><strong>Create New Scheduler Version</strong></h3>
+<ul>
+<li>Accessed through the <code>POST /schedulers/:schedulerName</code> endpoint.</li>
+<li>Creates a validation room (deleted right after).
+    If Maestro cannot receive pings (not forwarded) from validation game room, operation fails;</li>
+<li>When this operation finishes successfully, it enqueues the "Switch Active Version".</li>
+<li>If operation fails rollback routine deletes anything (except for the operation) created related to new version.</li>
+</ul>
+<h3 id="switch-active-version"><strong>Switch Active Version</strong></h3>
+<ul>
+<li>Accessed through <code>PUT /schedulers/:schedulerName</code> endpoint.</li>
+<li>If it's a major change (anything under Scheduler.Spec changed), GRUs are replaced using scheduler <strong>maxSurge</strong> property;</li>
+<li>If it's a minor change (Scheduler.Spec haven't changed), GRUs are <strong>not</strong> replaced;</li>
+</ul>
+<h3 id="add-rooms"><strong>Add Rooms</strong></h3>
+<ul>
+<li>Accessed through <code>POST /schedulers/:schedulerName/add-rooms</code> endpoint.</li>
+<li>If any room fail on creating, the operation fails and created rooms are deleted on rollback feature;</li>
+</ul>
+<h3 id="remove-rooms"><strong>Remove Rooms</strong></h3>
+<ul>
+<li>Accessed through <code>POST /schedulers/:schedulerName/remove-rooms</code> endpoint.</li>
+<li>Remove rooms based on amount;</li>
+<li>Rollback routine does nothing.</li>
+</ul>
+<aside class="md-source-file">
+<span class="md-source-file__fact">
+<span class="md-icon" title="Last update">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+</span>
+    2025-12-09
+  </span>
+</aside>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+<script src="https://unpkg.com/mermaid@9.0.0/dist/mermaid.min.js"></script><script>mermaid.initialize({});</script></body>
+</html>

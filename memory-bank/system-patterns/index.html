@@ -1,0 +1,742 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="../../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.7.0" name="generator"/>
+<title>System Patterns - Maestro Architecture - Maestro</title>
+<link href="../../assets/stylesheets/main.618322db.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/palette.ab4e12ef.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="indigo" data-md-color-primary="cyan" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#system-patterns-maestro-architecture">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Maestro" class="md-header__button md-logo" data-md-component="logo" href="../.." title="Maestro">
+<img alt="logo" src="https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Maestro
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              System Patterns - Maestro Architecture
+            
+          </span>
+</div>
+</div>
+</div>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/topfreegames/maestro" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Maestro" class="md-nav__button md-logo" data-md-component="logo" href="../.." title="Maestro">
+<img alt="logo" src="https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true"/>
+</a>
+    Maestro
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/topfreegames/maestro" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../..">
+<span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/GettingStarted/">
+<span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../reference/Scheduler/">
+<span class="md-ellipsis">
+    
+  
+    Scheduler
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to-guides/User%20Guides/">
+<span class="md-ellipsis">
+    
+  
+    UserGuides
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/Development/">
+<span class="md-ellipsis">
+    
+  
+    Developers
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../reference/Architecture/">
+<span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../reference/OpenAPI/">
+<span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/Autoscaling/">
+<span class="md-ellipsis">
+    
+  
+    Autoscaling
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/EventsForwarding/">
+<span class="md-ellipsis">
+    
+  
+    Events Forwarding
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../reference/Operations/">
+<span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../reference/Kubernetes/">
+<span class="md-ellipsis">
+    
+  
+    Kubernetes Usage
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to-guides/Guidelines/">
+<span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#overview">
+<span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#core-architecture">
+<span class="md-ellipsis">
+      
+        Core Architecture
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#module-components">
+<span class="md-ellipsis">
+      
+        Module Components
+      
+    </span>
+</a>
+<nav aria-label="Module Components" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#1-management-api">
+<span class="md-ellipsis">
+      
+        1. Management API
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#2-rooms-api">
+<span class="md-ellipsis">
+      
+        2. Rooms API
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#3-operation-execution-worker">
+<span class="md-ellipsis">
+      
+        3. Operation Execution Worker
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#4-runtime-watcher-worker">
+<span class="md-ellipsis">
+      
+        4. Runtime Watcher Worker
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#5-metrics-reporter-worker">
+<span class="md-ellipsis">
+      
+        5. Metrics Reporter Worker
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#system-constraints">
+<span class="md-ellipsis">
+      
+        System Constraints
+      
+    </span>
+</a>
+<nav aria-label="System Constraints" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#runtime-support">
+<span class="md-ellipsis">
+      
+        Runtime Support
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#worker-isolation">
+<span class="md-ellipsis">
+      
+        Worker Isolation
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#data-flow-patterns">
+<span class="md-ellipsis">
+      
+        Data Flow Patterns
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#key-design-principles">
+<span class="md-ellipsis">
+      
+        Key Design Principles
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1 id="system-patterns-maestro-architecture">System Patterns - Maestro Architecture</h1>
+<h2 id="overview">Overview</h2>
+<p>Maestro Next is a modular system composed of different components that can be executed independently. All modules share the same codebase but are launched with specific command-line arguments: <code>go run main.go start [MODULE_NAME]</code></p>
+<h2 id="core-architecture">Core Architecture</h2>
+<div class="mermaid">graph TB
+    subgraph "Maestro System"
+        MA[Management API]
+        RA[Rooms API]
+        OEW[Operation Execution Worker]
+        RWW[Runtime Watcher Worker]
+        MRW[Metrics Reporter Worker]
+    end
+
+    subgraph "Shared Storages"
+        REDIS[Redis Storage]
+        PG[PostgreSQL]
+    end
+
+    subgraph "Runtime Infrastructure"
+        K8S[Kubernetes Runtime]
+    end
+
+    subgraph "External Actors"
+        OPERATORS[Operators]
+        GR[Game Rooms]
+    end
+
+    OPERATORS --&gt; MA
+    MA --&gt; REDIS
+    MA --&gt; PG
+    RA --&gt; GR
+    RA --&gt; REDIS
+    RA --&gt; PG
+    OEW &lt;--&gt; |Deploy/Scale ↔ Pod Events| K8S
+    OEW &lt;--&gt; REDIS
+    OEW --&gt; PG
+    RWW &lt;--&gt; |Watch ↔ Status Changes| K8S
+    RWW --&gt; REDIS
+    RWW --&gt; PG
+    MRW --&gt; |Metrics Collection| K8S
+    MRW --&gt; REDIS
+    MRW --&gt; PG
+</div>
+<h2 id="module-components">Module Components</h2>
+<h3 id="1-management-api">1. Management API</h3>
+<p><strong>Purpose</strong>: Primary interface for user requests and system management</p>
+<p><strong>Key Responsibilities</strong>:
+- Accepts gRPC and HTTP requests
+- Manages schedulers and operations
+- Provides system-wide coordination</p>
+<p><strong>Services</strong>:
+- <strong>Schedulers Service</strong>: Create, fetch, update schedulers
+- <strong>Operations Service</strong>: Track and manage operation status</p>
+<p><strong>Data Dependencies</strong>:
+- Redis: Operations and game rooms data
+- PostgreSQL: Scheduler persistence</p>
+<div class="mermaid">graph LR
+    subgraph "Management API"
+        SS[Schedulers Service]
+        OS[Operations Service]
+    end
+
+    subgraph "Storage"
+        R[Redis]
+        P[PostgreSQL]
+    end
+
+    subgraph "External Actors"
+        O[Game Operators, Frontend, Maestro CLI]
+    end
+
+    O --&gt; SS
+    O --&gt; OS
+    SS --&gt; P
+    OS --&gt; R
+    OS --&gt; P
+</div>
+<h3 id="2-rooms-api">2. Rooms API</h3>
+<p><strong>Purpose</strong>: Game room status synchronization and event forwarding</p>
+<p><strong>Key Responsibilities</strong>:
+- Sync game room status with Maestro
+- Forward events to configured destinations
+- Maintain real-time room state</p>
+<p><strong>Critical Notes</strong>:
+- <strong>REQUIRED</strong> for game rooms to function properly
+- Must receive constant status updates from managed rooms
+- Handles event forwarding for schedulers with forwarders configured</p>
+<p><strong>Integration</strong>:
+- Uses <a href="https://github.com/topfreegames/maestro-client">Maestro client</a> for easier integration
+- Events protocol: <a href="https://github.com/topfreegames/protos/blob/master/maestro/grpc/protobuf/events.proto">Proto file reference</a></p>
+<div class="mermaid">graph LR
+    subgraph "Rooms API"
+        RS[Rooms Service]
+        EF[Event Forwarder]
+    end
+
+    subgraph "Game Rooms"
+        GR1[Game Room 1]
+        GR2[Game Room 2]
+        GRN[Game Room N]
+    end
+
+    subgraph "External Matchmaking"
+        F1[Forwarder 1]
+        F2[Forwarder 2]
+    end
+
+    subgraph "Shared Storages"
+        SQL[PostgreSQL]
+        RED[Redis]
+    end
+
+    RS --&gt; SQL
+    RS --&gt; RED
+    GR1 --&gt; RS
+    GR2 --&gt; RS
+    GRN --&gt; RS
+    RS --&gt; EF
+    EF --&gt; F1
+    EF --&gt; F2
+</div>
+<h3 id="3-operation-execution-worker">3. Operation Execution Worker</h3>
+<p><strong>Purpose</strong>: Executes operations for active schedulers</p>
+<p><strong>Key Concept</strong>: Each worker manages operations for <strong>one and only one Scheduler</strong></p>
+<p><strong>Workflow</strong>:
+1. Monitors active schedulers
+2. Creates execution threads per scheduler
+3. Processes operations from scheduler queues
+4. Tracks operation events and status</p>
+<p><strong>Benefits</strong>:
+- Enables operation tracking
+- Provides healthy scheduler changes
+- Maintains execution isolation</p>
+<div class="mermaid">graph TB
+    subgraph "Operation Execution Worker"
+        WM[Workers Manager]
+    end
+
+    subgraph "Schedulers"
+        S1[Scheduler 1]
+        S2[Scheduler 2]
+        S3[Scheduler 3]
+    end
+
+    subgraph "Execution Threads"
+        ET1[Scheduler1 Thread]
+        ET2[Scheduler2 Thread]
+        ET3[Scheduler3 Thread]
+    end
+
+    subgraph "Shared Storages"
+        SQL[PostgreSQL]
+        RED[Redis]
+    end
+
+    subgraph "Runtime Infrastructure"
+        K8S[Kubernetes API]
+    end
+
+    WM --&gt; | Manage Namespaces, Pods, PDBs | K8S
+
+    ET1 --&gt; | Fetch Scheduler Data | SQL
+    ET1 --&gt; | Read and Create Operations | RED
+
+    ET2 --&gt; SQL
+    ET2 --&gt; RED
+
+    ET3 --&gt; SQL
+    ET3 --&gt; RED
+
+
+    WM --&gt; S1
+    WM --&gt; S2
+    WM --&gt; S3
+
+    S1 --&gt; ET1
+    S2 --&gt; ET2
+    S3 --&gt; ET3
+</div>
+<h3 id="4-runtime-watcher-worker">4. Runtime Watcher Worker</h3>
+<p><strong>Purpose</strong>: Monitors runtime events and reflects changes in Maestro</p>
+<p><strong>Key Concept</strong>: Each worker manages <strong>one and only one Scheduler</strong></p>
+<p><strong>Monitoring Capabilities</strong>:
+- Game room creation events
+- Game room deletion events
+- Game room update events
+- Disruption mitigation based on occupied rooms</p>
+<p><strong>Runtime Integration</strong>: Currently supports Kubernetes only</p>
+<div class="mermaid">graph TB
+    subgraph "Runtime Watcher Worker"
+        RWW[Runtime Watcher]
+    end
+
+    subgraph "Schedulers Threads"
+        S1[Scheduler 1]
+        S2[Scheduler 2]
+        SN[Scheduler N]
+    end
+
+    subgraph "Pods Informer"
+        PI1[Pods Informer 1]
+        PI2[Pods Informer 2]
+        PIN[Pods Informer N]
+    end
+
+    subgraph "Shared Storages"
+        SQL[PostgreSQL]
+        RED[Redis]
+    end
+
+    subgraph "Runtime Infrastructure"
+        K8S[Kubernetes API]
+    end
+
+    RWW &lt;--&gt; | List / Watch Pods | K8S
+    RWW &lt;--&gt; | Update PDB | K8S
+
+    RWW --&gt; S1
+    RWW --&gt; S2
+    RWW --&gt; SN
+
+    PI1 --&gt; S1
+    PI2 --&gt; S2
+    PIN --&gt; SN
+
+    S1 --&gt; RED
+    S1 --&gt; SQL
+
+    S2 --&gt; RED
+    S2 --&gt; SQL
+
+    SN --&gt; RED
+    SN --&gt; SQL
+</div>
+<h3 id="5-metrics-reporter-worker">5. Metrics Reporter Worker</h3>
+<p><strong>Purpose</strong>: Reports runtime metrics and game room status</p>
+<p><strong>Key Concept</strong>: Each worker manages <strong>one and only one Scheduler</strong></p>
+<p><strong>Metrics Collected</strong>:
+- <strong>Runtime Status</strong>: <code>ready</code>, <code>pending</code>, <code>error</code>, <code>unknown</code>, <code>terminating</code>
+- <strong>Storage Status</strong>: <code>ready</code>, <code>pending</code>, <code>error</code>, <code>occupied</code>, <code>terminating</code>, <code>unready</code></p>
+<p><strong>Important Note</strong>: This module is <strong>optional</strong> - not required for core functionality</p>
+<div class="mermaid">graph TB
+    subgraph "Metrics Reporter Worker"
+        MRW[Metrics Reporter]
+    end
+
+    subgraph "Schedulers Threads"
+        S1[Scheduler 1]
+        S2[Scheduler 2]
+        SN[Scheduler N]
+    end
+
+    subgraph "Shared Storages"
+        SQL[PostgreSQL]
+        RED[Redis]
+    end
+
+    subgraph "Metrics"
+        PR[Prometheus]
+    end
+
+    MRW --&gt; S1
+    MRW --&gt; S2
+    MRW --&gt; SN
+
+    MRW --&gt; | Fetch Scheduler Info | SQL
+    MRW --&gt; | Cache Scheduler Info | RED
+    MRW --&gt; | Read Game Room Stats | RED
+
+    S1 --&gt; PR
+    S2 --&gt; PR
+    SN --&gt; PR
+</div>
+<h2 id="system-constraints">System Constraints</h2>
+<h3 id="runtime-support">Runtime Support</h3>
+<ul>
+<li><strong>Current</strong>: Kubernetes only</li>
+<li><strong>Future</strong>: Extensible to other runtime systems</li>
+</ul>
+<h3 id="worker-isolation">Worker Isolation</h3>
+<ul>
+<li>Each worker operates on <strong>one scheduler only</strong></li>
+<li>Prevents parallel execution conflicts</li>
+<li>Ensures clean operation tracking</li>
+</ul>
+<h3 id="data-flow-patterns">Data Flow Patterns</h3>
+<ul>
+<li><strong>Redis</strong>: High-frequency, temporary data (operations, room status)</li>
+<li><strong>PostgreSQL</strong>: Persistent, structured data (schedulers)</li>
+<li><strong>Kubernetes</strong>: Runtime state and orchestration</li>
+</ul>
+<h2 id="key-design-principles">Key Design Principles</h2>
+<ol>
+<li><strong>Modularity</strong>: Each component has distinct responsibilities</li>
+<li><strong>Isolation</strong>: Workers operate independently per scheduler</li>
+<li><strong>Observability</strong>: Comprehensive operation tracking and metrics</li>
+<li><strong>Scalability</strong>: Horizontal scaling through worker instances</li>
+<li><strong>Reliability</strong>: Event-driven architecture with state persistence</li>
+</ol>
+<aside class="md-source-file">
+<span class="md-source-file__fact">
+<span class="md-icon" title="Last update">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+</span>
+    2025-12-09
+  </span>
+</aside>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+<script src="https://unpkg.com/mermaid@9.0.0/dist/mermaid.min.js"></script><script>mermaid.initialize({});</script></body>
+</html>

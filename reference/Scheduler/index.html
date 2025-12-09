@@ -1,0 +1,954 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="../../tutorials/GettingStarted/" rel="prev"/>
+<link href="../../how-to-guides/User%20Guides/" rel="next"/>
+<link href="../../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.7.0" name="generator"/>
+<title>Scheduler - Maestro</title>
+<link href="../../assets/stylesheets/main.618322db.min.css" rel="stylesheet"/>
+<link href="../../assets/stylesheets/palette.ab4e12ef.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="indigo" data-md-color-primary="cyan" data-md-color-scheme="default" dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#what-is">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Maestro" class="md-header__button md-logo" data-md-component="logo" href="../.." title="Maestro">
+<img alt="logo" src="https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Maestro
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Scheduler
+            
+          </span>
+</div>
+</div>
+</div>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/topfreegames/maestro" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Maestro" class="md-nav__button md-logo" data-md-component="logo" href="../.." title="Maestro">
+<img alt="logo" src="https://github.com/topfreegames/maestro/blob/main/docs/images/gopher-maestro.png?raw=true"/>
+</a>
+    Maestro
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/topfreegames/maestro" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../..">
+<span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/GettingStarted/">
+<span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    
+  
+    Scheduler
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    
+  
+    Scheduler
+  
+
+    
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#what-is">
+<span class="md-ellipsis">
+      
+        What is
+      
+    </span>
+</a>
+<nav aria-label="What is" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-operate">
+<span class="md-ellipsis">
+      
+        How to Operate
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#versions">
+<span class="md-ellipsis">
+      
+        Versions
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#example">
+<span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#structure">
+<span class="md-ellipsis">
+      
+        Structure
+      
+    </span>
+</a>
+<nav aria-label="Structure" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#portrange">
+<span class="md-ellipsis">
+      
+        PortRange
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#forwarders">
+<span class="md-ellipsis">
+      
+        Forwarders
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#spec">
+<span class="md-ellipsis">
+      
+        Spec
+      
+    </span>
+</a>
+<nav aria-label="Spec" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#containers">
+<span class="md-ellipsis">
+      
+        Containers
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#environment-variables">
+<span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#ports">
+<span class="md-ellipsis">
+      
+        Ports
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to-guides/User%20Guides/">
+<span class="md-ellipsis">
+    
+  
+    UserGuides
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/Development/">
+<span class="md-ellipsis">
+    
+  
+    Developers
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Architecture/">
+<span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../OpenAPI/">
+<span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/Autoscaling/">
+<span class="md-ellipsis">
+    
+  
+    Autoscaling
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../tutorials/EventsForwarding/">
+<span class="md-ellipsis">
+    
+  
+    Events Forwarding
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Operations/">
+<span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Kubernetes/">
+<span class="md-ellipsis">
+    
+  
+    Kubernetes Usage
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to-guides/Guidelines/">
+<span class="md-ellipsis">
+    
+  
+    Guidelines
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#what-is">
+<span class="md-ellipsis">
+      
+        What is
+      
+    </span>
+</a>
+<nav aria-label="What is" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-to-operate">
+<span class="md-ellipsis">
+      
+        How to Operate
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#versions">
+<span class="md-ellipsis">
+      
+        Versions
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#example">
+<span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#structure">
+<span class="md-ellipsis">
+      
+        Structure
+      
+    </span>
+</a>
+<nav aria-label="Structure" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#portrange">
+<span class="md-ellipsis">
+      
+        PortRange
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#forwarders">
+<span class="md-ellipsis">
+      
+        Forwarders
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#spec">
+<span class="md-ellipsis">
+      
+        Spec
+      
+    </span>
+</a>
+<nav aria-label="Spec" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#containers">
+<span class="md-ellipsis">
+      
+        Containers
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#environment-variables">
+<span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#ports">
+<span class="md-ellipsis">
+      
+        Ports
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1>Scheduler</h1>
+<h2 id="what-is">What is</h2>
+<p>Objectively, a <strong>Scheduler</strong> is a recipe, and contains all the information for creating 
+game rooms and forwarding rooms information to other services. </p>
+<p>Also, it's the <strong>core entity</strong> for operating game rooms in
+Maestro, since all game rooms are related to a specific scheduler.</p>
+<p>A game can have multiple schedulers, and each scheduler can have multiple game rooms up and running.</p>
+<div class="mermaid">flowchart TD
+  etc1("...")
+  etc2("...")
+  etc3("...")
+
+  subgraph game [Game]
+    subgraph scheduler_1 [Scheduler 1]
+      gameRoom1("Game Room (host:port)")
+      gameRoom2("Game Room (host:port)")
+      etc1
+    end
+    subgraph scheduler_2 [Scheduler 2]
+      gameRoom3("Game Room (host:port)")
+      gameRoom4("Game Room (host:port)")
+      etc2
+    end
+    etc3
+  end
+</div>
+<h3 id="how-to-operate">How to Operate</h3>
+<p>To directly interact with a Scheduler, the user enqueues <a href="../Operations/">operations</a> using the management API.</p>
+<p>These operations are responsible for creating a scheduler or newer versions, switching an active version, adding/removing rooms, etc.</p>
+<p>Because of that, everything that happens for a Scheduler can be tracked based on history of the operations executed for
+that scheduler and the order they were executed.</p>
+<h3 id="versions">Versions</h3>
+<p>A Scheduler have versions, and each time we want to change scheduler properties, we end-up creating a new version to it.</p>
+<blockquote>
+<p>Versions are directly calculated by Maestro, not sent by the client.</p>
+<p>The client can only switch the active version based on the versions created by Maestro. To switch to an specific version, see <a href="../Operations/#available-operations">this</a>.</p>
+</blockquote>
+<p>This version can either be a Minor or a Major change.</p>
+<ul>
+<li>Major version: <strong>Replace</strong> the game rooms in a switch active version event.</li>
+<li>Basically, any change under <strong>spec</strong>, that are related to the game room directly.</li>
+<li>Minor version: <strong>Don't replace</strong> game rooms in a switch active version event.</li>
+<li>Info such as MaxSurge or forwarders, that do not impact the game rooms.</li>
+</ul>
+<h3 id="example">Example</h3>
+<p>A complete Scheduler looks like this:</p>
+<details>
+<summary>YAML</summary>
+<div class="highlight highlight-source-yaml position-relative overflow-auto">
+<pre>
+name: scheduler-test
+game: game-test
+state: creating
+portRange:
+  start: 40000
+  end: 60000
+maxSurge: 30%
+spec:
+  terminationGracePeriod: '100s'
+  containers:
+    - name: alpine
+      image: alpine
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - '-c'
+        - &gt;-
+          apk add curl &amp;&amp; while true; do curl --request POST
+          {{maestro-rooms-api}}/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping
+          --data-raw '{"status": "ready","timestamp": "12312312313"}' &amp;&amp; sleep
+          1; done
+      environment:
+        - name: env-var-name
+          value: env-var-value
+        - name: env-var-field-ref
+          valueFrom:
+            fieldRef:
+              fieldPath: path
+        - name: secret-var-name
+          valueFrom:
+            secretKeyRef:
+              name: secret-name
+              key: secret-key
+      requests:
+        memory: 20Mi
+        cpu: 100m
+      limits:
+        memory: 200Mi
+        cpu: 200m
+      ports:
+        - name: port-name
+          protocol: tcp
+          port: 12345
+  toleration: maestro
+  affinity: maestro-dedicated
+forwarders:
+  - name: test
+    enable: true
+    type: gRPC
+    address: {{host}}
+    options:
+      timeout: '1000'
+      metadata: {}
+autoscaling:
+  enabled: true
+  min: 1
+  max: 10
+  policy:
+    type: roomOccupancy
+    parameters:
+      ...
+      // Will vary according to the policy type.
+        </pre>
+</div>
+</details>
+<details>
+<summary>JSON</summary>
+<pre>
+{
+    "name": "scheduler-test",
+    "game": "game-test",
+    "portRange": {
+        "start": 40000,
+        "end": 60000
+    },
+    "annotations":{
+      "imageregistry":"https://dockerhub.com/"    
+    },
+    "maxSurge": "30%",
+    "spec": {
+        "terminationGracePeriod": '100s',
+        "containers": [
+            {
+                "name": "alpine",
+                "image": "alpine",
+                "imagePullPolicy": "IfNotPresent",
+                "command": [
+                    "/bin/sh",
+                    "-c",
+                    "apk add curl &amp;&amp; while true; do curl --request POST {{maestro-rooms-api}}/scheduler/$MAESTRO_SCHEDULER_NAME/rooms/$MAESTRO_ROOM_ID/ping --data-raw '{"status": "ready","timestamp": "12312312313"}' &amp;&amp; sleep 1; done"
+                ],
+                "environment": [
+                    {
+                        "name": "env-var-name",
+                        "value": env-var-value
+                    },
+                    {
+                        "name": "env-var-field-ref",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "fieldPath": "path"
+                            }
+                        }
+                    },
+                    {
+                        "name": "secret-var-name",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "name": "secret-name",
+                                "key": "secret-key"
+                            }
+                        }
+                    }
+                ],
+                "requests": {
+                    "memory": "20Mi",
+                    "cpu": "100m"
+                },
+                "limits": {
+                    "memory": "200Mi",
+                    "cpu": "200m"
+                },
+                "ports": [
+                    {
+                        "name": "port-name",
+                        "protocol": "tcp",
+                        "port": 12345,
+                    }
+                ]
+            }
+        ],
+        "toleration": "maestro",
+        "affinity": "maestro-dedicated"
+    },
+    "forwarders": [
+        {
+            "name": "test",
+            "enable": true,
+            "type": "gRPC",
+            "address": "{{host}}",
+            "options": {
+                "timeout": '1000',
+                "metadata": {}
+            }
+        }
+    ]
+    "autoscaling": {
+      "enabled": true,
+      "min": 10,
+      "max": 300,
+      "policy": {
+        "type": "roomOccupancy",
+        "parameters": {
+          ...
+          // Will vary according to the policy type.
+        }
+      }
+    }
+}
+    </pre>
+</details>
+<hr/>
+<h2 id="structure">Structure</h2>
+<p>The <strong>scheduler</strong> is represented as:</p>
+<pre><code class="language-yaml">name: String
+game: String
+createdAt: Timestamp
+maxSurge: String | Integer
+portRange: PortRange
+forwarders: Forwarders
+autoscaling: Autoscaling
+spec: Spec
+annotation: Map
+</code></pre>
+<ul>
+<li><strong>Name</strong>: Scheduler name. This name is unique and will be the same name used for the kubernetes namespace. It's
+  offered by the user in the creation and cannot be changed in the future. It's used as an ID for the scheduler;</li>
+<li><strong>game</strong>: Name of the game which will use the scheduler. The game is important since it's common to use multiple
+  schedulers for a specific game. So you probably will want to fetch all the schedulers from a game;</li>
+<li><strong>createdAt</strong>: Info about the scheduler creation time. Cannot be altered by the user;</li>
+<li><strong>maxSurge</strong>: Value represented in percentage (%) or Integer. Offered by the user on the scheduler creation. Can be
+  altered anytime. Used by Maestro to replace pods. Ex: If maxSurge = 3,
+  the <a href="../Operations/#switch-active-version">Switch Active Version</a> (Major change) operation will replace pods from 3 to
+  3;</li>
+<li><strong>portRange</strong>: Range of ports that can be used by Maestro to create GRUs for the specified scheduler. Can be altered
+  by the user anytime. More info <a href="#portrange">here</a>; Mutually exclusive with the Spec.Containers.Ports.HostPortRange configuration.</li>
+<li><strong>forwarders</strong>: Maestro can pass ahead info sent by the game rooms, such as Ping (Ready, Occupied, Terminating...),
+  player and rooms events. The receivers can be configured here. More info <a href="#forwarders">here</a>;</li>
+<li><strong>autoscaling</strong>: Optional autoscaling policy configuration. More info <a href="../../tutorials/Autoscaling/">here</a>;</li>
+<li><strong>spec</strong>: Specifications about the game rooms managed by the scheduler, such as containers and environment variables
+  used by them, limits and images. More info <a href="#spec">here</a>.</li>
+<li><strong>annotations</strong>: Allows annotations for the scheduler's game room. Know more about annotations on
+  Kubernetes <a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations">here</a></li>
+</ul>
+<h3 id="portrange">PortRange</h3>
+<p>The <strong>PortRange</strong> is used to select a random port for a GRU between <strong>start</strong> and <strong>end</strong>.</p>
+<ul>
+<li>PortRange cannot be null or empty</li>
+</ul>
+<blockquote>
+<p>Check if the ports offered are <strong>available</strong> and <strong>can be used</strong>. 
+A firewall rule, for example, can affect the connection to the Game Room in the specific port.</p>
+</blockquote>
+<p>It is represented as:</p>
+<pre><code class="language-yaml">start: Integer
+end: Integer
+</code></pre>
+<p>You <strong>must</strong> configure the port range either in <code>.PortRange</code> or in <code>.Spec.Containers.Ports.HostPortRange</code> - they are mutually exclusive configurations. If you want to configure a single port range for all container ports, use <code>.PortRange</code>, otherwise use <code>HostPortRange</code> in every Spec to configure the port range for each one - this is useful when avoiding port conflicts on different protocols in case the network doesn't support it, for example.</p>
+<h3 id="forwarders">Forwarders</h3>
+<p>Forwarders are configured to pass ahead info offered by the game rooms to Maestro. 
+More than one forwarder can be configured for a scheduler.</p>
+<ul>
+<li>Can be an empty list.</li>
+</ul>
+<p>It is represented as:</p>
+<pre><code class="language-yaml">- name: String
+  enable: Bool
+  type: String
+  address: String
+  options:
+    timeout: Integer
+    metadata: Object
+</code></pre>
+<ul>
+<li><strong>name</strong>: Name of the forwarder. Used only for reference (visibility and recognition);</li>
+<li><strong>enable</strong>: Toggle to easily enable/disable the forwarder;</li>
+<li><strong>type</strong>: Type of the forwarder. Right now, only accepts <strong>gRPC</strong>;</li>
+<li><strong>address</strong>: Address used by the scheduler to forward events. E.g. 'api.example.com:8080';</li>
+<li><strong>options</strong>: Optional parameters.<ul>
+<li><strong>timeout</strong>: Timeout value for an event to successfully be forwarded;</li>
+<li><strong>metadata</strong>: Object that can contain any useful information for the game team. Will be forwarded with the events from Maestro.</li>
+</ul>
+</li>
+</ul>
+<h3 id="spec">Spec</h3>
+<p>Contains vital information about the game rooms. Be aware that the spec is the most related aspect of the scheduler interacting with the runtime. 
+It might be important to understand the basics of kubernetes before deep diving into the Maestro scheduler itself.</p>
+<ul>
+<li>Cannot be empty or null.</li>
+</ul>
+<p>It is represented as:</p>
+<pre><code class="language-yaml">terminationGracePeriod: String
+containers: Containers
+toleration: String
+affinity: String
+</code></pre>
+<ul>
+<li><strong>terminationGracePeriod</strong>: Required string value. Must be greater than 0 and have the unit set, i.e "100s". When a game room receives the signal to be deleted, it will take this value (in seconds) to be completely deleted;</li>
+<li><strong>containers</strong>: Contain the information about the game room, such as the image and environment variables. This is a list since the game room can be compounded by
+more than two containers;</li>
+<li><strong>toleration</strong>: Kubernetes specific. Represents the toleration value for all GRUs on the scheduler. See <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/">more</a>;</li>
+<li><strong>affinity</strong>: Kubernetes specific. Represents the affinity value for all GRUs on the scheduler. See <a href="https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/">more</a>.</li>
+</ul>
+<h4 id="containers">Containers</h4>
+<p>Contain the information about the game room, such as the image and environment variables.</p>
+<ul>
+<li>Cannot be an empty list.</li>
+</ul>
+<p>It is represented as:</p>
+<pre><code class="language-yaml">- name: String
+  image: String
+  imagePullPolicy: String
+  command: Array&lt;String&gt;
+  environment: EnvironemntVariables
+  requests:
+    memory: String
+    cpu: String
+  limits:
+    memory: String
+    cpu: String
+  ports: Ports
+</code></pre>
+<ul>
+<li><strong>name</strong>: Name of the container, used only for reference and can be changed by the user anytime.</li>
+<li><strong>image</strong>: Docker image to be used for the container. Represented as a link.</li>
+<li><strong>imagePullPolicy</strong>: Kubernetes specific. See <a href="https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy">here</a> for reference.</li>
+<li><strong>command</strong>: List of commands that should be executed by the image on execution. E.g. <a href="#example">here</a>.</li>
+<li><strong>environment</strong>: List of environment variables. See <a href="#environment-variables">here</a>.</li>
+<li><strong>requests</strong> and <strong>limits</strong>: Kubernetes specific. See <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits">here</a>.</li>
+<li><strong>ports</strong>: The list of ports your game server exposes. See <a href="#ports">here</a>.</li>
+</ul>
+<h4 id="environment-variables">Environment Variables</h4>
+<p>List of environment variables used by the GRU.</p>
+<ul>
+<li>Can be an empty list.</li>
+</ul>
+<p>There are, now, 3 supported formats by Maestro:</p>
+<ul>
+<li>Simple name-value format.</li>
+</ul>
+<details>
+<summary>With Name/Value</summary>
+<div class="highlight highlight-source-yaml position-relative overflow-auto">
+<pre>
+- name: String
+  value: String</pre>
+</div>
+</details>
+<ul>
+<li>Exposing pod fields (kubernetes specific). See <a href="https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/#use-pod-fields-as-values-for-environment-variables">here</a>.</li>
+</ul>
+<details>
+<summary>With FieldRef/FieldPath</summary>
+<div class="highlight highlight-source-yaml position-relative overflow-auto">
+<pre>
+- name: String
+  valueFrom:
+    fieldRef:
+      fieldPath: String</pre>
+</div>
+</details>
+<ul>
+<li>Secrets as environment variables (kubernetes specific). See <a href="https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables">here</a>.</li>
+</ul>
+<details>
+<summary>With Secret</summary>
+<div class="highlight highlight-source-yaml position-relative overflow-auto">
+<pre>
+- name: String
+  valueFrom:
+    secretKeyRef:
+      name: String
+      key: String</pre>
+</div>
+</details>
+<h4 id="ports">Ports</h4>
+<p>The list of ports your game server exposes.</p>
+<ul>
+<li>Can be an empty list.</li>
+</ul>
+<p>It is represented as:</p>
+<pre><code class="language-yaml">- name: String
+  protocol: String
+  port: Integer
+  hostPortRange: PortRange
+</code></pre>
+<ul>
+<li><strong>name</strong>: Name of the port. Facilitates on recognition;</li>
+<li><strong>protocol</strong>: Port protocol. Can be UDP, TCP or SCTP.;</li>
+<li><strong>port</strong>: The port exposed.</li>
+<li><strong>hostPortRange</strong>: The <a href="#portrange">port range</a> for the port to be allocated in the host. Mutually exclusive with the port range configured in the root structure.</li>
+</ul>
+<aside class="md-source-file">
+<span class="md-source-file__fact">
+<span class="md-icon" title="Last update">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"></path></svg>
+</span>
+    2025-12-09
+  </span>
+</aside>
+</article>
+</div>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+<script src="https://unpkg.com/mermaid@9.0.0/dist/mermaid.min.js"></script><script>mermaid.initialize({});</script></body>
+</html>
