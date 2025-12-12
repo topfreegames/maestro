@@ -40,9 +40,12 @@ func RunInternalServer(ctx context.Context, configs config.Config, healthDeps *H
 	mux := http.NewServeMux()
 	if configs.GetBool("internalApi.healthcheck.enabled") {
 		zap.L().Info("adding healthcheck handler to internal API")
+		if configs.GetBool("internalApi.healthcheck.skipPostgresCheck") {
+			zap.L().Warn("PostgreSQL health check is DISABLED - /readyz will not check database connectivity")
+		}
 		mux.HandleFunc("/health", handleHealth)
 		mux.HandleFunc("/healthz", handleHealth)
-		mux.HandleFunc("/readyz", handleReadyz(healthDeps))
+		mux.HandleFunc("/readyz", handleReadyz(configs, healthDeps))
 	}
 	if configs.GetBool("internalApi.metrics.enabled") {
 		zap.L().Info("adding metrics handler to internal API")
@@ -70,11 +73,14 @@ func RunInternalServer(ctx context.Context, configs config.Config, healthDeps *H
 	}
 }
 
-func handleReadyz(deps *HealthDependencies) http.HandlerFunc {
+func handleReadyz(c config.Config, deps *HealthDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		healthy := true
 
-		if deps.PostgresDB != nil {
+		// Skip PostgreSQL check if configured
+		skipPostgresCheck := c.GetBool("internalApi.healthcheck.skipPostgresCheck")
+
+		if !skipPostgresCheck && deps.PostgresDB != nil {
 			if err := checkPostgres(r.Context(), deps.PostgresDB); err != nil {
 				healthy = false
 			}
@@ -86,11 +92,14 @@ func handleReadyz(deps *HealthDependencies) http.HandlerFunc {
 			}
 		}
 
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
 		if !healthy {
 			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("Service Unavailable"))
+			return
 		}
 
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("OK"))
 	}
