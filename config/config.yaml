@@ -14,6 +14,7 @@ internalApi:
     enabled: true
   healthcheck:
     enabled: true
+    skipPostgresCheck: false
 
 adapters:
   redis:
