@@ -321,18 +321,28 @@ func (r *redisOperationStorage) CleanExpiredOperations(ctx context.Context, sche
 	}
 
 	if len(operationsIDs) > 0 {
+		// Pipeline EXISTS calls to check which operations have expired (hash key gone due to TTL).
+		// Previously each EXISTS was a separate round-trip, causing O(N) latency.
+		existsPipe := r.client.Pipeline()
+		existsCmds := make([]*redis.IntCmd, len(operationsIDs))
+		for i, operationID := range operationsIDs {
+			existsCmds[i] = existsPipe.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID))
+		}
+		_, err = existsPipe.Exec(ctx)
+		if err != nil && err != redis.Nil {
+			return fmt.Errorf("failed to check expired operations existence: %w", err)
+		}
 
-		pipe := r.client.Pipeline()
-		for _, operationID := range operationsIDs {
-			operationExists, _ := r.client.Exists(ctx, r.buildSchedulerOperationKey(schedulerName, operationID)).Result()
-			if operationExists == 0 {
-				pipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
-				pipe.ZRem(ctx, r.buildSchedulerNoActionKey(schedulerName), operationID)
+		remPipe := r.client.Pipeline()
+		for i, operationID := range operationsIDs {
+			if existsCmds[i].Val() == 0 {
+				remPipe.ZRem(ctx, r.buildSchedulerHistoryOperationsKey(schedulerName), operationID)
+				remPipe.ZRem(ctx, r.buildSchedulerNoActionKey(schedulerName), operationID)
 			}
 		}
 
 		metrics.RunWithMetrics(operationStorageMetricLabel, func() error {
-			_, err = pipe.Exec(ctx)
+			_, err = remPipe.Exec(ctx)
 			return err
 		})
 
