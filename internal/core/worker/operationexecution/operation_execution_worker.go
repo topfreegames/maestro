@@ -210,7 +210,7 @@ func (w *OperationExecutionWorker) rollbackOperation(ctx context.Context, op *op
 		loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
 		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
 	} else {
-		loopLogger.Info("successfully rolled back operation")
+		loopLogger.Debug("successfully rolled back operation")
 		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation rollback flow execution finished with success")
 	}
 }

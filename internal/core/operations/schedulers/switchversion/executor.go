@@ -81,7 +81,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		return updateSchedulerErr
 	}
 
-	logger.Info("scheduler update finishes with success")
+	logger.Debug("scheduler update finishes with success")
 	return nil
 }
 

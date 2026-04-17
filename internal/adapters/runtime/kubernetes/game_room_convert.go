@@ -300,10 +300,10 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 	switch pod.Status.Phase {
 	case v1.PodSucceeded:
 		// Completed pods should not be considered available; treat as terminating
-		zap.L().Info("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceTerminating.String()))
+		zap.L().Debug("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceTerminating.String()))
 		return game_room.InstanceStatus{Type: game_room.InstanceTerminating, Description: "PodSucceeded"}
 	case v1.PodFailed:
-		zap.L().Info("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
+		zap.L().Debug("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
 		return game_room.InstanceStatus{Type: game_room.InstanceError, Description: "PodFailed"}
 	case v1.PodUnknown:
 		// Unknown pods should not be treated as available
@@ -335,7 +335,7 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 		// If container is terminated, classify based on the termination reason
 		if state.Terminated != nil {
 			if state.Terminated.Reason == "Completed" || state.Terminated.ExitCode == 0 {
-				zap.L().Info(
+				zap.L().Debug(
 					"container terminated successfully; mapping to terminating",
 					zap.String("pod", pod.Namespace+"/"+pod.Name),
 					zap.String("container", containerStatus.Name),
@@ -385,10 +385,10 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 	// This allows us to catch container-level errors even for Running/Pending pods
 	switch pod.Status.Phase {
 	case v1.PodPending:
-		zap.L().Info("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstancePending.String()))
+		zap.L().Debug("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstancePending.String()))
 		return game_room.InstanceStatus{Type: game_room.InstancePending, Description: ""}
 	case v1.PodRunning:
-		zap.L().Info("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceReady.String()))
+		zap.L().Debug("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceReady.String()))
 		return game_room.InstanceStatus{Type: game_room.InstanceReady, Description: ""}
 	default:
 		// Handle any future pod phases that might be added to Kubernetes

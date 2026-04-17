@@ -80,7 +80,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 	removeDefinition := definition.(*Definition)
 
 	if len(removeDefinition.RoomsIDs) > 0 {
-		logger.Info("start removing rooms", zap.Strings("RoomIDs", removeDefinition.RoomsIDs))
+		logger.Debug("start removing rooms", zap.Strings("RoomIDs", removeDefinition.RoomsIDs))
 		err := e.removeRoomsByIDs(ctx, op.SchedulerName, removeDefinition.RoomsIDs, op, removeDefinition.Reason)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
@@ -97,7 +97,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 	}
 
 	if removeDefinition.Amount > 0 {
-		logger.Info("start removing rooms", zap.Int("amount", removeDefinition.Amount))
+		logger.Debug("start removing rooms", zap.Int("amount", removeDefinition.Amount))
 		err := e.removeRoomsByAmount(ctx, logger, op.SchedulerName, removeDefinition.Amount, op, removeDefinition.Reason)
 		if err != nil {
 			reportDeletionFailedTotal(op.SchedulerName, op.ID)
@@ -108,7 +108,7 @@ func (e *Executor) Execute(ctx context.Context, op *operation.Operation, definit
 		e.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("removed %d rooms", removeDefinition.Amount))
 	}
 
-	logger.Info("finished deleting rooms")
+	logger.Debug("finished deleting rooms")
 	return nil
 }
 
