@@ -107,7 +107,7 @@ func TestStart(t *testing.T) {
 		}, time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"new operation worker running"},
+			zap.DebugLevel: {"new operation worker running"},
 		})
 
 		// guarantees we finish the process.
@@ -293,7 +293,7 @@ func TestStart(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"new operation worker running"},
+			zap.DebugLevel: {"new operation worker running"},
 		})
 
 		// guarantees we finish the process.

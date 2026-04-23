@@ -303,7 +303,7 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 		zap.L().Debug("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceTerminating.String()))
 		return game_room.InstanceStatus{Type: game_room.InstanceTerminating, Description: "PodSucceeded"}
 	case v1.PodFailed:
-		zap.L().Debug("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
+		zap.L().Error("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
 		return game_room.InstanceStatus{Type: game_room.InstanceError, Description: "PodFailed"}
 	case v1.PodUnknown:
 		// Unknown pods should not be treated as available

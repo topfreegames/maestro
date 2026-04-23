@@ -56,7 +56,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		zap.String(logs.LogFieldOperationPhase, "Execute"),
 		zap.String(logs.LogFieldOperationID, op.ID),
 	)
-	logger.Info("start switching scheduler active version")
+	logger.Debug("start switching scheduler active version")
 
 	updateDefinition, ok := definition.(*Definition)
 	if !ok {

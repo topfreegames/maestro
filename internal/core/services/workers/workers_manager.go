@@ -134,14 +134,14 @@ func (w *WorkersManager) SyncWorkers(ctx context.Context) error {
 	desirableWorkers := w.getDesirableWorkers(schedulers)
 	for name, worker := range desirableWorkers {
 		w.startWorker(ctx, name, worker)
-		w.logger.Info("new operation worker running", zap.String("scheduler", name))
+		w.logger.Debug("new operation worker running", zap.String("scheduler", name))
 		reportWorkerStart(name, w.builder.ComponentName)
 	}
 
 	dispensableWorkers := w.getDispensableWorkers(schedulers)
 	for name, worker := range dispensableWorkers {
 		worker.Stop(ctx)
-		w.logger.Info("canceling operation worker", zap.String("scheduler", name))
+		w.logger.Debug("canceling operation worker", zap.String("scheduler", name))
 		reportWorkerStop(name, w.builder.ComponentName)
 	}
 

@@ -127,8 +127,8 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	}
 
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf(enqueuedSwitchVersionMessageTemplate, switchOpID))
-	logger.Sugar().Infof("new scheduler version created: %s, is major: %t", newScheduler.Spec.Version, isSchedulerMajorVersion)
-	logger.Sugar().Infof("%s operation succeded, %s operation enqueued to continue scheduler update process, switching to version %s", opDef.Name(), switchversion.OperationName, newScheduler.Spec.Version)
+	logger.Sugar().Debug("new scheduler version created: %s, is major: %t", newScheduler.Spec.Version, isSchedulerMajorVersion)
+	logger.Sugar().Debug("%s operation succeded, %s operation enqueued to continue scheduler update process, switching to version %s", opDef.Name(), switchversion.OperationName, newScheduler.Spec.Version)
 	return nil
 }
 

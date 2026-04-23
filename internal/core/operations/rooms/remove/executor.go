@@ -138,7 +138,7 @@ func (e *Executor) removeRoomsByAmount(ctx context.Context, logger *zap.Logger, 
 		return err
 	}
 
-	logger.Info("removing rooms by amount sorting by version",
+	logger.Debug("removing rooms by amount sorting by version",
 		zap.Array("rooms:", zapcore.ArrayMarshalerFunc(func(enc zapcore.ArrayEncoder) error {
 			for _, room := range rooms {
 				enc.AppendString(fmt.Sprintf("%s-%s-%s", room.ID, room.Version, room.Status.String()))

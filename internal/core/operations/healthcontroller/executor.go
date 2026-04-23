@@ -310,7 +310,7 @@ func (ex *Executor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation
 	}
 
 	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove expired %v rooms.", removeOperation.ID, len(roomsIDs))
-	logger.Info(msgToAppend)
+	logger.Debug(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 
 	return nil
@@ -510,7 +510,7 @@ func IsRollingUpdating(
 		}
 
 		if schedulerCache[room.Version].IsMajorVersion(scheduler) {
-			logger.Info(
+			logger.Debug(
 				"Rolling update detected, system has rooms with a major version of difference",
 				zap.String("activeScheduler", scheduler.Spec.Version),
 				zap.String("nonActiveSchedulerFound", room.Version),
