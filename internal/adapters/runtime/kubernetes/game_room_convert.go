@@ -303,7 +303,7 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 		zap.L().Debug("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceTerminating.String()))
 		return game_room.InstanceStatus{Type: game_room.InstanceTerminating, Description: "PodSucceeded"}
 	case v1.PodFailed:
-		zap.L().Error("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
+		zap.L().Warn("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
 		return game_room.InstanceStatus{Type: game_room.InstanceError, Description: "PodFailed"}
 	case v1.PodUnknown:
 		// Unknown pods should not be treated as available
@@ -390,6 +390,8 @@ func convertPodStatus(pod *v1.Pod) game_room.InstanceStatus {
 	case v1.PodRunning:
 		zap.L().Debug("pod phase -> instance status mapping", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceReady.String()))
 		return game_room.InstanceStatus{Type: game_room.InstanceReady, Description: ""}
+	case "": // fresh pod, K8s hasn't set phase yet — treat as pending
+		return game_room.InstanceStatus{Type: game_room.InstancePending}
 	default:
 		// Handle any future pod phases that might be added to Kubernetes
 		zap.L().Warn("unexpected pod phase; mapping to error", zap.String("pod", pod.Namespace+"/"+pod.Name), zap.String("phase", string(pod.Status.Phase)), zap.String("mappedTo", game_room.InstanceError.String()))
