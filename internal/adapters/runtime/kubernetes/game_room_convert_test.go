@@ -789,6 +789,102 @@ func TestConvertPodStatus(t *testing.T) {
 				Description: "RunContainerError: failed to find executable",
 			},
 		},
+		"empty phase fresh pod": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: "",
+				},
+			},
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstancePending,
+				Description: "PodPhaseNotSet",
+			},
+		},
+		"pod failed": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodFailed,
+				},
+			},
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "PodFailed",
+			},
+		},
+		"pod succeeded": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodSucceeded,
+				},
+			},
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceTerminating,
+				Description: "PodSucceeded",
+			},
+		},
+		"pod unknown": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodUnknown,
+				},
+			},
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "PodUnknown",
+			},
+		},
+		"pod being deleted": {
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					DeletionTimestamp: &metav1.Time{Time: time.Now()},
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+				},
+			},
+			expectedStatus: game_room.InstanceStatus{
+				Type: game_room.InstanceTerminating,
+			},
+		},
+		"container terminated successfully": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+					ContainerStatuses: []v1.ContainerStatus{
+						{State: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "Completed", ExitCode: 0}}},
+					},
+				},
+			},
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceTerminating,
+				Description: "Completed",
+			},
+		},
+		"container terminated with error": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+					ContainerStatuses: []v1.ContainerStatus{
+						{State: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "OOMKilled", ExitCode: 137}}},
+					},
+				},
+			},
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceError,
+				Description: "OOMKilled",
+			},
+		},
+		"running without ready condition": {
+			pod: &v1.Pod{
+				Status: v1.PodStatus{
+					Phase: v1.PodRunning,
+				},
+			},
+			expectedStatus: game_room.InstanceStatus{
+				Type:        game_room.InstanceReady,
+				Description: "",
+			},
+		},
 	}
 
 	for name, test := range cases {
