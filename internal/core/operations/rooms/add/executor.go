@@ -163,7 +163,11 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, ErrMajorityRooms.Error())
 		return ErrMajorityRooms
 	default:
-		executionLogger.Sugar().Infof("added rooms successfully with errors: %d and success: %d of amount: %d", errCount, successCount, amount)
+		if errCount == 0 {
+			executionLogger.Sugar().Debugf("added rooms successfully with errors: %d and success: %d of amount: %d", errCount, successCount, amount)
+		} else {
+			executionLogger.Sugar().Infof("added rooms successfully with errors: %d and success: %d of amount: %d", errCount, successCount, amount)
+		}
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("added %d rooms", amount))
 		return nil
 	}

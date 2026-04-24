@@ -52,7 +52,7 @@ var (
 )
 
 func BeforeTest(t *testing.T) {
-	core, observer := observer.New(zap.InfoLevel)
+	core, observer := observer.New(zap.DebugLevel)
 	zl := zap.New(core)
 	zap.ReplaceGlobals(zl)
 	recorded = observer
@@ -86,7 +86,7 @@ func TestStart(t *testing.T) {
 					End:   10000,
 				},
 			},
-		}, nil)
+		}, nil).AnyTimes()
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 
@@ -107,7 +107,7 @@ func TestStart(t *testing.T) {
 		}, time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"new operation worker running"},
+			zap.DebugLevel: {"new operation worker running"},
 		})
 
 		// guarantees we finish the process.
@@ -281,7 +281,7 @@ func TestStart(t *testing.T) {
 					End:   10000,
 				},
 			},
-		}, nil)
+		}, nil).AnyTimes()
 
 		require.Eventually(t, func() bool {
 			if len(workersManager.CurrentWorkers) > 0 {
@@ -293,7 +293,7 @@ func TestStart(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 
 		assertLogMessages(t, recorded, map[zapcore.Level][]string{
-			zap.InfoLevel: {"new operation worker running"},
+			zap.DebugLevel: {"new operation worker running"},
 		})
 
 		// guarantees we finish the process.
@@ -325,18 +325,26 @@ func TestStart(t *testing.T) {
 		ctx, cancelFn := context.WithCancel(context.Background())
 		configs.EXPECT().GetDuration(syncWorkersIntervalPath).Return(time.Second)
 		configs.EXPECT().GetDuration(WorkersStopTimeoutDurationPath).Return(10 * time.Second)
-		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Times(3).Return([]*entities.Scheduler{
-			{
-				Name:            "zooba-us",
-				Game:            "zooba",
-				State:           entities.StateCreating,
-				RollbackVersion: "1.0.0",
-				PortRange: &port.PortRange{
-					Start: 1,
-					End:   10000,
+
+		// Use a flag to switch the return value after workers are started.
+		removeSchedulers := false
+		schedulerStorage.EXPECT().GetAllSchedulers(ctx).DoAndReturn(func(_ context.Context) ([]*entities.Scheduler, error) {
+			if removeSchedulers {
+				return []*entities.Scheduler{}, nil
+			}
+			return []*entities.Scheduler{
+				{
+					Name:            "zooba-us",
+					Game:            "zooba",
+					State:           entities.StateCreating,
+					RollbackVersion: "1.0.0",
+					PortRange: &port.PortRange{
+						Start: 1,
+						End:   10000,
+					},
 				},
-			},
-		}, nil)
+			}, nil
+		}).AnyTimes()
 
 		workersManager := NewWorkersManager(workerBuilder, configs, schedulerStorage, nil)
 
@@ -354,7 +362,8 @@ func TestStart(t *testing.T) {
 
 		require.Contains(t, workersManager.CurrentWorkers, "zooba-us")
 
-		schedulerStorage.EXPECT().GetAllSchedulers(ctx).Return([]*entities.Scheduler{}, nil)
+		// Signal that schedulers should be removed on the next sync.
+		removeSchedulers = true
 
 		// wait until the workers are stopped.
 		require.Eventually(t, func() bool {

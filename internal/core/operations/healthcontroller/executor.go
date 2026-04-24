@@ -119,7 +119,7 @@ func (ex *Executor) Execute(ctx context.Context, op *operation.Operation, defini
 	reportCurrentNumberOfRooms(scheduler.Game, scheduler.Name, len(availableRooms))
 
 	if len(expiredRooms) > 0 {
-		logger.Sugar().Infof("found %v expired rooms to be deleted", len(expiredRooms))
+		logger.Sugar().Debugf("found %v expired rooms to be deleted", len(expiredRooms))
 		err = ex.enqueueRemoveExpiredRooms(ctx, op, logger, expiredRooms)
 		if err != nil {
 			logger.Error("could not enqueue operation to delete expired rooms", zap.Error(err))
@@ -187,7 +187,7 @@ func (ex *Executor) tryEnsureCorrectRoomsOnStorage(ctx context.Context, op *oper
 			continue
 		}
 
-		logger.Sugar().Infof("removed nonexistent room from instance and game room storage: %s", gameRoomID)
+		logger.Sugar().Warnf("removed nonexistent room from instance and game room storage: %s", gameRoomID)
 	}
 }
 
@@ -228,7 +228,7 @@ func (ex *Executor) ensureDesiredAmountOfInstances(ctx context.Context, op *oper
 		msgToAppend = "current amount of rooms is equal to desired amount, no changes needed"
 	}
 
-	logger.Info(msgToAppend)
+	logger.Debug(msgToAppend)
 	ex.setTookAction(def, tookAction)
 	if tookAction {
 		ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
@@ -310,7 +310,7 @@ func (ex *Executor) enqueueRemoveExpiredRooms(ctx context.Context, op *operation
 	}
 
 	msgToAppend := fmt.Sprintf("created operation (id: %s) to remove expired %v rooms.", removeOperation.ID, len(roomsIDs))
-	logger.Info(msgToAppend)
+	logger.Debug(msgToAppend)
 	ex.operationManager.AppendOperationEventToExecutionHistory(ctx, op, msgToAppend)
 
 	return nil
@@ -445,7 +445,7 @@ func GetDesiredNumberOfRooms(
 		}
 	}
 
-	logger.Sugar().Infof("[GetDesiredNumberOfRooms] desired %d, current %d, isRollingUpdating %t", desiredNumber, len(availableRooms), isRollingUpdating)
+	logger.Sugar().Debugf("[GetDesiredNumberOfRooms] desired %d, current %d, isRollingUpdating %t", desiredNumber, len(availableRooms), isRollingUpdating)
 	return
 }
 
@@ -510,7 +510,7 @@ func IsRollingUpdating(
 		}
 
 		if schedulerCache[room.Version].IsMajorVersion(scheduler) {
-			logger.Info(
+			logger.Debug(
 				"Rolling update detected, system has rooms with a major version of difference",
 				zap.String("activeScheduler", scheduler.Spec.Version),
 				zap.String("nonActiveSchedulerFound", room.Version),
