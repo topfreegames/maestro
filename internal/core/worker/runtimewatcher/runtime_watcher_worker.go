@@ -83,7 +83,7 @@ func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room
 		go func(goroutineNumber int) {
 			defer w.workerWaitGroup.Done()
 			goroutineLogger := w.logger.With(zap.Int("goroutine", goroutineNumber))
-			goroutineLogger.Info("Starting event processing goroutine")
+			goroutineLogger.Debug("Starting event processing goroutine")
 			for {
 				select {
 				case event, ok := <-resultChan:
@@ -102,7 +102,7 @@ func (w *runtimeWatcherWorker) spawnUpdateRoomWatchers(resultChan chan game_room
 						reportEventProcessingStatus(event, true)
 					}
 				case <-w.ctx.Done():
-					w.logger.Info("context closed, exiting update rooms watcher")
+					w.logger.Debug("context closed, exiting update rooms watcher")
 					return
 				}
 			}
@@ -172,7 +172,7 @@ func (w *runtimeWatcherWorker) spawnWatchers(
 }
 
 func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
-	w.logger.Info("starting runtime watcher", zap.String("scheduler", w.scheduler.Name))
+	w.logger.Debug("starting runtime watcher", zap.String("scheduler", w.scheduler.Name))
 	watcher, err := w.runtime.WatchGameRoomInstances(ctx, w.scheduler)
 	if err != nil {
 		return fmt.Errorf("failed to start watcher: %w", err)
@@ -182,10 +182,10 @@ func (w *runtimeWatcherWorker) Start(ctx context.Context) error {
 	defer w.cancelFunc()
 
 	w.spawnWatchers(watcher.ResultChan())
-	w.logger.Info("spawned all goroutines", zap.String("scheduler", w.scheduler.Name))
+	w.logger.Debug("spawned all goroutines", zap.String("scheduler", w.scheduler.Name))
 
 	w.workerWaitGroup.Wait()
-	w.logger.Info("wait group ended, all goroutines stopped", zap.String("scheduler", w.scheduler.Name))
+	w.logger.Debug("wait group ended, all goroutines stopped", zap.String("scheduler", w.scheduler.Name))
 	watcher.Stop()
 	return nil
 }
@@ -199,7 +199,7 @@ func (w *runtimeWatcherWorker) Stop(_ context.Context) {
 
 		if w.logger != nil { // Ensure logger is available
 			if w.scheduler != nil {
-				w.logger.Info("stopping runtime watcher", zap.String(logs.LogFieldSchedulerName, w.scheduler.Name))
+				w.logger.Debug("stopping runtime watcher", zap.String(logs.LogFieldSchedulerName, w.scheduler.Name))
 			} else {
 				w.logger.Error("stopping runtime watcher: scheduler field was nil at stop")
 			}

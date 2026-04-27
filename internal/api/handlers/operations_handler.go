@@ -125,7 +125,7 @@ func (h *OperationsHandler) CancelOperation(ctx context.Context, request *api.Ca
 
 func (h *OperationsHandler) GetOperation(ctx context.Context, request *api.GetOperationRequest) (*api.GetOperationResponse, error) {
 	handlerLogger := h.logger.With(zap.String(logs.LogFieldSchedulerName, request.GetSchedulerName()), zap.String(logs.LogFieldOperationID, request.GetOperationId()))
-	handlerLogger.Info("received request to get operation by id")
+	handlerLogger.Debug("received request to get operation by id")
 	op, _, err := h.operationManager.GetOperation(ctx, request.GetSchedulerName(), request.GetOperationId())
 	if err != nil {
 		if errors.Is(err, portsErrors.ErrNotFound) {

@@ -200,7 +200,7 @@ func (w *OperationExecutionWorker) executeOperationFlow(operationID string) erro
 }
 
 func (w *OperationExecutionWorker) rollbackOperation(ctx context.Context, op *operation.Operation, def operations.Definition, executionErr error, loopLogger *zap.Logger, executor operations.Executor) {
-	loopLogger.Info("rolling back operation")
+	loopLogger.Debug("rolling back operation")
 	w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Starting operation rollback")
 	rollbackErr := w.executeRollbackCollectingLatencyMetrics(op.DefinitionName, func() error {
 		return executor.Rollback(ctx, op, def, executionErr)
@@ -210,7 +210,7 @@ func (w *OperationExecutionWorker) rollbackOperation(ctx context.Context, op *op
 		loopLogger.Error("operation rollback failed", zap.Error(rollbackErr))
 		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, fmt.Sprintf("Operation rollback flow execution failed, reason: %s", rollbackErr.Error()))
 	} else {
-		loopLogger.Info("successfully rolled back operation")
+		loopLogger.Debug("successfully rolled back operation")
 		w.operationManager.AppendOperationEventToExecutionHistory(ctx, op, "Operation rollback flow execution finished with success")
 	}
 }
@@ -333,7 +333,7 @@ func (w *OperationExecutionWorker) AbortOngoingOperations(ctx context.Context) {
 }
 
 func (w *OperationExecutionWorker) Stop(_ context.Context) {
-	w.logger.Info("stopping operation execution worker")
+	w.logger.Debug("stopping operation execution worker")
 	defer w.isStopping.Store(false)
 	defer w.cancelWorkerContext()
 
@@ -352,12 +352,12 @@ func (w *OperationExecutionWorker) Stop(_ context.Context) {
 	defer w.abortingOperationsGroup.Done()
 
 	if len(w.operationsToAbort) == 0 {
-		w.logger.Info("no operations to abort, worker stopping")
+		w.logger.Debug("no operations to abort, worker stopping")
 		return
 	}
 
 	w.AbortOngoingOperations(context.Background())
-	w.logger.Info("operations aborted, worker stopping")
+	w.logger.Debug("operations aborted, worker stopping")
 }
 
 func (w *OperationExecutionWorker) IsRunning() bool {
