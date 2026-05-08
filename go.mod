@@ -1,6 +1,6 @@
 module github.com/topfreegames/maestro
 
-go 1.23
+go 1.25
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -90,7 +90,7 @@ require (
 	github.com/alingse/asasalint v0.0.11 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/apache/arrow/go/v10 v10.0.1 // indirect
-	github.com/apache/thrift v0.16.0 // indirect
+	github.com/apache/thrift v0.23.0 // indirect
 	github.com/ashanbrown/forbidigo v1.6.0 // indirect
 	github.com/ashanbrown/makezero v1.1.1 // indirect
 	github.com/aws/aws-sdk-go v1.53.15 // indirect
