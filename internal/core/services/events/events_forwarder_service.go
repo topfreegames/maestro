@@ -185,7 +185,8 @@ func (es *EventsForwarderService) forwardRoomEvent(
 		reportRoomEventForwardingFailed(scheduler.Game, event.SchedulerID, code.String())
 		es.logger.Error(fmt.Sprintf("Failed to forward room events for room %s and scheduler %s", event.RoomID, event.SchedulerID),
 			zap.Error(err),
-			zap.Any("code", code))
+			zap.Uint32("grpc_code", uint32(code)),
+			zap.String("grpc_code_name", code.String()))
 
 		return err
 	}
