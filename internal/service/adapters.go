@@ -93,6 +93,12 @@ const (
 	operationFlowRedisURLPath = "adapters.operationFlow.redis.url"
 	// Redis configs
 	redisPoolSizePath = "adapters.redis.poolSize"
+	// Connection age at which the go-redis client retires (closes) a conn.
+	// Unset/0 keeps the go-redis default (no limit). Set a finite value to
+	// bound the post-failover window in which pooled conns can keep talking
+	// to a node that has been demoted from primary (ElastiCache Redis->Valkey
+	// engine swaps, scaling, unplanned failover).
+	redisMaxConnAgePath = "adapters.redis.maxConnAge"
 	// Random port allocator
 	portAllocatorRandomRangePath = "adapters.portAllocator.random.range"
 	// Postgres scheduler storage
@@ -282,6 +288,9 @@ func createRedisClient(c config.Config, url string, customizers ...func(*redis.O
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
 	opts.PoolSize = c.GetInt(redisPoolSizePath)
+	if maxConnAge := c.GetDuration(redisMaxConnAgePath); maxConnAge > 0 {
+		opts.MaxConnAge = maxConnAge
+	}
 	if opts.TLSConfig != nil {
 		opts.TLSConfig.InsecureSkipVerify = true
 	}
