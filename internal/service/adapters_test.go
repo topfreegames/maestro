@@ -68,6 +68,7 @@ func TestOperationStorageRedis(t *testing.T) {
 
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
+		config.EXPECT().GetDuration(redisMaxConnAgePath).Return(time.Duration(0))
 		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(4)
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 		opStorage, err := NewOperationStorageRedis(clock, definitionsProviders, config)
@@ -87,6 +88,7 @@ func TestOperationStorageRedis(t *testing.T) {
 		config.EXPECT().GetString(operationStorageRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetDuration(operationsTTLPath).Return(time.Minute).Times(4)
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
+		config.EXPECT().GetDuration(redisMaxConnAgePath).Return(time.Duration(0))
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 		opStorage, err := NewOperationStorageRedis(clock, definitionsProviders, config)
 		require.NoError(t, err)
@@ -119,6 +121,7 @@ func TestRoomStorageRedis(t *testing.T) {
 
 		config.EXPECT().GetString(roomStorageRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
+		config.EXPECT().GetDuration(redisMaxConnAgePath).Return(time.Duration(0))
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 
 		roomStorage, err := NewRoomStorageRedis(config)
@@ -136,6 +139,7 @@ func TestRoomStorageRedis(t *testing.T) {
 
 		config.EXPECT().GetString(roomStorageRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
+		config.EXPECT().GetDuration(redisMaxConnAgePath).Return(time.Duration(0))
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 		roomStorage, err := NewRoomStorageRedis(config)
 		require.NoError(t, err)
@@ -168,6 +172,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 		config.EXPECT().GetString(instanceStorageRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(instanceStorageRedisScanSizePath).Return(10)
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
+		config.EXPECT().GetDuration(redisMaxConnAgePath).Return(time.Duration(0))
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 		instanceStorage, err := NewGameRoomInstanceStorageRedis(config)
 		require.NoError(t, err)
@@ -185,6 +190,7 @@ func TestInstanceStorageRedis(t *testing.T) {
 		config.EXPECT().GetString(instanceStorageRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetInt(instanceStorageRedisScanSizePath).Return(10)
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
+		config.EXPECT().GetDuration(redisMaxConnAgePath).Return(time.Duration(0))
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 		instanceStorage, err := NewGameRoomInstanceStorageRedis(config)
 		require.NoError(t, err)
@@ -275,6 +281,7 @@ func TestOperationFlowRedis(t *testing.T) {
 
 		config.EXPECT().GetString(operationFlowRedisURLPath).Return(getRedisURL(t))
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
+		config.EXPECT().GetDuration(redisMaxConnAgePath).Return(time.Duration(0))
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 		operationFlow, err := NewOperationFlowRedis(config)
 		require.NoError(t, err)
@@ -291,6 +298,7 @@ func TestOperationFlowRedis(t *testing.T) {
 
 		config.EXPECT().GetString(operationFlowRedisURLPath).Return("redis://somewhere-in-the-world:6379")
 		config.EXPECT().GetInt(redisPoolSizePath).Return(500)
+		config.EXPECT().GetDuration(redisMaxConnAgePath).Return(time.Duration(0))
 		config.EXPECT().GetBool("api.tracing.jaeger.disabled").Return(true)
 		operationFlow, err := NewOperationFlowRedis(config)
 		require.NoError(t, err)
