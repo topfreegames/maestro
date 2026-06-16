@@ -88,7 +88,10 @@ end
 // Ignoring them keeps GetRunningMatchesCount — and therefore the roomOccupancy autoscaler and the
 // running_matches metric — correct even if the occupancy set has stale members. Read-only.
 var runningMatchesScript = redis.NewScript(`
-local occupancy = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', '+inf', 'WITHSCORES')
+-- Only members with score > 0 can contribute to the sum, so skip the (typically large) set of
+-- zero-score members (ready rooms + any zero-score orphans). This keeps the walk proportional to
+-- the number of rooms actually running matches, not the size of the occupancy set.
+local occupancy = redis.call('ZRANGEBYSCORE', KEYS[1], '(0', '+inf', 'WITHSCORES')
 local status = redis.call('ZRANGE', KEYS[2], 0, -1)
 local in_status = {}
 for i = 1, #status do
