@@ -82,6 +82,24 @@ else
 end
 `)
 
+// runningMatchesScript sums the occupancy scores of rooms that still exist in the status set.
+// Entries present in :occupancy but absent from :status are orphans (e.g. left behind by older
+// versions) and must not count: a running match only exists in a room maestro still tracks.
+// Ignoring them keeps GetRunningMatchesCount — and therefore the roomOccupancy autoscaler and the
+// running_matches metric — correct even if the occupancy set has stale members. Read-only.
+var runningMatchesScript = redis.NewScript(`
+local occupancy_key = KEYS[1]
+local status_key = KEYS[2]
+local sum = 0
+local entries = redis.call('ZRANGEBYSCORE', occupancy_key, '-inf', '+inf', 'WITHSCORES')
+for i = 1, #entries, 2 do
+    if redis.call('ZSCORE', status_key, entries[i]) then
+        sum = sum + tonumber(entries[i + 1])
+    end
+end
+return sum
+`)
+
 type redisStateStorage struct {
 	client *redis.Client
 }
@@ -377,25 +395,17 @@ func (r *redisStateStorage) UpdateRoomStatus(ctx context.Context, scheduler, roo
 }
 
 func (r *redisStateStorage) GetRunningMatchesCount(ctx context.Context, scheduler string) (count int, err error) {
-	client := r.client
-	var rooms []redis.Z
 	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
-		rooms, err = client.ZRangeByScoreWithScores(ctx, getRoomOccupancyRedisKey(scheduler), &redis.ZRangeBy{
-			Min: "-inf",
-			Max: "+inf",
-		}).Result()
+		count, err = runningMatchesScript.Run(ctx, r.client,
+			[]string{getRoomOccupancyRedisKey(scheduler), getRoomStatusSetRedisKey(scheduler)},
+		).Int()
 		return err
 	})
 	if err != nil {
 		return 0, errors.NewErrUnexpected("error getting running matches scores from redis").WithError(err)
 	}
 
-	sum := 0
-	for _, room := range rooms {
-		sum += int(room.Score)
-	}
-
-	return sum, nil
+	return count, nil
 }
 
 func (r *redisStateStorage) WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {

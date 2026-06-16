@@ -758,39 +758,42 @@ func TestRedisStateStorage_GetRunningMatchesCount(t *testing.T) {
 		require.Equal(t, 0, count)
 	})
 
-	t.Run("single running match", func(t *testing.T) {
-		room := &game_room.GameRoom{
-			ID:             "room-1",
-			SchedulerID:    "game",
-			RunningMatches: 1,
-		}
-		client.ZAdd(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{
-			Member: room.ID,
-			Score:  float64(room.RunningMatches),
-		})
+	// addRoom registers a room in both the status and occupancy sets, like CreateRoom does.
+	addRoom := func(scheduler, id string, runningMatches int) {
+		client.ZAdd(ctx, getRoomStatusSetRedisKey(scheduler), &redis.Z{Member: id, Score: float64(game_room.GameStatusOccupied)})
+		client.ZAdd(ctx, getRoomOccupancyRedisKey(scheduler), &redis.Z{Member: id, Score: float64(runningMatches)})
+	}
 
-		count, err := storage.GetRunningMatchesCount(ctx, room.SchedulerID)
+	t.Run("single running match", func(t *testing.T) {
+		addRoom("game", "room-1", 1)
+
+		count, err := storage.GetRunningMatchesCount(ctx, "game")
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 	})
 
 	t.Run("multiple running matches", func(t *testing.T) {
-		rooms := []*game_room.GameRoom{
-			{ID: "room-1", SchedulerID: "game", RunningMatches: 1},
-			{ID: "room-2", SchedulerID: "game", RunningMatches: 2},
-			{ID: "room-3", SchedulerID: "game", RunningMatches: 3},
-		}
-
-		for _, room := range rooms {
-			client.ZAdd(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{
-				Member: room.ID,
-				Score:  float64(room.RunningMatches),
-			})
-		}
+		addRoom("game", "room-1", 1)
+		addRoom("game", "room-2", 2)
+		addRoom("game", "room-3", 3)
 
 		count, err := storage.GetRunningMatchesCount(ctx, "game")
 		require.NoError(t, err)
 		require.Equal(t, 6, count)
+	})
+
+	t.Run("ignores orphan occupancy entries not present in status", func(t *testing.T) {
+		// Regression: occupancy entries with no matching status member (e.g. left over from older
+		// versions) must not inflate the count, or they pin the roomOccupancy autoscaler's downscale
+		// gate. Use a dedicated scheduler to isolate from the shared "game" state above.
+		const sch = "game-orphan-count"
+		addRoom(sch, "real-room", 5)
+		// orphan: present only in :occupancy, score 99
+		client.ZAdd(ctx, getRoomOccupancyRedisKey(sch), &redis.Z{Member: "orphan-room", Score: 99})
+
+		count, err := storage.GetRunningMatchesCount(ctx, sch)
+		require.NoError(t, err)
+		require.Equal(t, 5, count, "orphan occupancy entry must be ignored")
 	})
 }
 
