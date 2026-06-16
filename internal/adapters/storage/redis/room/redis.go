@@ -82,6 +82,30 @@ else
 end
 `)
 
+// runningMatchesScript sums the occupancy scores of rooms that still exist in the status set.
+// Entries present in :occupancy but absent from :status are orphans (e.g. left behind by older
+// versions) and must not count: a running match only exists in a room maestro still tracks.
+// Ignoring them keeps GetRunningMatchesCount — and therefore the roomOccupancy autoscaler and the
+// running_matches metric — correct even if the occupancy set has stale members. Read-only.
+var runningMatchesScript = redis.NewScript(`
+-- Only members with score > 0 can contribute to the sum, so skip the (typically large) set of
+-- zero-score members (ready rooms + any zero-score orphans). This keeps the walk proportional to
+-- the number of rooms actually running matches, not the size of the occupancy set.
+local occupancy = redis.call('ZRANGEBYSCORE', KEYS[1], '(0', '+inf', 'WITHSCORES')
+local status = redis.call('ZRANGE', KEYS[2], 0, -1)
+local in_status = {}
+for i = 1, #status do
+    in_status[status[i]] = true
+end
+local sum = 0
+for i = 1, #occupancy, 2 do
+    if in_status[occupancy[i]] then
+        sum = sum + tonumber(occupancy[i + 1])
+    end
+end
+return sum
+`)
+
 type redisStateStorage struct {
 	client *redis.Client
 }
@@ -103,7 +127,13 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 	roomHashCmd := r.client.HGetAll(ctx, getRoomRedisKey(room.SchedulerID, room.ID))
 
 	p := r.client.Pipeline()
-	_ = p.ZAddNX(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{Member: room.ID, Score: float64(room.RunningMatches)})
+	// GetRoom must be side-effect free. It previously ZAddNX'd the room into the occupancy
+	// sorted set to backfill rooms created before the occupancy feature (#659), but GetRoom is
+	// also called for rooms that are being/already deleted (late pings, in-flight operations),
+	// which re-created an occupancy-only entry (score 0) that no path removes — GetAllRoomIDs
+	// only iterates :status. Those orphans inflate GetRunningMatchesCount forever, which gates
+	// the roomOccupancy autoscaler. CreateRoom already establishes the occupancy entry, and
+	// UpdateRoom uses ZAddXXCh precisely to avoid resurrecting deleted rooms; reads must do the same.
 	statusCmd := p.ZScore(ctx, getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
 	pingCmd := p.ZScore(ctx, getRoomPingRedisKey(room.SchedulerID), room.ID)
 	occupancyCmd := p.ZScore(ctx, getRoomOccupancyRedisKey(room.SchedulerID), room.ID)
@@ -371,25 +401,17 @@ func (r *redisStateStorage) UpdateRoomStatus(ctx context.Context, scheduler, roo
 }
 
 func (r *redisStateStorage) GetRunningMatchesCount(ctx context.Context, scheduler string) (count int, err error) {
-	client := r.client
-	var rooms []redis.Z
 	metrics.RunWithMetrics(roomStorageMetricLabel, func() error {
-		rooms, err = client.ZRangeByScoreWithScores(ctx, getRoomOccupancyRedisKey(scheduler), &redis.ZRangeBy{
-			Min: "-inf",
-			Max: "+inf",
-		}).Result()
+		count, err = runningMatchesScript.Run(ctx, r.client,
+			[]string{getRoomOccupancyRedisKey(scheduler), getRoomStatusSetRedisKey(scheduler)},
+		).Int()
 		return err
 	})
 	if err != nil {
 		return 0, errors.NewErrUnexpected("error getting running matches scores from redis").WithError(err)
 	}
 
-	sum := 0
-	for _, room := range rooms {
-		sum += int(room.Score)
-	}
-
-	return sum, nil
+	return count, nil
 }
 
 func (r *redisStateStorage) WatchRoomStatus(ctx context.Context, room *game_room.GameRoom) (ports.RoomStorageStatusWatcher, error) {
