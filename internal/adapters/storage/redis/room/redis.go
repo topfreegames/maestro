@@ -103,7 +103,13 @@ func (r redisStateStorage) GetRoom(ctx context.Context, scheduler, roomID string
 	roomHashCmd := r.client.HGetAll(ctx, getRoomRedisKey(room.SchedulerID, room.ID))
 
 	p := r.client.Pipeline()
-	_ = p.ZAddNX(ctx, getRoomOccupancyRedisKey(room.SchedulerID), &redis.Z{Member: room.ID, Score: float64(room.RunningMatches)})
+	// GetRoom must be side-effect free. It previously ZAddNX'd the room into the occupancy
+	// sorted set to backfill rooms created before the occupancy feature (#659), but GetRoom is
+	// also called for rooms that are being/already deleted (late pings, in-flight operations),
+	// which re-created an occupancy-only entry (score 0) that no path removes — GetAllRoomIDs
+	// only iterates :status. Those orphans inflate GetRunningMatchesCount forever, which gates
+	// the roomOccupancy autoscaler. CreateRoom already establishes the occupancy entry, and
+	// UpdateRoom uses ZAddXXCh precisely to avoid resurrecting deleted rooms; reads must do the same.
 	statusCmd := p.ZScore(ctx, getRoomStatusSetRedisKey(room.SchedulerID), room.ID)
 	pingCmd := p.ZScore(ctx, getRoomPingRedisKey(room.SchedulerID), room.ID)
 	occupancyCmd := p.ZScore(ctx, getRoomOccupancyRedisKey(room.SchedulerID), room.ID)

@@ -369,6 +369,17 @@ func TestRedisStateStorage_GetRoom(t *testing.T) {
 		_, err := storage.GetRoom(ctx, "game", "room-3")
 		requireErrorKind(t, errors.ErrNotFound, err)
 	})
+
+	t.Run("getting a non existent room does not create an occupancy entry", func(t *testing.T) {
+		// Regression: GetRoom must be side-effect free. It used to ZAddNX the room into the
+		// occupancy sorted set, resurrecting deleted/never-created rooms as orphans that inflate
+		// GetRunningMatchesCount forever and gate the roomOccupancy autoscaler.
+		_, err := storage.GetRoom(ctx, "game", "ghost-room")
+		requireErrorKind(t, errors.ErrNotFound, err)
+
+		occupancyCmd := client.ZScore(ctx, getRoomOccupancyRedisKey("game"), "ghost-room")
+		require.ErrorIs(t, occupancyCmd.Err(), redis.Nil, "GetRoom must not add a missing room to the occupancy set")
+	})
 }
 
 func TestRedisStateStorage_GetAllRoomIDs(t *testing.T) {
