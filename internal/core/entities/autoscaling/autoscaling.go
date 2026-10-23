@@ -95,6 +95,11 @@ type RoomOccupancyParams struct {
 	ReadyTarget float64 `validate:"gt=0,lt=1"`
 	// DownThreshold indicates the percentage of occupied rooms a scheduler should have to trigger a downscale event.
 	DownThreshold float64 `validate:"gt=0,lt=1"`
+	// MinFreeRooms is an optional floor of rooms with zero running matches (status ready) kept on
+	// top of the rooms hosting matches, so the percentage buffer never shrinks below it at low
+	// occupancy. Zero, the default, disables it.
+	// +optional
+	MinFreeRooms int `validate:"min=0"`
 }
 
 // FixedBufferParams represents the parameters accepted by fixed buffer autoscaling properties.
