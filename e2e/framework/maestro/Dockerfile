@@ -19,7 +19,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-FROM golang:1.23-alpine as builder
+FROM golang:1.27.3-alpine as builder
 
 WORKDIR /app
 
