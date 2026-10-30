@@ -19,7 +19,9 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-FROM golang:1.23-alpine AS build-env
+ARG GO_VERSION=1.27.3
+
+FROM golang:${GO_VERSION}-alpine AS build-env
 
 # TARGETARCH and TARGETOS are automatically set by buildx
 ARG TARGETARCH
@@ -42,7 +44,10 @@ RUN echo "Building for $TARGETOS/$TARGETARCH" && \
     mv /build/config /app/config
 
 
-FROM alpine
+FROM alpine:3.24
+
+# Version floor drops the compromised eMudhra roots; the build fails rather than ship an older bundle.
+RUN apk add --no-cache --upgrade 'ca-certificates>=20261020-r0' 'ca-certificates-bundle>=20261020-r0'
 
 WORKDIR /app
 

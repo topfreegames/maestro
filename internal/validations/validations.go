@@ -120,7 +120,7 @@ func RegisterAutoscalingValidations() error {
 func policyStructLevelValidation(sl validator.StructLevel) {
 	policy := sl.Current().Interface()
 	policyValue := reflect.ValueOf(policy)
-	if policyValue.Kind() == reflect.Ptr {
+	if policyValue.Kind() == reflect.Pointer {
 		policyValue = policyValue.Elem()
 	}
 
