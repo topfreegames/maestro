@@ -54,6 +54,8 @@ type WorkerOptions struct {
 	Runtime               ports.Runtime
 	RoomStorage           ports.RoomStorage
 	InstanceStorage       ports.GameRoomInstanceStorage
+	OperationStorage      ports.OperationStorage
+	OperationLeaseStorage ports.OperationLeaseStorage
 	MetricsReporterConfig *config.MetricsReporterConfig
 	RuntimeWatcherConfig  *config.RuntimeWatcherConfig
 	SchedulerCache        ports.SchedulerCache

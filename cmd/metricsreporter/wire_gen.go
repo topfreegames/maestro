@@ -9,6 +9,7 @@ package metricsreporter
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/workers"
 	"github.com/topfreegames/maestro/internal/core/worker"
 	config2 "github.com/topfreegames/maestro/internal/core/worker/config"
@@ -32,6 +33,16 @@ func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error)
 	if err != nil {
 		return nil, err
 	}
+	clock := service.NewClockTime()
+	v := providers.ProvideDefinitionConstructors()
+	operationStorage, err := service.NewOperationStorageRedis(clock, v, c)
+	if err != nil {
+		return nil, err
+	}
+	operationLeaseStorage, err := service.NewOperationLeaseStorageRedis(clock, c)
+	if err != nil {
+		return nil, err
+	}
 	schedulerCache, err := service.NewSchedulerCacheRedis(c)
 	if err != nil {
 		return nil, err
@@ -40,6 +51,8 @@ func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error)
 	workerOptions := &worker.WorkerOptions{
 		RoomStorage:           roomStorage,
 		InstanceStorage:       gameRoomInstanceStorage,
+		OperationStorage:      operationStorage,
+		OperationLeaseStorage: operationLeaseStorage,
 		SchedulerCache:        schedulerCache,
 		MetricsReporterConfig: metricsReporterConfig,
 	}
@@ -61,4 +74,4 @@ func provideMetricsReporterConfig(c config.Config) *config2.MetricsReporterConfi
 
 }
 
-var WorkerOptionsSet = wire.NewSet(service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, provideMetricsReporterConfig, wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "SchedulerCache", "MetricsReporterConfig"))
+var WorkerOptionsSet = wire.NewSet(service.NewRoomStorageRedis, service.NewGameRoomInstanceStorageRedis, service.NewSchedulerCacheRedis, service.NewClockTime, providers.ProvideDefinitionConstructors, service.NewOperationStorageRedis, service.NewOperationLeaseStorageRedis, provideMetricsReporterConfig, wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "OperationStorage", "OperationLeaseStorage", "SchedulerCache", "MetricsReporterConfig"))

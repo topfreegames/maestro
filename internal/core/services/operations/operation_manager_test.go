@@ -751,6 +751,115 @@ func TestWatchOperationCancellationRequests(t *testing.T) {
 	})
 }
 
+func TestCountAbandonedOperations(t *testing.T) {
+	schedulerName := uuid.New().String()
+	ctx := context.Background()
+
+	t.Run("counts only in-progress operations whose lease is expired past the margin or missing", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return([]*operation.Operation{
+			{ID: "expired", Status: operation.StatusInProgress},
+			{ID: "missing", Status: operation.StatusInProgress},
+			{ID: "renewed", Status: operation.StatusInProgress},
+			{ID: "unreadable", Status: operation.StatusInProgress},
+		}, nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, "expired").Return(time.Now().Add(-2*abandonedOperationLeaseMargin), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, "missing").Return(time.Time{}, porterrors.NewErrNotFound("lease not found"))
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, "renewed").Return(time.Now().Add(time.Second), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, "unreadable").Return(time.Time{}, porterrors.NewErrUnexpected("redis down"))
+
+		abandoned, err := CountAbandonedOperations(ctx, operationStorage, operationLeaseStorage, schedulerName)
+		require.NoError(t, err)
+		require.Equal(t, 2, abandoned)
+	})
+
+	t.Run("returns error when the active operations cannot be listed", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+
+		operationStorage.EXPECT().ListSchedulerActiveOperations(ctx, schedulerName).Return(nil, porterrors.NewErrUnexpected("redis down"))
+
+		_, err := CountAbandonedOperations(ctx, operationStorage, operationLeaseStorage, schedulerName)
+		require.Error(t, err)
+	})
+}
+
+func TestCancelOperationWithoutCancelFunction(t *testing.T) {
+	schedulerName := uuid.New().String()
+	operationID := uuid.New().String()
+	ctx := context.Background()
+
+	inProgressOp := func() *operation.Operation {
+		return &operation.Operation{SchedulerName: schedulerName, ID: operationID, Status: operation.StatusInProgress}
+	}
+
+	setup := func(t *testing.T) (*OperationManager, *mockports.MockOperationStorage, *mockports.MockOperationLeaseStorage) {
+		mockCtrl := gomock.NewController(t)
+		operationStorage := mockports.NewMockOperationStorage(mockCtrl)
+		operationLeaseStorage := mockports.NewMockOperationLeaseStorage(mockCtrl)
+		opManager := New(mockports.NewMockOperationFlow(mockCtrl), operationStorage, nil, operationLeaseStorage, OperationManagerConfig{OperationLeaseTtl: time.Second}, mockports.NewMockSchedulerStorage(mockCtrl))
+		return opManager, operationStorage, operationLeaseStorage
+	}
+
+	t.Run("marks the operation as canceled when its lease expired past the margin", func(t *testing.T) {
+		opManager, operationStorage, operationLeaseStorage := setup(t)
+
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(inProgressOp(), nil).Times(2)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationID).Return(time.Now().Add(-2*abandonedOperationLeaseMargin), nil)
+		operationStorage.EXPECT().UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled).Return(nil)
+		operationStorage.EXPECT().UpdateOperationExecutionHistory(ctx, gomock.Any()).Return(nil)
+		operationLeaseStorage.EXPECT().RevokeLease(ctx, schedulerName, operationID).Return(nil)
+
+		require.NoError(t, opManager.cancelOperation(ctx, schedulerName, operationID))
+	})
+
+	t.Run("marks the operation as canceled when it has no lease", func(t *testing.T) {
+		opManager, operationStorage, operationLeaseStorage := setup(t)
+
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(inProgressOp(), nil).Times(2)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationID).Return(time.Time{}, porterrors.NewErrNotFound("lease not found"))
+		operationStorage.EXPECT().UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled).Return(nil)
+		operationStorage.EXPECT().UpdateOperationExecutionHistory(ctx, gomock.Any()).Return(nil)
+		operationLeaseStorage.EXPECT().RevokeLease(ctx, schedulerName, operationID).Return(porterrors.NewErrNotFound("lease not found"))
+
+		require.NoError(t, opManager.cancelOperation(ctx, schedulerName, operationID))
+	})
+
+	t.Run("does not touch the operation when its lease is still being renewed", func(t *testing.T) {
+		opManager, operationStorage, operationLeaseStorage := setup(t)
+
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(inProgressOp(), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationID).Return(time.Now().Add(time.Second), nil)
+
+		require.Error(t, opManager.cancelOperation(ctx, schedulerName, operationID))
+	})
+
+	t.Run("does not touch the operation when the lease cannot be read", func(t *testing.T) {
+		opManager, operationStorage, operationLeaseStorage := setup(t)
+
+		operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(inProgressOp(), nil)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationID).Return(time.Time{}, porterrors.NewErrUnexpected("redis down"))
+
+		require.Error(t, opManager.cancelOperation(ctx, schedulerName, operationID))
+	})
+
+	t.Run("does not touch the operation when it finished after the lease check", func(t *testing.T) {
+		opManager, operationStorage, operationLeaseStorage := setup(t)
+
+		gomock.InOrder(
+			operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(inProgressOp(), nil),
+			operationStorage.EXPECT().GetOperation(ctx, schedulerName, operationID).Return(&operation.Operation{SchedulerName: schedulerName, ID: operationID, Status: operation.StatusFinished}, nil),
+		)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(ctx, schedulerName, operationID).Return(time.Time{}, porterrors.NewErrNotFound("lease not found"))
+
+		require.NoError(t, opManager.cancelOperation(ctx, schedulerName, operationID))
+	})
+}
+
 func TestGrantLease(t *testing.T) {
 	t.Run("Grant Lease success", func(t *testing.T) {
 		mockCtrl := gomock.NewController(t)

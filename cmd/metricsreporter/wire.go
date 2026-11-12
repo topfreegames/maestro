@@ -28,6 +28,7 @@ package metricsreporter
 import (
 	"github.com/google/wire"
 	"github.com/topfreegames/maestro/internal/config"
+	"github.com/topfreegames/maestro/internal/core/operations/providers"
 	"github.com/topfreegames/maestro/internal/core/services/workers"
 	"github.com/topfreegames/maestro/internal/core/worker"
 	workerconfigs "github.com/topfreegames/maestro/internal/core/worker/config"
@@ -51,8 +52,12 @@ var WorkerOptionsSet = wire.NewSet(
 	service.NewRoomStorageRedis,
 	service.NewGameRoomInstanceStorageRedis,
 	service.NewSchedulerCacheRedis,
+	service.NewClockTime,
+	providers.ProvideDefinitionConstructors,
+	service.NewOperationStorageRedis,
+	service.NewOperationLeaseStorageRedis,
 	provideMetricsReporterConfig,
-	wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "SchedulerCache", "MetricsReporterConfig"))
+	wire.Struct(new(worker.WorkerOptions), "RoomStorage", "InstanceStorage", "OperationStorage", "OperationLeaseStorage", "SchedulerCache", "MetricsReporterConfig"))
 
 func initializeMetricsReporter(c config.Config) (*workers.WorkersManager, error) {
 	wire.Build(

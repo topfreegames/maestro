@@ -32,6 +32,7 @@ import (
 	"github.com/topfreegames/maestro/internal/core/logs"
 
 	"github.com/topfreegames/maestro/internal/core/ports"
+	operationservice "github.com/topfreegames/maestro/internal/core/services/operations"
 
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/worker"
@@ -44,24 +45,28 @@ const WorkerName = "metrics_reporter"
 
 // MetricsReporterWorker is the service responsible producing periodic metrics.
 type MetricsReporterWorker struct {
-	scheduler           *entities.Scheduler
-	schedulerCache      ports.SchedulerCache
-	config              *config.MetricsReporterConfig
-	roomStorage         ports.RoomStorage
-	instanceStorage     ports.GameRoomInstanceStorage
-	workerContext       context.Context
-	cancelWorkerContext context.CancelFunc
-	logger              *zap.Logger
+	scheduler             *entities.Scheduler
+	schedulerCache        ports.SchedulerCache
+	config                *config.MetricsReporterConfig
+	roomStorage           ports.RoomStorage
+	instanceStorage       ports.GameRoomInstanceStorage
+	operationStorage      ports.OperationStorage
+	operationLeaseStorage ports.OperationLeaseStorage
+	workerContext         context.Context
+	cancelWorkerContext   context.CancelFunc
+	logger                *zap.Logger
 }
 
 func NewMetricsReporterWorker(scheduler *entities.Scheduler, opts *worker.WorkerOptions) worker.Worker {
 	return &MetricsReporterWorker{
-		scheduler:       scheduler,
-		schedulerCache:  opts.SchedulerCache,
-		config:          opts.MetricsReporterConfig,
-		roomStorage:     opts.RoomStorage,
-		instanceStorage: opts.InstanceStorage,
-		logger:          zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
+		scheduler:             scheduler,
+		schedulerCache:        opts.SchedulerCache,
+		config:                opts.MetricsReporterConfig,
+		roomStorage:           opts.RoomStorage,
+		instanceStorage:       opts.InstanceStorage,
+		operationStorage:      opts.OperationStorage,
+		operationLeaseStorage: opts.OperationLeaseStorage,
+		logger:                zap.L().With(zap.String(logs.LogFieldServiceName, WorkerName), zap.String(logs.LogFieldSchedulerName, scheduler.Name)),
 	}
 }
 
@@ -83,6 +88,7 @@ func (w *MetricsReporterWorker) Start(ctx context.Context) error {
 			w.reportInstanceMetrics()
 			w.reportGameRoomMetrics()
 			w.reportSchedulerMetrics()
+			w.reportOperationMetrics()
 		}
 	}
 }
@@ -193,6 +199,16 @@ func (w *MetricsReporterWorker) reportSchedulerMaxMatches() {
 		return
 	}
 	reportSchedulerMaxMatches(w.scheduler.Game, w.scheduler.Name, w.scheduler.MatchAllocation.MaxMatches)
+}
+
+func (w *MetricsReporterWorker) reportOperationMetrics() {
+	w.logger.Debug("Reporting operation metrics")
+	abandonedOperations, err := operationservice.CountAbandonedOperations(w.workerContext, w.operationStorage, w.operationLeaseStorage, w.scheduler.Name)
+	if err != nil {
+		w.logger.Error("Error counting abandoned operations", zap.Error(err))
+		return
+	}
+	reportAbandonedOperations(w.scheduler.Game, w.scheduler.Name, abandonedOperations)
 }
 
 func (w *MetricsReporterWorker) reportPendingRooms() {
