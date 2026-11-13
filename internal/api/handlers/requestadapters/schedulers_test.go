@@ -1973,3 +1973,64 @@ func TestFromEntitySchedulerInfoToListResponse(t *testing.T) {
 		})
 	}
 }
+
+func TestRoomOccupancyMinFreeRooms(t *testing.T) {
+	minFreeRooms := int32(300)
+
+	t.Run("api request sets MinFreeRooms on the entity", func(t *testing.T) {
+		changes := requestadapters.FromApiPatchSchedulerRequestToChangeMap(&api.PatchSchedulerRequest{
+			Autoscaling: &api.OptionalAutoscaling{
+				Policy: &api.AutoscalingPolicy{
+					Type: "roomOccupancy",
+					Parameters: &api.PolicyParameters{
+						RoomOccupancy: &api.RoomOccupancy{ReadyTarget: 0.2, MinFreeRooms: &minFreeRooms},
+					},
+				},
+			},
+		})
+
+		policy := changes[patch.LabelAutoscaling].(map[string]interface{})[patch.LabelAutoscalingPolicy].(autoscaling.Policy)
+		assert.Equal(t, 300, policy.Parameters.RoomOccupancy.MinFreeRooms)
+	})
+
+	t.Run("api request without MinFreeRooms leaves it disabled", func(t *testing.T) {
+		changes := requestadapters.FromApiPatchSchedulerRequestToChangeMap(&api.PatchSchedulerRequest{
+			Autoscaling: &api.OptionalAutoscaling{
+				Policy: &api.AutoscalingPolicy{
+					Type: "roomOccupancy",
+					Parameters: &api.PolicyParameters{
+						RoomOccupancy: &api.RoomOccupancy{ReadyTarget: 0.2},
+					},
+				},
+			},
+		})
+
+		policy := changes[patch.LabelAutoscaling].(map[string]interface{})[patch.LabelAutoscalingPolicy].(autoscaling.Policy)
+		assert.Equal(t, 0, policy.Parameters.RoomOccupancy.MinFreeRooms)
+	})
+
+	toResponse := func(minFree int) *api.RoomOccupancy {
+		response, err := requestadapters.FromEntitySchedulerToResponse(&entities.Scheduler{
+			PortRange:       &port.PortRange{},
+			MatchAllocation: &allocation.MatchAllocation{MaxMatches: 1},
+			Autoscaling: &autoscaling.Autoscaling{
+				Policy: autoscaling.Policy{
+					Type: autoscaling.RoomOccupancy,
+					Parameters: autoscaling.PolicyParameters{
+						RoomOccupancy: &autoscaling.RoomOccupancyParams{ReadyTarget: 0.2, DownThreshold: 0.99, MinFreeRooms: minFree},
+					},
+				},
+			},
+		})
+		assert.NoError(t, err)
+		return response.GetAutoscaling().GetPolicy().GetParameters().GetRoomOccupancy()
+	}
+
+	t.Run("response returns MinFreeRooms", func(t *testing.T) {
+		assert.Equal(t, int32(300), toResponse(300).GetMinFreeRooms())
+	})
+
+	t.Run("response omits MinFreeRooms when disabled", func(t *testing.T) {
+		assert.Nil(t, toResponse(0).MinFreeRooms)
+	})
+}

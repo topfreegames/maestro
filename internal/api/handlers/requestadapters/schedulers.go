@@ -412,6 +412,8 @@ func fromApiRoomOccupancyPolicyToEntity(roomOccupancy *api.RoomOccupancy) *autos
 	}
 	roomOccupancyParam.DownThreshold = float64(downThreshold)
 
+	roomOccupancyParam.MinFreeRooms = int(roomOccupancy.GetMinFreeRooms())
+
 	return roomOccupancyParam
 }
 
@@ -608,10 +610,15 @@ func getRoomOccupancy(roomOccupancyParameters *autoscaling.RoomOccupancyParams) 
 		return nil
 	}
 	downThresholdVal := float32(roomOccupancyParameters.DownThreshold)
-	return &api.RoomOccupancy{
+	roomOccupancy := &api.RoomOccupancy{
 		ReadyTarget:   float32(roomOccupancyParameters.ReadyTarget),
 		DownThreshold: &downThresholdVal,
 	}
+	if roomOccupancyParameters.MinFreeRooms > 0 {
+		minFreeRoomsVal := int32(roomOccupancyParameters.MinFreeRooms)
+		roomOccupancy.MinFreeRooms = &minFreeRoomsVal
+	}
+	return roomOccupancy
 }
 
 func fromEntityContainerToApiContainer(containers []game_room.Container) []*api.Container {

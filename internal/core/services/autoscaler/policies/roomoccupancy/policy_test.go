@@ -72,6 +72,9 @@ func TestCurrentStateBuilder(t *testing.T) {
 		// RunningMatchesKey now includes allocatedCount
 		assert.Equal(t, runningMatches+allocatedCount, currentState[roomoccupancy.RunningMatchesKey])
 		assert.Equal(t, scheduler.MatchAllocation.MaxMatches, currentState[roomoccupancy.MaxMatchesKey])
+		// Rooms hosting matches: active (1) + occupied (1) + allocated (1); ready rooms: 1
+		assert.Equal(t, 3, currentState[roomoccupancy.RoomsHostingMatchesKey])
+		assert.Equal(t, 1, currentState[roomoccupancy.ReadyRoomsKey])
 	})
 
 	t.Run("Error case - When some error occurs in GetRoomCountByStatus it returns error", func(t *testing.T) {

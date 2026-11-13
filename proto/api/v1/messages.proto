@@ -315,6 +315,8 @@ message RoomOccupancy {
   float ready_target = 1;
   // DownThreshold represents the minimum occupation rate that should trigger a scale down
   optional float down_threshold = 2;
+  // MinFreeRooms is the minimum number of rooms with zero running matches kept on top of the rooms hosting matches. Zero disables it
+  optional int32 min_free_rooms = 3;
 }
 
 // The operation lease object representation
