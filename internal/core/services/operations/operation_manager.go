@@ -38,6 +38,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const abandonedOperationLeaseMargin = time.Minute
+
 type OperationManager struct {
 	OperationCancelFunctions        *OperationCancelFunctions
 	Flow                            ports.OperationFlow
@@ -185,6 +187,23 @@ func (om *OperationManager) ListSchedulerActiveOperations(ctx context.Context, s
 		om.Logger.With(zap.String(logs.LogFieldSchedulerName, schedulerName), zap.Error(err)).Warn("failed to add operations lease data")
 	}
 	return ops, nil
+}
+
+// CountAbandonedOperations returns how many in-progress operations of the given scheduler no worker is executing.
+func CountAbandonedOperations(ctx context.Context, storage ports.OperationStorage, leaseStorage ports.OperationLeaseStorage, schedulerName string) (int, error) {
+	ops, err := storage.ListSchedulerActiveOperations(ctx, schedulerName)
+	if err != nil {
+		return 0, fmt.Errorf("failed get active operations list for scheduler %s : %w", schedulerName, err)
+	}
+
+	abandoned := 0
+	for _, op := range ops {
+		if op.Status == operation.StatusInProgress && isOperationLeaseAbandoned(ctx, leaseStorage, schedulerName, op.ID) {
+			abandoned++
+		}
+	}
+
+	return abandoned, nil
 }
 
 func (om *OperationManager) ListSchedulerFinishedOperations(ctx context.Context, schedulerName string, page, pageSize int64, order string) (result []*operation.Operation, total int64, err error) {
@@ -383,9 +402,46 @@ func (om OperationManager) cancelOperation(ctx context.Context, schedulerName, o
 	} else {
 		cancelFn, err := om.OperationCancelFunctions.getFunction(schedulerName, operationID)
 		if err != nil {
+			if op.Status == operation.StatusInProgress && isOperationLeaseAbandoned(ctx, om.LeaseStorage, schedulerName, operationID) {
+				return om.cancelAbandonedOperation(ctx, schedulerName, operationID)
+			}
 			return fmt.Errorf("failed to fetch cancel function from operation: %w", err)
 		}
 		cancelFn()
+	}
+
+	return nil
+}
+
+func isOperationLeaseAbandoned(ctx context.Context, leaseStorage ports.OperationLeaseStorage, schedulerName, operationID string) bool {
+	leaseTtl, err := leaseStorage.FetchLeaseTTL(ctx, schedulerName, operationID)
+	if err != nil {
+		return goerrors.Is(err, errors.ErrNotFound)
+	}
+
+	return time.Since(leaseTtl) > abandonedOperationLeaseMargin
+}
+
+func (om OperationManager) cancelAbandonedOperation(ctx context.Context, schedulerName, operationID string) error {
+	// Read the status after the lease: a worker that finishes writes the final status before revoking its lease.
+	op, err := om.Storage.GetOperation(ctx, schedulerName, operationID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch abandoned operation from storage: %w", err)
+	}
+
+	if op.Status != operation.StatusInProgress {
+		return nil
+	}
+
+	err = om.Storage.UpdateOperationStatus(ctx, schedulerName, operationID, operation.StatusCanceled)
+	if err != nil {
+		return fmt.Errorf("failed update abandoned operation as canceled: %w", err)
+	}
+	om.AppendOperationEventToExecutionHistory(ctx, op, "Operation canceled: no worker was executing it")
+
+	err = om.LeaseStorage.RevokeLease(ctx, schedulerName, operationID)
+	if err != nil && !goerrors.Is(err, errors.ErrNotFound) {
+		om.Logger.With(zap.String(logs.LogFieldSchedulerName, schedulerName), zap.String(logs.LogFieldOperationID, operationID), zap.Error(err)).Warn("failed to revoke abandoned operation lease")
 	}
 
 	return nil

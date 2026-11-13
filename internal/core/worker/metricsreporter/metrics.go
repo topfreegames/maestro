@@ -280,3 +280,18 @@ func reportSchedulerPolicyReadyTarget(game, schedulerName string, readyTarget fl
 func reportSchedulerPolicyFixedBuffer(game, schedulerName string, amount float64) {
 	schedulerAutoscalePolicyFixedBufferGaugeMetric.WithLabelValues(game, schedulerName).Set(amount)
 }
+
+var abandonedOperationsGaugeMetric = monitoring.CreateGaugeMetric(&monitoring.MetricOpts{
+	Namespace: monitoring.Namespace,
+	Subsystem: monitoring.SubsystemWorker,
+	Name:      "abandoned_operations",
+	Help:      "The number of in-progress operations that no worker is executing",
+	Labels: []string{
+		monitoring.LabelGame,
+		monitoring.LabelScheduler,
+	},
+})
+
+func reportAbandonedOperations(game, schedulerName string, abandonedOperations int) {
+	abandonedOperationsGaugeMetric.WithLabelValues(game, schedulerName).Set(float64(abandonedOperations))
+}

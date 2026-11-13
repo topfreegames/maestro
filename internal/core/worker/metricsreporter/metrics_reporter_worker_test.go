@@ -39,6 +39,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/topfreegames/maestro/internal/core/entities"
 	"github.com/topfreegames/maestro/internal/core/entities/game_room"
+	"github.com/topfreegames/maestro/internal/core/entities/operation"
 	"github.com/topfreegames/maestro/internal/core/ports/mock"
 	"github.com/topfreegames/maestro/internal/core/worker"
 )
@@ -51,6 +52,8 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
 		instanceStorage := mock.NewMockGameRoomInstanceStorage(mockCtl)
 		schedulerCache := mock.NewMockSchedulerCache(mockCtl)
+		operationStorage := mock.NewMockOperationStorage(mockCtl)
+		operationLeaseStorage := mock.NewMockOperationLeaseStorage(mockCtl)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 		scheduler := &entities.Scheduler{Name: "random-scheduler"}
 		instances := newInstancesList(40)
@@ -58,6 +61,8 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 		workerOpts := &worker.WorkerOptions{
 			RoomStorage:           roomStorage,
 			InstanceStorage:       instanceStorage,
+			OperationStorage:      operationStorage,
+			OperationLeaseStorage: operationLeaseStorage,
 			MetricsReporterConfig: &config.MetricsReporterConfig{MetricsReporterIntervalMillis: 500},
 			SchedulerCache:        schedulerCache,
 		}
@@ -84,6 +89,10 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 			Return(88, nil).MinTimes(3)
 		instanceStorage.EXPECT().GetAllInstances(gomock.Any(), scheduler.Name).Return(instances, nil).MinTimes(3)
 		schedulerCache.EXPECT().GetScheduler(gomock.Any(), scheduler.Name).Return(scheduler, nil).MinTimes(3)
+		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), scheduler.Name).
+			Return([]*operation.Operation{{ID: "abandoned", Status: operation.StatusInProgress}, {ID: "running", Status: operation.StatusInProgress}}, nil).MinTimes(3)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), scheduler.Name, "abandoned").Return(time.Now().Add(-time.Hour), nil).MinTimes(3)
+		operationLeaseStorage.EXPECT().FetchLeaseTTL(gomock.Any(), scheduler.Name, "running").Return(time.Now().Add(time.Hour), nil).MinTimes(3)
 
 		go func() {
 			err := worker.Start(ctx)
@@ -114,6 +123,8 @@ func TestMetricsReporterWorker_StartProduceMetrics(t *testing.T) {
 		assert.Equal(t, float64(8), testutil.ToFloat64(instanceErrorGaugeMetric))
 
 		assert.Equal(t, float64(88), testutil.ToFloat64(runningMatchesGaugeMetric))
+
+		assert.Equal(t, float64(1), testutil.ToFloat64(abandonedOperationsGaugeMetric))
 	})
 }
 
@@ -128,6 +139,8 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 		roomStorage := mock.NewMockRoomStorage(mockCtl)
 		instanceStorage := mock.NewMockGameRoomInstanceStorage(mockCtl)
 		schedulerCache := mock.NewMockSchedulerCache(mockCtl)
+		operationStorage := mock.NewMockOperationStorage(mockCtl)
+		operationLeaseStorage := mock.NewMockOperationLeaseStorage(mockCtl)
 		ctx, cancelFunc := context.WithCancel(context.Background())
 
 		scheduler := &entities.Scheduler{Name: "random-scheduler-2"}
@@ -135,6 +148,8 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 		workerOpts := &worker.WorkerOptions{
 			RoomStorage:           roomStorage,
 			InstanceStorage:       instanceStorage,
+			OperationStorage:      operationStorage,
+			OperationLeaseStorage: operationLeaseStorage,
 			MetricsReporterConfig: &config.MetricsReporterConfig{MetricsReporterIntervalMillis: 500},
 			SchedulerCache:        schedulerCache,
 		}
@@ -163,6 +178,8 @@ func TestMetricsReporterWorker_StartDoNotProduceMetrics(t *testing.T) {
 			Return([]*game_room.Instance{}, errors.New("some_error")).MinTimes(3)
 		schedulerCache.EXPECT().GetScheduler(gomock.Any(), scheduler.Name).
 			Return(scheduler, errors.New("some_error")).MinTimes(3)
+		operationStorage.EXPECT().ListSchedulerActiveOperations(gomock.Any(), scheduler.Name).
+			Return(nil, errors.New("some_error")).MinTimes(3)
 
 		go func() {
 			err := worker.Start(ctx)
@@ -218,6 +235,7 @@ func newInstancesList(numberOfInstances int) (instances []*game_room.Instance) {
 func resetMetricsCollectors() {
 	// Reset all game room metrics
 	gameRoomReadyGaugeMetric.Reset()
+	abandonedOperationsGaugeMetric.Reset()
 	gameRoomPendingGaugeMetric.Reset()
 	gameRoomTerminatingGaugeMetric.Reset()
 	gameRoomOccupiedGaugeMetric.Reset()
