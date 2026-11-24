@@ -1848,6 +1848,11 @@
           "type": "number",
           "format": "float",
           "title": "DownThreshold represents the minimum occupation rate that should trigger a scale down"
+        },
+        "minFreeRooms": {
+          "type": "integer",
+          "format": "int32",
+          "title": "MinFreeRooms is the minimum number of rooms with zero running matches kept on top of the rooms hosting matches. Zero disables it"
         }
       },
       "title": "RoomOccupancy optional policy parameter"

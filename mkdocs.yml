@@ -10,6 +10,7 @@ nav:
   - Architecture: 'reference/Architecture.md'
   - OpenAPI: 'reference/OpenAPI.md'
   - Autoscaling: 'tutorials/Autoscaling.md'
+  - Autoscaling Min Free Rooms: 'reference/AutoscalingMinFreeRooms.md'
   - Events Forwarding: 'tutorials/EventsForwarding.md'
   - Operations: 'reference/Operations.md'
   - Kubernetes Usage: 'reference/Kubernetes.md'
